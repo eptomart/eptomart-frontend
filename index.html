@@ -22,10 +22,6 @@
     <link rel="apple-touch-icon" sizes="128x128" href="/icons/icon-128x128.png" />
     <link rel="apple-touch-icon" sizes="72x72" href="/icons/icon-72x72.png" />
 
-    <!-- Splash screens (iOS) -->
-    <meta name="msapplication-TileColor" content="#f97316" />
-    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
-
     <!-- Open Graph -->
     <meta property="og:title" content="Eptomart — Shop Everything" />
     <meta property="og:description" content="India's fast, affordable online shopping destination" />
@@ -38,6 +34,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
     <title>Eptomart — Shop Everything</title>
+
+    <!-- KILL all service workers immediately — runs before anything else -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(r) { r.unregister(); });
+        });
+        caches.keys().then(function(keys) {
+          keys.forEach(function(k) { caches.delete(k); });
+        });
+      }
+    </script>
   </head>
   <body>
     <div id="root">
@@ -49,22 +57,33 @@
         </div>
       </div>
     </div>
+
+    <!-- Catch raw JS errors (syntax, reference errors in non-React code) -->
     <script>
       window.onerror = function(msg, src, line, col, err) {
-        document.getElementById('root').innerHTML =
+        var root = document.getElementById('root');
+        if (root) root.innerHTML =
           '<div style="padding:20px;font-family:monospace;background:#fee2e2;color:#991b1b;border-radius:8px;margin:20px;">' +
           '<h2 style="margin:0 0 10px">JS Error</h2>' +
-          '<p style="margin:0 0 5px"><b>' + msg + '</b></p>' +
-          '<p style="margin:0;font-size:12px">' + src + ' line:' + line + '</p></div>';
+          '<p style="margin:0 0 5px"><b>' + (msg || 'Unknown error') + '</b></p>' +
+          '<p style="margin:0;font-size:12px">' + (src || '') + ' line:' + line + '</p>' +
+          '<button onclick="location.reload()" style="margin-top:12px;padding:8px 16px;background:#f97316;color:white;border:none;border-radius:6px;cursor:pointer">Reload</button>' +
+          '</div>';
         return false;
       };
       window.addEventListener('unhandledrejection', function(e) {
-        document.getElementById('root').innerHTML =
-          '<div style="padding:20px;font-family:monospace;background:#fef3c7;color:#92400e;border-radius:8px;margin:20px;">' +
-          '<h2 style="margin:0 0 10px">Promise Error</h2>' +
-          '<p style="margin:0">' + (e.reason?.message || String(e.reason)) + '</p></div>';
+        var root = document.getElementById('root');
+        if (root && root.children.length <= 1) {
+          root.innerHTML =
+            '<div style="padding:20px;font-family:monospace;background:#fef3c7;color:#92400e;border-radius:8px;margin:20px;">' +
+            '<h2 style="margin:0 0 10px">Promise Error</h2>' +
+            '<p style="margin:0">' + ((e.reason && e.reason.message) || String(e.reason)) + '</p>' +
+            '<button onclick="location.reload()" style="margin-top:12px;padding:8px 16px;background:#f97316;color:white;border:none;border-radius:6px;cursor:pointer">Reload</button>' +
+            '</div>';
+        }
       });
     </script>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
