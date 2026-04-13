@@ -40,7 +40,15 @@
     <title>Eptomart — Shop Everything</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:Arial;background:#fff7ed;">
+        <div style="text-align:center;">
+          <div style="width:60px;height:60px;background:#f97316;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px;font-weight:bold;color:white;">E</div>
+          <p style="color:#f97316;font-weight:bold;font-size:18px;">Eptomart</p>
+          <p style="color:#999;font-size:14px;">Loading...</p>
+        </div>
+      </div>
+    </div>
     <script>
       window.onerror = function(msg, src, line, col, err) {
         document.getElementById('root').innerHTML =
