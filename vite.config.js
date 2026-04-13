@@ -7,7 +7,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      injectRegister: null,
+      selfDestroying: true,
       includeAssets: ['favicon.ico', 'icons/*.png', 'splash.png'],
       manifest: {
         name: 'Eptomart — Shop Everything',

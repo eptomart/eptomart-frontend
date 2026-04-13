@@ -41,6 +41,22 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      window.onerror = function(msg, src, line, col, err) {
+        document.getElementById('root').innerHTML =
+          '<div style="padding:20px;font-family:monospace;background:#fee2e2;color:#991b1b;border-radius:8px;margin:20px;">' +
+          '<h2 style="margin:0 0 10px">JS Error</h2>' +
+          '<p style="margin:0 0 5px"><b>' + msg + '</b></p>' +
+          '<p style="margin:0;font-size:12px">' + src + ' line:' + line + '</p></div>';
+        return false;
+      };
+      window.addEventListener('unhandledrejection', function(e) {
+        document.getElementById('root').innerHTML =
+          '<div style="padding:20px;font-family:monospace;background:#fef3c7;color:#92400e;border-radius:8px;margin:20px;">' +
+          '<h2 style="margin:0 0 10px">Promise Error</h2>' +
+          '<p style="margin:0">' + (e.reason?.message || String(e.reason)) + '</p></div>';
+      });
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
