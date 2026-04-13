@@ -6,7 +6,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import Loader from './components/common/Loader';
-import PwaInstallBanner from './components/common/PwaInstallBanner';
+// PwaInstallBanner disabled — re-enable after iOS compatibility fix
+// import PwaInstallBanner from './components/common/PwaInstallBanner';
 
 // Lazy-loaded pages for performance
 const Home = lazy(() => import('./pages/Home'));
@@ -85,7 +86,6 @@ export default function App() {
     <AuthProvider>
       <CartProvider>
         <AppRoutes />
-        <PwaInstallBanner />
       </CartProvider>
     </AuthProvider>
   );
