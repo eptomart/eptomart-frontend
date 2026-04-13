@@ -1,10 +1,15 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import legacy from '@vitejs/plugin-legacy';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   plugins: [
     react(),
+    legacy({
+      targets: ['ios >= 13', 'safari >= 13', 'chrome >= 80'],
+      additionalLegacyPolyfills: ['regenerator-runtime/runtime'],
+    }),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: null,
