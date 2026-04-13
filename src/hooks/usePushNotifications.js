@@ -5,7 +5,8 @@ import { useState, useEffect } from 'react';
 import api from '../utils/api';
 
 export const usePushNotifications = () => {
-  const [permission, setPermission] = useState(Notification?.permission || 'default');
+  const notifSupported = typeof Notification !== 'undefined';
+  const [permission, setPermission] = useState(notifSupported ? Notification.permission : 'denied');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -37,6 +38,9 @@ export const usePushNotifications = () => {
       }
 
       // Request permission
+      if (typeof Notification === 'undefined') {
+        return { success: false, error: 'Notifications not supported on this device' };
+      }
       const perm = await Notification.requestPermission();
       setPermission(perm);
 
