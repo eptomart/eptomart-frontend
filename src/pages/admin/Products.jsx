@@ -47,7 +47,7 @@ export default function AdminProducts() {
 
   const openAdd = () => {
     setEditProduct(null);
-    setForm({ name: '', description: '', shortDescription: '', price: '', discountPrice: '', stock: '', category: '', brand: '', tags: '', isFeatured: false });
+    setForm({ name: '', description: '', shortDescription: '', price: '', discountPrice: '', stock: '', category: '', brand: '', tags: '', isFeatured: false, codAvailable: true });
     setImageFiles([]);
     setShowModal(true);
   };
@@ -65,6 +65,7 @@ export default function AdminProducts() {
       brand: product.brand || '',
       tags: product.tags?.join(', ') || '',
       isFeatured: product.isFeatured || false,
+      codAvailable: product.codAvailable !== false,
     });
     setImageFiles([]);
     setShowModal(true);
@@ -301,6 +302,22 @@ export default function AdminProducts() {
                     onChange={e => setForm(f => ({ ...f, isFeatured: e.target.checked }))}
                     className="accent-primary-500 w-4 h-4" />
                   <label htmlFor="featured" className="text-sm font-medium">Feature this product</label>
+                </div>
+
+                <div className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-colors ${form.codAvailable ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+                  <input type="checkbox" id="codAvailable" checked={form.codAvailable}
+                    onChange={e => setForm(f => ({ ...f, codAvailable: e.target.checked }))}
+                    className="accent-green-600 w-4 h-4 mt-0.5" />
+                  <div>
+                    <label htmlFor="codAvailable" className="text-sm font-semibold cursor-pointer">
+                      💵 Cash on Delivery available
+                    </label>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {form.codAvailable
+                        ? 'COD is enabled — customers can pay on delivery'
+                        : 'COD is disabled — customers must pay online for this product'}
+                    </p>
+                  </div>
                 </div>
               </div>
 

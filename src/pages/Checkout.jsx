@@ -44,7 +44,18 @@ export default function Checkout() {
     state: '',
     pincode: '',
   });
+  // Check if all cart items support COD
+  const codBlockedItems = cartItems.filter(item => item.codAvailable === false);
+  const isCodBlocked = codBlockedItems.length > 0;
+
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
+
+  // If COD was somehow selected but is now blocked, switch to razorpay
+  React.useEffect(() => {
+    if (isCodBlocked && paymentMethod === 'cod') {
+      setPaymentMethod('razorpay');
+    }
+  }, [isCodBlocked, paymentMethod]);
   const [upiRef, setUpiRef] = useState('');
   const [loading, setLoading] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(null);
@@ -281,29 +292,42 @@ export default function Checkout() {
             <div className="card p-6">
               <h2 className="text-lg font-bold mb-4">💳 Payment Method</h2>
               <div className="space-y-3">
-                {PAYMENT_METHODS.map(method => (
-                  <label
-                    key={method.id}
-                    className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all
-                      ${paymentMethod === method.id ? 'border-primary-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'}`}
-                  >
-                    <input
-                      type="radio"
-                      value={method.id}
-                      checked={paymentMethod === method.id}
-                      onChange={() => setPaymentMethod(method.id)}
-                      className="accent-primary-500"
-                    />
-                    <span className="text-2xl">{method.icon}</span>
-                    <div>
-                      <p className="font-semibold text-gray-800">{method.label}</p>
-                      <p className="text-xs text-gray-500">{method.desc}</p>
-                    </div>
-                    {method.id === 'razorpay' && (
-                      <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Recommended</span>
-                    )}
-                  </label>
-                ))}
+                {PAYMENT_METHODS.map(method => {
+                  const isDisabled = method.id === 'cod' && isCodBlocked;
+                  return (
+                    <label
+                      key={method.id}
+                      className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all
+                        ${isDisabled ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-200' :
+                          paymentMethod === method.id ? 'border-primary-500 bg-orange-50 cursor-pointer' :
+                          'border-gray-200 hover:border-gray-300 cursor-pointer'}`}
+                    >
+                      <input
+                        type="radio"
+                        value={method.id}
+                        checked={paymentMethod === method.id}
+                        onChange={() => !isDisabled && setPaymentMethod(method.id)}
+                        disabled={isDisabled}
+                        className="accent-primary-500"
+                      />
+                      <span className="text-2xl">{method.icon}</span>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800">{method.label}</p>
+                        <p className="text-xs text-gray-500">
+                          {isDisabled
+                            ? `Not available — ${codBlockedItems.map(i => i.name).join(', ')} cannot be delivered as COD`
+                            : method.desc}
+                        </p>
+                      </div>
+                      {method.id === 'razorpay' && !isDisabled && (
+                        <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Recommended</span>
+                      )}
+                      {isDisabled && (
+                        <span className="ml-auto text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">Not Available</span>
+                      )}
+                    </label>
+                  );
+                })}
               </div>
             </div>
           </div>

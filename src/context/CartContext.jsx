@@ -57,6 +57,7 @@ export const CartProvider = ({ children }) => {
         image: product.images?.[0]?.url || '',
         stock: product.stock,
         slug: product.slug,
+        codAvailable: product.codAvailable !== false,
         quantity,
       }];
     });
