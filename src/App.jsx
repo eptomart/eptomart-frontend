@@ -5,11 +5,12 @@ import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { WishlistProvider } from './context/WishlistContext';
+import { CompareProvider } from './context/CompareContext';
 import Loader from './components/common/Loader';
-// PwaInstallBanner disabled — re-enable after iOS compatibility fix
-// import PwaInstallBanner from './components/common/PwaInstallBanner';
+import CompareBar from './components/product/CompareBar';
 
-// Lazy-loaded pages for performance
+// Lazy-loaded pages
 const Home = lazy(() => import('./pages/Home'));
 const Shop = lazy(() => import('./pages/Shop'));
 const ProductPage = lazy(() => import('./pages/ProductPage'));
@@ -19,6 +20,7 @@ const Orders = lazy(() => import('./pages/Orders'));
 const Login = lazy(() => import('./pages/Login'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Wishlist = lazy(() => import('./pages/Wishlist'));
+const Compare = lazy(() => import('./pages/Compare'));
 
 // Admin pages
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
@@ -46,38 +48,43 @@ const AdminRoute = ({ children }) => {
 
 function AppRoutes() {
   return (
-    <Suspense fallback={<Loader />}>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<Home />} />
-        <Route path="/shop" element={<Shop />} />
-        <Route path="/shop/:category" element={<Shop />} />
-        <Route path="/product/:slug" element={<ProductPage />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/login" element={<Login />} />
+    <>
+      <Suspense fallback={<Loader />}>
+        <Routes>
+          {/* Public */}
+          <Route path="/" element={<Home />} />
+          <Route path="/shop" element={<Shop />} />
+          <Route path="/shop/:category" element={<Shop />} />
+          <Route path="/product/:slug" element={<ProductPage />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/compare" element={<Compare />} />
 
-        {/* Protected Routes */}
-        <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-        <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
+          {/* Protected */}
+          <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+          <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="products" element={<AdminProducts />} />
-          <Route path="orders" element={<AdminOrders />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="analytics" element={<AdminAnalytics />} />
-          <Route path="categories" element={<AdminCategories />} />
-          <Route path="bulk-import" element={<AdminBulkImport />} />
-          <Route path="notifications" element={<AdminNotifications />} />
-        </Route>
+          {/* Admin */}
+          <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="products" element={<AdminProducts />} />
+            <Route path="orders" element={<AdminOrders />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="analytics" element={<AdminAnalytics />} />
+            <Route path="categories" element={<AdminCategories />} />
+            <Route path="bulk-import" element={<AdminBulkImport />} />
+            <Route path="notifications" element={<AdminNotifications />} />
+          </Route>
 
-        {/* 404 */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+
+      {/* Global floating compare bar */}
+      <CompareBar />
+    </>
   );
 }
 
@@ -85,7 +92,11 @@ export default function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <AppRoutes />
+        <WishlistProvider>
+          <CompareProvider>
+            <AppRoutes />
+          </CompareProvider>
+        </WishlistProvider>
       </CartProvider>
     </AuthProvider>
   );

@@ -6,11 +6,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FiSearch, FiShoppingCart, FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiSettings, FiHeart } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useWishlist } from '../../context/WishlistContext';
 import api from '../../utils/api';
 
 export default function Navbar() {
   const { user, isLoggedIn, isAdmin, logout } = useAuth();
   const { cartCount, setIsCartOpen } = useCart();
+  const { wishlistCount } = useWishlist();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showSearch, setShowSearch] = useState(false);
@@ -97,6 +99,18 @@ export default function Navbar() {
             <button onClick={() => setShowSearch(!showSearch)} className="md:hidden p-2 rounded-xl hover:bg-gray-100">
               <FiSearch size={22} />
             </button>
+
+            {/* Wishlist */}
+            {isLoggedIn && (
+              <button onClick={() => navigate('/wishlist')} className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors hidden sm:flex">
+                <FiHeart size={22} />
+                {wishlistCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                    {wishlistCount > 9 ? '9+' : wishlistCount}
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* Cart */}
             <button
