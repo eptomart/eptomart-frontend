@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiHeart, FiShoppingCart, FiTrash2, FiShare2, FiGitCompare } from 'react-icons/fi';
+import { FiHeart, FiShoppingCart, FiTrash2, FiShare2, FiColumns } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import Loader from '../components/common/Loader';
@@ -178,7 +178,7 @@ export default function Wishlist() {
                           title="Add to compare"
                           className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-500 rounded-xl transition-all"
                         >
-                          <FiGitCompare size={13} />
+                          <FiColumns size={13} />
                         </button>
                         <button
                           onClick={() => removeFromWishlist(product)}

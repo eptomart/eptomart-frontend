@@ -3,7 +3,7 @@
 // ============================================
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiX, FiGitCompare } from 'react-icons/fi';
+import { FiX, FiColumns } from 'react-icons/fi';
 import { useCompare } from '../../context/CompareContext';
 
 export default function CompareBar() {
@@ -16,7 +16,7 @@ export default function CompareBar() {
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t-2 border-primary-500 shadow-2xl">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
         <div className="flex items-center gap-2 text-primary-600 font-semibold text-sm flex-shrink-0">
-          <FiGitCompare size={18} />
+          <FiColumns size={18} />
           <span>Compare ({compareList.length}/3)</span>
         </div>
 

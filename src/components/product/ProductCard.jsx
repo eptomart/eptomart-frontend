@@ -3,7 +3,7 @@
 // ============================================
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiShoppingCart, FiHeart, FiStar, FiGitCompare, FiEye } from 'react-icons/fi';
+import { FiShoppingCart, FiHeart, FiStar, FiColumns, FiEye } from 'react-icons/fi';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useCompare } from '../../context/CompareContext';
@@ -65,7 +65,7 @@ export default function ProductCard({ product }) {
           <button onClick={handleCompare} title="Compare product"
             className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all
               ${inCompare ? 'bg-blue-500 text-white' : 'bg-white text-gray-500 hover:text-blue-500'}`}>
-            <FiGitCompare size={15} />
+            <FiColumns size={15} />
           </button>
           <button onClick={(e) => { e.preventDefault(); navigate(`/product/${slug}`); }} title="Quick view"
             className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md text-gray-500 hover:text-primary-500 transition-all">
