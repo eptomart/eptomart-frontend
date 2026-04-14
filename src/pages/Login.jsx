@@ -1,42 +1,134 @@
 // ============================================
 // LOGIN / REGISTER PAGE — OTP-based
+// Phone OTP via Firebase (free, unlimited)
+// Email OTP via Resend
 // ============================================
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { FiMail, FiPhone, FiArrowLeft } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
+import api from '../utils/api';
 import toast from 'react-hot-toast';
 
-const STEPS = { CONTACT: 1, OTP: 2, NAME: 3 };
+const STEPS = { CONTACT: 1, OTP: 2 };
 
 export default function Login() {
   const [step, setStep] = useState(STEPS.CONTACT);
-  const [loginType, setLoginType] = useState('email'); // 'email' or 'phone'
+  const [loginType, setLoginType] = useState('email');
   const [contact, setContact] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
-  const [isNewUser, setIsNewUser] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
+  const confirmationResultRef = useRef(null);
+  const recaptchaVerifierRef = useRef(null);
 
-  const { sendOtp, verifyOtp } = useAuth();
+  const { sendOtp, verifyOtp, loadUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from || '/';
 
+  // Cleanup reCAPTCHA on unmount
+  useEffect(() => {
+    return () => {
+      if (recaptchaVerifierRef.current) {
+        try { recaptchaVerifierRef.current.clear(); } catch (_) {}
+        recaptchaVerifierRef.current = null;
+      }
+    };
+  }, []);
+
+  // ── Phone OTP via Firebase ──────────────────────────────
+  const sendFirebaseOtp = async () => {
+    setLoading(true);
+    try {
+      const { RecaptchaVerifier, signInWithPhoneNumber } = await import('firebase/auth');
+      const { auth } = await import('../utils/firebase');
+
+      // Clear previous verifier
+      if (recaptchaVerifierRef.current) {
+        try { recaptchaVerifierRef.current.clear(); } catch (_) {}
+      }
+
+      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {},
+      });
+      recaptchaVerifierRef.current = verifier;
+
+      const phoneNumber = `+91${contact}`;
+      const result = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+      confirmationResultRef.current = result;
+
+      toast.success(`OTP sent to +91 XXXXX${contact.slice(-5)}`);
+      setStep(STEPS.OTP);
+    } catch (err) {
+      console.error('Firebase OTP error:', err);
+      const msg = err.code === 'auth/invalid-phone-number'
+        ? 'Invalid phone number'
+        : err.code === 'auth/too-many-requests'
+        ? 'Too many attempts. Try again later.'
+        : err.message || 'Failed to send OTP';
+      toast.error(msg);
+      if (recaptchaVerifierRef.current) {
+        try { recaptchaVerifierRef.current.clear(); } catch (_) {}
+        recaptchaVerifierRef.current = null;
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyFirebaseOtp = async () => {
+    if (!confirmationResultRef.current) {
+      return toast.error('Please request OTP again');
+    }
+    setLoading(true);
+    try {
+      const result = await confirmationResultRef.current.confirm(otp);
+      const idToken = await result.user.getIdToken();
+
+      const { data } = await api.post('/auth/firebase-phone-verify', {
+        idToken,
+        name: name || 'User',
+      });
+
+      if (data.success) {
+        localStorage.setItem('eptomart_token', data.token);
+        await loadUser();
+        toast.success(data.message || 'Login successful!');
+        navigate(from, { replace: true });
+      }
+    } catch (err) {
+      console.error('Firebase verify error:', err);
+      const msg = err.code === 'auth/invalid-verification-code'
+        ? 'Wrong OTP. Please check and try again.'
+        : err.code === 'auth/code-expired'
+        ? 'OTP expired. Please request a new one.'
+        : err.response?.data?.message || 'Invalid OTP';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Email OTP via backend ───────────────────────────────
   const handleSendOtp = async (e) => {
     e.preventDefault();
     if (!contact.trim()) return toast.error('Please enter your ' + loginType);
+
+    if (loginType === 'phone') {
+      if (!/^[6-9]\d{9}$/.test(contact)) return toast.error('Enter valid 10-digit mobile number');
+      await sendFirebaseOtp();
+      return;
+    }
 
     setLoading(true);
     try {
       const res = await sendOtp(contact.trim().toLowerCase(), loginType);
       if (res.success) {
         toast.success(res.message);
-        setOtpSent(true);
         setStep(STEPS.OTP);
-        // Dev mode: auto-fill OTP
         if (res.otp) {
           setOtp(res.otp);
           toast('🔧 Dev mode: OTP auto-filled', { icon: '🧪' });
@@ -52,14 +144,16 @@ export default function Login() {
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     if (otp.length !== 6) return toast.error('Enter 6-digit OTP');
-    if (isNewUser && !name.trim()) return toast.error('Please enter your name');
+
+    if (loginType === 'phone') {
+      await verifyFirebaseOtp();
+      return;
+    }
 
     setLoading(true);
     try {
       const res = await verifyOtp(contact, otp, loginType, name || 'User');
-      if (res.success) {
-        navigate(from, { replace: true });
-      }
+      if (res.success) navigate(from, { replace: true });
     } catch (err) {
       toast.error(err.message || 'Invalid OTP');
     } finally {
@@ -67,14 +161,25 @@ export default function Login() {
     }
   };
 
+  const handleBack = () => {
+    setStep(STEPS.CONTACT);
+    setOtp('');
+    if (recaptchaVerifierRef.current) {
+      try { recaptchaVerifierRef.current.clear(); } catch (_) {}
+      recaptchaVerifierRef.current = null;
+    }
+  };
+
   return (
     <>
-      <Helmet>
-        <title>Login — Eptomart</title>
-      </Helmet>
+      <Helmet><title>Login — Eptomart</title></Helmet>
+
+      {/* Invisible reCAPTCHA container — required by Firebase */}
+      <div id="recaptcha-container" />
 
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
+
           {/* Logo */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-primary-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
@@ -89,9 +194,7 @@ export default function Login() {
           <div className="card p-8">
             {step === STEPS.CONTACT && (
               <>
-                <h2 className="text-xl font-bold text-gray-800 mb-6">
-                  Welcome! 👋
-                </h2>
+                <h2 className="text-xl font-bold text-gray-800 mb-6">Welcome! 👋</h2>
 
                 {/* Toggle Email/Phone */}
                 <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
@@ -113,7 +216,7 @@ export default function Login() {
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       {loginType === 'email' ? 'Email Address' : 'Mobile Number'}
                     </label>
-                    {loginType === 'phone' && (
+                    {loginType === 'phone' ? (
                       <div className="flex">
                         <span className="input-field w-16 text-center rounded-r-none border-r-0 bg-gray-50 font-medium">+91</span>
                         <input
@@ -125,8 +228,7 @@ export default function Login() {
                           required
                         />
                       </div>
-                    )}
-                    {loginType === 'email' && (
+                    ) : (
                       <input
                         type="email"
                         placeholder="you@example.com"
@@ -139,7 +241,7 @@ export default function Login() {
                   </div>
 
                   <button type="submit" disabled={loading} className="btn-primary w-full">
-                    {loading ? 'Sending...' : 'Send OTP →'}
+                    {loading ? 'Sending OTP...' : 'Send OTP →'}
                   </button>
                 </form>
 
@@ -151,7 +253,7 @@ export default function Login() {
 
             {step === STEPS.OTP && (
               <>
-                <button onClick={() => { setStep(STEPS.CONTACT); setOtp(''); }} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-6">
+                <button onClick={handleBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-6">
                   <FiArrowLeft size={16} /> Back
                 </button>
 
@@ -164,7 +266,6 @@ export default function Login() {
                 </p>
 
                 <form onSubmit={handleVerifyOtp} className="space-y-4">
-                  {/* Name field for new users */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       Your Name <span className="text-gray-400">(for new accounts)</span>
@@ -179,9 +280,7 @@ export default function Login() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      OTP Code
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">OTP Code</label>
                     <input
                       type="text"
                       placeholder="Enter 6-digit OTP"
@@ -189,6 +288,7 @@ export default function Login() {
                       onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       className="input-field text-center text-xl font-bold tracking-[0.5em]"
                       maxLength={6}
+                      autoFocus
                       required
                     />
                   </div>
@@ -199,11 +299,7 @@ export default function Login() {
                 </form>
 
                 <div className="text-center mt-4">
-                  <button
-                    onClick={handleSendOtp}
-                    disabled={loading}
-                    className="text-sm text-primary-500 hover:underline"
-                  >
+                  <button onClick={handleSendOtp} disabled={loading} className="text-sm text-primary-500 hover:underline">
                     Resend OTP
                   </button>
                 </div>

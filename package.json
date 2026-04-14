@@ -19,7 +19,8 @@
     "react-helmet-async": "^2.0.3",
     "recharts": "^2.10.1",
     "swiper": "^11.0.5",
-    "framer-motion": "^10.16.16"
+    "framer-motion": "^10.16.16",
+    "firebase": "^10.7.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
