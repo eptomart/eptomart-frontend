@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff9a3c"/>
+      <stop offset="100%" stop-color="#e05e00"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="96" ry="96" fill="url(#grad)"/>
+  <!-- Geometric E: left bar + top bar + middle bar + bottom bar -->
+  <!-- Left vertical bar -->
+  <rect x="104" y="116" width="72" height="280" fill="white" rx="8"/>
+  <!-- Top horizontal bar -->
+  <rect x="104" y="116" width="272" height="68" fill="white" rx="8"/>
+  <!-- Middle horizontal bar -->
+  <rect x="104" y="222" width="228" height="68" fill="white" rx="8"/>
+  <!-- Bottom horizontal bar -->
+  <rect x="104" y="328" width="272" height="68" fill="white" rx="8"/>
+</svg>
