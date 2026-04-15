@@ -1,154 +1,173 @@
 // ============================================
-// CART PAGE
+// CART PAGE — with GST breakdown + quantity controls
 // ============================================
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiTrash2, FiMinus, FiPlus, FiShoppingBag, FiArrowRight } from 'react-icons/fi';
+import { FiTrash2, FiShoppingBag, FiTruck } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
+import QuantityControl from '../components/cart/QuantityControl';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { formatINR } from '../utils/currency';
 
 export default function Cart() {
-  const { cartItems, cartCount, subtotal, shipping, tax, total, updateQuantity, removeFromCart } = useCart();
+  const { enrichedItems, sellerGroups, cartCount, subtotalExGst, gstTotal, shipping, total, updateQuantity, removeFromCart, isCodBlocked, codBlockedItems } = useCart();
   const { isLoggedIn } = useAuth();
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
+  const [updating, setUpdating] = useState({});
 
-  const handleCheckout = () => {
-    if (!isLoggedIn) {
-      navigate('/login', { state: { from: '/checkout' } });
-    } else {
-      navigate('/checkout');
-    }
+  const handleQtyChange = async (itemId, newQty) => {
+    setUpdating(p => ({ ...p, [itemId]: true }));
+    updateQuantity(itemId, newQty);
+    setTimeout(() => setUpdating(p => ({ ...p, [itemId]: false })), 300);
   };
+
+  if (cartCount === 0) {
+    return (
+      <>
+        <Helmet><title>Cart — Eptomart</title></Helmet>
+        <Navbar />
+        <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
+          <div className="text-7xl mb-4">🛒</div>
+          <h2 className="text-2xl font-bold text-gray-700 mb-2">Your cart is empty</h2>
+          <p className="text-gray-400 mb-6">Looks like you haven't added anything yet.</p>
+          <Link to="/shop" className="btn-primary">Start Shopping</Link>
+        </div>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>
-      <Helmet><title>My Cart — Eptomart</title></Helmet>
+      <Helmet><title>Cart ({cartCount}) — Eptomart</title></Helmet>
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
+      <main className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">
-          🛒 My Cart {cartCount > 0 && <span className="text-primary-500">({cartCount} items)</span>}
+          My Cart <span className="text-primary-500">({cartCount} items)</span>
         </h1>
 
-        {cartItems.length === 0 ? (
-          <div className="text-center py-20">
-            <FiShoppingBag size={64} className="mx-auto text-gray-200 mb-4" />
-            <h2 className="text-xl font-semibold text-gray-600 mb-2">Your cart is empty</h2>
-            <p className="text-gray-400 mb-6">Add some products to get started!</p>
-            <Link to="/shop" className="btn-primary inline-flex items-center gap-2">
-              Shop Now <FiArrowRight />
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Cart Items */}
-            <div className="lg:col-span-2 space-y-3">
-              {cartItems.map(item => (
-                <div key={item._id} className="card p-4 flex gap-4">
-                  <Link to={`/product/${item.slug}`}>
-                    <img
-                      src={item.image || 'https://via.placeholder.com/80'}
-                      alt={item.name}
-                      className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-xl"
-                    />
-                  </Link>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* ── Cart Items (grouped by seller) ─────────────── */}
+          <div className="lg:col-span-2 space-y-4">
+            {Object.entries(sellerGroups).map(([key, group]) => (
+              <div key={key} className="card overflow-hidden">
+                {/* Seller header */}
+                {group.seller && (
+                  <div className="bg-orange-50 px-4 py-2.5 border-b border-orange-100">
+                    <p className="text-sm font-semibold text-gray-700">
+                      🏪 {group.seller.businessName || 'Seller'}
+                      {group.seller.city && <span className="font-normal text-gray-500 ml-1">· {group.seller.city}</span>}
+                    </p>
+                  </div>
+                )}
 
-                  <div className="flex-1 min-w-0">
-                    <Link to={`/product/${item.slug}`} className="font-medium text-gray-800 hover:text-primary-600 line-clamp-2 text-sm sm:text-base">
-                      {item.name}
-                    </Link>
+                <div className="divide-y divide-gray-100">
+                  {group.items.map(item => (
+                    <div key={item._id} className="p-4 flex gap-4">
+                      <Link to={`/product/${item.slug}`} className="flex-shrink-0">
+                        <img src={item.image} alt={item.name}
+                          className="w-20 h-20 object-cover rounded-xl bg-gray-100" />
+                      </Link>
 
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="font-bold text-gray-900">{formatINR(item.price)}</span>
-                      {item.originalPrice > item.price && (
-                        <span className="text-xs text-gray-400 line-through">{formatINR(item.originalPrice)}</span>
-                      )}
-                    </div>
+                      <div className="flex-1 min-w-0">
+                        <Link to={`/product/${item.slug}`}>
+                          <h3 className="text-sm font-medium text-gray-800 hover:text-primary-600 line-clamp-2 mb-1">
+                            {item.name}
+                          </h3>
+                        </Link>
 
-                    <div className="flex items-center justify-between mt-3">
-                      {/* Quantity Controls */}
-                      <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
-                        <button
-                          onClick={() => updateQuantity(item._id, item.quantity - 1)}
-                          className="w-7 h-7 rounded-lg bg-white shadow-sm flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors"
-                        >
-                          <FiMinus size={14} />
-                        </button>
-                        <span className="w-8 text-center font-semibold text-sm">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item._id, item.quantity + 1)}
-                          disabled={item.quantity >= item.stock}
-                          className="w-7 h-7 rounded-lg bg-white shadow-sm flex items-center justify-center hover:bg-green-50 hover:text-green-500 transition-colors disabled:opacity-50"
-                        >
-                          <FiPlus size={14} />
-                        </button>
+                        {/* GST detail */}
+                        <div className="text-xs text-gray-500 mb-2 space-y-0.5">
+                          <p>Price excl. GST: {formatINR(item.unitPriceExGst)}</p>
+                          <p>GST {item.gstRate}%: {formatINR(item.gstPerUnit)} per unit</p>
+                        </div>
+
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <QuantityControl
+                            quantity={item.quantity}
+                            min={1}
+                            max={item.stock}
+                            loading={updating[item._id]}
+                            onChange={(q) => handleQtyChange(item._id, q)}
+                          />
+
+                          <div className="text-right">
+                            <p className="font-bold text-gray-900">{formatINR(item.lineGrandTotal)}</p>
+                            <p className="text-xs text-gray-400">incl. GST</p>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold text-primary-600">{formatINR(item.price * item.quantity)}</span>
-                        <button
-                          onClick={() => removeFromCart(item._id)}
-                          className="text-gray-400 hover:text-red-500 transition-colors p-1"
-                        >
-                          <FiTrash2 size={18} />
-                        </button>
-                      </div>
+                      <button onClick={() => removeFromCart(item._id)}
+                        className="text-gray-300 hover:text-red-400 transition-colors self-start mt-1">
+                        <FiTrash2 size={16} />
+                      </button>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-
-            {/* Order Summary */}
-            <div className="lg:col-span-1">
-              <div className="card p-6 sticky top-20">
-                <h2 className="text-lg font-bold text-gray-800 mb-4">Order Summary</h2>
-
-                <div className="space-y-3 text-sm mb-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Subtotal ({cartCount} items)</span>
-                    <span className="font-medium">{formatINR(subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Shipping</span>
-                    <span className={shipping === 0 ? 'text-green-500 font-medium' : 'font-medium'}>
-                      {shipping === 0 ? 'FREE 🎉' : formatINR(shipping)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">GST (5%)</span>
-                    <span className="font-medium">{formatINR(tax)}</span>
-                  </div>
-                  {shipping > 0 && (
-                    <div className="bg-orange-50 rounded-xl p-3 text-xs text-orange-700">
-                      💡 Add ₹{formatINR(499 - subtotal).replace('₹', '')} more for FREE delivery!
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t pt-3 mb-6">
-                  <div className="flex justify-between font-bold text-lg">
-                    <span>Total</span>
-                    <span className="text-primary-600">{formatINR(total)}</span>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">Inclusive of all taxes</p>
-                </div>
-
-                <button onClick={handleCheckout} className="btn-primary w-full flex items-center justify-center gap-2">
-                  Proceed to Checkout <FiArrowRight />
-                </button>
-
-                <Link to="/shop" className="block text-center text-sm text-primary-500 hover:underline mt-3">
-                  Continue Shopping
-                </Link>
               </div>
+            ))}
+
+            {/* COD warning */}
+            {isCodBlocked && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-700">
+                ℹ️ <strong>Cash on Delivery not available</strong> for:{' '}
+                {codBlockedItems.map(i => i.name).join(', ')}. Please pay online.
+              </div>
+            )}
+          </div>
+
+          {/* ── Order Summary ───────────────────────────────── */}
+          <div>
+            <div className="card p-6 sticky top-20">
+              <h2 className="text-lg font-bold text-gray-800 mb-4">Order Summary</h2>
+
+              <div className="space-y-2.5 text-sm mb-4">
+                <div className="flex justify-between text-gray-600">
+                  <span>Subtotal (excl. GST)</span>
+                  <span>{formatINR(subtotalExGst)}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>GST</span>
+                  <span>{formatINR(gstTotal)}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Shipping</span>
+                  <span className={shipping === 0 ? 'text-green-600 font-medium' : ''}>
+                    {shipping === 0 ? 'FREE' : formatINR(shipping)}
+                  </span>
+                </div>
+                {shipping === 0 && (
+                  <div className="flex items-center gap-1.5 text-xs text-green-600 bg-green-50 rounded-lg p-2">
+                    <FiTruck size={12} /> Free delivery on orders above ₹499
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-base text-gray-900 pt-2 border-t border-gray-100">
+                  <span>Grand Total</span>
+                  <span className="text-primary-600">{formatINR(total)}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => isLoggedIn ? navigate('/checkout') : navigate('/login', { state: { from: '/checkout' } })}
+                className="btn-primary w-full mb-3"
+              >
+                {isLoggedIn ? `Proceed to Checkout →` : 'Login to Checkout →'}
+              </button>
+
+              <Link to="/shop" className="block text-center text-sm text-primary-500 hover:underline">
+                <FiShoppingBag className="inline mr-1" size={13} />
+                Continue Shopping
+              </Link>
+
+              <p className="text-xs text-gray-400 text-center mt-3">🔒 Secure checkout</p>
             </div>
           </div>
-        )}
+        </div>
       </main>
       <Footer />
     </>

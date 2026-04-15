@@ -3,6 +3,7 @@
 // ============================================
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { BUSINESS } from '../../utils/businessInfo';
 import { FiInstagram, FiFacebook, FiTwitter, FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
 
 export default function Footer() {
@@ -61,15 +62,15 @@ export default function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2">
                 <FiMail size={15} className="text-primary-400 flex-shrink-0" />
-                <span>support@eptomart.com</span>
+                <span>{BUSINESS.email}</span>
               </li>
               <li className="flex items-center gap-2">
                 <FiPhone size={15} className="text-primary-400 flex-shrink-0" />
-                <span>+91 98765 43210</span>
+                <span>{BUSINESS.phone}</span>
               </li>
               <li className="flex items-start gap-2">
                 <FiMapPin size={15} className="text-primary-400 flex-shrink-0 mt-0.5" />
-                <span>India</span>
+                <span className="text-xs leading-relaxed">{BUSINESS.address}</span>
               </li>
             </ul>
 

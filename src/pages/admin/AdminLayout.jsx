@@ -6,7 +6,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   FiGrid, FiPackage, FiShoppingBag, FiUsers,
   FiBarChart2, FiTag, FiMenu, FiX, FiLogOut, FiHome,
-  FiUploadCloud, FiBell
+  FiUploadCloud, FiBell, FiCheckSquare, FiUserCheck, FiDollarSign
 } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 
@@ -17,8 +17,11 @@ const NAV_ITEMS = [
   { path: '/admin/orders', label: 'Orders', icon: FiShoppingBag },
   { path: '/admin/users', label: 'Users', icon: FiUsers },
   { path: '/admin/analytics', label: 'Analytics', icon: FiBarChart2 },
-  { path: '/admin/bulk-import', label: 'Bulk Import', icon: FiUploadCloud },
-  { path: '/admin/notifications', label: 'Notifications', icon: FiBell },
+  { path: '/admin/approvals',    label: 'Approvals',    icon: FiCheckSquare },
+  { path: '/admin/sellers',      label: 'Sellers',      icon: FiUserCheck },
+  { path: '/admin/expenses',     label: 'Expenses',     icon: FiDollarSign },
+  { path: '/admin/bulk-import',  label: 'Bulk Import',  icon: FiUploadCloud },
+  { path: '/admin/notifications',label: 'Notifications',icon: FiBell },
 ];
 
 export default function AdminLayout() {

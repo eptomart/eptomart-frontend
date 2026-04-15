@@ -1,161 +1,133 @@
 // ============================================
-// LOGIN / REGISTER PAGE — OTP-based
-// Phone OTP via Firebase (free, unlimited)
-// Email OTP via Resend
+// LOGIN — Unified email / phone input
 // ============================================
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiMail, FiPhone, FiArrowLeft } from 'react-icons/fi';
+import { FiArrowLeft, FiMail, FiPhone } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 
+const detectType = (val) => {
+  if (!val) return null;
+  const v = val.trim();
+  if (/^\S+@\S+\.\S+$/.test(v)) return 'email';
+  if (/^[6-9]\d{9}$/.test(v))   return 'phone';
+  return null;
+};
+
 const STEPS = { CONTACT: 1, OTP: 2 };
 
 export default function Login() {
-  const [step, setStep] = useState(STEPS.CONTACT);
-  const [loginType, setLoginType] = useState('email');
-  const [contact, setContact] = useState('');
-  const [otp, setOtp] = useState('');
-  const [name, setName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const confirmationResultRef = useRef(null);
-  const recaptchaVerifierRef = useRef(null);
+  const [step,     setStep]     = useState(STEPS.CONTACT);
+  const [contact,  setContact]  = useState('');
+  const [detected, setDetected] = useState(null);   // 'email' | 'phone' | null
+  const [otp,      setOtp]      = useState('');
+  const [name,     setName]     = useState('');
+  const [loading,  setLoading]  = useState(false);
+
+  const confirmRef = useRef(null);
+  const recaptchaRef = useRef(null);
 
   const { sendOtp, verifyOtp, loadUser } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const from = location.state?.from || '/';
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const from      = location.state?.from || '/';
 
-  // Cleanup reCAPTCHA on unmount
+  // Auto-detect on every keystroke
+  const handleContactChange = (e) => {
+    const val = e.target.value;
+    setContact(val);
+    setDetected(detectType(val));
+  };
+
   useEffect(() => {
     return () => {
-      if (recaptchaVerifierRef.current) {
-        try { recaptchaVerifierRef.current.clear(); } catch (_) {}
-        recaptchaVerifierRef.current = null;
+      if (recaptchaRef.current) {
+        try { recaptchaRef.current.clear(); } catch (_) {}
       }
     };
   }, []);
 
-  // ── Phone OTP via Firebase ──────────────────────────────
-  const sendFirebaseOtp = async () => {
-    setLoading(true);
-    try {
-      const { RecaptchaVerifier, signInWithPhoneNumber } = await import('firebase/auth');
-      const { auth } = await import('../utils/firebase');
-
-      // Clear previous verifier
-      if (recaptchaVerifierRef.current) {
-        try { recaptchaVerifierRef.current.clear(); } catch (_) {}
-      }
-
-      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => {},
-      });
-      recaptchaVerifierRef.current = verifier;
-
-      const phoneNumber = `+91${contact}`;
-      const result = await signInWithPhoneNumber(auth, phoneNumber, verifier);
-      confirmationResultRef.current = result;
-
-      toast.success(`OTP sent to +91 XXXXX${contact.slice(-5)}`);
-      setStep(STEPS.OTP);
-    } catch (err) {
-      console.error('Firebase OTP error:', err);
-      const msg = err.code === 'auth/invalid-phone-number'
-        ? 'Invalid phone number'
-        : err.code === 'auth/too-many-requests'
-        ? 'Too many attempts. Try again later.'
-        : err.message || 'Failed to send OTP';
-      toast.error(msg);
-      if (recaptchaVerifierRef.current) {
-        try { recaptchaVerifierRef.current.clear(); } catch (_) {}
-        recaptchaVerifierRef.current = null;
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verifyFirebaseOtp = async () => {
-    if (!confirmationResultRef.current) {
-      return toast.error('Please request OTP again');
-    }
-    setLoading(true);
-    try {
-      const result = await confirmationResultRef.current.confirm(otp);
-      const idToken = await result.user.getIdToken();
-
-      const { data } = await api.post('/auth/firebase-phone-verify', {
-        idToken,
-        name: name || 'User',
-      });
-
-      if (data.success) {
-        localStorage.setItem('eptomart_token', data.token);
-        await loadUser();
-        toast.success(data.message || 'Login successful!');
-        navigate(from, { replace: true });
-      }
-    } catch (err) {
-      console.error('Firebase verify error:', err);
-      const msg = err.code === 'auth/invalid-verification-code'
-        ? 'Wrong OTP. Please check and try again.'
-        : err.code === 'auth/code-expired'
-        ? 'OTP expired. Please request a new one.'
-        : err.response?.data?.message || 'Invalid OTP';
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── Email OTP via backend ───────────────────────────────
+  // ── Send OTP ────────────────────────────────────────────
   const handleSendOtp = async (e) => {
-    e.preventDefault();
-    if (!contact.trim()) return toast.error('Please enter your ' + loginType);
-
-    if (loginType === 'phone') {
-      if (!/^[6-9]\d{9}$/.test(contact)) return toast.error('Enter valid 10-digit mobile number');
-      await sendFirebaseOtp();
-      return;
+    e?.preventDefault();
+    const type = detectType(contact);
+    if (!type) {
+      return toast.error('Enter a valid email or 10-digit phone number');
     }
 
     setLoading(true);
     try {
-      const res = await sendOtp(contact.trim().toLowerCase(), loginType);
-      if (res.success) {
-        toast.success(res.message);
+      if (type === 'phone') {
+        // Firebase phone OTP
+        const { RecaptchaVerifier, signInWithPhoneNumber } = await import('firebase/auth');
+        const { auth } = await import('../utils/firebase');
+
+        if (recaptchaRef.current) {
+          try { recaptchaRef.current.clear(); } catch (_) {}
+        }
+        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible', callback: () => {},
+        });
+        recaptchaRef.current = verifier;
+
+        const result = await signInWithPhoneNumber(auth, `+91${contact.trim()}`, verifier);
+        confirmRef.current = result;
+        toast.success(`OTP sent to +91 XXXXX${contact.trim().slice(-5)}`);
         setStep(STEPS.OTP);
-        if (res.otp) {
-          setOtp(res.otp);
-          toast('🔧 Dev mode: OTP auto-filled', { icon: '🧪' });
+      } else {
+        // Email OTP via backend
+        const res = await sendOtp(contact.trim().toLowerCase(), 'email');
+        if (res.success) {
+          toast.success(res.message);
+          setStep(STEPS.OTP);
+          if (res.otp) { setOtp(res.otp); toast('🔧 Dev: OTP auto-filled', { icon: '🧪' }); }
         }
       }
     } catch (err) {
-      toast.error(err.message || 'Failed to send OTP');
+      const msg = err.code === 'auth/too-many-requests' ? 'Too many attempts. Try later.'
+                : err.code === 'auth/invalid-phone-number' ? 'Invalid phone number'
+                : err.message || 'Failed to send OTP';
+      toast.error(msg);
+      if (recaptchaRef.current) {
+        try { recaptchaRef.current.clear(); } catch (_) {}
+        recaptchaRef.current = null;
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // ── Verify OTP ──────────────────────────────────────────
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     if (otp.length !== 6) return toast.error('Enter 6-digit OTP');
 
-    if (loginType === 'phone') {
-      await verifyFirebaseOtp();
-      return;
-    }
-
+    const type = detectType(contact);
     setLoading(true);
     try {
-      const res = await verifyOtp(contact, otp, loginType, name || 'User');
-      if (res.success) navigate(from, { replace: true });
+      if (type === 'phone') {
+        if (!confirmRef.current) return toast.error('Please request OTP again');
+        const result   = await confirmRef.current.confirm(otp);
+        const idToken  = await result.user.getIdToken();
+        const { data } = await api.post('/auth/firebase-phone-verify', { idToken, name: name || 'User' });
+        if (data.success) {
+          localStorage.setItem('eptomart_token', data.token);
+          await loadUser();
+          toast.success(data.message || 'Login successful!');
+          navigate(from, { replace: true });
+        }
+      } else {
+        const res = await verifyOtp(contact, otp, 'email', name || 'User');
+        if (res.success) navigate(from, { replace: true });
+      }
     } catch (err) {
-      toast.error(err.message || 'Invalid OTP');
+      const msg = err.code === 'auth/invalid-verification-code' ? 'Wrong OTP. Try again.'
+                : err.code === 'auth/code-expired' ? 'OTP expired. Request new one.'
+                : err.response?.data?.message || 'Invalid OTP';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -164,17 +136,15 @@ export default function Login() {
   const handleBack = () => {
     setStep(STEPS.CONTACT);
     setOtp('');
-    if (recaptchaVerifierRef.current) {
-      try { recaptchaVerifierRef.current.clear(); } catch (_) {}
-      recaptchaVerifierRef.current = null;
+    if (recaptchaRef.current) {
+      try { recaptchaRef.current.clear(); } catch (_) {}
+      recaptchaRef.current = null;
     }
   };
 
   return (
     <>
       <Helmet><title>Login — Eptomart</title></Helmet>
-
-      {/* Invisible reCAPTCHA container — required by Firebase */}
       <div id="recaptcha-container" />
 
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 flex items-center justify-center p-4">
@@ -196,51 +166,36 @@ export default function Login() {
               <>
                 <h2 className="text-xl font-bold text-gray-800 mb-6">Welcome! 👋</h2>
 
-                {/* Toggle Email/Phone */}
-                <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
-                  {['email', 'phone'].map(type => (
-                    <button
-                      key={type}
-                      onClick={() => { setLoginType(type); setContact(''); }}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all
-                        ${loginType === type ? 'bg-white shadow text-primary-600' : 'text-gray-500'}`}
-                    >
-                      {type === 'email' ? <FiMail size={16} /> : <FiPhone size={16} />}
-                      {type === 'email' ? 'Email' : 'Mobile'}
-                    </button>
-                  ))}
-                </div>
-
                 <form onSubmit={handleSendOtp} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      {loginType === 'email' ? 'Email Address' : 'Mobile Number'}
+                      Email or Mobile Number
                     </label>
-                    {loginType === 'phone' ? (
-                      <div className="flex">
-                        <span className="input-field w-16 text-center rounded-r-none border-r-0 bg-gray-50 font-medium">+91</span>
-                        <input
-                          type="tel"
-                          placeholder="98765 43210"
-                          value={contact}
-                          onChange={(e) => setContact(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                          className="input-field rounded-l-none flex-1"
-                          required
-                        />
+                    <input
+                      type="text"
+                      placeholder="Enter email or 10-digit phone"
+                      value={contact}
+                      onChange={handleContactChange}
+                      autoFocus
+                      className="input-field"
+                      required
+                    />
+                    {/* Detection indicator */}
+                    {detected && (
+                      <div className={`mt-2 flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full w-fit
+                        ${detected === 'email' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
+                        {detected === 'email' ? <FiMail size={12} /> : <FiPhone size={12} />}
+                        Detected as: {detected === 'email' ? 'Email Address' : 'Mobile Number'}
                       </div>
-                    ) : (
-                      <input
-                        type="email"
-                        placeholder="you@example.com"
-                        value={contact}
-                        onChange={(e) => setContact(e.target.value)}
-                        className="input-field"
-                        required
-                      />
+                    )}
+                    {contact && !detected && (
+                      <p className="mt-1.5 text-xs text-red-500">
+                        Enter a valid email or 10-digit Indian mobile number
+                      </p>
                     )}
                   </div>
 
-                  <button type="submit" disabled={loading} className="btn-primary w-full">
+                  <button type="submit" disabled={loading || !detected} className="btn-primary w-full">
                     {loading ? 'Sending OTP...' : 'Send OTP →'}
                   </button>
                 </form>
@@ -261,7 +216,7 @@ export default function Login() {
                 <p className="text-gray-500 text-sm mb-6">
                   6-digit OTP sent to{' '}
                   <span className="font-medium text-gray-700">
-                    {loginType === 'email' ? contact : `+91 XXXXX${contact.slice(-5)}`}
+                    {detected === 'phone' ? `+91 XXXXX${contact.slice(-5)}` : contact}
                   </span>
                 </p>
 
@@ -283,10 +238,10 @@ export default function Login() {
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">OTP Code</label>
                     <input
                       type="text"
-                      placeholder="Enter 6-digit OTP"
+                      placeholder="• • • • • •"
                       value={otp}
                       onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      className="input-field text-center text-xl font-bold tracking-[0.5em]"
+                      className="input-field text-center text-2xl font-bold tracking-[0.6em]"
                       maxLength={6}
                       autoFocus
                       required
