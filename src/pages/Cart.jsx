@@ -42,7 +42,7 @@ export default function Cart() {
 
   return (
     <>
-      <Helmet><title>Cart ({cartCount}) — Eptomart</title></Helmet>
+      <Helmet><title>{`Cart (${cartCount}) — Eptomart`}</title></Helmet>
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 py-8">

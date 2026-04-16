@@ -8,6 +8,7 @@ import { FiArrowRight, FiTruck, FiShield, FiRefreshCw, FiHeadphones } from 'reac
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import ProductCard from '../components/product/ProductCard';
+import RecentlyViewed from '../components/product/RecentlyViewed';
 import { ProductGridSkeleton } from '../components/common/Loader';
 import api from '../utils/api';
 
@@ -189,6 +190,11 @@ export default function Home() {
           </section>
         </div>
       </main>
+
+      {/* Recently Viewed — shows after user has browsed products */}
+      <div className="max-w-7xl mx-auto px-4 pb-8">
+        <RecentlyViewed />
+      </div>
 
       <Footer />
     </>

@@ -13,6 +13,8 @@ import Footer from '../components/common/Footer';
 import Loader from '../components/common/Loader';
 import ProductCard from '../components/product/ProductCard';
 import DeliveryEstimate from '../components/product/DeliveryEstimate';
+import RecentlyViewed from '../components/product/RecentlyViewed';
+import { useRecentlyViewed } from '../hooks/useRecentlyViewed';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useCompare } from '../context/CompareContext';
@@ -23,9 +25,10 @@ import api from '../utils/api';
 export default function ProductPage() {
   const { slug }  = useParams();
   const navigate  = useNavigate();
-  const { addToCart, isInCart }        = useCart();
+  const { addToCart, isInCart }          = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
-  const { addToCompare }               = useCompare();
+  const { addToCompare }                 = useCompare();
+  const { addProduct: trackViewed }      = useRecentlyViewed();
 
   const [product,          setProduct]          = useState(null);
   const [otherSellers,     setOtherSellers]      = useState([]);
@@ -44,6 +47,7 @@ export default function ProductPage() {
         setProduct(p);
         setOtherSellers(data.otherSellers || []);
 
+        trackViewed(p);
         if (p?.category?._id) {
           const rel = await api.get(`/products?category=${p.category._id}&limit=4`);
           setRelatedProducts(rel.data.products?.filter(x => x._id !== p._id).slice(0, 4) || []);
@@ -330,6 +334,9 @@ export default function ProductPage() {
             </div>
           </div>
         )}
+
+        {/* ── Recently Viewed ──────────────────────── */}
+        <RecentlyViewed excludeSlug={slug} />
 
         {/* ── Related Products ─────────────────────── */}
         {relatedProducts.length > 0 && (
