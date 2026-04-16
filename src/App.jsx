@@ -18,6 +18,7 @@ const Login       = lazy(() => import('./pages/Login'));
 const Profile     = lazy(() => import('./pages/Profile'));
 const Wishlist    = lazy(() => import('./pages/Wishlist'));
 const Compare     = lazy(() => import('./pages/Compare'));
+const Contact     = lazy(() => import('./pages/Contact'));
 const InvoiceView = lazy(() => import('./pages/invoice/InvoiceView'));
 
 // ── Admin pages ──────────────────────────────
@@ -33,6 +34,7 @@ const AdminNotifications= lazy(() => import('./pages/admin/Notifications'));
 const AdminApprovals    = lazy(() => import('./pages/admin/Approvals'));
 const AdminSellers      = lazy(() => import('./pages/admin/Sellers'));
 const AdminExpenses     = lazy(() => import('./pages/admin/Expenses'));
+const AdminSettings     = lazy(() => import('./pages/admin/Settings'));
 
 // ── Seller pages ─────────────────────────────
 const SellerLayout  = lazy(() => import('./pages/seller/SellerLayout'));
@@ -75,6 +77,7 @@ function AppRoutes() {
           <Route path="/cart"          element={<Cart />} />
           <Route path="/login"         element={<Login />} />
           <Route path="/compare"       element={<Compare />} />
+          <Route path="/contact"       element={<Contact />} />
 
           {/* Protected customer */}
           <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
@@ -106,6 +109,7 @@ function AppRoutes() {
             <Route path="expenses"         element={<AdminExpenses />} />
             <Route path="bulk-import"      element={<AdminBulkImport />} />
             <Route path="notifications"    element={<AdminNotifications />} />
+            <Route path="settings"         element={<AdminSettings />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -6,7 +6,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   FiGrid, FiPackage, FiShoppingBag, FiUsers,
   FiBarChart2, FiTag, FiMenu, FiX, FiLogOut, FiHome,
-  FiUploadCloud, FiBell, FiCheckSquare, FiUserCheck, FiDollarSign
+  FiUploadCloud, FiBell, FiCheckSquare, FiUserCheck, FiDollarSign, FiSettings
 } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 
@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { path: '/admin/expenses',     label: 'Expenses',     icon: FiDollarSign },
   { path: '/admin/bulk-import',  label: 'Bulk Import',  icon: FiUploadCloud },
   { path: '/admin/notifications',label: 'Notifications',icon: FiBell },
+  { path: '/admin/settings',     label: 'Settings',     icon: FiSettings },
 ];
 
 export default function AdminLayout() {

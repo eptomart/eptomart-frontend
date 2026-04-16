@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { FiCheckCircle, FiShield } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
+import DeliveryEstimate from '../components/product/DeliveryEstimate';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { formatINR } from '../utils/currency';
@@ -31,7 +32,7 @@ const loadRazorpay = () =>
   });
 
 export default function Checkout() {
-  const { cartItems, subtotal, shipping, tax, total, clearCart } = useCart();
+  const { cartItems, enrichedItems, subtotalExGst, gstTotal, shipping, total, sellerGroups, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -349,12 +350,36 @@ export default function Checkout() {
                 ))}
               </div>
 
+              {/* Delivery estimates per seller */}
+              {Object.entries(sellerGroups || {}).map(([key, group]) => (
+                group.seller && (
+                  <div key={key} className="mb-3">
+                    <p className="text-xs font-semibold text-gray-600 mb-1">
+                      🏪 {group.seller.businessName || 'Seller'}
+                    </p>
+                    <DeliveryEstimate
+                      sellerId={group.seller._id}
+                    />
+                  </div>
+                )
+              ))}
+
               <div className="border-t pt-3 space-y-2 text-sm mb-4">
-                <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span>{formatINR(subtotal)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-600">Shipping</span><span className={shipping === 0 ? 'text-green-500' : ''}>{shipping === 0 ? 'FREE' : formatINR(shipping)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-600">GST (5%)</span><span>{formatINR(tax)}</span></div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Subtotal (excl. GST)</span>
+                  <span>{formatINR(subtotalExGst || 0)}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>GST</span>
+                  <span>{formatINR(gstTotal || 0)}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Shipping</span>
+                  <span className={shipping === 0 ? 'text-green-500' : ''}>{shipping === 0 ? 'FREE' : formatINR(shipping)}</span>
+                </div>
                 <div className="flex justify-between font-bold text-base pt-2 border-t">
-                  <span>Total</span><span className="text-primary-600">{formatINR(total)}</span>
+                  <span>Grand Total</span>
+                  <span className="text-primary-600">{formatINR(total)}</span>
                 </div>
               </div>
 
