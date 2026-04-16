@@ -46,7 +46,7 @@ export default function AdminLayout() {
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-800">
           <div className="flex items-center gap-2">
-            <EptomartLogo variant="icon" height={34} />
+            <EptomartLogo variant="icon" height={32} />
             <div className="border-l border-gray-700 pl-2.5">
               <p className="text-xs font-bold text-white leading-tight">Admin Panel</p>
               <p className="text-[10px] text-gray-500">eptomart.in</p>

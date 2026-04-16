@@ -1,44 +1,55 @@
 // ============================================
-// EPTOMART LOGO — Uses the actual brand logo image
+// EPTOMART LOGO — Uses actual brand logo image (transparent background)
 //
-// Props:
-//   variant    : 'full'     — horizontal logo with tagline (default)
-//                'icon'     — square icon mark only
-//                'wide'     — logo without excess padding (trimmed)
-//   height     : number (px) — controls rendered height (default varies by variant)
-//   className  : string
+// variant:
+//   'horizontal' — wide trimmed logo (icon + wordmark + tagline), transparent bg
+//   'icon'       — square icon mark, transparent bg (for small spaces)
+//   'full'       — full 1:1 logo with original navy bg (use only on navy pages)
+//
+// height: controls rendered height in px (width auto-calculated)
+// className, style: forwarded to the <img>
 // ============================================
 import React from 'react';
 
+const ASPECT = {
+  horizontal: 755 / 233,   // trimmed transparent wide logo
+  icon:       1,            // square
+  full:       1,            // square (original navy bg)
+};
+
+const SRC = {
+  horizontal: '/logo-transparent-trim.png',
+  icon:       '/logo-transparent-trim.png',   // will crop left via object-position
+  full:       '/logo.png',
+};
+
 export default function EptomartLogo({
-  variant = 'full',
-  height,
+  variant = 'horizontal',
+  height = 40,
   className = '',
+  style = {},
   alt = 'Eptomart',
 }) {
-  // Default heights per variant
-  const defaultH = { full: 44, icon: 36, wide: 36 };
-  const h = height || defaultH[variant] || 44;
+  const aspect = ASPECT[variant] ?? ASPECT.horizontal;
+  const src    = SRC[variant]    ?? SRC.horizontal;
 
-  const src = {
-    full: '/logo.png',         // 1024×1024 square (full logo, navy bg)
-    icon: '/logo.png',         // same — used at small size as icon
-    wide: '/logo-trim.png',    // 755×234 trimmed horizontal logo
-  }[variant];
-
-  // For 'wide' we preserve aspect ratio: width = h * (755/234)
-  const style = variant === 'wide'
-    ? { height: h, width: Math.round(h * 755 / 234), objectFit: 'contain' }
-    : variant === 'icon'
-    ? { height: h, width: h, objectFit: 'contain', borderRadius: 8 }
-    : { height: h, width: h, objectFit: 'contain' };
+  const imgStyle = {
+    height,
+    width: variant === 'icon'
+      ? height                           // force square crop (shows icon portion)
+      : Math.round(height * aspect),
+    objectFit:      'contain',
+    objectPosition: variant === 'icon' ? 'left center' : 'center',
+    display: 'block',
+    flexShrink: 0,
+    ...style,
+  };
 
   return (
     <img
       src={src}
       alt={alt}
-      height={h}
-      style={style}
+      style={imgStyle}
       className={className}
       draggable={false}
     />

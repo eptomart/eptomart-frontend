@@ -54,10 +54,17 @@ export default function Navbar() {
         <div className="flex items-center h-16 gap-3">
           {/* Logo */}
           <Link to="/" className="flex items-center flex-shrink-0">
-            {/* Desktop: wide trimmed logo */}
-            <EptomartLogo variant="wide" height={38} className="hidden sm:block" />
-            {/* Mobile: square icon */}
-            <EptomartLogo variant="icon" height={34} className="sm:hidden" />
+            <EptomartLogo
+              variant="horizontal"
+              height={36}
+              style={{filter:'drop-shadow(0 1px 8px rgba(245,160,32,0.2))'}}
+              className="hidden sm:block"
+            />
+            <EptomartLogo
+              variant="icon"
+              height={32}
+              className="sm:hidden"
+            />
           </Link>
 
           {/* Search Bar — Desktop */}

@@ -9,7 +9,11 @@ export default function Loader({ fullPage = true }) {
     return (
       <div className="fixed inset-0 flex items-center justify-center z-50" style={{background:'#0B1729'}}>
         <div className="flex flex-col items-center gap-6">
-          <EptomartLogo variant="full" height={130} />
+          <EptomartLogo
+            variant="horizontal"
+            height={52}
+            style={{filter:'drop-shadow(0 4px 20px rgba(245,160,32,0.3))'}}
+          />
           <div className="flex gap-1.5">
             {[0, 1, 2].map(i => (
               <div

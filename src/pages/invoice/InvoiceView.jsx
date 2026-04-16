@@ -58,7 +58,7 @@ export default function InvoiceView() {
         <div className="flex justify-between items-start mb-8">
           <div>
             <div className="mb-2">
-              <EptomartLogo variant="wide" height={44} />
+              <EptomartLogo variant="horizontal" height={40} />
             </div>
             <p className="text-xs text-gray-500 max-w-[240px] leading-relaxed">{bus.address}</p>
             <p className="text-xs text-gray-500">📞 {bus.phone}</p>
