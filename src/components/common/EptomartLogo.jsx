@@ -1,39 +1,37 @@
 // ============================================
-// EPTOMART LOGO — Clean transparent PNG, native aspect ratio
-//
-// Asset: /logo-nav.png  277×194 px
-//   → cart icon + orange "e" + green leaf, no tagline, no artifact
-//
-// Usage:
-//   <EptomartLogo height={44} />          — navbar mobile
-//   <EptomartLogo height={40} />          — navbar desktop
-//   <EptomartLogo height={88} />          — login / loader
+// EPTOMART LOGO
+// Asset : /logo-v3.png  (279 × 192 px, RGBA transparent)
+// The ?v=3 query string forces a CDN cache miss so the browser
+// always fetches the clean version even after previous deployments.
 // ============================================
 import React from 'react';
 
-const SRC = '/logo-nav.png';
+// Exact pixel dimensions of logo-v3.png
+const LOGO_W = 279;
+const LOGO_H = 192;
 
 export default function EptomartLogo({
   height = 44,
   className = '',
   style = {},
   alt = 'Eptomart',
-  // legacy props kept for compatibility — ignored
-  variant,
+  variant,   // legacy prop — ignored, kept for compatibility
 }) {
+  const w = Math.round(height * LOGO_W / LOGO_H);
+
   return (
     <img
-      src={SRC}
+      src={`/logo-v3.png?v=3`}
       alt={alt}
+      width={w}
       height={height}
       style={{
-        height,
-        width: 'auto',          // browser preserves 277:194 aspect ratio natively
-        maxWidth: '100%',
+        width: w,
+        height: height,
         display: 'block',
         flexShrink: 0,
+        overflow: 'visible',
         objectFit: 'contain',
-        imageRendering: 'auto',
         ...style,
       }}
       className={className}

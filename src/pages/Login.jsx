@@ -222,12 +222,17 @@ export default function Login() {
         <div style={{ width:'100%', maxWidth:420, display:'flex', flexDirection:'column', alignItems:'center', gap:0 }}>
 
           {/* Logo + tagline */}
-          <div style={{ textAlign:'center', marginBottom:36 }}>
-            <EptomartLogo
-              height={88}
-              style={{ margin:'0 auto' }}
-            />
-            <p style={{ color:C.textMuted, fontSize:13, marginTop:14, letterSpacing:0.2 }}>
+          <div style={{ textAlign:'center', marginBottom:36, overflow:'visible' }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'visible',
+              marginBottom: 16,
+            }}>
+              <EptomartLogo height={96} />
+            </div>
+            <p style={{ color:C.textMuted, fontSize:13, margin:0, letterSpacing:0.2 }}>
               Sign in to continue shopping
             </p>
           </div>
