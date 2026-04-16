@@ -1,4 +1,57 @@
-<svg xmlns='http://www.w3.org/2000/svg' width='144' height='144' viewBox='0 0 144 144'>
-  <rect width='144' height='144' rx='22' fill='#f97316'/>
-  <text x='72' y='103.67999999999999' font-family='Arial,sans-serif' font-weight='bold' font-size='86' fill='white' text-anchor='middle'>E</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Eptomart">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0D1B3E"/>
+      <stop offset="100%" stop-color="#1E3A5F"/>
+    </linearGradient>
+    <linearGradient id="cartG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22C55E"/>
+      <stop offset="100%" stop-color="#16A34A"/>
+    </linearGradient>
+    <linearGradient id="wheelG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F97316"/>
+      <stop offset="100%" stop-color="#EA580C"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="96" ry="96" fill="url(#bg)"/>
+
+  <!-- Circuit pattern top-left -->
+  <circle cx="68" cy="68" r="8" fill="#22C55E" opacity="0.5"/>
+  <circle cx="108" cy="68" r="8" fill="#22C55E" opacity="0.3"/>
+  <line x1="76" y1="68" x2="100" y2="68" stroke="#22C55E" stroke-width="4" opacity="0.3"/>
+  <line x1="68" y1="76" x2="68" y2="108" stroke="#22C55E" stroke-width="4" opacity="0.25"/>
+  <circle cx="68" cy="118" r="5" fill="#22C55E" opacity="0.25"/>
+
+  <!-- Circuit pattern bottom-right -->
+  <circle cx="444" cy="444" r="8" fill="#F97316" opacity="0.5"/>
+  <circle cx="404" cy="444" r="8" fill="#F97316" opacity="0.3"/>
+  <line x1="412" y1="444" x2="436" y2="444" stroke="#F97316" stroke-width="4" opacity="0.3"/>
+  <line x1="444" y1="404" x2="444" y2="436" stroke="#F97316" stroke-width="4" opacity="0.25"/>
+
+  <!-- Shopping cart body path -->
+  <!-- Handle -->
+  <polyline points="92,168 138,168 186,340 390,340"
+            stroke="url(#cartG)" stroke-width="22" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Cart shelf lines -->
+  <line x1="158" y1="245" x2="378" y2="245" stroke="#22C55E" stroke-width="10" opacity="0.4" stroke-linecap="round"/>
+  <line x1="168" y1="294" x2="378" y2="294" stroke="#22C55E" stroke-width="10" opacity="0.4" stroke-linecap="round"/>
+  <!-- Cart top edge -->
+  <line x1="158" y1="196" x2="400" y2="196" stroke="url(#cartG)" stroke-width="22" stroke-linecap="round"/>
+
+  <!-- Cart wheels -->
+  <circle cx="216" cy="378" r="32" fill="url(#wheelG)"/>
+  <circle cx="216" cy="378" r="16" fill="#0D1B3E"/>
+  <circle cx="348" cy="378" r="32" fill="url(#wheelG)"/>
+  <circle cx="348" cy="378" r="16" fill="#0D1B3E"/>
+
+  <!-- "e" letter in center of cart -->
+  <text x="278" y="308" font-family="Arial, Helvetica, sans-serif" font-size="120" font-weight="900"
+        fill="white" text-anchor="middle" dominant-baseline="auto">e</text>
+
+  <!-- Green leaf (top right corner of cart) -->
+  <path d="M370 148 Q420 100 460 148 Q420 196 370 148 Z" fill="#22C55E"/>
+  <line x1="370" y1="148" x2="460" y2="148" stroke="#16A34A" stroke-width="3"/>
+  <line x1="415" y1="100" x2="415" y2="196" stroke="#16A34A" stroke-width="2.5" opacity="0.5"/>
 </svg>

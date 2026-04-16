@@ -9,6 +9,7 @@ import {
   FiUploadCloud, FiBell, FiCheckSquare, FiUserCheck, FiDollarSign, FiSettings
 } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
+import EptomartLogo from '../../components/common/EptomartLogo';
 
 const NAV_ITEMS = [
   { path: '/admin', label: 'Dashboard', icon: FiGrid, end: true },
@@ -43,14 +44,10 @@ export default function AdminLayout() {
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:z-auto`}>
 
         {/* Logo */}
-        <div className="flex items-center justify-between h-16 px-5 border-b border-gray-800">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">E</span>
-            </div>
-            <span className="font-bold text-lg">
-              Admin<span className="text-primary-400">Panel</span>
-            </span>
+        <div className="flex items-center justify-between h-16 px-4 border-b border-gray-800">
+          <div className="flex items-center gap-2.5">
+            <EptomartLogo size="xs" />
+            <span className="text-xs font-semibold text-gray-400 border-l border-gray-700 pl-2">Admin</span>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-gray-400 hover:text-white">
             <FiX size={20} />

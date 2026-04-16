@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import api from '../../utils/api';
+import EptomartLogo from './EptomartLogo';
 
 export default function Navbar() {
   const { user, isLoggedIn, isAdmin, logout } = useAuth();
@@ -52,13 +53,13 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center h-16 gap-3">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-1.5 flex-shrink-0">
-            <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">E</span>
+          <Link to="/" className="flex items-center flex-shrink-0">
+            <div className="hidden sm:block">
+              <EptomartLogo size="sm" />
             </div>
-            <span className="font-bold text-xl text-gray-800 hidden sm:block">
-              Epto<span className="text-primary-500">mart</span>
-            </span>
+            <div className="sm:hidden">
+              <EptomartLogo size="xs" iconOnly />
+            </div>
           </Link>
 
           {/* Search Bar — Desktop */}

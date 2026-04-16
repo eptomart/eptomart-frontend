@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
 import { FiGrid, FiPackage, FiPlus, FiShoppingBag, FiUser, FiMenu, FiX, FiLogOut, FiArrowLeft } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
+import EptomartLogo from '../../components/common/EptomartLogo';
 
 const NAV = [
   { path: '/seller/dashboard', label: 'Dashboard',   icon: FiGrid },
@@ -23,17 +24,13 @@ export default function SellerLayout() {
         ${open ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0`}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="p-5 border-b border-gray-100">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 bg-primary-500 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold">E</span>
-              </div>
-              <div>
-                <p className="font-bold text-gray-800 text-sm leading-tight">Eptomart Seller</p>
-                <p className="text-xs text-gray-500">{user?.name || 'Seller'}</p>
-              </div>
+          <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-slate-900 to-slate-800">
+            <div className="flex items-center gap-2.5 mb-2">
+              <EptomartLogo size="xs" />
+              <span className="text-xs font-semibold text-gray-400 border-l border-gray-700 pl-2">Seller</span>
             </div>
-            <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+            <p className="text-xs text-gray-300 font-medium truncate">{user?.name || 'Seller'}</p>
+            <span className="inline-flex items-center gap-1 text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-medium mt-1">
               ✅ Active
             </span>
           </div>

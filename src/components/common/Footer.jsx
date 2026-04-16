@@ -5,6 +5,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { BUSINESS } from '../../utils/businessInfo';
 import { FiInstagram, FiFacebook, FiTwitter, FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
+import EptomartLogo from './EptomartLogo';
 
 export default function Footer() {
   return (
@@ -14,11 +15,8 @@ export default function Footer() {
 
           {/* Brand */}
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">E</span>
-              </div>
-              <span className="text-white font-bold text-lg">Eptomart</span>
+            <div className="mb-4">
+              <EptomartLogo size="sm" showTagline dark />
             </div>
             <p className="text-sm leading-relaxed mb-4">
               India's fast & affordable online shopping destination. Quality products delivered to your door.

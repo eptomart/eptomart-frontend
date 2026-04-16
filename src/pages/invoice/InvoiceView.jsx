@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { FiPrinter, FiDownload, FiArrowLeft } from 'react-icons/fi';
 import { Loader } from '../../components/common/Loader';
 import api from '../../utils/api';
+import EptomartLogo from '../../components/common/EptomartLogo';
 import { formatINR } from '../../utils/currency';
 import { BUSINESS } from '../../utils/businessInfo';
 
@@ -56,11 +57,8 @@ export default function InvoiceView() {
         {/* Header */}
         <div className="flex justify-between items-start mb-8">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-lg">E</span>
-              </div>
-              <span className="text-2xl font-bold text-primary-500">Eptomart</span>
+            <div className="mb-2">
+              <EptomartLogo size="md" showTagline />
             </div>
             <p className="text-xs text-gray-500 max-w-[240px] leading-relaxed">{bus.address}</p>
             <p className="text-xs text-gray-500">📞 {bus.phone}</p>

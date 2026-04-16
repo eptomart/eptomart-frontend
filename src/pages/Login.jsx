@@ -8,6 +8,7 @@ import { FiArrowLeft, FiMail, FiPhone } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import EptomartLogo from '../components/common/EptomartLogo';
 
 const detectType = (val) => {
   if (!val) return null;
@@ -147,21 +148,18 @@ export default function Login() {
       <Helmet><title>Login — Eptomart</title></Helmet>
       <div id="recaptcha-container" />
 
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-navy-900 to-slate-800 flex items-center justify-center p-4" style={{background: 'linear-gradient(135deg, #0D1B3E 0%, #1E3A5F 50%, #0D1B3E 100%)'}}>
         <div className="w-full max-w-md">
 
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-primary-500 rounded-2xl flex items-center justify-center mx-auto mb-3">
-              <span className="text-white font-bold text-3xl">E</span>
+            <div className="flex justify-center mb-4">
+              <EptomartLogo size="xl" showTagline dark />
             </div>
-            <h1 className="text-2xl font-bold text-gray-800">
-              Epto<span className="text-primary-500">mart</span>
-            </h1>
-            <p className="text-gray-500 text-sm mt-1">Sign in to continue shopping</p>
+            <p className="text-gray-400 text-sm mt-2">Sign in to continue shopping</p>
           </div>
 
-          <div className="card p-8">
+          <div className="card p-8 bg-white/95 backdrop-blur-sm shadow-2xl border-0">
             {step === STEPS.CONTACT && (
               <>
                 <h2 className="text-xl font-bold text-gray-800 mb-6">Welcome! 👋</h2>
@@ -262,8 +260,8 @@ export default function Login() {
             )}
           </div>
 
-          <p className="text-center text-sm text-gray-500 mt-6">
-            <Link to="/" className="text-primary-500 hover:underline">← Continue Shopping</Link>
+          <p className="text-center text-sm text-gray-400 mt-6">
+            <Link to="/" className="text-green-400 hover:text-green-300 hover:underline transition-colors">← Continue Shopping</Link>
           </p>
         </div>
       </div>
