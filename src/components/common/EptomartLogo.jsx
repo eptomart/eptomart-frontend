@@ -12,14 +12,14 @@
 import React from 'react';
 
 const ASPECT = {
-  horizontal: 755 / 233,   // trimmed transparent wide logo
+  horizontal: 755 / 175,   // clean nav logo — no tagline
   icon:       1,            // square
   full:       1,            // square (original navy bg)
 };
 
 const SRC = {
-  horizontal: '/logo-transparent-trim.png',
-  icon:       '/logo-transparent-trim.png',   // will crop left via object-position
+  horizontal: '/logo-nav.png',               // clean: icon + wordmark only, no tagline
+  icon:       '/logo-nav.png',              // left-crop for small spaces
   full:       '/logo.png',
 };
 

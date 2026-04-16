@@ -57,7 +57,6 @@ export default function Navbar() {
             <EptomartLogo
               variant="horizontal"
               height={36}
-              style={{filter:'drop-shadow(0 1px 8px rgba(245,160,32,0.2))'}}
               className="hidden sm:block"
             />
             <EptomartLogo

@@ -226,7 +226,7 @@ export default function Login() {
             <EptomartLogo
               variant="horizontal"
               height={48}
-              style={{ filter:`drop-shadow(0 4px 20px ${C.orangeGlow})`, margin:'0 auto', display:'block' }}
+              style={{ margin:'0 auto', display:'block' }}
             />
             <p style={{ color:C.textMuted, fontSize:13, marginTop:10, letterSpacing:0.2 }}>
               Sign in to continue shopping
