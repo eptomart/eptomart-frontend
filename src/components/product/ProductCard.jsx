@@ -17,7 +17,8 @@ export default function ProductCard({ product }) {
   const navigate = useNavigate();
   const [heartAnim, setHeartAnim] = useState(false);
 
-  const { name, slug, price, discountPrice, images, ratings, stock, category, codAvailable } = product;
+  const { name, slug, price, discountPrice, images, ratings, stock, category, codAvailable, seller, location } = product;
+  const sellerCity = seller?.address?.city || seller?.city || location?.city || null;
   const inCart = isInCart(product._id);
   const inWishlist = isInWishlist(product._id);
   const inCompare = isInCompare(product._id);
@@ -53,6 +54,7 @@ export default function ProductCard({ product }) {
           {discount > 0 && <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-green-500 text-white">{discount}% OFF</span>}
           {stock === 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500 text-white">Out of Stock</span>}
           {stock > 0 && stock <= 5 && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500 text-white">Only {stock} left!</span>}
+          {stock > 5 && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{stock} in stock</span>}
           {codAvailable === false && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500 text-white">Online only</span>}
         </div>
 
@@ -76,7 +78,10 @@ export default function ProductCard({ product }) {
       </Link>
 
       <div className="p-3">
-        {category?.name && <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">{category.name}</p>}
+        <div className="flex items-center justify-between mb-1">
+          {category?.name && <p className="text-xs text-gray-400 uppercase tracking-wide">{category.name}</p>}
+          {sellerCity && <p className="text-xs text-gray-400 flex items-center gap-0.5">📍{sellerCity}</p>}
+        </div>
 
         <Link to={`/product/${slug}`}>
           <h3 className="text-sm font-medium text-gray-800 line-clamp-2 mb-1 hover:text-primary-600 transition-colors leading-snug">{name}</h3>

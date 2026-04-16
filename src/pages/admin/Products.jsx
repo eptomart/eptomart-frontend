@@ -3,9 +3,10 @@
 // ============================================
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { FiPlus, FiEdit2, FiTrash2, FiImage, FiSearch } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiImage, FiSearch, FiInfo } from 'react-icons/fi';
 import Loader from '../../components/common/Loader';
 import { formatINR } from '../../utils/currency';
+import { extractBasePrice, GST_SLABS } from '../../utils/gst';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
@@ -24,6 +25,8 @@ export default function AdminProducts() {
     name: '', description: '', shortDescription: '', price: '',
     discountPrice: '', stock: '', category: '', brand: '', tags: '',
     isFeatured: false,
+    gstRate: 18, priceIncludesGst: true, hsnCode: '', costPrice: '',
+    codAvailable: true,
   });
   const [imageFiles, setImageFiles] = useState([]);
 
@@ -47,7 +50,7 @@ export default function AdminProducts() {
 
   const openAdd = () => {
     setEditProduct(null);
-    setForm({ name: '', description: '', shortDescription: '', price: '', discountPrice: '', stock: '', category: '', brand: '', tags: '', isFeatured: false, codAvailable: true });
+    setForm({ name: '', description: '', shortDescription: '', price: '', discountPrice: '', stock: '', category: '', brand: '', tags: '', isFeatured: false, codAvailable: true, gstRate: 18, priceIncludesGst: true, hsnCode: '', costPrice: '' });
     setImageFiles([]);
     setShowModal(true);
   };
@@ -66,6 +69,10 @@ export default function AdminProducts() {
       tags: product.tags?.join(', ') || '',
       isFeatured: product.isFeatured || false,
       codAvailable: product.codAvailable !== false,
+      gstRate: product.gstRate || 18,
+      priceIncludesGst: product.priceIncludesGst !== false,
+      hsnCode: product.hsnCode || '',
+      costPrice: product.costPrice || '',
     });
     setImageFiles([]);
     setShowModal(true);
@@ -76,7 +83,11 @@ export default function AdminProducts() {
     setSaving(true);
     try {
       const formData = new FormData();
-      Object.entries(form).forEach(([k, v]) => formData.append(k, v));
+      // Admin products are auto-approved and visible immediately
+      const payload = { ...form, approvalStatus: 'approved', priceIncludesGst: form.priceIncludesGst };
+      Object.entries(payload).forEach(([k, v]) => {
+        if (v !== '' && v !== undefined) formData.append(k, v);
+      });
       imageFiles.forEach(file => formData.append('images', file));
 
       if (editProduct) {
@@ -256,6 +267,62 @@ export default function AdminProducts() {
                   <label className="block text-sm font-medium mb-1">Discount Price (₹)</label>
                   <input type="number" value={form.discountPrice} onChange={e => setForm(f => ({ ...f, discountPrice: e.target.value }))}
                     className="input-field" min="0" placeholder="1499 (optional)" />
+                </div>
+
+                {/* GST Section */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">GST Rate *</label>
+                  <select value={form.gstRate} onChange={e => setForm(f => ({ ...f, gstRate: Number(e.target.value) }))}
+                    className="input-field">
+                    {GST_SLABS.map(s => <option key={s} value={s}>{s}% GST</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">HSN Code</label>
+                  <input type="text" value={form.hsnCode} onChange={e => setForm(f => ({ ...f, hsnCode: e.target.value }))}
+                    className="input-field" placeholder="e.g. 8528" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Cost Price (₹) <span className="text-gray-400 font-normal">— for margin calc</span></label>
+                  <input type="number" value={form.costPrice} onChange={e => setForm(f => ({ ...f, costPrice: e.target.value }))}
+                    className="input-field" min="0" placeholder="Your purchase cost (optional)" />
+                </div>
+
+                {/* Live GST + Margin preview */}
+                {form.price > 0 && (
+                  <div className="sm:col-span-2">
+                    {(() => {
+                      const sellPrice  = Number(form.price) || 0;
+                      const gstRate    = Number(form.gstRate) || 0;
+                      const basePrice  = form.priceIncludesGst ? extractBasePrice(sellPrice, gstRate) : sellPrice;
+                      const gstAmt     = basePrice * gstRate / 100;
+                      const finalPrice = basePrice + gstAmt;
+                      const costP      = Number(form.costPrice) || 0;
+                      const margin     = costP > 0 ? ((basePrice - costP) / costP * 100).toFixed(1) : null;
+                      return (
+                        <div className="bg-orange-50 rounded-xl p-3 text-xs space-y-1">
+                          <p className="font-semibold text-gray-700 flex items-center gap-1"><FiInfo size={12}/> Price Breakdown</p>
+                          <p className="text-gray-600">Base price (excl. GST): <strong>{formatINR(basePrice)}</strong></p>
+                          <p className="text-gray-600">GST @ {gstRate}%: <strong>{formatINR(gstAmt)}</strong></p>
+                          <p className="text-primary-600 font-semibold">Customer pays: {formatINR(finalPrice)}</p>
+                          {margin !== null && (
+                            <p className={`font-semibold ${Number(margin) > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                              Margin: {margin}% {Number(margin) > 0 ? '📈' : '📉'}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="priceInclGst" checked={form.priceIncludesGst}
+                    onChange={e => setForm(f => ({ ...f, priceIncludesGst: e.target.checked }))}
+                    className="accent-primary-500 w-4 h-4" />
+                  <label htmlFor="priceInclGst" className="text-sm">Price entered includes GST</label>
                 </div>
 
                 <div>
