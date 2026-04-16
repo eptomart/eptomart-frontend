@@ -1,0 +1,24 @@
+# Cloudflare Pages — Cache headers for performance
+
+# HTML — no cache (always fresh)
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# JS/CSS assets — long cache (hashed filenames)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Images
+/icons/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Manifest + SW — short cache
+/manifest.json
+  Cache-Control: public, max-age=86400
+
+# Security headers on all pages
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()

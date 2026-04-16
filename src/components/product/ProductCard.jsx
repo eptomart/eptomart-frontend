@@ -8,6 +8,7 @@ import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useCompare } from '../../context/CompareContext';
 import { formatINR, getDiscountPercent } from '../../utils/currency';
+import { imgCard } from '../../utils/cloudinary';
 
 export default function ProductCard({ product }) {
   const { addToCart, isInCart } = useCart();
@@ -22,7 +23,7 @@ export default function ProductCard({ product }) {
   const inCompare = isInCompare(product._id);
   const discount = getDiscountPercent(price, discountPrice);
   const effectivePrice = discountPrice || price;
-  const mainImage = images?.[0]?.url || 'https://via.placeholder.com/300x300?text=No+Image';
+  const mainImage = imgCard(images?.[0]?.url) || 'https://via.placeholder.com/300x300?text=No+Image';
 
   const handleWishlist = (e) => {
     e.preventDefault();
