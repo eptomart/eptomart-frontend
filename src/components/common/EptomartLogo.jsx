@@ -12,9 +12,9 @@
 import React from 'react';
 
 const ASPECT = {
-  horizontal: 755 / 175,   // clean nav logo — no tagline
-  icon:       1,            // square
-  full:       1,            // square (original navy bg)
+  horizontal: 317 / 242,   // logo-nav.png: 317×242 — icon + wordmark, no tagline
+  icon:       1,            // square crop of icon mark
+  full:       1,            // square (original with navy bg)
 };
 
 const SRC = {
