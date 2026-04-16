@@ -201,38 +201,52 @@ export default function Login() {
         justifyContent: 'center',
         padding: '24px 16px',
         position: 'relative',
-        overflow: 'hidden',
+        overflow: 'visible',   /* was 'hidden' — that clipped the logo */
       }}>
 
-        {/* Subtle background glow blobs */}
+        {/* Subtle background glow blobs — clipped only within themselves */}
         <div style={{
           position:'absolute', width:600, height:600, borderRadius:'50%',
           top:-100, left:'50%', transform:'translateX(-50%)',
           background:'radial-gradient(circle, rgba(244,148,28,0.06) 0%, transparent 65%)',
-          pointerEvents:'none',
+          pointerEvents:'none', zIndex:0,
         }}/>
         <div style={{
           position:'absolute', width:400, height:400, borderRadius:'50%',
           bottom:-80, left:'20%',
           background:'radial-gradient(circle, rgba(109,182,81,0.05) 0%, transparent 65%)',
-          pointerEvents:'none',
+          pointerEvents:'none', zIndex:0,
         }}/>
 
         {/* ── Centred content column ── */}
-        <div style={{ width:'100%', maxWidth:420, display:'flex', flexDirection:'column', alignItems:'center', gap:0 }}>
+        <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:420, display:'flex', flexDirection:'column', alignItems:'center', gap:0 }}>
 
           {/* Logo + tagline */}
-          <div style={{ textAlign:'center', marginBottom:36, overflow:'visible' }}>
+          <div style={{ marginBottom:32 }}>
+            {/* Login logo wrapper — exactly as per spec */}
             <div style={{
-              display: 'inline-flex',
+              width: 160,
+              height: 120,
+              margin: '0 auto 12px',
+              overflow: 'visible',
+              display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              overflow: 'visible',
-              marginBottom: 16,
             }}>
-              <EptomartLogo height={96} />
+              <img
+                src="/logo-v3.png?v=3"
+                alt="Eptomart"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  width: 'auto',
+                  height: 'auto',
+                  objectFit: 'contain',
+                  display: 'block',
+                }}
+              />
             </div>
-            <p style={{ color:C.textMuted, fontSize:13, margin:0, letterSpacing:0.2 }}>
+            <p style={{ color:C.textMuted, fontSize:13, textAlign:'center', margin:0, letterSpacing:0.2 }}>
               Sign in to continue shopping
             </p>
           </div>
