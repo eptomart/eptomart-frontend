@@ -52,18 +52,9 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 safe-top shadow-lg" style={{background: '#0B1729'}}>
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center h-16 gap-3">
-          {/* Logo */}
+          {/* Logo — single instance, all screen sizes */}
           <Link to="/" className="flex items-center flex-shrink-0">
-            <EptomartLogo
-              variant="horizontal"
-              height={36}
-              className="hidden sm:block"
-            />
-            <EptomartLogo
-              variant="icon"
-              height={32}
-              className="sm:hidden"
-            />
+            <EptomartLogo variant="horizontal" height={34} />
           </Link>
 
           {/* Search Bar — Desktop */}
