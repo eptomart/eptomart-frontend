@@ -49,7 +49,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white shadow-sm safe-top">
+    <header className="sticky top-0 z-50 safe-top shadow-lg" style={{background: '#0B1729'}}>
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center h-16 gap-3">
           {/* Logo */}
@@ -71,11 +71,11 @@ export default function Navbar() {
                 placeholder="Search for products, brands..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-field pl-10 pr-4"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white/15 transition-all"
               />
               {/* Search Dropdown */}
               {searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 bg-white shadow-xl rounded-xl mt-1 border z-50 overflow-hidden">
+                <div className="absolute top-full left-0 right-0 bg-white shadow-2xl rounded-xl mt-1 border z-50 overflow-hidden">
                   {searchResults.map(product => (
                     <Link
                       key={product._id}
@@ -86,7 +86,7 @@ export default function Navbar() {
                       <img src={product.images?.[0]?.url} alt={product.name} className="w-10 h-10 object-cover rounded-lg" />
                       <div>
                         <p className="text-sm font-medium text-gray-800 line-clamp-1">{product.name}</p>
-                        <p className="text-xs text-primary-600 font-semibold">₹{(product.discountPrice || product.price)?.toLocaleString('en-IN')}</p>
+                        <p className="text-xs font-semibold" style={{color:'#f58518'}}>₹{(product.discountPrice || product.price)?.toLocaleString('en-IN')}</p>
                       </div>
                     </Link>
                   ))}
@@ -95,15 +95,15 @@ export default function Navbar() {
             </div>
           </form>
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-1 ml-auto">
             {/* Mobile Search Toggle */}
-            <button onClick={() => setShowSearch(!showSearch)} className="md:hidden p-2 rounded-xl hover:bg-gray-100">
+            <button onClick={() => setShowSearch(!showSearch)} className="md:hidden p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
               <FiSearch size={22} />
             </button>
 
             {/* Wishlist */}
             {isLoggedIn && (
-              <button onClick={() => navigate('/wishlist')} className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors hidden sm:flex">
+              <button onClick={() => navigate('/wishlist')} className="relative p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors hidden sm:flex">
                 <FiHeart size={22} />
                 {wishlistCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
@@ -116,11 +116,11 @@ export default function Navbar() {
             {/* Cart */}
             <button
               onClick={() => navigate('/cart')}
-              className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors"
+              className="relative p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
             >
               <FiShoppingCart size={22} />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                <span className="absolute -top-1 -right-1 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold" style={{background:'#f58518'}}>
                   {cartCount > 9 ? '9+' : cartCount}
                 </span>
               )}
@@ -131,31 +131,29 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center gap-2 p-2 rounded-xl hover:bg-gray-100"
+                  className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl hover:bg-white/10 transition-colors"
                 >
-                  <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                    <span className="text-primary-600 font-semibold text-sm">
-                      {user?.name?.charAt(0).toUpperCase()}
-                    </span>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white" style={{background:'#f58518'}}>
+                    {user?.name?.charAt(0).toUpperCase()}
                   </div>
-                  <span className="hidden sm:block text-sm font-medium text-gray-700">
+                  <span className="hidden sm:block text-sm font-medium text-gray-200">
                     {user?.name?.split(' ')[0]}
                   </span>
                 </button>
 
                 {showUserMenu && (
-                  <div className="absolute right-0 top-12 bg-white shadow-xl rounded-2xl p-2 w-52 border z-50">
-                    <Link to="/profile" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm" onClick={() => setShowUserMenu(false)}>
+                  <div className="absolute right-0 top-12 bg-white shadow-2xl rounded-2xl p-2 w-52 border z-50">
+                    <Link to="/profile" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}>
                       <FiUser size={16} /> My Profile
                     </Link>
-                    <Link to="/orders" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm" onClick={() => setShowUserMenu(false)}>
+                    <Link to="/orders" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}>
                       <FiPackage size={16} /> My Orders
                     </Link>
-                    <Link to="/wishlist" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm" onClick={() => setShowUserMenu(false)}>
+                    <Link to="/wishlist" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}>
                       <FiHeart size={16} /> My Wishlist
                     </Link>
                     {isAdmin && (
-                      <Link to="/admin" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-primary-600 font-medium" onClick={() => setShowUserMenu(false)}>
+                      <Link to="/admin" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm font-medium" style={{color:'#f58518'}} onClick={() => setShowUserMenu(false)}>
                         <FiSettings size={16} /> Admin Panel
                       </Link>
                     )}
@@ -167,7 +165,7 @@ export default function Navbar() {
                 )}
               </div>
             ) : (
-              <Link to="/login" className="btn-primary btn-sm">Login</Link>
+              <Link to="/login" className="ml-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all" style={{background:'#f58518'}}>Login</Link>
             )}
           </div>
         </div>
@@ -183,7 +181,7 @@ export default function Navbar() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoFocus
-                className="input-field pl-10 pr-4"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
               />
             </div>
             {searchResults.length > 0 && (

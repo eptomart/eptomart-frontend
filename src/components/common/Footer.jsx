@@ -9,7 +9,7 @@ import EptomartLogo from './EptomartLogo';
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-400 mt-auto">
+    <footer className="text-gray-400 mt-auto" style={{background:'#0B1729'}}>
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
 
@@ -23,7 +23,7 @@ export default function Footer() {
             </p>
             <div className="flex gap-3">
               {[FiInstagram, FiFacebook, FiTwitter].map((Icon, i) => (
-                <a key={i} href="#" className="w-9 h-9 bg-gray-800 rounded-xl flex items-center justify-center hover:bg-primary-500 hover:text-white transition-colors">
+                <a key={i} href="#" className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors" style={{background:'#0E2040'}} onMouseEnter={e=>e.currentTarget.style.background='#f58518'} onMouseLeave={e=>e.currentTarget.style.background='#0E2040'}>
                   <Icon size={16} />
                 </a>
               ))}
@@ -36,7 +36,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               {[['Home', '/'], ['Shop', '/shop'], ['My Orders', '/orders'], ['My Profile', '/profile']].map(([label, path]) => (
                 <li key={path}>
-                  <Link to={path} className="hover:text-primary-400 transition-colors">{label}</Link>
+                  <Link to={path} className="transition-colors hover:text-orange-400">{label}</Link>
                 </li>
               ))}
             </ul>
@@ -55,7 +55,7 @@ export default function Footer() {
                 { label: 'Terms of Service', href: '#' },
               ].map(item => (
                 <li key={item.label}>
-                  <Link to={item.href} className="hover:text-primary-400 transition-colors">{item.label}</Link>
+                  <Link to={item.href} className="transition-colors hover:text-orange-400">{item.label}</Link>
                 </li>
               ))}
             </ul>
@@ -66,11 +66,11 @@ export default function Footer() {
             <h4 className="text-white font-semibold mb-4">Contact Us</h4>
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2">
-                <FiMail size={15} className="text-primary-400 flex-shrink-0" />
+                <FiMail size={15} className="flex-shrink-0" style={{color:'#f58518'}} />
                 <span>{BUSINESS.email}</span>
               </li>
               <li className="flex items-center gap-2">
-                <FiPhone size={15} className="text-primary-400 flex-shrink-0" />
+                <FiPhone size={15} className="flex-shrink-0" style={{color:'#f58518'}} />
                 <span>{BUSINESS.phone}</span>
               </li>
               <li className="flex items-start gap-2">

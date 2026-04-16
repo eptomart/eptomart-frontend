@@ -1,57 +1,76 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Eptomart">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0D1B3E"/>
-      <stop offset="100%" stop-color="#1E3A5F"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B1729"/>
+      <stop offset="100%" stop-color="#0F2040"/>
     </linearGradient>
-    <linearGradient id="cartG" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#22C55E"/>
-      <stop offset="100%" stop-color="#16A34A"/>
+    <linearGradient id="cg" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0%" stop-color="#F5C840"/>
+      <stop offset="50%" stop-color="#F5A020"/>
+      <stop offset="100%" stop-color="#F06E10"/>
     </linearGradient>
-    <linearGradient id="wheelG" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#F97316"/>
-      <stop offset="100%" stop-color="#EA580C"/>
+    <linearGradient id="lg" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C8E840"/>
+      <stop offset="100%" stop-color="#2A8B20"/>
     </linearGradient>
   </defs>
 
-  <!-- Background rounded square -->
-  <rect width="512" height="512" rx="96" ry="96" fill="url(#bg)"/>
+  <!-- Navy background -->
+  <rect width="512" height="512" rx="88" fill="url(#bg)"/>
 
-  <!-- Circuit pattern top-left -->
-  <circle cx="68" cy="68" r="8" fill="#22C55E" opacity="0.5"/>
-  <circle cx="108" cy="68" r="8" fill="#22C55E" opacity="0.3"/>
-  <line x1="76" y1="68" x2="100" y2="68" stroke="#22C55E" stroke-width="4" opacity="0.3"/>
-  <line x1="68" y1="76" x2="68" y2="108" stroke="#22C55E" stroke-width="4" opacity="0.25"/>
-  <circle cx="68" cy="118" r="5" fill="#22C55E" opacity="0.25"/>
+  <!-- ═══ SHOPPING CART "e" ICON ═══ -->
+  <!--
+    Layout: icon centered, slightly left
+    Cart center: (256, 280)
+    "e" outer radius: 128
+    "e" inner radius: 78 (stroke width 50)
+    Opening angle on right: from ~320° to ~40° (gap = 80°)
+  -->
 
-  <!-- Circuit pattern bottom-right -->
-  <circle cx="444" cy="444" r="8" fill="#F97316" opacity="0.5"/>
-  <circle cx="404" cy="444" r="8" fill="#F97316" opacity="0.3"/>
-  <line x1="412" y1="444" x2="436" y2="444" stroke="#F97316" stroke-width="4" opacity="0.3"/>
-  <line x1="444" y1="404" x2="444" y2="436" stroke="#F97316" stroke-width="4" opacity="0.25"/>
+  <!-- Cart handle – horizontal bar extending left from top of "e" -->
+  <line x1="90" y1="178" x2="174" y2="178"
+        stroke="url(#cg)" stroke-width="38" stroke-linecap="round"/>
 
-  <!-- Shopping cart body path -->
-  <!-- Handle -->
-  <polyline points="92,168 138,168 186,340 390,340"
-            stroke="url(#cartG)" stroke-width="22" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Cart shelf lines -->
-  <line x1="158" y1="245" x2="378" y2="245" stroke="#22C55E" stroke-width="10" opacity="0.4" stroke-linecap="round"/>
-  <line x1="168" y1="294" x2="378" y2="294" stroke="#22C55E" stroke-width="10" opacity="0.4" stroke-linecap="round"/>
-  <!-- Cart top edge -->
-  <line x1="158" y1="196" x2="400" y2="196" stroke="url(#cartG)" stroke-width="22" stroke-linecap="round"/>
+  <!-- Circuit antenna lines (3 stems going upper-left with circle tips) -->
+  <line x1="128" y1="170" x2="88" y2="96"
+        stroke="#F5A825" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="82" cy="84" r="16" fill="#F5A825"/>
 
-  <!-- Cart wheels -->
-  <circle cx="216" cy="378" r="32" fill="url(#wheelG)"/>
-  <circle cx="216" cy="378" r="16" fill="#0D1B3E"/>
-  <circle cx="348" cy="378" r="32" fill="url(#wheelG)"/>
-  <circle cx="348" cy="378" r="16" fill="#0D1B3E"/>
+  <line x1="158" y1="158" x2="136" y2="74"
+        stroke="#F5A825" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="131" cy="62" r="16" fill="#F5A825"/>
 
-  <!-- "e" letter in center of cart -->
-  <text x="278" y="308" font-family="Arial, Helvetica, sans-serif" font-size="120" font-weight="900"
-        fill="white" text-anchor="middle" dominant-baseline="auto">e</text>
+  <line x1="188" y1="150" x2="186" y2="62"
+        stroke="#F5A825" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="185" cy="50" r="16" fill="#F5A825"/>
 
-  <!-- Green leaf (top right corner of cart) -->
-  <path d="M370 148 Q420 100 460 148 Q420 196 370 148 Z" fill="#22C55E"/>
-  <line x1="370" y1="148" x2="460" y2="148" stroke="#16A34A" stroke-width="3"/>
-  <line x1="415" y1="100" x2="415" y2="196" stroke="#16A34A" stroke-width="2.5" opacity="0.5"/>
+  <!-- Green leaf at top of "e" -->
+  <path d="M 215,148
+           C 218,110 255,96 295,108
+           C 295,145 258,162 215,148 Z"
+        fill="url(#lg)"/>
+  <!-- Leaf centre vein -->
+  <path d="M 215,148 Q 255,124 295,108"
+        stroke="#2A7820" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+  <!-- Main "e" body — thick arc (270° sweep, opening on right) + crossbar -->
+  <!-- Arc: centre (256,288), r=128, from top-right (318°) CCW 270° to bottom-right (48°) -->
+  <!-- 318° point: (256+128·cos318°, 288+128·sin318°) = (256+95, 288-86) = (351,202) -->
+  <!-- 48°  point: (256+128·cos48°,  288+128·sin48°)  = (256+86, 288+95) = (342,383) -->
+  <path d="M 351,202
+           A 128,128 0 1,0 342,383"
+        stroke="url(#cg)" stroke-width="52" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Middle crossbar of "e" (cart shelf) -->
+  <line x1="130" y1="288" x2="338" y2="288"
+        stroke="url(#cg)" stroke-width="52" stroke-linecap="round"/>
+
+  <!-- Cart base line (bottom of "e" to wheels) -->
+  <line x1="148" y1="415" x2="362" y2="415"
+        stroke="url(#cg)" stroke-width="36" stroke-linecap="round"/>
+
+  <!-- Wheels -->
+  <circle cx="188" cy="452" r="34" fill="url(#cg)"/>
+  <circle cx="340" cy="452" r="34" fill="url(#cg)"/>
 </svg>

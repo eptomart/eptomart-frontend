@@ -1,67 +1,98 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" role="img" aria-label="Eptomart">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 148" role="img" aria-label="Eptomart — Premium Products. Trusted Quality.">
   <defs>
-    <linearGradient id="logoGreen" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#22C55E"/>
-      <stop offset="100%" stop-color="#16A34A"/>
+    <!-- Cart / e gradient (yellow-amber at top → deep orange at bottom) -->
+    <linearGradient id="cg" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0%" stop-color="#F5C840"/>
+      <stop offset="50%" stop-color="#F5A020"/>
+      <stop offset="100%" stop-color="#F06E10"/>
     </linearGradient>
-    <linearGradient id="logoOrange" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#F97316"/>
-      <stop offset="100%" stop-color="#EA580C"/>
+    <!-- Leaf gradient (yellow-green → dark green) -->
+    <linearGradient id="lg" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C8E840"/>
+      <stop offset="100%" stop-color="#2A8B20"/>
     </linearGradient>
-    <linearGradient id="iconBg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0D1B3E"/>
-      <stop offset="100%" stop-color="#1E3A5F"/>
+    <!-- "epto" text gradient -->
+    <linearGradient id="eg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#5CC840"/>
+      <stop offset="100%" stop-color="#3DAA28"/>
     </linearGradient>
-    <linearGradient id="cartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#22C55E"/>
-      <stop offset="100%" stop-color="#16A34A"/>
+    <!-- "mart" text gradient -->
+    <linearGradient id="mg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#F5A020"/>
+      <stop offset="100%" stop-color="#F06810"/>
     </linearGradient>
   </defs>
 
-  <!-- Icon background -->
-  <rect x="0" y="0" width="72" height="72" rx="14" ry="14" fill="url(#iconBg)"/>
+  <!-- ═══════════════════════════════════════════ -->
+  <!--  ICON MARK  (fits in 0–130 x 0–148 area)  -->
+  <!-- ═══════════════════════════════════════════ -->
 
-  <!-- Circuit dots (top-left area) -->
-  <circle cx="10" cy="10" r="1.5" fill="#22C55E" opacity="0.6"/>
-  <circle cx="18" cy="10" r="1.5" fill="#22C55E" opacity="0.4"/>
-  <line x1="11.5" y1="10" x2="16.5" y2="10" stroke="#22C55E" stroke-width="0.8" opacity="0.4"/>
-  <line x1="10" y1="11.5" x2="10" y2="16" stroke="#22C55E" stroke-width="0.8" opacity="0.3"/>
+  <!-- Cart handle – horizontal bar top-left -->
+  <line x1="10" y1="50" x2="40" y2="50"
+        stroke="url(#cg)" stroke-width="10" stroke-linecap="round"/>
 
-  <!-- Circuit dots (bottom-right) -->
-  <circle cx="62" cy="62" r="1.5" fill="#F97316" opacity="0.6"/>
-  <circle cx="54" cy="62" r="1.5" fill="#F97316" opacity="0.4"/>
-  <line x1="55.5" y1="62" x2="60.5" y2="62" stroke="#F97316" stroke-width="0.8" opacity="0.4"/>
-  <line x1="62" y1="54" x2="62" y2="60.5" stroke="#F97316" stroke-width="0.8" opacity="0.3"/>
+  <!-- Circuit antenna lines (3 stems, upper-left area) -->
+  <line x1="30" y1="48" x2="16" y2="22"
+        stroke="#F5A825" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="14" cy="18" r="4.5" fill="#F5A825"/>
 
-  <!-- Shopping cart body -->
-  <path d="M18 24 L21 24 L25 43 L52 43 L56 30 L24 30"
-        stroke="url(#cartGrad)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Cart handle line -->
-  <line x1="24" y1="30" x2="56" y2="30" stroke="url(#cartGrad)" stroke-width="0" fill="none"/>
-  <!-- Cart items lines -->
-  <line x1="28" y1="34" x2="52" y2="34" stroke="#22C55E" stroke-width="1.2" opacity="0.5"/>
-  <line x1="29" y1="38" x2="51" y2="38" stroke="#22C55E" stroke-width="1.2" opacity="0.5"/>
-  <!-- Cart wheels -->
-  <circle cx="30" cy="47" r="3" fill="#F97316"/>
-  <circle cx="46" cy="47" r="3" fill="#F97316"/>
+  <line x1="41" y1="43" x2="36" y2="15"
+        stroke="#F5A825" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="35" cy="11" r="4.5" fill="#F5A825"/>
 
-  <!-- 'e' letter inside cart area -->
-  <text x="36" y="42" font-family="Arial, sans-serif" font-size="14" font-weight="900"
-        fill="white" text-anchor="middle" dominant-baseline="auto">e</text>
+  <line x1="52" y1="40" x2="52" y2="12"
+        stroke="#F5A825" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="52" cy="8" r="4.5" fill="#F5A825"/>
 
-  <!-- Green leaf (top right of cart) -->
-  <path d="M51 20 Q58 14 64 20 Q58 26 51 20 Z" fill="#22C55E"/>
-  <line x1="51" y1="20" x2="64" y2="20" stroke="#16A34A" stroke-width="0.8"/>
-  <line x1="57.5" y1="14" x2="57.5" y2="26" stroke="#16A34A" stroke-width="0.6" opacity="0.6"/>
+  <!-- Green leaf at top of cart -->
+  <path d="M 58,40
+           C 59,26 72,22 84,28
+           C 83,41 70,46 58,40 Z"
+        fill="url(#lg)"/>
+  <path d="M 58,40 Q 71,32 84,28"
+        stroke="#228020" stroke-width="1.2" fill="none" stroke-linecap="round"/>
 
-  <!-- Wordmark: "epto" in green -->
-  <text x="88" y="38" font-family="'Inter', Arial, sans-serif" font-size="28" font-weight="800"
-        fill="url(#logoGreen)" letter-spacing="-0.5">epto</text>
-  <!-- Wordmark: "mart" in orange -->
-  <text x="158" y="38" font-family="'Inter', Arial, sans-serif" font-size="28" font-weight="800"
-        fill="url(#logoOrange)" letter-spacing="-0.5">mart</text>
+  <!--
+    "e" + cart body
+    Centre: (65, 82), outer radius 36
+    Arc sweeps 270° counterclockwise, opening on right side
+    Start (318°): (65+36·cos318°, 82+36·sin318°) = (65+27, 82-24) = (92,58)
+    End  (48°):   (65+36·cos48°,  82+36·sin48°)  = (65+24, 82+27) = (89,109)
+  -->
+  <path d="M 92,58 A 36,36 0 1,0 89,109"
+        stroke="url(#cg)" stroke-width="15" fill="none"
+        stroke-linecap="round"/>
+  <!-- Middle crossbar of "e" (cart shelf) -->
+  <line x1="30" y1="82" x2="88" y2="82"
+        stroke="url(#cg)" stroke-width="15" stroke-linecap="round"/>
+
+  <!-- Cart base -->
+  <line x1="38" y1="120" x2="100" y2="120"
+        stroke="url(#cg)" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- Wheels -->
+  <circle cx="50"  cy="132" r="9" fill="url(#cg)"/>
+  <circle cx="90"  cy="132" r="9" fill="url(#cg)"/>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!--  WORDMARK  (starts at x=118)               -->
+  <!-- ═══════════════════════════════════════════ -->
+
+  <!-- "epto" in green -->
+  <text x="118" y="102"
+        font-family="'Inter', 'Poppins', 'Nunito', Arial, sans-serif"
+        font-size="68" font-weight="800" letter-spacing="-1"
+        fill="url(#eg)">epto</text>
+
+  <!-- "mart" in orange -->
+  <text x="310" y="102"
+        font-family="'Inter', 'Poppins', 'Nunito', Arial, sans-serif"
+        font-size="68" font-weight="800" letter-spacing="-1"
+        fill="url(#mg)">mart</text>
 
   <!-- Tagline -->
-  <text x="88" y="56" font-family="'Inter', Arial, sans-serif" font-size="9" font-weight="400"
-        fill="#64748B" letter-spacing="1.5">PREMIUM PRODUCTS. TRUSTED QUALITY.</text>
+  <text x="120" y="126"
+        font-family="'Inter', Arial, sans-serif"
+        font-size="13.5" font-weight="400" letter-spacing="0.3"
+        fill="#8899AA">Premium Products. Trusted Quality.</text>
 </svg>
