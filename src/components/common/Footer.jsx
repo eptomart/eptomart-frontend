@@ -16,7 +16,7 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="mb-4">
-              <EptomartLogo size="sm" showTagline dark />
+              <EptomartLogo variant="wide" height={40} />
             </div>
             <p className="text-sm leading-relaxed mb-4">
               India's fast & affordable online shopping destination. Quality products delivered to your door.

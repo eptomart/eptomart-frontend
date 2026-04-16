@@ -152,11 +152,9 @@ export default function Login() {
         <div className="w-full max-w-md">
 
           {/* Logo */}
-          <div className="text-center mb-8">
-            <div className="flex justify-center mb-4">
-              <EptomartLogo size="xl" showTagline dark />
-            </div>
-            <p className="text-gray-400 text-sm mt-2">Sign in to continue shopping</p>
+          <div className="flex flex-col items-center mb-8">
+            <EptomartLogo variant="full" height={140} className="mb-3" />
+            <p className="text-gray-400 text-sm">Sign in to continue shopping</p>
           </div>
 
           <div className="card p-8 bg-white/95 backdrop-blur-sm shadow-2xl border-0">

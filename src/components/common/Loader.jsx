@@ -7,16 +7,15 @@ import EptomartLogo from './EptomartLogo';
 export default function Loader({ fullPage = true }) {
   if (fullPage) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center z-50"
-        style={{background: 'linear-gradient(135deg, #0D1B3E 0%, #1E3A5F 100%)'}}>
-        <div className="flex flex-col items-center gap-5">
-          <EptomartLogo size="lg" showTagline dark />
+      <div className="fixed inset-0 flex items-center justify-center z-50" style={{background:'#0B1729'}}>
+        <div className="flex flex-col items-center gap-6">
+          <EptomartLogo variant="full" height={130} />
           <div className="flex gap-1.5">
             {[0, 1, 2].map(i => (
               <div
                 key={i}
-                className="w-2.5 h-2.5 bg-green-400 rounded-full animate-bounce"
-                style={{ animationDelay: `${i * 0.15}s` }}
+                className="w-2.5 h-2.5 rounded-full animate-bounce"
+                style={{ background: '#F5A020', animationDelay: `${i * 0.15}s` }}
               />
             ))}
           </div>

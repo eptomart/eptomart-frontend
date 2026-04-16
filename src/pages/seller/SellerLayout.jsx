@@ -24,13 +24,15 @@ export default function SellerLayout() {
         ${open ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0`}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-slate-900 to-slate-800">
-            <div className="flex items-center gap-2.5 mb-2">
-              <EptomartLogo size="xs" />
-              <span className="text-xs font-semibold text-gray-400 border-l border-gray-700 pl-2">Seller</span>
+          <div className="p-4 border-b border-gray-200" style={{background:'#0B1729'}}>
+            <div className="flex items-center gap-2 mb-2">
+              <EptomartLogo variant="icon" height={32} />
+              <div className="border-l border-gray-700 pl-2.5">
+                <p className="text-xs font-bold text-white leading-tight">Seller Portal</p>
+                <p className="text-[10px] text-gray-500 truncate">{user?.name || 'Seller'}</p>
+              </div>
             </div>
-            <p className="text-xs text-gray-300 font-medium truncate">{user?.name || 'Seller'}</p>
-            <span className="inline-flex items-center gap-1 text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-medium mt-1">
+            <span className="inline-flex items-center gap-1 text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-medium">
               ✅ Active
             </span>
           </div>
