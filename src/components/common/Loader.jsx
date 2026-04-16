@@ -19,7 +19,7 @@ export default function Loader({ fullPage = true }) {
               <div
                 key={i}
                 className="w-2.5 h-2.5 rounded-full animate-bounce"
-                style={{ background: '#F5A020', animationDelay: `${i * 0.15}s` }}
+                style={{ background: '#f4941c', animationDelay: `${i * 0.15}s` }}
               />
             ))}
           </div>

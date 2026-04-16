@@ -23,7 +23,7 @@ export default function Footer() {
             </p>
             <div className="flex gap-3">
               {[FiInstagram, FiFacebook, FiTwitter].map((Icon, i) => (
-                <a key={i} href="#" className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors" style={{background:'#0E2040'}} onMouseEnter={e=>e.currentTarget.style.background='#f58518'} onMouseLeave={e=>e.currentTarget.style.background='#0E2040'}>
+                <a key={i} href="#" className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors" style={{background:'#0E2040'}} onMouseEnter={e=>e.currentTarget.style.background='#f4941c'} onMouseLeave={e=>e.currentTarget.style.background='#0E2040'}>
                   <Icon size={16} />
                 </a>
               ))}
@@ -66,11 +66,11 @@ export default function Footer() {
             <h4 className="text-white font-semibold mb-4">Contact Us</h4>
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2">
-                <FiMail size={15} className="flex-shrink-0" style={{color:'#f58518'}} />
+                <FiMail size={15} className="flex-shrink-0" style={{color:'#f4941c'}} />
                 <span>{BUSINESS.email}</span>
               </li>
               <li className="flex items-center gap-2">
-                <FiPhone size={15} className="flex-shrink-0" style={{color:'#f58518'}} />
+                <FiPhone size={15} className="flex-shrink-0" style={{color:'#f4941c'}} />
                 <span>{BUSINESS.phone}</span>
               </li>
               <li className="flex items-start gap-2">

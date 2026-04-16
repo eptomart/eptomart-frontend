@@ -4,46 +4,46 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ── Primary orange (cart, "mart", CTAs) ──────────────────
+        // ── Primary orange — exact #F4941C from logo ─────────────
         primary: {
-          50:  '#fff8ec',
-          100: '#ffefd0',
-          200: '#ffdba0',
-          300: '#ffc062',
-          400: '#ffa030',
-          500: '#f58518',   // logo "mart" orange
-          600: '#f06810',
-          700: '#c74d08',
-          800: '#9e3c08',
-          900: '#7c300a',
+          50:  '#fff8ee',
+          100: '#ffecd0',
+          200: '#ffd49e',
+          300: '#ffb860',
+          400: '#ff9d30',
+          500: '#f4941c',   // ← exact logo orange (sampled)
+          600: '#e2850e',
+          700: '#b96408',
+          800: '#924d08',
+          900: '#723c09',
         },
-        // ── Brand green ("epto", leaf) ────────────────────────────
+        // ── Brand green — exact #6DB651 from logo ────────────────
         green: {
-          50:  '#f0fce8',
-          100: '#dcf8c8',
-          200: '#b8f090',
-          300: '#8ce058',
-          400: '#5cc840',   // logo "epto" green (light)
-          500: '#3daa28',   // logo "epto" green (main)
-          600: '#2e8b20',
-          700: '#226618',
-          800: '#1a5010',
-          900: '#133c0c',
+          50:  '#f1faea',
+          100: '#dcf2cc',
+          200: '#b8e49a',
+          300: '#8ed268',
+          400: '#6db651',   // ← exact logo green (sampled)
+          500: '#549e3c',
+          600: '#3f802c',
+          700: '#2e5f20',
+          800: '#204518',
+          900: '#142e10',
         },
-        // ── Navy dark (backgrounds, sidebars, login) ──────────────
+        // ── Navy — exact #0B1928 from logo background ─────────────
         navy: {
-          50:  '#e8edf5',
-          100: '#c5d0e0',
+          50:  '#e8eef5',
+          100: '#c5d2e2',
           200: '#8fa8c8',
-          300: '#5880a8',
-          400: '#2a5888',
-          500: '#0f3060',
-          600: '#0e2040',
-          700: '#0b1729',   // logo background navy
-          800: '#080f1a',
-          900: '#040810',
+          300: '#5a7eaa',
+          400: '#2e5888',
+          500: '#123660',
+          600: '#0f2848',
+          700: '#0b1928',   // ← exact logo navy (sampled)
+          800: '#07101a',
+          900: '#03080e',
         },
-        brand: '#f58518',
+        brand: '#f4941c',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

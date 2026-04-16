@@ -91,7 +91,7 @@ export default function Navbar() {
                       <img src={product.images?.[0]?.url} alt={product.name} className="w-10 h-10 object-cover rounded-lg" />
                       <div>
                         <p className="text-sm font-medium text-gray-800 line-clamp-1">{product.name}</p>
-                        <p className="text-xs font-semibold" style={{color:'#f58518'}}>₹{(product.discountPrice || product.price)?.toLocaleString('en-IN')}</p>
+                        <p className="text-xs font-semibold" style={{color:'#f4941c'}}>₹{(product.discountPrice || product.price)?.toLocaleString('en-IN')}</p>
                       </div>
                     </Link>
                   ))}
@@ -125,7 +125,7 @@ export default function Navbar() {
             >
               <FiShoppingCart size={22} />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold" style={{background:'#f58518'}}>
+                <span className="absolute -top-1 -right-1 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold" style={{background:'#f4941c'}}>
                   {cartCount > 9 ? '9+' : cartCount}
                 </span>
               )}
@@ -138,7 +138,7 @@ export default function Navbar() {
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl hover:bg-white/10 transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white" style={{background:'#f58518'}}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white" style={{background:'#f4941c'}}>
                     {user?.name?.charAt(0).toUpperCase()}
                   </div>
                   <span className="hidden sm:block text-sm font-medium text-gray-200">
@@ -158,7 +158,7 @@ export default function Navbar() {
                       <FiHeart size={16} /> My Wishlist
                     </Link>
                     {isAdmin && (
-                      <Link to="/admin" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm font-medium" style={{color:'#f58518'}} onClick={() => setShowUserMenu(false)}>
+                      <Link to="/admin" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm font-medium" style={{color:'#f4941c'}} onClick={() => setShowUserMenu(false)}>
                         <FiSettings size={16} /> Admin Panel
                       </Link>
                     )}
@@ -170,7 +170,7 @@ export default function Navbar() {
                 )}
               </div>
             ) : (
-              <Link to="/login" className="ml-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all" style={{background:'#f58518'}}>Login</Link>
+              <Link to="/login" className="ml-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all" style={{background:'#f4941c'}}>Login</Link>
             )}
           </div>
         </div>
