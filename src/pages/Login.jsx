@@ -222,13 +222,12 @@ export default function Login() {
         <div style={{ width:'100%', maxWidth:420, display:'flex', flexDirection:'column', alignItems:'center', gap:0 }}>
 
           {/* Logo + tagline */}
-          <div style={{ textAlign:'center', marginBottom:32 }}>
+          <div style={{ textAlign:'center', marginBottom:36 }}>
             <EptomartLogo
-              variant="horizontal"
-              height={48}
-              style={{ margin:'0 auto', display:'block' }}
+              height={88}
+              style={{ margin:'0 auto' }}
             />
-            <p style={{ color:C.textMuted, fontSize:13, marginTop:10, letterSpacing:0.2 }}>
+            <p style={{ color:C.textMuted, fontSize:13, marginTop:14, letterSpacing:0.2 }}>
               Sign in to continue shopping
             </p>
           </div>

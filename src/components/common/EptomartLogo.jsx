@@ -1,53 +1,41 @@
 // ============================================
-// EPTOMART LOGO — Uses actual brand logo image (transparent background)
+// EPTOMART LOGO — Clean transparent PNG, native aspect ratio
 //
-// variant:
-//   'horizontal' — icon mark, transparent bg (277×194)
-//   'icon'       — same source, square-constrained for small spaces
-//   'full'       — original with navy bg
+// Asset: /logo-nav.png  277×194 px
+//   → cart icon + orange "e" + green leaf, no tagline, no artifact
 //
-// height: controls rendered height in px (width auto-calculated)
-// className, style: forwarded to the <img>
+// Usage:
+//   <EptomartLogo height={44} />          — navbar mobile
+//   <EptomartLogo height={40} />          — navbar desktop
+//   <EptomartLogo height={88} />          — login / loader
 // ============================================
 import React from 'react';
 
-const ASPECT = {
-  horizontal: 277 / 194,   // logo-nav.png: 277×194 — clean icon, no artifact, no tagline
-  icon:       277 / 194,
-  full:       1,
-};
-
-const SRC = {
-  horizontal: '/logo-nav.png',
-  icon:       '/logo-nav.png',
-  full:       '/logo.png',
-};
+const SRC = '/logo-nav.png';
 
 export default function EptomartLogo({
-  variant = 'horizontal',
-  height = 40,
+  height = 44,
   className = '',
   style = {},
   alt = 'Eptomart',
+  // legacy props kept for compatibility — ignored
+  variant,
 }) {
-  const aspect = ASPECT[variant] ?? ASPECT.horizontal;
-  const src    = SRC[variant]    ?? SRC.horizontal;
-
-  const imgStyle = {
-    height,
-    width: Math.round(height * aspect),
-    objectFit:      'contain',
-    objectPosition: 'center',
-    display: 'block',
-    flexShrink: 0,
-    ...style,
-  };
-
   return (
     <img
-      src={src}
+      src={SRC}
       alt={alt}
-      style={imgStyle}
+      height={height}
+      style={{
+        height,
+        width: 'auto',          // browser preserves 277:194 aspect ratio natively
+        maxWidth: '100%',
+        display: 'block',
+        flexShrink: 0,
+        objectFit: 'contain',
+        imageRendering: 'auto',
+        ...style,
+      }}
       className={className}
       draggable={false}
     />
