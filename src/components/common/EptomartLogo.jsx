@@ -1,14 +1,15 @@
 // ============================================
 // EPTOMART LOGO
-// Asset : /logo-v3.png  (279 × 192 px, RGBA transparent)
+// Asset : /logo-v3.png  (774 × 244 px, RGBA transparent)
+// Full horizontal logo: cart icon + "eptomart" wordmark
 // The ?v=3 query string forces a CDN cache miss so the browser
 // always fetches the clean version even after previous deployments.
 // ============================================
 import React from 'react';
 
-// Exact pixel dimensions of logo-v3.png
-const LOGO_W = 279;
-const LOGO_H = 192;
+// Exact pixel dimensions of logo-v3.png (cart icon + wordmark, no tagline)
+const LOGO_W = 774;
+const LOGO_H = 244;
 
 export default function EptomartLogo({
   height = 44,

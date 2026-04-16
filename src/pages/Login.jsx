@@ -223,10 +223,8 @@ export default function Login() {
 
           {/* Logo + tagline */}
           <div style={{ marginBottom:32 }}>
-            {/* Login logo wrapper — exactly as per spec */}
+            {/* Login logo wrapper */}
             <div style={{
-              width: 160,
-              height: 120,
               margin: '0 auto 12px',
               overflow: 'visible',
               display: 'flex',
@@ -237,10 +235,8 @@ export default function Login() {
                 src="/logo-v3.png?v=3"
                 alt="Eptomart"
                 style={{
-                  maxWidth: '100%',
-                  maxHeight: '100%',
                   width: 'auto',
-                  height: 'auto',
+                  height: 72,
                   objectFit: 'contain',
                   display: 'block',
                 }}

@@ -56,9 +56,9 @@ export default function Navbar() {
           <Link
             to="/"
             style={{
-              width: 120,
-              height: 56,
-              paddingLeft: 12,
+              width: 160,
+              height: 50,
+              paddingLeft: 4,
               overflow: 'visible',
               display: 'flex',
               alignItems: 'center',
@@ -70,10 +70,8 @@ export default function Navbar() {
               src="/logo-v3.png?v=3"
               alt="Eptomart"
               style={{
-                maxWidth: '100%',
-                maxHeight: '100%',
                 width: 'auto',
-                height: 'auto',
+                height: 40,
                 objectFit: 'contain',
                 display: 'block',
               }}
