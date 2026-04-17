@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { FiPrinter, FiDownload, FiArrowLeft } from 'react-icons/fi';
-import { Loader } from '../../components/common/Loader';
 import api from '../../utils/api';
+import toast from 'react-hot-toast';
 import EptomartLogo from '../../components/common/EptomartLogo';
 import { formatINR } from '../../utils/currency';
 import { BUSINESS } from '../../utils/businessInfo';
@@ -12,6 +12,7 @@ export default function InvoiceView() {
   const { id }              = useParams();
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const printRef              = useRef();
 
   useEffect(() => {
@@ -22,6 +23,54 @@ export default function InvoiceView() {
   }, [id]);
 
   const handlePrint = () => window.print();
+
+  const handleDownload = async () => {
+    // COD orders only available after delivery
+    const order = invoice.order;
+    if (order?.paymentMethod === 'cod' && order?.orderStatus !== 'delivered') {
+      toast('Invoice will be available after your order is delivered and payment collected.', { icon: '📦' });
+      return;
+    }
+
+    // If Cloudinary URL already stored, open directly
+    if (invoice.pdfUrl) {
+      window.open(invoice.pdfUrl, '_blank');
+      return;
+    }
+
+    // Otherwise call the download endpoint to regenerate
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem('eptomart_token');
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/invoices/${id}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (err.codPending) {
+          toast('Invoice available after delivery.', { icon: '📦' });
+          return;
+        }
+        throw new Error(err.message || 'Download failed');
+      }
+
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `invoice-${invoice.invoiceNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Invoice downloaded!');
+    } catch (err) {
+      toast.error(err.message || 'Failed to download invoice');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"/></div>;
   if (!invoice) return <div className="text-center py-20 text-gray-400">Invoice not found</div>;
@@ -39,12 +88,14 @@ export default function InvoiceView() {
           <FiArrowLeft size={16} /> Back to Orders
         </Link>
         <div className="ml-auto flex gap-2">
-          {invoice.pdfUrl && (
-            <a href={invoice.pdfUrl} target="_blank" rel="noreferrer"
-              className="flex items-center gap-2 btn-outline text-sm">
-              <FiDownload size={14} /> Download PDF
-            </a>
-          )}
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="flex items-center gap-2 btn-outline text-sm"
+          >
+            <FiDownload size={14} />
+            {downloading ? 'Downloading…' : 'Download PDF'}
+          </button>
           <button onClick={handlePrint} className="flex items-center gap-2 btn-primary text-sm">
             <FiPrinter size={14} /> Print
           </button>
@@ -148,7 +199,11 @@ export default function InvoiceView() {
           <p className="font-semibold text-green-800 mb-1">Payment Details</p>
           <p className="text-green-700">
             Method: {invoice.order?.paymentMethod?.toUpperCase() || '—'} ·
-            Status: <span className="font-semibold">PAID</span>
+            Status: <span className="font-semibold">
+              {invoice.order?.paymentMethod === 'cod'
+                ? invoice.order?.orderStatus === 'delivered' ? 'PAID (COD)' : 'PENDING — Pay on Delivery'
+                : invoice.order?.paymentStatus === 'paid' ? 'PAID' : invoice.order?.paymentStatus?.toUpperCase() || 'PAID'}
+            </span>
             {invoice.order?.paymentDetails?.transactionId && ` · Txn: ${invoice.order.paymentDetails.transactionId}`}
           </p>
         </div>
