@@ -2,8 +2,8 @@
 // CHECKOUT PAGE — Address + Payment
 // Supports: COD, UPI, Razorpay
 // ============================================
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { FiCheckCircle, FiShield } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
@@ -35,15 +35,23 @@ export default function Checkout() {
   const { cartItems, enrichedItems, subtotalExGst, gstTotal, shipping, total, sellerGroups, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Support "Buy Now" — items passed via navigate state instead of cart
+  const buyNow = location.state?.buyNow || null;
+  const checkoutItems = buyNow ? [buyNow] : cartItems;
+
+  // Prefill address from user's saved default address
+  const defaultAddr = user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0] || null;
 
   const [address, setAddress] = useState({
-    fullName: user?.name || '',
-    phone: user?.phone || '',
-    addressLine1: '',
-    addressLine2: '',
-    city: '',
-    state: '',
-    pincode: '',
+    fullName:     defaultAddr?.fullName     || user?.name  || '',
+    phone:        defaultAddr?.phone        || user?.phone || '',
+    addressLine1: defaultAddr?.addressLine1 || '',
+    addressLine2: defaultAddr?.addressLine2 || '',
+    city:         defaultAddr?.city         || '',
+    state:        defaultAddr?.state        || '',
+    pincode:      defaultAddr?.pincode      || '',
   });
   // Check if all cart items support COD
   const codBlockedItems = cartItems.filter(item => item.codAvailable === false);
@@ -144,9 +152,18 @@ export default function Checkout() {
     setLoading(true);
 
     try {
+      // Save address to user profile if they don't have one yet (fire-and-forget)
+      if (!user?.addresses?.length) {
+        api.post('/auth/add-address', {
+          ...address,
+          label: 'Home',
+          isDefault: true,
+        }).catch(() => {});
+      }
+
       // Create order in our system
       const { data } = await api.post('/orders', {
-        items: cartItems.map(item => ({ product: item._id, quantity: item.quantity })),
+        items: checkoutItems.map(item => ({ product: item._id || item.product, quantity: item.quantity })),
         shippingAddress: address,
         paymentMethod,
       });
@@ -348,9 +365,9 @@ export default function Checkout() {
             <div className="card p-6 sticky top-20">
               <h2 className="text-lg font-bold mb-4">Order Summary</h2>
               <div className="space-y-3 mb-4 max-h-48 overflow-y-auto">
-                {cartItems.map(item => (
-                  <div key={item._id} className="flex gap-3 text-sm">
-                    <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-lg" />
+                {checkoutItems.map(item => (
+                  <div key={item._id || item.product} className="flex gap-3 text-sm">
+                    <img src={item.image || item.images?.[0]?.url} alt={item.name} className="w-12 h-12 object-cover rounded-lg" />
                     <div className="flex-1">
                       <p className="text-gray-800 line-clamp-1">{item.name}</p>
                       <p className="text-gray-500">Qty: {item.quantity} × {formatINR(item.price)}</p>

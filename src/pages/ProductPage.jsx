@@ -77,6 +77,22 @@ export default function ProductPage() {
     addToCart({ ...product, discountPrice: activePrice, selectedSeller: activeSeller?.seller, gstRate: activeGstRate }, quantity);
   };
 
+  const handleBuyNow = () => {
+    navigate('/checkout', {
+      state: {
+        buyNow: {
+          _id: product._id,
+          product: product._id,
+          name: product.name,
+          image: product.images?.[0]?.url || '',
+          price: activePrice,
+          quantity,
+          gstRate: activeGstRate,
+        }
+      }
+    });
+  };
+
   return (
     <>
       <Helmet>
@@ -233,9 +249,9 @@ export default function ProductPage() {
               </button>
             </div>
 
-            <button onClick={() => { handleAddToCart(); navigate('/checkout'); }} disabled={activeStock === 0}
-              className="btn-outline w-full mb-4">
-              Buy Now
+            <button onClick={handleBuyNow} disabled={activeStock === 0}
+              className="btn-primary w-full mb-4">
+              ⚡ Buy Now
             </button>
 
             {/* Delivery Estimate */}

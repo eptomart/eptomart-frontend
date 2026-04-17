@@ -163,7 +163,7 @@ export default function Login() {
         if (!confirmRef.current) return toast.error('Please request OTP again');
         const result  = await confirmRef.current.confirm(otp);
         const idToken = await result.user.getIdToken();
-        const { data } = await api.post('/auth/firebase-phone-verify', { idToken, name: name || 'User' });
+        const { data } = await api.post('/auth/firebase-phone-verify', { idToken });
         if (data.success) {
           localStorage.setItem('eptomart_token', data.token);
           await loadUser();
@@ -172,7 +172,7 @@ export default function Login() {
           navigate(from, { replace: true });
         }
       } else {
-        const res = await verifyOtp(contact, otp, 'email', name || 'User');
+        const res = await verifyOtp(contact, otp, 'email');
         if (res.success) {
           if (res.isNewUser) { setStep(STEPS.PROFILE); return; }
           navigate(from, { replace: true });
@@ -359,18 +359,6 @@ export default function Login() {
                 </div>
 
                 <form onSubmit={handleVerifyOtp} style={{ display:'flex', flexDirection:'column', gap:16 }}>
-                  <div>
-                    <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
-                      Your Name <span style={{ color:C.textDim, textTransform:'none', letterSpacing:0 }}>(new accounts)</span>
-                    </label>
-                    <DarkInput
-                      type="text"
-                      placeholder="Enter your full name"
-                      value={name}
-                      onChange={e => setName(e.target.value)}
-                    />
-                  </div>
-
                   <div>
                     <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
                       OTP Code

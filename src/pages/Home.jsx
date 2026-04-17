@@ -65,7 +65,7 @@ export default function Home() {
                 Shop Everything,<br />Delivered Fast 🚀
               </h1>
               <p className="text-orange-100 text-lg mb-8">
-                Millions of products at the best prices. Free delivery above ₹499.
+                Quality products at the best prices.
               </p>
               <div className="flex gap-3 flex-wrap">
                 <Link to="/shop" className="bg-white text-primary-600 font-bold py-3 px-8 rounded-xl hover:bg-orange-50 transition-colors inline-flex items-center gap-2">
