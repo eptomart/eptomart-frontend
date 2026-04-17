@@ -1,41 +1,56 @@
 // ============================================
 // ADMIN LAYOUT — Sidebar + Outlet
+// Role-aware: superAdmin sees everything; admin sees orders only
 // ============================================
 import React, { useState } from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import {
   FiGrid, FiPackage, FiShoppingBag, FiUsers,
   FiBarChart2, FiTag, FiMenu, FiX, FiLogOut, FiHome,
-  FiUploadCloud, FiBell, FiCheckSquare, FiUserCheck, FiDollarSign, FiSettings
+  FiUploadCloud, FiBell, FiCheckSquare, FiUserCheck, FiDollarSign, FiSettings,
+  FiShield,
 } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import EptomartLogo from '../../components/common/EptomartLogo';
 
-const NAV_ITEMS = [
-  { path: '/admin', label: 'Dashboard', icon: FiGrid, end: true },
-  { path: '/admin/products', label: 'Products', icon: FiPackage },
-  { path: '/admin/categories', label: 'Categories', icon: FiTag },
-  { path: '/admin/orders', label: 'Orders', icon: FiShoppingBag },
-  { path: '/admin/users', label: 'Users', icon: FiUsers },
-  { path: '/admin/analytics', label: 'Analytics', icon: FiBarChart2 },
-  { path: '/admin/approvals',    label: 'Approvals',    icon: FiCheckSquare },
-  { path: '/admin/sellers',      label: 'Sellers',      icon: FiUserCheck },
-  { path: '/admin/expenses',     label: 'Expenses',     icon: FiDollarSign },
-  { path: '/admin/bulk-import',  label: 'Bulk Import',  icon: FiUploadCloud },
-  { path: '/admin/notifications',label: 'Notifications',icon: FiBell },
-  { path: '/admin/settings',     label: 'Settings',     icon: FiSettings },
+// superAdmin: full access | admin: orders only
+const ALL_NAV = [
+  { path: '/admin',              label: 'Dashboard',     icon: FiGrid,        end: true, superAdminOnly: true },
+  { path: '/admin/products',     label: 'Products',      icon: FiPackage,               superAdminOnly: true },
+  { path: '/admin/categories',   label: 'Categories',    icon: FiTag,                   superAdminOnly: true },
+  { path: '/admin/orders',       label: 'Orders',        icon: FiShoppingBag },         // all admins
+  { path: '/admin/users',        label: 'Users',         icon: FiUsers,                 superAdminOnly: true },
+  { path: '/admin/analytics',    label: 'Analytics',     icon: FiBarChart2,             superAdminOnly: true },
+  { path: '/admin/approvals',    label: 'Approvals',     icon: FiCheckSquare,           superAdminOnly: true },
+  { path: '/admin/sellers',      label: 'Sellers',       icon: FiUserCheck,             superAdminOnly: true },
+  { path: '/admin/expenses',     label: 'Expenses',      icon: FiDollarSign,            superAdminOnly: true },
+  { path: '/admin/bulk-import',  label: 'Bulk Import',   icon: FiUploadCloud,           superAdminOnly: true },
+  { path: '/admin/notifications',label: 'Notifications', icon: FiBell,                  superAdminOnly: true },
+  { path: '/admin/settings',     label: 'Settings',      icon: FiSettings,              superAdminOnly: true },
 ];
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { logout, user } = useAuth();
+  const { logout, user, isSuperAdmin } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
+
+  // Regular admin trying to access restricted page → redirect to orders
+  if (!isSuperAdmin && location.pathname !== '/admin/orders' && !location.pathname.startsWith('/admin/orders')) {
+    return <Navigate to="/admin/orders" replace />;
+  }
+
+  const NAV_ITEMS = ALL_NAV.filter(n => isSuperAdmin || !n.superAdminOnly);
 
   const isActive = (path, end) => {
     if (end) return location.pathname === path;
     return location.pathname.startsWith(path);
   };
+
+  const currentLabel = NAV_ITEMS.find(n => isActive(n.path, n.end))?.label || 'Admin';
+  const roleLabel    = isSuperAdmin ? 'Super Admin' : 'Admin (Orders)';
+  const roleBadgeClass = isSuperAdmin
+    ? 'text-yellow-400'
+    : 'text-blue-400';
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -65,7 +80,9 @@ export default function AdminLayout() {
             </div>
             <div>
               <p className="text-sm font-semibold">{user?.name}</p>
-              <p className="text-xs text-gray-400">Administrator</p>
+              <p className={`text-xs flex items-center gap-1 ${roleBadgeClass}`}>
+                <FiShield size={10} /> {roleLabel}
+              </p>
             </div>
           </div>
         </div>
@@ -91,7 +108,7 @@ export default function AdminLayout() {
         {/* Footer Links */}
         <div className="p-3 border-t border-gray-800">
           <Link to="/" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
-            <FiHome size={18} /> View Store
+            <FiHome size={18} /> Back to Store
           </Link>
           <button
             onClick={logout}
@@ -115,9 +132,7 @@ export default function AdminLayout() {
             <FiMenu size={22} />
           </button>
           <div className="hidden lg:block">
-            <h1 className="text-lg font-bold text-gray-800 capitalize">
-              {NAV_ITEMS.find(n => isActive(n.path, n.end))?.label || 'Admin'}
-            </h1>
+            <h1 className="text-lg font-bold text-gray-800 capitalize">{currentLabel}</h1>
           </div>
           <div className="text-sm text-gray-500">
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}

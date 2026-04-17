@@ -27,6 +27,9 @@ export default function AdminProducts() {
     isFeatured: false,
     gstRate: 18, priceIncludesGst: true, hsnCode: '', costPrice: '',
     codAvailable: true,
+    instagramLink: '',   // admin-only field
+    variants: [],
+    platformMargin: '', sellerMargin: '',
   });
   const [imageFiles, setImageFiles] = useState([]);
 
@@ -50,7 +53,7 @@ export default function AdminProducts() {
 
   const openAdd = () => {
     setEditProduct(null);
-    setForm({ name: '', description: '', shortDescription: '', price: '', discountPrice: '', stock: '', category: '', brand: '', tags: '', isFeatured: false, codAvailable: true, gstRate: 18, priceIncludesGst: true, hsnCode: '', costPrice: '' });
+    setForm({ name: '', description: '', shortDescription: '', price: '', discountPrice: '', stock: '', category: '', brand: '', tags: '', isFeatured: false, codAvailable: true, gstRate: 18, priceIncludesGst: true, hsnCode: '', costPrice: '', instagramLink: '', variants: [], platformMargin: '', sellerMargin: '' });
     setImageFiles([]);
     setShowModal(true);
   };
@@ -385,6 +388,32 @@ export default function AdminProducts() {
                         : 'COD is disabled — customers must pay online for this product'}
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* Instagram Link — Admin only */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  📸 Instagram Link <span className="text-xs text-gray-400 font-normal">(Admin only)</span>
+                </label>
+                <input
+                  type="url"
+                  value={form.instagramLink}
+                  onChange={e => setForm(f => ({ ...f, instagramLink: e.target.value }))}
+                  placeholder="https://www.instagram.com/p/..."
+                  className="input-field"
+                />
+              </div>
+
+              {/* Margin fields */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Platform Margin (%)</label>
+                  <input type="number" value={form.platformMargin} onChange={e => setForm(f => ({ ...f, platformMargin: e.target.value }))} placeholder="10" min="0" max="100" className="input-field" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Seller Margin (%)</label>
+                  <input type="number" value={form.sellerMargin} onChange={e => setForm(f => ({ ...f, sellerMargin: e.target.value }))} placeholder="20" min="0" max="100" className="input-field" />
                 </div>
               </div>
 

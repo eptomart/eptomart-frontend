@@ -4,7 +4,7 @@ import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
 import toast from 'react-hot-toast';
 
-const BLANK = { category: '', title: '', description: '', amount: '', date: new Date().toISOString().split('T')[0], notes: '' };
+const BLANK = { category: '', title: '', description: '', amount: '', date: new Date().toISOString().split('T')[0], notes: '', receiptFile: null };
 
 export default function AdminExpenses() {
   const [expenses,    setExpenses]    = useState([]);
@@ -219,6 +219,18 @@ export default function AdminExpenses() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea value={form.description} onChange={e => setF('description', e.target.value)} rows={2} className="input-field resize-none" placeholder="Optional details..." />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Receipt / Proof <span className="text-xs font-normal text-gray-400">(optional)</span>
+                </label>
+                <label className="flex items-center gap-2 border-2 border-dashed border-gray-300 hover:border-primary-400 rounded-xl p-3 cursor-pointer transition-colors">
+                  <span className="text-gray-400 text-xl">📎</span>
+                  <span className="text-sm text-gray-500">
+                    {form.receiptFile ? form.receiptFile.name : 'Click to attach receipt (JPG, PNG, PDF)'}
+                  </span>
+                  <input type="file" accept="image/*,.pdf" onChange={e => setF('receiptFile', e.target.files?.[0] || null)} className="hidden" />
+                </label>
               </div>
             </div>
             <div className="flex gap-3 mt-5">

@@ -14,6 +14,9 @@ const BLANK = {
   codAvailable: true, approvalStatus: 'draft',
   location: { city: '', state: '', pincode: '' },
   hsnCode: '',
+  variants: [],   // [{label, value, unit, price, stock}]
+  platformMargin: '', sellerMargin: '',
+  freeShippingAbove: 499,
 };
 
 export default function ProductForm() {
@@ -227,6 +230,66 @@ export default function ProductForm() {
               <p className="text-xs text-gray-500 mt-0.5">
                 {form.codAvailable ? 'COD enabled — customers can pay on delivery' : 'COD disabled — online payment required'}
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Variants (g, ml, kg, l, pieces, pack) */}
+        <div className="card p-6 space-y-4">
+          <div className="flex items-center justify-between border-b pb-2">
+            <h3 className="font-semibold text-gray-800">Product Variants <span className="text-xs font-normal text-gray-400">(optional — e.g. 500g, 1L)</span></h3>
+            <button type="button" onClick={() => set('variants', [...(form.variants || []), { label: '', value: '', unit: 'g', price: '', stock: '' }])}
+              className="text-xs text-primary-600 border border-primary-300 rounded-lg px-3 py-1 hover:bg-primary-50">
+              + Add Variant
+            </button>
+          </div>
+          {(form.variants || []).map((v, idx) => (
+            <div key={idx} className="grid grid-cols-5 gap-2 items-end bg-gray-50 rounded-xl p-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Label *</label>
+                <input value={v.label} placeholder="e.g. 500g" onChange={e => { const arr = [...form.variants]; arr[idx].label = e.target.value; set('variants', arr); }} className="input-field text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Value</label>
+                <input type="number" value={v.value} placeholder="500" onChange={e => { const arr = [...form.variants]; arr[idx].value = e.target.value; set('variants', arr); }} className="input-field text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Unit</label>
+                <select value={v.unit} onChange={e => { const arr = [...form.variants]; arr[idx].unit = e.target.value; set('variants', arr); }} className="input-field text-sm">
+                  {['g', 'kg', 'ml', 'l', 'pieces', 'pack', 'other'].map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Price (₹)</label>
+                <input type="number" value={v.price} placeholder="Optional" onChange={e => { const arr = [...form.variants]; arr[idx].price = e.target.value; set('variants', arr); }} className="input-field text-sm" />
+              </div>
+              <button type="button" onClick={() => { const arr = [...form.variants]; arr.splice(idx, 1); set('variants', arr); }}
+                className="pb-0.5 text-red-400 hover:text-red-600 text-lg font-bold self-end">×</button>
+            </div>
+          ))}
+          {(form.variants || []).length === 0 && (
+            <p className="text-sm text-gray-400">No variants added. Click "Add Variant" to add sizes like 250g, 500ml, 1kg etc.</p>
+          )}
+        </div>
+
+        {/* Margin & Shipping */}
+        <div className="card p-6 space-y-4">
+          <h3 className="font-semibold text-gray-800 border-b pb-2">Pricing & Shipping</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Platform Margin (%)</label>
+              <input type="number" value={form.platformMargin} onChange={e => set('platformMargin', e.target.value)} placeholder="e.g. 10" min="0" max="100" className="input-field" />
+              <p className="text-xs text-gray-400 mt-1">Eptomart commission %</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Seller Margin (%)</label>
+              <input type="number" value={form.sellerMargin} onChange={e => set('sellerMargin', e.target.value)} placeholder="e.g. 20" min="0" max="100" className="input-field" />
+              <p className="text-xs text-gray-400 mt-1">Your target profit %</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Free Shipping Above (₹)</label>
+              <input type="number" value={form.freeShippingAbove} onChange={e => set('freeShippingAbove', e.target.value)} placeholder="499" min="0" className="input-field" />
+              <p className="text-xs text-gray-400 mt-1">Free if order total ≥ this</p>
             </div>
           </div>
         </div>

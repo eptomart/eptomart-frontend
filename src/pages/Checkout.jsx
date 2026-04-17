@@ -263,29 +263,39 @@ export default function Checkout() {
 
             {/* Delivery Address */}
             <div className="card p-6">
-              <h2 className="text-lg font-bold mb-4">📍 Delivery Address</h2>
+              <h2 className="text-lg font-bold mb-1">📍 Delivery Address</h2>
+              <p className="text-xs text-gray-400 mb-4">Fields marked <span className="text-red-500 font-bold">*</span> are required</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  { name: 'fullName', label: 'Full Name', placeholder: 'John Doe', col: 1 },
-                  { name: 'phone', label: 'Mobile Number', placeholder: '98765 43210', col: 1 },
-                  { name: 'addressLine1', label: 'Address Line 1', placeholder: 'House No, Street Name', col: 2 },
-                  { name: 'addressLine2', label: 'Address Line 2 (Optional)', placeholder: 'Landmark, Area', col: 2 },
-                  { name: 'city', label: 'City', placeholder: 'Mumbai' },
-                  { name: 'state', label: 'State', placeholder: 'Maharashtra' },
-                  { name: 'pincode', label: 'Pincode', placeholder: '400001' },
-                ].map(field => (
-                  <div key={field.name} className={field.col === 2 ? 'sm:col-span-2' : ''}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{field.label}</label>
-                    <input
-                      type="text"
-                      name={field.name}
-                      placeholder={field.placeholder}
-                      value={address[field.name]}
-                      onChange={handleAddressChange}
-                      className="input-field"
-                    />
-                  </div>
-                ))}
+                  { name: 'fullName',     label: 'Full Name',                 placeholder: 'John Doe',                required: true,  col: 1 },
+                  { name: 'phone',        label: 'Mobile Number',              placeholder: '98765 43210',             required: true,  col: 1 },
+                  { name: 'addressLine1', label: 'Address Line 1',             placeholder: 'House No, Street Name',   required: true,  col: 2 },
+                  { name: 'addressLine2', label: 'Address Line 2',             placeholder: 'Landmark, Area (optional)', required: false, col: 2 },
+                  { name: 'city',         label: 'City',                       placeholder: 'Mumbai',                  required: true },
+                  { name: 'state',        label: 'State',                      placeholder: 'Maharashtra',             required: true },
+                  { name: 'pincode',      label: 'Pincode',                    placeholder: '400001',                  required: true },
+                ].map(field => {
+                  const isEmpty = field.required && !address[field.name]?.trim();
+                  return (
+                    <div key={field.name} className={field.col === 2 ? 'sm:col-span-2' : ''}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        {field.label}
+                        {field.required && <span className="text-red-500 ml-0.5">*</span>}
+                      </label>
+                      <input
+                        type="text"
+                        name={field.name}
+                        placeholder={field.placeholder}
+                        value={address[field.name]}
+                        onChange={handleAddressChange}
+                        className={`input-field transition-all ${isEmpty && address[field.name] !== undefined ? 'border-red-400 bg-red-50 focus:ring-red-300' : ''}`}
+                      />
+                      {isEmpty && address[field.name] !== undefined && (
+                        <p className="text-xs text-red-500 mt-1">This field is required</p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

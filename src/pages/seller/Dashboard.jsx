@@ -1,24 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPackage, FiShoppingBag, FiDollarSign, FiClock, FiPlus, FiAlertCircle } from 'react-icons/fi';
+import { FiPackage, FiShoppingBag, FiDollarSign, FiClock, FiPlus, FiAlertCircle, FiArrowRight } from 'react-icons/fi';
+import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
 
 export default function SellerDashboard() {
-  const [stats,   setStats]   = useState(null);
+  const { user } = useAuth();
+  const [stats,    setStats]    = useState(null);
+  const [profile,  setProfile]  = useState(null);
   const [products, setProducts] = useState([]);
-  const [orders,  setOrders]  = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [orders,   setOrders]   = useState([]);
+  const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
     const fetch = async () => {
       try {
-        const [sRes, pRes] = await Promise.all([
+        const [sRes, pRes, profRes] = await Promise.all([
           api.get('/sellers/me/stats'),
           api.get('/products/seller/mine?limit=5&sort=-createdAt'),
+          api.get('/sellers/me/profile'),
         ]);
         setStats(sRes.data.stats);
         setProducts(pRes.data.products || []);
+        setProfile(profRes.data.seller);
       } catch (_) {}
       finally { setLoading(false); }
     };
@@ -35,13 +40,37 @@ export default function SellerDashboard() {
 
   if (loading) return <div className="flex items-center justify-center h-48"><div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"/></div>;
 
+  const businessName = profile?.businessName || user?.name || 'Seller';
+  const isNewSeller  = (stats?.products?.approved || 0) === 0 && (stats?.orders?.totalOrders || 0) === 0;
+
   return (
     <div className="space-y-6">
+
+      {/* Welcome Banner */}
+      <div className="rounded-2xl p-5" style={{ background: 'linear-gradient(135deg, #0B1729 0%, #1a2f4a 100%)' }}>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <p className="text-sm text-gray-400 mb-1">Welcome back 👋</p>
+            <h2 className="text-xl font-bold text-white">{businessName}</h2>
+            <p className="text-xs text-gray-400 mt-1">
+              {isNewSeller
+                ? 'Start by adding your first product to go live on Eptomart.'
+                : `You have ${stats?.products?.approved || 0} live product(s) and ${stats?.orders?.totalOrders || 0} order(s).`}
+            </p>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Link to="/seller/products" className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 text-white text-sm hover:bg-white/20 transition-colors">
+              <FiPackage size={14} /> My Products <FiArrowRight size={12} />
+            </Link>
+            <Link to="/seller/products/add" className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors" style={{ background: '#f4941c' }}>
+              <FiPlus size={14} /> Add Product
+            </Link>
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-800">Overview</h2>
-        <Link to="/seller/products/add" className="btn-primary flex items-center gap-2 text-sm">
-          <FiPlus size={15} /> Add Product
-        </Link>
+        <h3 className="text-base font-bold text-gray-700">Overview</h3>
       </div>
 
       {/* Stats */}
