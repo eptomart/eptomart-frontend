@@ -2,8 +2,8 @@
   "name": "Eptomart — Shop Everything",
   "short_name": "Eptomart",
   "description": "India's fast, affordable online shopping destination. Shop electronics, fashion, groceries and more.",
-  "theme_color": "#0D1B3E",
-  "background_color": "#0D1B3E",
+  "theme_color": "#0B1729",
+  "background_color": "#0B1729",
   "display": "standalone",
   "orientation": "portrait",
   "start_url": "/",
@@ -12,71 +12,21 @@
   "dir": "ltr",
   "categories": ["shopping", "business"],
   "icons": [
-    {
-      "src": "/icons/icon-72x72.png",
-      "sizes": "72x72",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-96x96.png",
-      "sizes": "96x96",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-128x128.png",
-      "sizes": "128x128",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-144x144.png",
-      "sizes": "144x144",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-152x152.png",
-      "sizes": "152x152",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-384x384.png",
-      "sizes": "384x384",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "/icons/icon-72x72.png",   "sizes": "72x72",   "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-96x96.png",   "sizes": "96x96",   "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-128x128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-144x144.png", "sizes": "144x144", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-152x152.png", "sizes": "152x152", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-384x384.png", "sizes": "384x384", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    {
-      "name": "Shop Now",
-      "short_name": "Shop",
-      "description": "Browse all products",
-      "url": "/shop",
-      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
-    },
-    {
-      "name": "My Orders",
-      "short_name": "Orders",
-      "description": "Track your orders",
-      "url": "/orders",
-      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
-    },
-    {
-      "name": "My Cart",
-      "short_name": "Cart",
-      "description": "View your cart",
-      "url": "/cart",
-      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
-    }
+    { "name": "Shop Now",  "short_name": "Shop",   "description": "Browse all products", "url": "/shop",   "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }] },
+    { "name": "My Orders", "short_name": "Orders",  "description": "Track your orders",   "url": "/orders", "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }] },
+    { "name": "My Cart",   "short_name": "Cart",    "description": "View your cart",      "url": "/cart",   "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }] }
   ],
   "prefer_related_applications": false
 }
