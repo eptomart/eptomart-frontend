@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 export default function AdminProducts() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [sellers, setSellers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -30,6 +31,7 @@ export default function AdminProducts() {
     instagramLink: '',   // admin-only field
     variants: [],
     platformMargin: '', sellerMargin: '',
+    seller: '',          // assign product to a specific seller
   });
   const [imageFiles, setImageFiles] = useState([]);
 
@@ -49,11 +51,12 @@ export default function AdminProducts() {
 
   useEffect(() => {
     api.get('/categories').then(res => setCategories(res.data.categories || []));
+    api.get('/sellers?limit=100').then(res => setSellers(res.data.sellers || [])).catch(() => {});
   }, []);
 
   const openAdd = () => {
     setEditProduct(null);
-    setForm({ name: '', description: '', shortDescription: '', price: '', discountPrice: '', stock: '', category: '', brand: '', tags: '', isFeatured: false, codAvailable: true, gstRate: 18, priceIncludesGst: true, hsnCode: '', costPrice: '', instagramLink: '', variants: [], platformMargin: '', sellerMargin: '' });
+    setForm({ name: '', description: '', shortDescription: '', price: '', discountPrice: '', stock: '', category: '', brand: '', tags: '', isFeatured: false, codAvailable: true, gstRate: 18, priceIncludesGst: true, hsnCode: '', costPrice: '', instagramLink: '', variants: [], platformMargin: '', sellerMargin: '', seller: '' });
     setImageFiles([]);
     setShowModal(true);
   };
@@ -89,7 +92,10 @@ export default function AdminProducts() {
       // Admin products are auto-approved and visible immediately
       const payload = { ...form, approvalStatus: 'approved', priceIncludesGst: form.priceIncludesGst };
       Object.entries(payload).forEach(([k, v]) => {
-        if (v !== '' && v !== undefined) formData.append(k, v);
+        if (v !== '' && v !== undefined && v !== null) {
+          if (Array.isArray(v)) formData.append(k, JSON.stringify(v));
+          else formData.append(k, v);
+        }
       });
       imageFiles.forEach(file => formData.append('images', file));
 
@@ -389,6 +395,23 @@ export default function AdminProducts() {
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* Seller assignment */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Assign to Seller <span className="text-xs text-gray-400 font-normal">(optional — leave blank for platform products)</span>
+                </label>
+                <select
+                  value={form.seller}
+                  onChange={e => setForm(f => ({ ...f, seller: e.target.value }))}
+                  className="input-field"
+                >
+                  <option value="">— Platform / No specific seller —</option>
+                  {sellers.map(s => (
+                    <option key={s._id} value={s._id}>{s.businessName}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Instagram Link — Admin only */}

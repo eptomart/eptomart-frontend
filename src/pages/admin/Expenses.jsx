@@ -41,8 +41,20 @@ export default function AdminExpenses() {
     if (!form.category || !form.title || !form.amount) return toast.error('Category, title and amount required');
     setSaving(true);
     try {
-      if (editItem) await api.put(`/expenses/${editItem._id}`, form);
-      else          await api.post('/expenses', form);
+      // Use FormData to support optional receipt file upload
+      const fd = new FormData();
+      fd.append('category',    form.category);
+      fd.append('title',       form.title);
+      fd.append('description', form.description || '');
+      fd.append('amount',      form.amount);
+      fd.append('date',        form.date);
+      fd.append('notes',       form.notes || '');
+      if (form.receiptFile) fd.append('receiptFile', form.receiptFile);
+
+      const cfg = { headers: { 'Content-Type': 'multipart/form-data' } };
+      if (editItem) await api.put(`/expenses/${editItem._id}`, fd, cfg);
+      else          await api.post('/expenses', fd, cfg);
+
       toast.success(editItem ? 'Expense updated' : 'Expense added');
       setModal(false); setEditItem(null); setForm(BLANK);
       load();

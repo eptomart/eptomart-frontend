@@ -34,6 +34,8 @@ const AdminNotifications= lazy(() => import('./pages/admin/Notifications'));
 const AdminApprovals    = lazy(() => import('./pages/admin/Approvals'));
 const AdminSellers      = lazy(() => import('./pages/admin/Sellers'));
 const AdminExpenses     = lazy(() => import('./pages/admin/Expenses'));
+const AdminAdmins       = lazy(() => import('./pages/admin/Admins'));
+const AdminSettlements  = lazy(() => import('./pages/admin/Settlements'));
 const AdminSettings     = lazy(() => import('./pages/admin/Settings'));
 
 // ── Seller pages ─────────────────────────────
@@ -107,6 +109,8 @@ function AppRoutes() {
             <Route path="analytics"        element={<AdminAnalytics />} />
             <Route path="categories"       element={<AdminCategories />} />
             <Route path="expenses"         element={<AdminExpenses />} />
+            <Route path="settlements"      element={<AdminSettlements />} />
+            <Route path="admins"           element={<AdminAdmins />} />
             <Route path="bulk-import"      element={<AdminBulkImport />} />
             <Route path="notifications"    element={<AdminNotifications />} />
             <Route path="settings"         element={<AdminSettings />} />

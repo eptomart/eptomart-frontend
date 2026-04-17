@@ -34,7 +34,7 @@ const detectType = (val) => {
   return null;
 };
 
-const STEPS = { CONTACT: 1, OTP: 2 };
+const STEPS = { CONTACT: 1, OTP: 2, PROFILE: 3 };
 
 // ── Reusable styled input ────────────────────────────────────────────────────
 function DarkInput({ style = {}, ...props }) {
@@ -96,6 +96,7 @@ export default function Login() {
   const [otp,      setOtp]      = useState('');
   const [name,     setName]     = useState('');
   const [loading,  setLoading]  = useState(false);
+  const [address,  setAddress]  = useState({ addressLine1: '', city: '', state: '', pincode: '', phone: '' });
 
   const confirmRef   = useRef(null);
   const recaptchaRef = useRef(null);
@@ -167,11 +168,15 @@ export default function Login() {
           localStorage.setItem('eptomart_token', data.token);
           await loadUser();
           toast.success(data.message || 'Login successful!');
+          if (data.isNewUser) { setStep(STEPS.PROFILE); return; }
           navigate(from, { replace: true });
         }
       } else {
         const res = await verifyOtp(contact, otp, 'email', name || 'User');
-        if (res.success) navigate(from, { replace: true });
+        if (res.success) {
+          if (res.isNewUser) { setStep(STEPS.PROFILE); return; }
+          navigate(from, { replace: true });
+        }
       }
     } catch (err) {
       const msg = err.code === 'auth/invalid-verification-code' ? 'Wrong OTP. Try again.'
@@ -185,6 +190,20 @@ export default function Login() {
     setStep(STEPS.CONTACT);
     setOtp('');
     if (recaptchaRef.current) { try { recaptchaRef.current.clear(); } catch (_) {} recaptchaRef.current = null; }
+  };
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return toast.error('Please enter your name');
+    setLoading(true);
+    try {
+      await api.put('/auth/update-profile', { name: name.trim(), address });
+      await loadUser();
+      toast.success('Welcome to Eptomart! 🎉');
+      navigate(from, { replace: true });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save profile');
+    } finally { setLoading(false); }
   };
 
   return (
@@ -381,6 +400,107 @@ export default function Login() {
                     Resend OTP
                   </button>
                 </div>
+              </>
+            )}
+
+            {/* STEP 3 — Profile (new users only) */}
+            {step === STEPS.PROFILE && (
+              <>
+                <div style={{ marginBottom:24 }}>
+                  <h2 style={{ color:C.textPrimary, fontSize:20, fontWeight:700, margin:0 }}>
+                    Complete Your Profile 🏠
+                  </h2>
+                  <p style={{ color:C.textMuted, fontSize:13, marginTop:4 }}>
+                    Help us deliver to you faster — add your details below.
+                  </p>
+                </div>
+
+                <form onSubmit={handleSaveProfile} style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                  <div>
+                    <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
+                      Full Name *
+                    </label>
+                    <DarkInput
+                      type="text"
+                      placeholder="Your full name"
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      autoFocus
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
+                      Address Line *
+                    </label>
+                    <DarkInput
+                      type="text"
+                      placeholder="House/Flat no., Street, Area"
+                      value={address.addressLine1}
+                      onChange={e => setAddress(a => ({ ...a, addressLine1: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                    <div>
+                      <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
+                        City *
+                      </label>
+                      <DarkInput
+                        type="text"
+                        placeholder="City"
+                        value={address.city}
+                        onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
+                        Pincode *
+                      </label>
+                      <DarkInput
+                        type="text"
+                        placeholder="6-digit pincode"
+                        value={address.pincode}
+                        onChange={e => setAddress(a => ({ ...a, pincode: e.target.value.replace(/\D/g,'').slice(0,6) }))}
+                        maxLength={6}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
+                      State
+                    </label>
+                    <DarkInput
+                      type="text"
+                      placeholder="State"
+                      value={address.state}
+                      onChange={e => setAddress(a => ({ ...a, state: e.target.value }))}
+                    />
+                  </div>
+
+                  <div style={{ display:'flex', gap:10 }}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(from, { replace: true })}
+                      style={{
+                        flex:1, padding:'13px', borderRadius:12, border:`1.5px solid ${C.border}`,
+                        background:'transparent', color:C.textMuted, fontSize:14, cursor:'pointer',
+                      }}
+                    >
+                      Skip for now
+                    </button>
+                    <div style={{ flex:2 }}>
+                      <OrangeButton type="submit" disabled={loading}>
+                        {loading ? 'Saving…' : 'Save & Continue →'}
+                      </OrangeButton>
+                    </div>
+                  </div>
+                </form>
               </>
             )}
           </div>
