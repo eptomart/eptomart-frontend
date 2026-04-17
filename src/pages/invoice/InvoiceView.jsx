@@ -41,21 +41,8 @@ export default function InvoiceView() {
     // Otherwise call the download endpoint to regenerate
     setDownloading(true);
     try {
-      const token = localStorage.getItem('eptomart_token');
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/invoices/${id}/download`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        if (err.codPending) {
-          toast('Invoice available after delivery.', { icon: '📦' });
-          return;
-        }
-        throw new Error(err.message || 'Download failed');
-      }
-
-      const blob = await res.blob();
+      const res = await api.get(`/invoices/${id}/download`, { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'application/pdf' });
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
       a.href     = url;
@@ -66,7 +53,17 @@ export default function InvoiceView() {
       URL.revokeObjectURL(url);
       toast.success('Invoice downloaded!');
     } catch (err) {
-      toast.error(err.message || 'Failed to download invoice');
+      // Check if backend returned codPending JSON inside blob error
+      const data = err?.response?.data;
+      if (data instanceof Blob) {
+        const text = await data.text().catch(() => '{}');
+        const json = JSON.parse(text);
+        if (json.codPending) {
+          toast('Invoice available after delivery.', { icon: '📦' });
+          return;
+        }
+      }
+      toast.error(err?.response?.data?.message || err.message || 'Failed to download invoice');
     } finally {
       setDownloading(false);
     }
