@@ -3,7 +3,7 @@
 // ============================================
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiSearch, FiShoppingCart, FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiSettings, FiHeart } from 'react-icons/fi';
+import { FiSearch, FiShoppingCart, FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiSettings, FiHeart, FiGrid } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
@@ -11,7 +11,7 @@ import api from '../../utils/api';
 import EptomartLogo from './EptomartLogo';
 
 export default function Navbar() {
-  const { user, isLoggedIn, isAdmin, logout } = useAuth();
+  const { user, isLoggedIn, isAdmin, isSeller, isSuperAdmin, logout } = useAuth();
   const { cartCount, setIsCartOpen } = useCart();
   const { wishlistCount } = useWishlist();
   const [searchQuery, setSearchQuery] = useState('');
@@ -168,6 +168,11 @@ export default function Navbar() {
                     <Link to="/wishlist" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}>
                       <FiHeart size={16} /> My Wishlist
                     </Link>
+                    {(isSeller || isSuperAdmin) && (
+                      <Link to="/seller/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm font-medium" style={{color:'#f4941c'}} onClick={() => setShowUserMenu(false)}>
+                        <FiGrid size={16} /> Seller Portal
+                      </Link>
+                    )}
                     {isAdmin && (
                       <Link to="/admin" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm font-medium" style={{color:'#f4941c'}} onClick={() => setShowUserMenu(false)}>
                         <FiSettings size={16} /> Admin Panel
