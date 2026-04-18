@@ -96,7 +96,7 @@ export default function AdminProducts() {
     try {
       const formData = new FormData();
       // Admin products are auto-approved and visible immediately
-      const payload = { ...form, approvalStatus: 'approved', priceIncludesGst: form.priceIncludesGst };
+      const payload = { ...form, approvalStatus: 'approved', isActive: true, priceIncludesGst: form.priceIncludesGst };
       Object.entries(payload).forEach(([k, v]) => {
         if (v !== '' && v !== undefined && v !== null) {
           if (Array.isArray(v)) formData.append(k, JSON.stringify(v));
@@ -134,6 +134,19 @@ export default function AdminProducts() {
       fetchProducts();
     } catch (err) {
       toast.error('Failed to delete');
+    }
+  };
+
+  const handleActivate = async (id) => {
+    try {
+      const fd = new FormData();
+      fd.append('isActive', 'true');
+      fd.append('approvalStatus', 'approved');
+      await api.put(`/products/${id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      toast.success('Product activated!');
+      fetchProducts();
+    } catch (err) {
+      toast.error('Failed to activate product');
     }
   };
 
@@ -228,6 +241,15 @@ export default function AdminProducts() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-2">
+                          {!product.isActive && (
+                            <button
+                              onClick={() => handleActivate(product._id)}
+                              title="Activate product"
+                              className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200"
+                            >
+                              Activate
+                            </button>
+                          )}
                           <button onClick={() => openEdit(product)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500">
                             <FiEdit2 size={15} />
                           </button>
