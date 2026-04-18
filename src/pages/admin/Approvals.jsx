@@ -98,7 +98,7 @@ export default function AdminApprovals() {
                         </p>
                       )}
                     </div>
-                    <a href={`/product/${p.slug}`} target="_blank" rel="noreferrer"
+                    <a href={`/product/${p._id}?byId=true`} target="_blank" rel="noreferrer"
                       className="flex items-center gap-1 text-xs text-primary-500 hover:underline">
                       <FiEye size={12} /> Preview
                     </a>

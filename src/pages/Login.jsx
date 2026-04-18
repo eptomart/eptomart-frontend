@@ -62,7 +62,7 @@ function DarkInput({ style = {}, ...props }) {
 }
 
 // ── Primary button ───────────────────────────────────────────────────────────
-function OrangeButton({ disabled, children, ...props }) {
+function OrangeButton({ disabled, loading, children, ...props }) {
   return (
     <button
       {...props}
@@ -82,8 +82,23 @@ function OrangeButton({ disabled, children, ...props }) {
         letterSpacing: 0.3,
         transition: 'all 0.2s',
         boxShadow: disabled ? 'none' : `0 4px 16px ${C.orangeGlow}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
       }}
     >
+      {loading && (
+        <span style={{
+          width: 14,
+          height: 14,
+          borderRadius: '50%',
+          border: '2px solid rgba(255,255,255,0.35)',
+          borderTopColor: '#fff',
+          flexShrink: 0,
+          animation: 'btn-spin 0.65s linear infinite',
+        }} />
+      )}
       {children}
     </button>
   );
@@ -209,6 +224,7 @@ export default function Login() {
   return (
     <>
       <Helmet><title>Login — Eptomart</title></Helmet>
+      <style>{`@keyframes btn-spin { to { transform: rotate(360deg); } }`}</style>
       <div id="recaptcha-container" />
 
       {/* ── Full-page background ── */}
@@ -324,7 +340,7 @@ export default function Login() {
                     )}
                   </div>
 
-                  <OrangeButton type="submit" disabled={loading || !detected}>
+                  <OrangeButton type="submit" disabled={loading || !detected} loading={loading}>
                     {loading ? 'Sending OTP…' : 'Send OTP →'}
                   </OrangeButton>
                 </form>
@@ -375,7 +391,7 @@ export default function Login() {
                     />
                   </div>
 
-                  <OrangeButton type="submit" disabled={loading || otp.length !== 6}>
+                  <OrangeButton type="submit" disabled={loading || otp.length !== 6} loading={loading}>
                     {loading ? 'Verifying…' : 'Verify & Login'}
                   </OrangeButton>
                 </form>
@@ -483,7 +499,7 @@ export default function Login() {
                       Skip for now
                     </button>
                     <div style={{ flex:2 }}>
-                      <OrangeButton type="submit" disabled={loading}>
+                      <OrangeButton type="submit" disabled={loading} loading={loading}>
                         {loading ? 'Saving…' : 'Save & Continue →'}
                       </OrangeButton>
                     </div>

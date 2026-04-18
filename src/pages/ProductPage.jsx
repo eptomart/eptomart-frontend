@@ -2,7 +2,7 @@
 // PRODUCT DETAIL PAGE — multi-seller, GST, delivery, insights
 // ============================================
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   FiShoppingCart, FiHeart, FiStar, FiTruck, FiShield,
@@ -25,6 +25,8 @@ import api from '../utils/api';
 export default function ProductPage() {
   const { slug }  = useParams();
   const navigate  = useNavigate();
+  const location  = useLocation();
+  const byId      = new URLSearchParams(location.search).get('byId') === 'true';
   const { addToCart, isInCart }          = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addToCompare }                 = useCompare();
@@ -37,12 +39,13 @@ export default function ProductPage() {
   const [selectedImage,    setSelectedImage]     = useState(0);
   const [quantity,         setQuantity]          = useState(1);
   const [selectedSeller,   setSelectedSeller]    = useState(null);
+  const [selectedVariant,  setSelectedVariant]   = useState(null);
 
   useEffect(() => {
     const fetch = async () => {
       setLoading(true);
       try {
-        const { data } = await api.get(`/products/${slug}`);
+        const { data } = await api.get(`/products/${slug}${byId ? '?byId=true' : ''}`);
         const p = data.product;
         setProduct(p);
         setOtherSellers(data.otherSellers || []);
@@ -63,8 +66,8 @@ export default function ProductPage() {
   if (!product) return <><Navbar /><div className="text-center py-20 text-gray-400">Product not found</div></>;
 
   const activeSeller   = selectedSeller || null;
-  const activePrice    = activeSeller?.product?.price || product.discountPrice || product.price;
-  const activeStock    = activeSeller?.product?.stock ?? product.stock;
+  const activePrice    = selectedVariant?.price || activeSeller?.product?.price || product.discountPrice || product.price;
+  const activeStock    = selectedVariant?.stock ?? activeSeller?.product?.stock ?? product.stock;
   const activeGstRate  = activeSeller?.product?.gstRate || product.gstRate || 18;
   const priceExGst     = extractBasePrice(activePrice, activeGstRate);
   const gstAmount      = priceExGst * activeGstRate / 100;
@@ -73,8 +76,18 @@ export default function ProductPage() {
   const inWishlist     = isInWishlist(product._id);
   const activeSellerId = activeSeller?.seller?._id || product.seller?._id;
 
+  const variantLabel = selectedVariant
+    ? [selectedVariant.label, selectedVariant.value, selectedVariant.unit].filter(Boolean).join(' ')
+    : null;
+
   const handleAddToCart = () => {
-    addToCart({ ...product, discountPrice: activePrice, selectedSeller: activeSeller?.seller, gstRate: activeGstRate }, quantity);
+    addToCart({
+      ...product,
+      discountPrice: activePrice,
+      selectedSeller: activeSeller?.seller,
+      gstRate: activeGstRate,
+      ...(variantLabel ? { variantLabel } : {}),
+    }, quantity);
   };
 
   const handleBuyNow = () => {
@@ -88,6 +101,7 @@ export default function ProductPage() {
           price: activePrice,
           quantity,
           gstRate: activeGstRate,
+          ...(variantLabel ? { variantLabel } : {}),
         }
       }
     });
@@ -215,6 +229,33 @@ export default function ProductPage() {
 
             {product.shortDescription && (
               <p className="text-gray-600 mb-4 text-sm leading-relaxed">{product.shortDescription}</p>
+            )}
+
+            {/* Variant Selector */}
+            {product.variants?.length > 0 && (
+              <div className="mb-4">
+                <p className="text-sm font-semibold text-gray-700 mb-2">Options</p>
+                <div className="flex flex-wrap gap-2">
+                  {product.variants.map((v, i) => {
+                    const isSelected = selectedVariant?._id === v._id || (selectedVariant && !v._id && selectedVariant.label === v.label && selectedVariant.value === v.value);
+                    const outOfStock = v.stock === 0;
+                    const displayLabel = [v.label, v.value ? `${v.value}${v.unit || ''}` : null].filter(Boolean).join(' – ');
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedVariant(isSelected ? null : v)}
+                        disabled={outOfStock}
+                        className={`px-3 py-1.5 text-sm rounded-xl border-2 font-medium transition-all
+                          ${isSelected ? 'border-primary-500 bg-orange-50 text-primary-700' : 'border-gray-200 hover:border-gray-300 text-gray-700'}
+                          ${outOfStock ? 'opacity-40 cursor-not-allowed line-through' : 'cursor-pointer'}`}
+                      >
+                        {displayLabel}
+                        {v.price ? <span className="ml-1 text-xs font-normal opacity-75">· {formatINR(v.price)}</span> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             )}
 
             {/* Quantity + Actions */}

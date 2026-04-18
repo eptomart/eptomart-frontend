@@ -44,7 +44,7 @@ api.interceptors.response.use(
       }
     } else if (error.response?.status === 429) {
       toast.error('Too many requests. Please wait a moment.');
-    } else if (error.response?.status >= 500) {
+    } else if (error.response?.status >= 500 && error.config?.responseType !== 'blob') {
       toast.error('Server error. Please try again later.');
     }
 
