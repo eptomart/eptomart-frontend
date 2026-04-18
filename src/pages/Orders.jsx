@@ -23,10 +23,22 @@ const STATUS_COLORS = {
   returned:   'bg-gray-100 text-gray-700',
 };
 
+// Derive a human-readable status label for the customer
+const getStatusLabel = (order) => {
+  const { orderStatus, paymentStatus, paymentMethod } = order;
+  if (orderStatus === 'placed') {
+    if (paymentMethod === 'cod') return { label: 'Order Placed — Pay on Delivery', color: 'bg-blue-100 text-blue-700' };
+    if (paymentStatus === 'paid') return { label: 'Payment Received — Awaiting Seller', color: 'bg-orange-100 text-orange-700' };
+    return { label: 'Order Placed', color: 'bg-blue-100 text-blue-700' };
+  }
+  return { label: orderStatus, color: STATUS_COLORS[orderStatus] || 'bg-gray-100 text-gray-700' };
+};
+
 export default function Orders() {
-  const [orders,   setOrders]   = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [expanded, setExpanded] = useState(null);
+  const [orders,      setOrders]      = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [expanded,    setExpanded]    = useState(null);
+  const [downloading, setDownloading] = useState({});
 
   useEffect(() => {
     api.get('/orders')
@@ -42,6 +54,45 @@ export default function Orders() {
       setOrders(prev => prev.map(o => o._id === orderId ? { ...o, orderStatus: 'cancelled' } : o));
       toast.success('Order cancelled');
     } catch { toast.error('Cannot cancel this order'); }
+  };
+
+  const downloadInvoice = async (order) => {
+    const inv = order.invoice;
+    if (!inv) return;
+    // COD: only after delivery
+    if (order.paymentMethod === 'cod' && order.orderStatus !== 'delivered') {
+      toast('Invoice available after your order is delivered.', { icon: '📦' });
+      return;
+    }
+    setDownloading(d => ({ ...d, [inv._id]: true }));
+    try {
+      const res = await api.get(`/invoices/${inv._id}/download`, { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `invoice-${inv.invoiceNumber || order.orderId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Invoice downloaded!');
+    } catch (err) {
+      // Parse blob JSON error from backend
+      const data = err?.response?.data;
+      if (data instanceof Blob) {
+        try {
+          const text = await data.text();
+          const json = JSON.parse(text);
+          if (json.codPending) { toast('Invoice available after delivery.', { icon: '📦' }); return; }
+          toast.error(json.message || 'Download failed');
+        } catch { toast.error('Download failed'); }
+        return;
+      }
+      toast.error('Failed to download invoice');
+    } finally {
+      setDownloading(d => ({ ...d, [inv._id]: false }));
+    }
   };
 
   return (
@@ -72,12 +123,12 @@ export default function Orders() {
                       <p className="font-mono font-bold text-gray-800">#{order.orderId}</p>
                       <p className="text-xs text-gray-400">{formatDate(order.createdAt)}</p>
                     </div>
-                    <span className={`badge ${STATUS_COLORS[order.orderStatus] || 'bg-gray-100 text-gray-700'} capitalize`}>
-                      {order.orderStatus}
-                    </span>
-                    <span className={`badge ${order.paymentStatus === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'} capitalize`}>
-                      {order.paymentStatus}
-                    </span>
+                    {(() => { const s = getStatusLabel(order); return (
+                      <span className={`badge ${s.color} capitalize`}>{s.label}</span>
+                    ); })()}
+                    {order.paymentStatus === 'paid' && order.orderStatus !== 'placed' && (
+                      <span className="badge bg-green-100 text-green-700">Paid</span>
+                    )}
                     {order.invoice?.invoiceNumber && (
                       <span className="text-xs text-gray-400 font-mono hidden sm:block">
                         INV: {order.invoice.invoiceNumber}
@@ -159,12 +210,15 @@ export default function Orders() {
                             className="flex items-center gap-1.5 text-xs bg-white border border-green-300 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-50 transition-all">
                             <FiFileText size={12} /> View Invoice
                           </Link>
-                          {order.invoice.pdfUrl && (
-                            <a href={order.invoice.pdfUrl} target="_blank" rel="noreferrer"
-                              className="flex items-center gap-1.5 text-xs bg-green-500 text-white px-3 py-1.5 rounded-lg hover:bg-green-600 transition-all">
-                              <FiDownload size={12} /> Download PDF
-                            </a>
-                          )}
+                          <button
+                            onClick={() => downloadInvoice(order)}
+                            disabled={!!downloading[order.invoice._id]}
+                            className="flex items-center gap-1.5 text-xs bg-green-500 text-white px-3 py-1.5 rounded-lg hover:bg-green-600 transition-all disabled:opacity-60">
+                            {downloading[order.invoice._id]
+                              ? <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin"/>
+                              : <FiDownload size={12} />}
+                            {downloading[order.invoice._id] ? 'Downloading…' : 'Download PDF'}
+                          </button>
                         </div>
                       </div>
                     )}
