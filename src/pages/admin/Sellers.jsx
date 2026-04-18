@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiSearch, FiUser, FiX } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiSearch, FiUser, FiX, FiRefreshCw, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
@@ -16,14 +16,17 @@ const STATUS_COLOR = {
 };
 
 export default function AdminSellers() {
-  const [sellers,  setSellers]  = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [search,   setSearch]   = useState('');
-  const [modal,    setModal]    = useState(false);  // 'create' | 'edit' | false
-  const [editing,  setEditing]  = useState(null);   // seller being edited
-  const [form,     setForm]     = useState(BLANK_FORM);
-  const [saving,   setSaving]   = useState(false);
-  const [deleting, setDeleting] = useState(null);   // seller._id being deleted
+  const [sellers,       setSellers]       = useState([]);
+  const [deletedSellers,setDeletedSellers] = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [search,        setSearch]        = useState('');
+  const [modal,         setModal]         = useState(false);
+  const [editing,       setEditing]       = useState(null);
+  const [form,          setForm]          = useState(BLANK_FORM);
+  const [saving,        setSaving]        = useState(false);
+  const [deleting,      setDeleting]      = useState(null);
+  const [restoring,     setRestoring]     = useState(null);
+  const [showDeleted,   setShowDeleted]   = useState(false);
 
   const load = async (q = '') => {
     setLoading(true);
@@ -33,7 +36,14 @@ export default function AdminSellers() {
     } catch (_) {} finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, []);
+  const loadDeleted = async () => {
+    try {
+      const { data } = await api.get('/sellers?includeDeleted=true');
+      setDeletedSellers(data.sellers || []);
+    } catch (_) {}
+  };
+
+  useEffect(() => { load(); loadDeleted(); }, []);
 
   const handleSearch = (e) => {
     setSearch(e.target.value);
@@ -103,15 +113,28 @@ export default function AdminSellers() {
   };
 
   const confirmDelete = async (seller) => {
-    if (!window.confirm(`Permanently delete "${seller.businessName}"? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete "${seller.businessName}"? They will be moved to the Deleted Sellers list.`)) return;
     setDeleting(seller._id);
     try {
       await api.delete(`/sellers/${seller._id}`);
       setSellers(s => s.filter(x => x._id !== seller._id));
+      await loadDeleted();
       toast.success('Seller deleted');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete seller');
     } finally { setDeleting(null); }
+  };
+
+  const restoreSellerFn = async (seller) => {
+    setRestoring(seller._id);
+    try {
+      await api.patch(`/sellers/${seller._id}/restore`);
+      setDeletedSellers(s => s.filter(x => x._id !== seller._id));
+      await load();
+      toast.success('Seller restored — set status to Active to re-enable');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to restore');
+    } finally { setRestoring(null); }
   };
 
   const set    = (key, val) => setForm(f => ({ ...f, [key]: val }));
@@ -209,6 +232,68 @@ export default function AdminSellers() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Deleted Sellers Section */}
+      {deletedSellers.length > 0 && (
+        <div className="mt-6">
+          <button
+            onClick={() => setShowDeleted(v => !v)}
+            className="flex items-center gap-2 text-sm font-semibold text-red-600 hover:text-red-800 mb-2"
+          >
+            {showDeleted ? <FiChevronUp size={15}/> : <FiChevronDown size={15}/>}
+            🗑 Deleted Sellers ({deletedSellers.length})
+          </button>
+
+          {showDeleted && (
+            <div className="card overflow-hidden border border-red-100">
+              <table className="w-full text-sm">
+                <thead className="bg-red-50 text-red-700">
+                  <tr>
+                    <th className="text-left p-3">Seller</th>
+                    <th className="text-left p-3 hidden sm:table-cell">Contact</th>
+                    <th className="text-left p-3 hidden md:table-cell">Deleted On</th>
+                    <th className="text-right p-3">Restore</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-red-50">
+                  {deletedSellers.map(s => (
+                    <tr key={s._id} className="hover:bg-red-50/40 opacity-70">
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <FiUser size={14} className="text-red-400" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-700 line-through">{s.businessName}</p>
+                            <p className="text-xs text-gray-400">{s.user?.email || s.contact?.email || '—'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3 hidden sm:table-cell text-gray-500">{s.contact?.phone || '—'}</td>
+                      <td className="p-3 hidden md:table-cell text-gray-400 text-xs">
+                        {s.deletedAt ? new Date(s.deletedAt).toLocaleDateString('en-IN') : '—'}
+                      </td>
+                      <td className="p-3 text-right">
+                        <button
+                          onClick={() => restoreSellerFn(s)}
+                          disabled={restoring === s._id}
+                          title="Restore Seller"
+                          className="flex items-center gap-1.5 text-xs bg-green-50 border border-green-200 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-all disabled:opacity-50 ml-auto"
+                        >
+                          {restoring === s._id
+                            ? <span className="w-3 h-3 border-2 border-green-300 border-t-green-600 rounded-full animate-spin"/>
+                            : <FiRefreshCw size={12}/>}
+                          Restore
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

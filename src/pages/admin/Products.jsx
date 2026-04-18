@@ -38,7 +38,7 @@ export default function AdminProducts() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/products?page=${page}&limit=15&${search ? `search=${search}` : ''}`);
+      const { data } = await api.get(`/products/admin/all?page=${page}&limit=15&${search ? `search=${search}` : ''}`);
       setProducts(data.products || []);
       setTotalPages(data.totalPages || 1);
     } catch (err) { console.error(err); }
@@ -174,6 +174,7 @@ export default function AdminProducts() {
                     <th className="px-4 py-3 text-left">Category</th>
                     <th className="px-4 py-3 text-right">Price</th>
                     <th className="px-4 py-3 text-right">Stock</th>
+                    <th className="px-4 py-3 text-center">Status</th>
                     <th className="px-4 py-3 text-center">Featured</th>
                     <th className="px-4 py-3 text-center">Actions</th>
                   </tr>
@@ -214,6 +215,13 @@ export default function AdminProducts() {
                         <span className={`badge ${product.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                           {product.stock}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {(() => {
+                          if (!product.isActive) return <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Inactive</span>;
+                          const c = { approved:'bg-green-100 text-green-700', pending:'bg-yellow-100 text-yellow-700', rejected:'bg-red-100 text-red-700', draft:'bg-gray-100 text-gray-500' };
+                          return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c[product.approvalStatus] || 'bg-gray-100 text-gray-500'}`}>{product.approvalStatus}</span>;
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {product.isFeatured ? '⭐' : '—'}
