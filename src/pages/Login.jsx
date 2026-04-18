@@ -183,13 +183,16 @@ export default function Login() {
           localStorage.setItem('eptomart_token', data.token);
           await loadUser();
           toast.success(data.message || 'Login successful!');
-          if (data.isNewUser) { setStep(STEPS.PROFILE); return; }
+          // Only ask for profile details if brand-new plain customer with no name yet
+          const needsProfile = data.isNewUser && data.user?.role === 'user' && !data.user?.name;
+          if (needsProfile) { setStep(STEPS.PROFILE); return; }
           navigate(from, { replace: true });
         }
       } else {
         const res = await verifyOtp(contact, otp, 'email');
         if (res.success) {
-          if (res.isNewUser) { setStep(STEPS.PROFILE); return; }
+          const needsProfile = res.isNewUser && res.user?.role === 'user' && !res.user?.name;
+          if (needsProfile) { setStep(STEPS.PROFILE); return; }
           navigate(from, { replace: true });
         }
       }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiEdit2, FiToggleLeft, FiToggleRight, FiSearch, FiUser } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiSearch, FiUser, FiX } from 'react-icons/fi';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
@@ -16,12 +16,14 @@ const STATUS_COLOR = {
 };
 
 export default function AdminSellers() {
-  const [sellers, setSellers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState('');
-  const [modal,   setModal]   = useState(false);
-  const [form,    setForm]    = useState(BLANK_FORM);
-  const [saving,  setSaving]  = useState(false);
+  const [sellers,  setSellers]  = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [search,   setSearch]   = useState('');
+  const [modal,    setModal]    = useState(false);  // 'create' | 'edit' | false
+  const [editing,  setEditing]  = useState(null);   // seller being edited
+  const [form,     setForm]     = useState(BLANK_FORM);
+  const [saving,   setSaving]   = useState(false);
+  const [deleting, setDeleting] = useState(null);   // seller._id being deleted
 
   const load = async (q = '') => {
     setLoading(true);
@@ -39,6 +41,28 @@ export default function AdminSellers() {
     return () => clearTimeout(t);
   };
 
+  const openCreate = () => { setEditing(null); setForm(BLANK_FORM); setModal('create'); };
+
+  const openEdit = (s) => {
+    setEditing(s);
+    setForm({
+      businessName: s.businessName || '',
+      email:        s.contact?.email || s.user?.email || '',
+      phone:        s.contact?.phone || s.user?.phone || '',
+      address: {
+        street:  s.address?.street  || '',
+        city:    s.address?.city    || '',
+        state:   s.address?.state   || '',
+        pincode: s.address?.pincode || '',
+      },
+      gstNumber: s.gstNumber || '',
+      notes:     s.notes     || '',
+    });
+    setModal('edit');
+  };
+
+  const closeModal = () => { setModal(false); setEditing(null); setForm(BLANK_FORM); };
+
   const setStatus = async (seller, status) => {
     try {
       await api.patch(`/sellers/${seller._id}/status`, { status });
@@ -48,28 +72,56 @@ export default function AdminSellers() {
   };
 
   const createSeller = async () => {
-    if (!form.businessName || !form.address.pincode || (!form.email && !form.phone)) {
+    if (!form.businessName || !form.address.pincode || (!form.email && !form.phone))
       return toast.error('Business name, pincode, and email or phone required');
-    }
     setSaving(true);
     try {
       await api.post('/sellers', form);
       toast.success('Seller created! Credentials sent.');
-      setModal(false); setForm(BLANK_FORM);
-      load();
+      closeModal(); load();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create seller');
     } finally { setSaving(false); }
   };
 
-  const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+  const saveSeller = async () => {
+    if (!form.businessName) return toast.error('Business name is required');
+    setSaving(true);
+    try {
+      await api.put(`/sellers/${editing._id}`, {
+        businessName: form.businessName,
+        contact:      { email: form.email, phone: form.phone },
+        address:      form.address,
+        gstNumber:    form.gstNumber,
+        notes:        form.notes,
+      });
+      toast.success('Seller updated');
+      closeModal(); load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update seller');
+    } finally { setSaving(false); }
+  };
+
+  const confirmDelete = async (seller) => {
+    if (!window.confirm(`Permanently delete "${seller.businessName}"? This cannot be undone.`)) return;
+    setDeleting(seller._id);
+    try {
+      await api.delete(`/sellers/${seller._id}`);
+      setSellers(s => s.filter(x => x._id !== seller._id));
+      toast.success('Seller deleted');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete seller');
+    } finally { setDeleting(null); }
+  };
+
+  const set    = (key, val) => setForm(f => ({ ...f, [key]: val }));
   const setAddr = (key, val) => setForm(f => ({ ...f, address: { ...f.address, [key]: val } }));
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h1 className="text-xl font-bold text-gray-800">Sellers Management</h1>
-        <button onClick={() => setModal(true)} className="btn-primary flex items-center gap-2 text-sm">
+        <button onClick={openCreate} className="btn-primary flex items-center gap-2 text-sm">
           <FiPlus size={15} /> Add Seller
         </button>
       </div>
@@ -82,7 +134,9 @@ export default function AdminSellers() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-48"><div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"/></div>
+        <div className="flex items-center justify-center h-48">
+          <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"/>
+        </div>
       ) : sellers.length === 0 ? (
         <div className="card p-12 text-center text-gray-400">No sellers found</div>
       ) : (
@@ -112,7 +166,7 @@ export default function AdminSellers() {
                     </div>
                   </td>
                   <td className="p-4 hidden sm:table-cell text-gray-600">
-                    <p>{s.contact?.phone || s.user?.phone || '—'}</p>
+                    {s.contact?.phone || s.user?.phone || '—'}
                   </td>
                   <td className="p-4 hidden md:table-cell text-gray-600">
                     {s.address?.city || '—'}
@@ -123,18 +177,32 @@ export default function AdminSellers() {
                     </span>
                   </td>
                   <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-1.5">
+                      {/* Edit */}
+                      <button onClick={() => openEdit(s)} title="Edit Seller"
+                        className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                        <FiEdit2 size={15} />
+                      </button>
+                      {/* Suspend / Activate */}
                       {s.status === 'active' ? (
                         <button onClick={() => setStatus(s, 'suspended')} title="Suspend"
-                          className="text-orange-400 hover:text-orange-600 p-1.5 rounded-lg hover:bg-orange-50">
+                          className="p-1.5 rounded-lg text-orange-400 hover:bg-orange-50 hover:text-orange-600 transition-colors">
                           <FiToggleRight size={18} />
                         </button>
                       ) : (
                         <button onClick={() => setStatus(s, 'active')} title="Activate"
-                          className="text-green-500 hover:text-green-600 p-1.5 rounded-lg hover:bg-green-50">
+                          className="p-1.5 rounded-lg text-green-500 hover:bg-green-50 hover:text-green-700 transition-colors">
                           <FiToggleLeft size={18} />
                         </button>
                       )}
+                      {/* Delete */}
+                      <button onClick={() => confirmDelete(s)} title="Delete Seller"
+                        disabled={deleting === s._id}
+                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40">
+                        {deleting === s._id
+                          ? <span className="w-3.5 h-3.5 border-2 border-red-400/40 border-t-red-400 rounded-full animate-spin block"/>
+                          : <FiTrash2 size={15} />}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -144,57 +212,88 @@ export default function AdminSellers() {
         </div>
       )}
 
-      {/* Create Seller Modal */}
+      {/* Create / Edit Modal */}
       {modal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h3 className="font-bold text-gray-800 text-lg mb-4">Create New Seller</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-800 text-lg">
+                {modal === 'edit' ? `Edit — ${editing?.businessName}` : 'Create New Seller'}
+              </h3>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 p-1">
+                <FiX size={20} />
+              </button>
+            </div>
+
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Business Name *</label>
-                <input value={form.businessName} onChange={e => set('businessName', e.target.value)} className="input-field" placeholder="ABC Electronics" />
+                <input value={form.businessName} onChange={e => set('businessName', e.target.value)}
+                  className="input-field" placeholder="ABC Electronics" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input type="email" value={form.email} onChange={e => set('email', e.target.value)} className="input-field" placeholder="seller@email.com" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email {modal === 'create' ? '' : ''}
+                  </label>
+                  <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
+                    className="input-field" placeholder="seller@email.com"
+                    disabled={modal === 'edit'} // contact changes handled separately
+                  />
+                  {modal === 'edit' && <p className="text-xs text-gray-400 mt-1">Contact email is read-only</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <input value={form.phone} onChange={e => set('phone', e.target.value)} className="input-field" placeholder="9876543210" />
+                  <input value={form.phone} onChange={e => set('phone', e.target.value)}
+                    className="input-field" placeholder="9876543210"
+                    disabled={modal === 'edit'}
+                  />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Street Address *</label>
-                <input value={form.address.street} onChange={e => setAddr('street', e.target.value)} className="input-field" placeholder="12 Main Street" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
+                <input value={form.address.street} onChange={e => setAddr('street', e.target.value)}
+                  className="input-field" placeholder="12 Main Street" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
-                  <input value={form.address.city} onChange={e => setAddr('city', e.target.value)} className="input-field" placeholder="Chennai" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                  <input value={form.address.city} onChange={e => setAddr('city', e.target.value)}
+                    className="input-field" placeholder="Chennai" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">State *</label>
-                  <input value={form.address.state} onChange={e => setAddr('state', e.target.value)} className="input-field" placeholder="Tamil Nadu" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                  <input value={form.address.state} onChange={e => setAddr('state', e.target.value)}
+                    className="input-field" placeholder="Tamil Nadu" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pincode *</label>
-                  <input value={form.address.pincode} onChange={e => setAddr('pincode', e.target.value)} className="input-field" placeholder="600001" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Pincode {modal === 'create' ? '*' : ''}</label>
+                  <input value={form.address.pincode} onChange={e => setAddr('pincode', e.target.value)}
+                    className="input-field" placeholder="600001" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">GST Number</label>
-                  <input value={form.gstNumber} onChange={e => set('gstNumber', e.target.value)} className="input-field" placeholder="Optional" />
+                  <input value={form.gstNumber} onChange={e => set('gstNumber', e.target.value)}
+                    className="input-field" placeholder="Optional" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Internal Notes</label>
-                <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={2} className="input-field resize-none" placeholder="Any internal notes..." />
+                <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
+                  rows={2} className="input-field resize-none" placeholder="Any internal notes..." />
               </div>
             </div>
+
             <div className="flex gap-3 mt-5">
-              <button onClick={() => { setModal(false); setForm(BLANK_FORM); }} className="btn-outline flex-1">Cancel</button>
-              <button onClick={createSeller} disabled={saving} className="btn-primary flex-1">
-                {saving ? 'Creating...' : '✅ Create & Send Credentials'}
+              <button onClick={closeModal} className="btn-outline flex-1">Cancel</button>
+              <button
+                onClick={modal === 'edit' ? saveSeller : createSeller}
+                disabled={saving}
+                className="btn-primary flex-1"
+              >
+                {saving
+                  ? 'Saving...'
+                  : modal === 'edit' ? '💾 Save Changes' : '✅ Create & Send Credentials'}
               </button>
             </div>
           </div>
