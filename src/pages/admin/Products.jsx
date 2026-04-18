@@ -64,21 +64,27 @@ export default function AdminProducts() {
   const openEdit = (product) => {
     setEditProduct(product);
     setForm({
-      name: product.name || '',
-      description: product.description || '',
-      shortDescription: product.shortDescription || '',
-      price: product.price || '',
-      discountPrice: product.discountPrice || '',
-      stock: product.stock || '',
-      category: product.category?._id || '',
-      brand: product.brand || '',
-      tags: product.tags?.join(', ') || '',
-      isFeatured: product.isFeatured || false,
-      codAvailable: product.codAvailable !== false,
-      gstRate: product.gstRate || 18,
-      priceIncludesGst: product.priceIncludesGst !== false,
-      hsnCode: product.hsnCode || '',
-      costPrice: product.costPrice || '',
+      name:              product.name              || '',
+      description:       product.description       || '',
+      shortDescription:  product.shortDescription  || '',
+      price:             product.price             || '',
+      discountPrice:     product.discountPrice     || '',
+      stock:             product.stock             || '',
+      category:          product.category?._id     || '',
+      brand:             product.brand             || '',
+      tags:              product.tags?.join(', ')  || '',
+      isFeatured:        product.isFeatured        || false,
+      codAvailable:      product.codAvailable      !== false,
+      gstRate:           product.gstRate           || 18,
+      priceIncludesGst:  product.priceIncludesGst  !== false,
+      hsnCode:           product.hsnCode           || '',
+      costPrice:         product.costPrice         || '',
+      instagramLink:     product.instagramLink     || '',
+      variants:          product.variants          || [],
+      platformMargin:    product.platformMargin    || '',
+      sellerMargin:      product.sellerMargin      || '',
+      // seller may be populated object or raw ObjectId string
+      seller:            product.seller?._id       || product.seller || '',
     });
     setImageFiles([]);
     setShowModal(true);
@@ -164,6 +170,7 @@ export default function AdminProducts() {
                 <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
                   <tr>
                     <th className="px-4 py-3 text-left">Product</th>
+                    <th className="px-4 py-3 text-left">Seller</th>
                     <th className="px-4 py-3 text-left">Category</th>
                     <th className="px-4 py-3 text-right">Price</th>
                     <th className="px-4 py-3 text-right">Stock</th>
@@ -188,6 +195,11 @@ export default function AdminProducts() {
                             {product.brand && <p className="text-xs text-gray-400">{product.brand}</p>}
                           </div>
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {product.seller?.businessName
+                          ? <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">{product.seller.businessName}</span>
+                          : <span className="text-xs text-gray-400">Platform</span>}
                       </td>
                       <td className="px-4 py-3 text-gray-600">{product.category?.name || '—'}</td>
                       <td className="px-4 py-3 text-right">
