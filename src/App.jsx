@@ -44,6 +44,7 @@ const SellerDashboard = lazy(() => import('./pages/seller/Dashboard'));
 const SellerProducts  = lazy(() => import('./pages/seller/Products'));
 const SellerProductForm = lazy(() => import('./pages/seller/ProductForm'));
 const SellerOrders  = lazy(() => import('./pages/seller/Orders'));
+const SellerProfile = lazy(() => import('./pages/seller/Profile'));
 
 // ── Route guards ─────────────────────────────
 const ProtectedRoute = ({ children }) => {
@@ -62,7 +63,7 @@ const SellerRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return <Loader />;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'seller' && user.role !== 'admin') return <Navigate to="/" replace />;
+  if (!['seller', 'admin', 'superAdmin'].includes(user.role)) return <Navigate to="/" replace />;
   return children;
 };
 
@@ -96,6 +97,7 @@ function AppRoutes() {
             <Route path="products/add"     element={<SellerProductForm />} />
             <Route path="products/:id"     element={<SellerProductForm />} />
             <Route path="orders"           element={<SellerOrders />} />
+            <Route path="profile"          element={<SellerProfile />} />
           </Route>
 
           {/* Admin panel */}
