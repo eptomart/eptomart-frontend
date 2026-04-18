@@ -52,6 +52,7 @@ export default function ProductForm() {
           approvalStatus:  p.approvalStatus || 'draft',
           location:        p.location || { city: '', state: '', pincode: '' },
           hsnCode:         p.hsnCode || '',
+          variants:        p.variants || [],    // CRITICAL: restore variants from DB so edit doesn't wipe them
         });
       }).catch(() => toast.error('Failed to load product')).finally(() => setLoading(false));
     }

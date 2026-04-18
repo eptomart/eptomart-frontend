@@ -65,6 +65,7 @@ export default function ProductPage() {
   if (loading) return <><Navbar /><Loader fullPage={false} /></>;
   if (!product) return <><Navbar /><div className="text-center py-20 text-gray-400">Product not found</div></>;
 
+  const isUnavailable  = product.isActive === false;
   const activeSeller   = selectedSeller || null;
   const activePrice    = selectedVariant?.price || activeSeller?.product?.price || product.discountPrice || product.price;
   const activeStock    = selectedVariant?.stock ?? activeSeller?.product?.stock ?? product.stock;
@@ -258,6 +259,17 @@ export default function ProductPage() {
               </div>
             )}
 
+            {/* Seller unavailable banner */}
+            {isUnavailable && (
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4 text-sm text-red-700 flex items-start gap-2">
+                <span className="text-base">⚠️</span>
+                <div>
+                  <strong>Seller not available</strong>
+                  <p className="text-red-600 mt-0.5 text-xs">This product's seller has been deactivated. You cannot add it to cart at this time.</p>
+                </div>
+              </div>
+            )}
+
             {/* Quantity + Actions */}
             <div className="flex items-center gap-3 mb-3 flex-wrap">
               <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
@@ -271,10 +283,10 @@ export default function ProductPage() {
                 </button>
               </div>
 
-              <button onClick={handleAddToCart} disabled={activeStock === 0}
-                className="btn-primary flex-1 flex items-center justify-center gap-2 min-w-[140px]">
+              <button onClick={handleAddToCart} disabled={activeStock === 0 || isUnavailable}
+                className={`btn-primary flex-1 flex items-center justify-center gap-2 min-w-[140px] ${isUnavailable ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <FiShoppingCart size={16} />
-                {inCart ? 'Add More' : 'Add to Cart'}
+                {isUnavailable ? 'Not Available' : inCart ? 'Add More' : 'Add to Cart'}
               </button>
 
               <button onClick={() => toggleWishlist(product)}
@@ -290,8 +302,8 @@ export default function ProductPage() {
               </button>
             </div>
 
-            <button onClick={handleBuyNow} disabled={activeStock === 0}
-              className="btn-primary w-full mb-4">
+            <button onClick={handleBuyNow} disabled={activeStock === 0 || isUnavailable}
+              className={`btn-primary w-full mb-4 ${isUnavailable ? 'opacity-50 cursor-not-allowed' : ''}`}>
               ⚡ Buy Now
             </button>
 

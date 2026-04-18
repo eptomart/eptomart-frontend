@@ -194,10 +194,14 @@ export default function Login() {
         }
       }
     } catch (err) {
+      // Check for account-blocked response from our backend
+      const serverMsg = err.response?.data?.message || err.message;
       const msg = err.code === 'auth/invalid-verification-code' ? 'Wrong OTP. Try again.'
                 : err.code === 'auth/code-expired' ? 'OTP expired. Request new one.'
-                : err.response?.data?.message || 'Invalid OTP';
-      toast.error(msg);
+                : serverMsg || 'Invalid OTP';
+      // Show longer duration for blocked-account message
+      const isBlocked = err.response?.data?.blocked || serverMsg?.includes('deactivated');
+      toast.error(msg, { duration: isBlocked ? 8000 : 4000 });
     } finally { setLoading(false); }
   };
 

@@ -41,8 +41,10 @@ export default function ProductCard({ product }) {
     addToCompare(product);
   };
 
+  const isUnavailable = product.isActive === false;
+
   return (
-    <div className="card group overflow-hidden relative">
+    <div className={`card group overflow-hidden relative ${isUnavailable ? 'opacity-60 grayscale' : ''}`}>
       <Link to={`/product/${slug}`} className="block relative overflow-hidden">
         <div className="aspect-square bg-gray-50 overflow-hidden">
           <img src={mainImage} alt={name}
@@ -53,7 +55,8 @@ export default function ProductCard({ product }) {
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {discount > 0 && <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-green-500 text-white">{discount}% OFF</span>}
-          {stock === 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500 text-white">Out of Stock</span>}
+          {isUnavailable && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-700 text-white">Unavailable</span>}
+          {!isUnavailable && stock === 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500 text-white">Out of Stock</span>}
           {stock > 0 && stock <= 5 && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500 text-white">Only {stock} left!</span>}
           {stock > 5 && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{stock} in stock</span>}
           {codAvailable === false && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500 text-white">Online only</span>}
@@ -126,6 +129,7 @@ export default function ProductCard({ product }) {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            if (isUnavailable) return;
             // Products with variants must be configured on the product page
             if (product.variants?.length > 0) {
               navigate(`/product/${slug}`);
@@ -136,14 +140,14 @@ export default function ProductCard({ product }) {
             addToCart(product);
             setTimeout(() => setAdding(false), 800);
           }}
-          disabled={stock === 0}
+          disabled={stock === 0 || isUnavailable}
           className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-sm font-semibold transition-all
             ${adding ? 'scale-95 opacity-80' : 'active:scale-95'}
-            ${inCart ? 'bg-green-500 text-white' : stock === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : adding ? 'bg-primary-600 text-white' : 'bg-primary-500 hover:bg-primary-600 text-white'}`}
+            ${isUnavailable ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : inCart ? 'bg-green-500 text-white' : stock === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : adding ? 'bg-primary-600 text-white' : 'bg-primary-500 hover:bg-primary-600 text-white'}`}
         >
           {adding
             ? <><span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Adding…</>
-            : <><FiShoppingCart size={15} />{stock === 0 ? 'Out of Stock' : inCart ? 'In Cart ✓' : product.variants?.length > 0 ? 'Select Options' : 'Add to Cart'}</>
+            : <><FiShoppingCart size={15} />{isUnavailable ? 'Not Available' : stock === 0 ? 'Out of Stock' : inCart ? 'In Cart ✓' : product.variants?.length > 0 ? 'Select Options' : 'Add to Cart'}</>
           }
         </button>
       </div>
