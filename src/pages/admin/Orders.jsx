@@ -132,6 +132,22 @@ export default function AdminOrders() {
                       </div>
                     </div>
 
+                    {/* Confirm Order with Seller (placed → confirmed) */}
+                    {order.orderStatus === 'placed' && (
+                      <div className="bg-blue-50 rounded-xl p-4 flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold text-blue-800">Order Awaiting Confirmation</p>
+                          <p className="text-xs text-blue-600 mt-0.5">Verify with seller that items are available, then confirm.</p>
+                        </div>
+                        <button
+                          onClick={() => updateStatus(order._id, { status: 'confirmed' })}
+                          className="btn-primary text-sm whitespace-nowrap"
+                        >
+                          ✓ Confirm Order
+                        </button>
+                      </div>
+                    )}
+
                     {/* UPI Verification */}
                     {order.paymentMethod === 'upi' && order.paymentDetails?.upiRef && order.paymentStatus === 'pending' && (
                       <div className="bg-orange-50 rounded-xl p-4">

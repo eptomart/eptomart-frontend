@@ -13,22 +13,22 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import EptomartLogo from '../../components/common/EptomartLogo';
 
-// superAdmin: full access | admin: orders only
+// module key maps to permission name and path
 const ALL_NAV = [
-  { path: '/admin',              label: 'Dashboard',     icon: FiGrid,        end: true, superAdminOnly: true },
-  { path: '/admin/products',     label: 'Products',      icon: FiPackage,               superAdminOnly: true },
-  { path: '/admin/categories',   label: 'Categories',    icon: FiTag,                   superAdminOnly: true },
-  { path: '/admin/orders',       label: 'Orders',        icon: FiShoppingBag },         // all admins
-  { path: '/admin/users',        label: 'Users',         icon: FiUsers,                 superAdminOnly: true },
-  { path: '/admin/analytics',    label: 'Analytics',     icon: FiBarChart2,             superAdminOnly: true },
-  { path: '/admin/approvals',    label: 'Approvals',     icon: FiCheckSquare,           superAdminOnly: true },
-  { path: '/admin/sellers',      label: 'Sellers',       icon: FiUserCheck,             superAdminOnly: true },
-  { path: '/admin/expenses',     label: 'Expenses',      icon: FiDollarSign,            superAdminOnly: true },
-  { path: '/admin/settlements',  label: 'Settlements',   icon: FiCreditCard,            superAdminOnly: true },
-  { path: '/admin/admins',       label: 'Admin Accounts',icon: FiShield,                superAdminOnly: true },
-  { path: '/admin/bulk-import',  label: 'Bulk Import',   icon: FiUploadCloud,           superAdminOnly: true },
-  { path: '/admin/notifications',label: 'Notifications', icon: FiBell,                  superAdminOnly: true },
-  { path: '/admin/settings',     label: 'Settings',      icon: FiSettings,              superAdminOnly: true },
+  { path: '/admin',              label: 'Dashboard',     icon: FiGrid,        end: true, permission: null       }, // superAdmin only (no permission needed — null = superAdmin only)
+  { path: '/admin/products',     label: 'Products',      icon: FiPackage,               permission: 'products'  },
+  { path: '/admin/categories',   label: 'Categories',    icon: FiTag,                   permission: 'categories'},
+  { path: '/admin/orders',       label: 'Orders',        icon: FiShoppingBag,           permission: 'orders'    },
+  { path: '/admin/approvals',    label: 'Approvals',     icon: FiCheckSquare,           permission: 'approvals' },
+  { path: '/admin/sellers',      label: 'Sellers',       icon: FiUserCheck,             permission: 'sellers'   },
+  { path: '/admin/users',        label: 'Users',         icon: FiUsers,                 permission: 'users'     },
+  { path: '/admin/analytics',    label: 'Analytics',     icon: FiBarChart2,             permission: 'analytics' },
+  { path: '/admin/expenses',     label: 'Expenses',      icon: FiDollarSign,            permission: 'expenses'  },
+  { path: '/admin/settlements',  label: 'Settlements',   icon: FiCreditCard,            permission: 'settlements'},
+  { path: '/admin/admins',       label: 'Admin Accounts',icon: FiShield,                permission: 'admins'    },
+  { path: '/admin/bulk-import',  label: 'Bulk Import',   icon: FiUploadCloud,           permission: null        },
+  { path: '/admin/notifications',label: 'Notifications', icon: FiBell,                  permission: null        },
+  { path: '/admin/settings',     label: 'Settings',      icon: FiSettings,              permission: null        },
 ];
 
 export default function AdminLayout() {
@@ -36,12 +36,24 @@ export default function AdminLayout() {
   const { logout, user, isSuperAdmin } = useAuth();
   const location = useLocation();
 
-  // Regular admin trying to access restricted page → redirect to orders
-  if (!isSuperAdmin && location.pathname !== '/admin/orders' && !location.pathname.startsWith('/admin/orders')) {
-    return <Navigate to="/admin/orders" replace />;
-  }
+  // Determine which nav items this user can see
+  const userPerms = user?.permissions || [];
+  const canAccess = (item) => {
+    if (isSuperAdmin) return true;
+    if (item.permission === null) return false; // superAdmin only items
+    return userPerms.includes(item.permission);
+  };
 
-  const NAV_ITEMS = ALL_NAV.filter(n => isSuperAdmin || !n.superAdminOnly);
+  const NAV_ITEMS = ALL_NAV.filter(canAccess);
+
+  // Redirect to first allowed page if trying to access forbidden page
+  const currentAllowedPaths = NAV_ITEMS.map(n => n.path);
+  const isOnAllowedPath = currentAllowedPaths.some(p =>
+    p === location.pathname || location.pathname.startsWith(p + '/')
+  );
+  if (!isSuperAdmin && !isOnAllowedPath && NAV_ITEMS.length > 0) {
+    return <Navigate to={NAV_ITEMS[0].path} replace />;
+  }
 
   const isActive = (path, end) => {
     if (end) return location.pathname === path;
@@ -49,10 +61,8 @@ export default function AdminLayout() {
   };
 
   const currentLabel = NAV_ITEMS.find(n => isActive(n.path, n.end))?.label || 'Admin';
-  const roleLabel    = isSuperAdmin ? 'Super Admin' : 'Admin (Orders)';
-  const roleBadgeClass = isSuperAdmin
-    ? 'text-yellow-400'
-    : 'text-blue-400';
+  const roleLabel    = isSuperAdmin ? 'Super Admin' : `Admin (${userPerms.join(', ') || 'no modules'})`;
+  const roleBadgeClass = isSuperAdmin ? 'text-yellow-400' : 'text-blue-400';
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
