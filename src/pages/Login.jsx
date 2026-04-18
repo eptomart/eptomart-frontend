@@ -301,13 +301,33 @@ export default function Login() {
             {/* STEP 1 — Contact */}
             {step === STEPS.CONTACT && (
               <>
-                <div style={{ marginBottom:24 }}>
+                <div style={{ marginBottom:20 }}>
                   <h2 style={{ color:C.textPrimary, fontSize:20, fontWeight:700, margin:0 }}>
                     Welcome back 👋
                   </h2>
                   <p style={{ color:C.textMuted, fontSize:13, marginTop:4 }}>
-                    Enter your email or mobile to receive an OTP
+                    Sign in to your Eptomart account
                   </p>
+                </div>
+
+                {/* No-password highlight box */}
+                <div style={{
+                  display:'flex', alignItems:'center', gap:10,
+                  background:'rgba(244,148,28,0.10)',
+                  border:'1px solid rgba(244,148,28,0.30)',
+                  borderRadius:12,
+                  padding:'12px 14px',
+                  marginBottom:20,
+                }}>
+                  <span style={{ fontSize:18, lineHeight:1 }}>🔑</span>
+                  <div>
+                    <p style={{ color:C.orange, fontSize:12, fontWeight:700, margin:0, letterSpacing:0.2 }}>
+                      No password needed
+                    </p>
+                    <p style={{ color:C.textMuted, fontSize:11, margin:0, marginTop:2 }}>
+                      We'll send a 6-digit OTP to your email or mobile number
+                    </p>
+                  </div>
                 </div>
 
                 <form onSubmit={handleSendOtp} style={{ display:'flex', flexDirection:'column', gap:16 }}>
