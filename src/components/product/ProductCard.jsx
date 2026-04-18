@@ -16,6 +16,7 @@ export default function ProductCard({ product }) {
   const { addToCompare, isInCompare } = useCompare();
   const navigate = useNavigate();
   const [heartAnim, setHeartAnim] = useState(false);
+  const [adding,    setAdding]    = useState(false);
 
   const { name, slug, price, discountPrice, images, ratings, stock, category, codAvailable, seller, location } = product;
   const sellerCity = seller?.address?.city || seller?.city || location?.city || null;
@@ -102,12 +103,29 @@ export default function ProductCard({ product }) {
           {discount > 0 && <span className="text-xs text-gray-400 line-through">{formatINR(price)}</span>}
         </div>
 
-        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product); }}
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Products with variants must be configured on the product page
+            if (product.variants?.length > 0) {
+              navigate(`/product/${slug}`);
+              return;
+            }
+            if (adding || inCart) { addToCart(product); return; }
+            setAdding(true);
+            addToCart(product);
+            setTimeout(() => setAdding(false), 800);
+          }}
           disabled={stock === 0}
-          className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-sm font-semibold transition-all active:scale-95
-            ${inCart ? 'bg-green-500 text-white' : stock === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-primary-500 hover:bg-primary-600 text-white'}`}>
-          <FiShoppingCart size={15} />
-          {stock === 0 ? 'Out of Stock' : inCart ? 'In Cart ✓' : 'Add to Cart'}
+          className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-sm font-semibold transition-all
+            ${adding ? 'scale-95 opacity-80' : 'active:scale-95'}
+            ${inCart ? 'bg-green-500 text-white' : stock === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : adding ? 'bg-primary-600 text-white' : 'bg-primary-500 hover:bg-primary-600 text-white'}`}
+        >
+          {adding
+            ? <><span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Adding…</>
+            : <><FiShoppingCart size={15} />{stock === 0 ? 'Out of Stock' : inCart ? 'In Cart ✓' : product.variants?.length > 0 ? 'Select Options' : 'Add to Cart'}</>
+          }
         </button>
       </div>
     </div>

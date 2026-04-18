@@ -32,13 +32,9 @@ export default function InvoiceView() {
       return;
     }
 
-    // If Cloudinary URL already stored, open directly
-    if (invoice.pdfUrl) {
-      window.open(invoice.pdfUrl, '_blank');
-      return;
-    }
-
-    // Otherwise call the download endpoint to regenerate
+    // Always stream via backend — window.open(pdfUrl) is blocked by popup blockers
+    // and never triggers a download dialog. The /download endpoint sets
+    // Content-Disposition: attachment so the browser saves it as a file.
     setDownloading(true);
     try {
       const res = await api.get(`/invoices/${id}/download`, { responseType: 'blob' });
@@ -53,17 +49,23 @@ export default function InvoiceView() {
       URL.revokeObjectURL(url);
       toast.success('Invoice downloaded!');
     } catch (err) {
-      // Check if backend returned codPending JSON inside blob error
+      // Backend may return JSON error wrapped in a Blob (responseType:'blob' path)
       const data = err?.response?.data;
       if (data instanceof Blob) {
         const text = await data.text().catch(() => '{}');
-        const json = JSON.parse(text);
-        if (json.codPending) {
-          toast('Invoice available after delivery.', { icon: '📦' });
-          return;
+        try {
+          const json = JSON.parse(text);
+          if (json.codPending) {
+            toast('Invoice available after delivery.', { icon: '📦' });
+            return;
+          }
+          toast.error(json.message || 'Failed to download invoice');
+        } catch {
+          toast.error('Failed to download invoice');
         }
+        return;
       }
-      toast.error(err?.response?.data?.message || err.message || 'Failed to download invoice');
+      toast.error(err?.message || 'Failed to download invoice');
     } finally {
       setDownloading(false);
     }
