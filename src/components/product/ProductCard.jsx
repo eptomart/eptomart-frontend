@@ -98,10 +98,29 @@ export default function ProductCard({ product }) {
           </div>
         )}
 
-        <div className="flex items-baseline gap-2 mb-3">
+        <div className="flex items-baseline gap-2 mb-2">
           <span className="font-bold text-gray-900 text-base">{formatINR(effectivePrice)}</span>
           {discount > 0 && <span className="text-xs text-gray-400 line-through">{formatINR(price)}</span>}
         </div>
+
+        {/* Variant chips — shown on card if product has options */}
+        {product.variants?.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {product.variants.slice(0, 3).map((v, i) => {
+              const label = [v.label, v.value ? `${v.value}${v.unit || ''}` : null].filter(Boolean).join(' ');
+              return (
+                <span key={i} className="text-[10px] px-1.5 py-0.5 bg-orange-50 border border-orange-100 text-orange-700 rounded font-medium leading-tight">
+                  {label}
+                </span>
+              );
+            })}
+            {product.variants.length > 3 && (
+              <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded font-medium leading-tight">
+                +{product.variants.length - 3} more
+              </span>
+            )}
+          </div>
+        )}
 
         <button
           onClick={(e) => {
