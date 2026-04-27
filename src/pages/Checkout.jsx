@@ -1,6 +1,5 @@
 // ============================================
-// CHECKOUT PAGE — Address + Payment
-// Supports: COD, UPI, Razorpay
+// CHECKOUT PAGE — Address + Razorpay Payment
 // ============================================
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -15,10 +14,9 @@ import { extractBasePrice } from '../utils/gst';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 
+// Only Razorpay is accepted — COD and UPI are disabled
 const PAYMENT_METHODS = [
-  { id: 'razorpay', label: 'Pay Online', icon: '💳', desc: 'Cards, UPI, NetBanking, Wallets — powered by Razorpay' },
-  { id: 'upi', label: 'UPI QR Code', icon: '📱', desc: 'Scan & pay with any UPI app' },
-  { id: 'cod', label: 'Cash on Delivery', icon: '💵', desc: 'Pay when your order arrives' },
+  { id: 'razorpay', label: 'Pay Online (Razorpay)', icon: '💳', desc: 'Cards, UPI, NetBanking, Wallets — powered by Razorpay. Secure & instant.' },
 ];
 
 // Load Razorpay SDK dynamically
@@ -104,19 +102,7 @@ export default function Checkout() {
     });
     setShowNewAddrForm(false);
   };
-  // Check if all cart items support COD
-  const codBlockedItems = cartItems.filter(item => item.codAvailable === false);
-  const isCodBlocked = codBlockedItems.length > 0;
-
-  const [paymentMethod, setPaymentMethod] = useState('razorpay');
-
-  // If COD was somehow selected but is now blocked, switch to razorpay
-  React.useEffect(() => {
-    if (isCodBlocked && paymentMethod === 'cod') {
-      setPaymentMethod('razorpay');
-    }
-  }, [isCodBlocked, paymentMethod]);
-  const [upiRef, setUpiRef] = useState('');
+  const [paymentMethod] = useState('razorpay'); // fixed — only Razorpay
   const [loading, setLoading] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(null);
   const [step, setStep] = useState(1);
@@ -233,30 +219,16 @@ export default function Checkout() {
 
       const order = data.order;
 
-      if (paymentMethod === 'razorpay') {
-        const paid = await handleRazorpayPayment(order._id);
-        if (!paid) {
-          setLoading(false);
-          return;
-        }
-        clearCart();
-        setOrderPlaced(order);
-        setStep(3);
-        toast.success('Payment successful! Order confirmed 🎉');
-
-      } else if (paymentMethod === 'upi') {
-        const payRes = await api.post('/payment/initiate', { orderId: order._id, method: 'upi' });
-        clearCart();
-        setOrderPlaced({ ...order, upiData: payRes.data });
-        setStep(3);
-        toast.success('Order placed! Complete UPI payment below.');
-
-      } else {
-        clearCart();
-        setOrderPlaced(order);
-        setStep(3);
-        toast.success('Order placed! Pay on delivery 🎉');
+      // Only Razorpay accepted
+      const paid = await handleRazorpayPayment(order._id);
+      if (!paid) {
+        setLoading(false);
+        return;
       }
+      clearCart();
+      setOrderPlaced(order);
+      setStep(3);
+      toast.success('Payment successful! Order confirmed 🎉');
     } catch (err) {
       toast.error(err.message || 'Failed to place order');
     } finally {
@@ -285,41 +257,13 @@ export default function Checkout() {
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <FiCheckCircle size={40} className="text-green-500" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            {paymentMethod === 'razorpay' ? 'Payment Successful! 🎉' : 'Order Placed! 🎉'}
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">Payment Successful! 🎉</h1>
           <p className="text-gray-500 mb-1">Order ID: <span className="font-mono font-bold text-primary-600">#{orderPlaced.orderId}</span></p>
           <p className="text-gray-500 mb-6">Total: <span className="font-bold">{formatINR(orderPlaced.pricing?.total)}</span></p>
 
-          {paymentMethod === 'razorpay' && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-sm text-green-700">
-              ✅ Payment confirmed via Razorpay. Your order is being processed.
-            </div>
-          )}
-
-          {paymentMethod === 'upi' && orderPlaced.upiData && (
-            <div className="card p-6 mb-6 text-left">
-              <h3 className="font-bold mb-3">Complete UPI Payment</h3>
-              <p className="text-sm text-gray-600 mb-2">UPI ID: <span className="font-mono font-bold">{orderPlaced.upiData.upiId}</span></p>
-              <p className="text-sm text-gray-600 mb-4">Amount: <span className="font-bold text-primary-600">{formatINR(orderPlaced.upiData.amount)}</span></p>
-              <a href={orderPlaced.upiData.upiLink} className="btn-primary w-full block text-center mb-4">📱 Open UPI App</a>
-              <label className="block text-sm font-medium mb-1.5">Enter UPI Transaction ID</label>
-              <input
-                type="text"
-                placeholder="e.g. 123456789012"
-                value={upiRef}
-                onChange={(e) => setUpiRef(e.target.value)}
-                className="input-field mb-3"
-              />
-              <button onClick={handleConfirmUpiPayment} className="btn-outline w-full">Confirm Payment</button>
-            </div>
-          )}
-
-          {paymentMethod === 'cod' && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6 text-sm text-orange-700">
-              💵 Pay ₹{orderPlaced.pricing?.total} when your order arrives.
-            </div>
-          )}
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-sm text-green-700">
+            ✅ Payment confirmed via Razorpay. Your order is being processed. You will receive an invoice shortly.
+          </div>
 
           <div className="flex gap-3">
             <button onClick={() => navigate('/orders')} className="btn-primary flex-1">Track Order</button>
@@ -438,47 +382,20 @@ export default function Checkout() {
               )}
             </div>
 
-            {/* Payment Method */}
+            {/* Payment Method — Razorpay only */}
             <div className="card p-6">
               <h2 className="text-lg font-bold mb-4">💳 Payment Method</h2>
-              <div className="space-y-3">
-                {PAYMENT_METHODS.map(method => {
-                  const isDisabled = method.id === 'cod' && isCodBlocked;
-                  return (
-                    <label
-                      key={method.id}
-                      className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all
-                        ${isDisabled ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-200' :
-                          paymentMethod === method.id ? 'border-primary-500 bg-orange-50 cursor-pointer' :
-                          'border-gray-200 hover:border-gray-300 cursor-pointer'}`}
-                    >
-                      <input
-                        type="radio"
-                        value={method.id}
-                        checked={paymentMethod === method.id}
-                        onChange={() => !isDisabled && setPaymentMethod(method.id)}
-                        disabled={isDisabled}
-                        className="accent-primary-500"
-                      />
-                      <span className="text-2xl">{method.icon}</span>
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-800">{method.label}</p>
-                        <p className="text-xs text-gray-500">
-                          {isDisabled
-                            ? `Not available — ${codBlockedItems.map(i => i.name).join(', ')} cannot be delivered as COD`
-                            : method.desc}
-                        </p>
-                      </div>
-                      {method.id === 'razorpay' && !isDisabled && (
-                        <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Recommended</span>
-                      )}
-                      {isDisabled && (
-                        <span className="ml-auto text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">Not Available</span>
-                      )}
-                    </label>
-                  );
-                })}
+              <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-primary-500 bg-orange-50">
+                <span className="text-2xl">💳</span>
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-800">Pay Online (Razorpay)</p>
+                  <p className="text-xs text-gray-500">Cards, UPI, NetBanking, Wallets — secure & instant</p>
+                </div>
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Secure</span>
               </div>
+              <p className="text-xs text-gray-400 mt-2 text-center">
+                🔒 All payments are processed securely via Razorpay
+              </p>
             </div>
           </div>
 

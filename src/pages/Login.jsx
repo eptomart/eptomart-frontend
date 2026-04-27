@@ -104,10 +104,20 @@ function OrangeButton({ disabled, loading, children, ...props }) {
   );
 }
 
+const LAST_CONTACT_KEY = 'eptomart_last_contact';
+
 export default function Login() {
   const [step,     setStep]     = useState(STEPS.CONTACT);
-  const [contact,  setContact]  = useState('');
-  const [detected, setDetected] = useState(null);
+  // Prefill with last used contact from localStorage
+  const [contact,  setContact]  = useState(() => {
+    try { return localStorage.getItem(LAST_CONTACT_KEY) || ''; } catch { return ''; }
+  });
+  const [detected, setDetected] = useState(() => {
+    try {
+      const saved = localStorage.getItem(LAST_CONTACT_KEY) || '';
+      return saved ? detectType(saved) : null;
+    } catch { return null; }
+  });
   const [otp,      setOtp]      = useState('');
   const [name,     setName]     = useState('');
   const [loading,  setLoading]  = useState(false);
@@ -125,6 +135,8 @@ export default function Login() {
     const val = e.target.value;
     setContact(val);
     setDetected(detectType(val));
+    // Remember for next visit
+    try { localStorage.setItem(LAST_CONTACT_KEY, val); } catch {}
   };
 
   useEffect(() => {

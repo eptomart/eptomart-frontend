@@ -8,18 +8,20 @@ import Loader from './components/common/Loader';
 import CompareBar from './components/product/CompareBar';
 
 // ── Customer pages ───────────────────────────
-const Home        = lazy(() => import('./pages/Home'));
-const Shop        = lazy(() => import('./pages/Shop'));
-const ProductPage = lazy(() => import('./pages/ProductPage'));
-const Cart        = lazy(() => import('./pages/Cart'));
-const Checkout    = lazy(() => import('./pages/Checkout'));
-const Orders      = lazy(() => import('./pages/Orders'));
-const Login       = lazy(() => import('./pages/Login'));
-const Profile     = lazy(() => import('./pages/Profile'));
-const Wishlist    = lazy(() => import('./pages/Wishlist'));
-const Compare     = lazy(() => import('./pages/Compare'));
-const Contact     = lazy(() => import('./pages/Contact'));
-const InvoiceView = lazy(() => import('./pages/invoice/InvoiceView'));
+const Home           = lazy(() => import('./pages/Home'));
+const Shop           = lazy(() => import('./pages/Shop'));
+const ProductPage    = lazy(() => import('./pages/ProductPage'));
+const Cart           = lazy(() => import('./pages/Cart'));
+const Checkout       = lazy(() => import('./pages/Checkout'));
+const Orders         = lazy(() => import('./pages/Orders'));
+const Login          = lazy(() => import('./pages/Login'));
+const Profile        = lazy(() => import('./pages/Profile'));
+const Wishlist       = lazy(() => import('./pages/Wishlist'));
+const Compare        = lazy(() => import('./pages/Compare'));
+const Contact        = lazy(() => import('./pages/Contact'));
+const About          = lazy(() => import('./pages/About'));
+const ProductPreview = lazy(() => import('./pages/ProductPreview'));
+const InvoiceView    = lazy(() => import('./pages/invoice/InvoiceView'));
 
 // ── Admin pages ──────────────────────────────
 const AdminLayout       = lazy(() => import('./pages/admin/AdminLayout'));
@@ -81,6 +83,9 @@ function AppRoutes() {
           <Route path="/login"         element={<Login />} />
           <Route path="/compare"       element={<Compare />} />
           <Route path="/contact"       element={<Contact />} />
+          <Route path="/about"         element={<About />} />
+          {/* Product preview — requires seller/admin login */}
+          <Route path="/preview/:id"   element={<ProtectedRoute><ProductPreview /></ProtectedRoute>} />
 
           {/* Protected customer */}
           <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />

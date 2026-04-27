@@ -7,6 +7,7 @@ import { FiMapPin, FiPhone, FiMail, FiClock, FiSend } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import { BUSINESS } from '../utils/businessInfo';
+import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 export default function Contact() {
@@ -17,11 +18,15 @@ export default function Contact() {
     e.preventDefault();
     if (!form.name || !form.message) return toast.error('Name and message are required');
     setSending(true);
-    // Simulate send — wire to a backend endpoint or EmailJS when ready
-    await new Promise(r => setTimeout(r, 800));
-    toast.success('Message sent! We\'ll reply within 24 hours.');
-    setForm({ name: '', email: '', phone: '', subject: '', message: '' });
-    setSending(false);
+    try {
+      await api.post('/settings/contact', form);
+      toast.success('Message sent! We\'ll reply within 24 hours.');
+      setForm({ name: '', email: '', phone: '', subject: '', message: '' });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send. Please try again.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (

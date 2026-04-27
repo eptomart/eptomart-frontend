@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { FiUploadCloud, FiX, FiInfo } from 'react-icons/fi';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { FiUploadCloud, FiX, FiInfo, FiEye, FiArrowLeft } from 'react-icons/fi';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
 import { GST_SLABS, extractBasePrice } from '../../utils/gst';
@@ -14,7 +14,9 @@ const BLANK = {
   codAvailable: true, approvalStatus: 'draft',
   location: { city: '', state: '', pincode: '' },
   hsnCode: '',
-  variants: [],   // [{label, value, unit, price, stock}]
+  variants: [],
+  // Mandatory pricing fields
+  costPrice: '', sellerPrice: '', eptomartMargin: '',
   platformMargin: '', sellerMargin: '',
   freeShippingAbove: 499,
 };
@@ -24,17 +26,19 @@ export default function ProductForm() {
   const isEdit   = !!id;
   const navigate = useNavigate();
 
-  const [form,       setForm]       = useState(BLANK);
-  const [images,     setImages]     = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [saving,     setSaving]     = useState(false);
-  const [loading,    setLoading]    = useState(isEdit);
+  const [form,          setForm]          = useState(BLANK);
+  const [images,        setImages]        = useState([]);
+  const [existingImages,setExistingImages]= useState([]);
+  const [categories,    setCategories]    = useState([]);
+  const [saving,        setSaving]        = useState(false);
+  const [loading,       setLoading]       = useState(isEdit);
 
   useEffect(() => {
     api.get('/categories').then(r => setCategories(r.data.categories || [])).catch(() => {});
     if (isEdit) {
-      api.get(`/products/${id}?byId=true`).then(r => {
+      api.get(`/products/${id}/preview`).catch(() => api.get(`/products/${id}?byId=true`)).then(r => {
         const p = r.data.product;
+        setExistingImages(p.images || []);
         setForm({
           name:            p.name || '',
           description:     p.description || '',
@@ -52,7 +56,13 @@ export default function ProductForm() {
           approvalStatus:  p.approvalStatus || 'draft',
           location:        p.location || { city: '', state: '', pincode: '' },
           hsnCode:         p.hsnCode || '',
-          variants:        p.variants || [],    // CRITICAL: restore variants from DB so edit doesn't wipe them
+          variants:        p.variants || [],
+          costPrice:       p.costPrice || '',
+          sellerPrice:     p.sellerPrice || '',
+          eptomartMargin:  p.eptomartMargin || '',
+          platformMargin:  p.platformMargin || '',
+          sellerMargin:    p.sellerMargin || '',
+          freeShippingAbove: p.freeShippingAbove || 499,
         });
       }).catch(() => toast.error('Failed to load product')).finally(() => setLoading(false));
     }
@@ -74,18 +84,30 @@ export default function ProductForm() {
     if (!form.name || !form.price || !form.stock || !form.category) {
       return toast.error('Name, price, stock and category are required');
     }
+    if (submitForApproval) {
+      if (!form.costPrice)     return toast.error('Cost price is required for submission');
+      if (!form.sellerPrice)   return toast.error('Seller price is required for submission');
+      if (!form.eptomartMargin && form.eptomartMargin !== 0) return toast.error('Eptomart margin % is required for submission');
+      if (!form.gstRate && form.gstRate !== 0)  return toast.error('GST % is required for submission');
+      if (!form.stock)         return toast.error('Stock quantity is required for submission');
+    }
     setSaving(true);
     try {
       const fd = new FormData();
       const payload = {
         ...form,
-        price:        Number(form.priceIncludesGst ? basePrice.toFixed(2) : form.price),
-        gstRate:      Number(form.gstRate),
-        discountPrice:form.discountPrice ? Number(form.discountPrice) : undefined,
-        stock:        Number(form.stock),
-        tags:         form.tags.split(',').map(t => t.trim()).filter(Boolean),
+        price:          Number(form.priceIncludesGst ? basePrice.toFixed(2) : form.price),
+        gstRate:        Number(form.gstRate),
+        discountPrice:  form.discountPrice ? Number(form.discountPrice) : undefined,
+        stock:          Number(form.stock),
+        costPrice:      form.costPrice ? Number(form.costPrice) : undefined,
+        sellerPrice:    form.sellerPrice ? Number(form.sellerPrice) : undefined,
+        eptomartMargin: form.eptomartMargin !== '' ? Number(form.eptomartMargin) : undefined,
+        platformMargin: form.platformMargin !== '' ? Number(form.platformMargin) : undefined,
+        sellerMargin:   form.sellerMargin !== '' ? Number(form.sellerMargin) : undefined,
+        tags:           form.tags.split(',').map(t => t.trim()).filter(Boolean),
         approvalStatus: submitForApproval ? 'pending' : (form.approvalStatus === 'approved' ? 'pending' : form.approvalStatus || 'draft'),
-        submittedAt:  submitForApproval ? new Date().toISOString() : undefined,
+        submittedAt:    submitForApproval ? new Date().toISOString() : undefined,
       };
       Object.entries(payload).forEach(([k, v]) => {
         if (v !== undefined && v !== '') fd.append(k, typeof v === 'object' ? JSON.stringify(v) : v);
@@ -110,7 +132,17 @@ export default function ProductForm() {
   return (
     <div className="max-w-3xl">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-gray-800">{isEdit ? 'Edit Product' : 'Add New Product'}</h2>
+        <div className="flex items-center gap-3">
+          <Link to="/seller/products" className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100">
+            <FiArrowLeft size={18} />
+          </Link>
+          <h2 className="text-xl font-bold text-gray-800">{isEdit ? 'Edit Product' : 'Add New Product'}</h2>
+        </div>
+        {isEdit && (
+          <Link to={`/preview/${id}`} target="_blank" className="flex items-center gap-1.5 text-sm text-primary-600 border border-primary-300 rounded-lg px-3 py-1.5 hover:bg-orange-50">
+            <FiEye size={13} /> Preview
+          </Link>
+        )}
       </div>
 
       <div className="space-y-6">
@@ -199,6 +231,39 @@ export default function ProductForm() {
               <input value={form.hsnCode} onChange={e => set('hsnCode', e.target.value)} placeholder="e.g. 8528" className="input-field" />
             </div>
           </div>
+        </div>
+
+        {/* Seller Mandatory Pricing Fields */}
+        <div className="card p-6 space-y-4">
+          <h3 className="font-semibold text-gray-800 border-b pb-2">
+            Seller Pricing Details <span className="text-xs text-red-500 font-normal ml-1">* Required before submission</span>
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Cost Price (₹) *</label>
+              <input type="number" value={form.costPrice} onChange={e => set('costPrice', e.target.value)} placeholder="Your purchase cost" min="0" className="input-field" />
+              <p className="text-xs text-gray-400 mt-1">What you paid for this</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Seller Price (₹) *</label>
+              <input type="number" value={form.sellerPrice} onChange={e => set('sellerPrice', e.target.value)} placeholder="Your listed price" min="0" className="input-field" />
+              <p className="text-xs text-gray-400 mt-1">Price before Eptomart margin</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Eptomart Margin (%) *</label>
+              <input type="number" value={form.eptomartMargin} onChange={e => set('eptomartMargin', e.target.value)} placeholder="e.g. 10" min="0" max="100" className="input-field" />
+              <p className="text-xs text-gray-400 mt-1">Eptomart's commission %</p>
+            </div>
+          </div>
+          {form.costPrice && form.sellerPrice && (
+            <div className="bg-blue-50 rounded-xl p-3 text-sm space-y-1">
+              <p className="font-medium text-gray-700">Pricing Breakdown</p>
+              <p className="text-gray-600">Cost price: {formatINR(Number(form.costPrice))}</p>
+              <p className="text-gray-600">Seller price: {formatINR(Number(form.sellerPrice))}</p>
+              {form.eptomartMargin && <p className="text-gray-600">Eptomart margin ({form.eptomartMargin}%): {formatINR(Number(form.sellerPrice) * Number(form.eptomartMargin) / 100)}</p>}
+              <p className="font-semibold text-blue-700">Final selling price: {formatINR(basePrice + (basePrice * Number(form.gstRate) / 100))}</p>
+            </div>
+          )}
         </div>
 
         {/* Inventory */}
@@ -298,13 +363,38 @@ export default function ProductForm() {
         {/* Images */}
         <div className="card p-6 space-y-4">
           <h3 className="font-semibold text-gray-800 border-b pb-2">Product Images (max 5)</h3>
+          {/* Existing images */}
+          {existingImages.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Saved Images</p>
+              <div className="flex flex-wrap gap-3">
+                {existingImages.map((img, idx) => (
+                  <div key={img._id || idx} className="relative group">
+                    <img src={img.url} alt={`Product ${idx + 1}`} className="w-20 h-20 object-cover rounded-xl border border-gray-200" />
+                    {img.isDefault && (
+                      <span className="absolute bottom-0 left-0 right-0 text-center text-[9px] bg-primary-500 text-white rounded-b-xl py-0.5">Main</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Upload new images below to add more (existing images are kept)</p>
+            </div>
+          )}
+          {/* New image upload */}
           <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-primary-400 rounded-xl p-8 cursor-pointer transition-colors">
             <FiUploadCloud size={28} className="text-gray-400 mb-2" />
-            <p className="text-sm text-gray-500">Click to upload images (JPG, PNG, WEBP)</p>
+            <p className="text-sm text-gray-500">Click to upload new images (JPG, PNG, WEBP)</p>
             <input type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" />
           </label>
           {images.length > 0 && (
-            <p className="text-sm text-green-600 font-medium">✓ {images.length} file(s) selected</p>
+            <div className="flex flex-wrap gap-2">
+              {images.map((f, idx) => (
+                <div key={idx} className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 text-xs">
+                  <span className="text-green-600">✓</span>
+                  <span className="text-gray-700 max-w-[120px] truncate">{f.name}</span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 

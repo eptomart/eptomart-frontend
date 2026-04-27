@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiEdit2, FiTrash2, FiAlertCircle, FiCheckCircle, FiClock, FiXCircle } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiAlertCircle, FiCheckCircle, FiClock, FiXCircle, FiEye, FiCopy } from 'react-icons/fi';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
 import toast from 'react-hot-toast';
@@ -38,6 +38,14 @@ export default function SellerProducts() {
       setProducts(p => p.filter(x => x._id !== id));
       toast.success('Product deleted');
     } catch { toast.error('Failed to delete'); }
+  };
+
+  const cloneProduct = async (id) => {
+    try {
+      const { data } = await api.post(`/products/${id}/clone`);
+      toast.success('Product cloned as draft!');
+      load(tab); // refresh list
+    } catch { toast.error('Failed to clone product'); }
   };
 
   return (
@@ -113,11 +121,17 @@ export default function SellerProducts() {
                       )}
                     </td>
                     <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link to={`/seller/products/${p._id}`} className="text-primary-500 hover:text-primary-600 p-1.5 rounded-lg hover:bg-orange-50">
+                      <div className="flex items-center justify-end gap-1">
+                        <Link to={`/preview/${p._id}`} target="_blank" title="Preview" className="text-gray-400 hover:text-primary-600 p-1.5 rounded-lg hover:bg-orange-50">
+                          <FiEye size={14} />
+                        </Link>
+                        <Link to={`/seller/products/${p._id}`} title="Edit" className="text-primary-500 hover:text-primary-600 p-1.5 rounded-lg hover:bg-orange-50">
                           <FiEdit2 size={14} />
                         </Link>
-                        <button onClick={() => deleteProduct(p._id)} className="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50">
+                        <button onClick={() => cloneProduct(p._id)} title="Clone" className="text-blue-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-blue-50">
+                          <FiCopy size={14} />
+                        </button>
+                        <button onClick={() => deleteProduct(p._id)} title="Delete" className="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50">
                           <FiTrash2 size={14} />
                         </button>
                       </div>
