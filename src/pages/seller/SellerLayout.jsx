@@ -37,6 +37,13 @@ export default function SellerLayout() {
             </span>
           </div>
 
+          {/* Back to Store — top of nav */}
+          <div className="px-4 pt-3 pb-1">
+            <Link to="/" className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold bg-primary-500 text-white hover:bg-primary-600 transition-colors">
+              <FiArrowLeft size={14} /> ← Back to Store
+            </Link>
+          </div>
+
           {/* Nav */}
           <nav className="flex-1 p-4 space-y-1">
             {NAV.map(({ path, label, icon: Icon }) => (
@@ -52,10 +59,7 @@ export default function SellerLayout() {
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t border-gray-100 space-y-1">
-            <Link to="/" className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-50 transition-all">
-              <FiArrowLeft size={17} /> Back to Store
-            </Link>
+          <div className="p-4 border-t border-gray-100">
             <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-all">
               <FiLogOut size={17} /> Logout
             </button>

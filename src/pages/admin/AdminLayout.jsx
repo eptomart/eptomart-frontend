@@ -84,8 +84,15 @@ export default function AdminLayout() {
           </button>
         </div>
 
+        {/* Back to Store — top of sidebar */}
+        <div className="px-3 pt-3 pb-1">
+          <Link to="/" className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold bg-primary-500 text-white hover:bg-primary-600 transition-colors">
+            <FiHome size={15} /> ← Back to Store
+          </Link>
+        </div>
+
         {/* Admin Info */}
-        <div className="px-5 py-4 border-b border-gray-800">
+        <div className="px-5 py-3 border-b border-gray-800">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-primary-500 rounded-full flex items-center justify-center">
               <span className="text-white font-bold text-sm">{user?.name?.charAt(0)}</span>
@@ -119,9 +126,6 @@ export default function AdminLayout() {
 
         {/* Footer Links */}
         <div className="p-3 border-t border-gray-800">
-          <Link to="/" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
-            <FiHome size={18} /> Back to Store
-          </Link>
           <button
             onClick={logout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-400 hover:text-red-400 hover:bg-gray-800 transition-colors"
