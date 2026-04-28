@@ -32,6 +32,8 @@ export default function AdminProducts() {
     codAvailable: true,
     instagramLink: '',
     variants: [],
+    location: { city: '', state: '', pincode: '' },
+    freeShippingAbove: 499,
     seller: '',
   });
 
@@ -59,7 +61,7 @@ export default function AdminProducts() {
     api.get('/sellers?limit=100').then(res => setSellers(res.data.sellers || [])).catch(() => {});
   }, []);
 
-  const BLANK_FORM = { name: '', description: '', shortDescription: '', price: '', discountPrice: '', stock: '', category: '', brand: '', tags: '', isFeatured: false, codAvailable: true, gstRate: 18, priceIncludesGst: true, hsnCode: '', costPrice: '', sellerPrice: '', eptomartMargin: '', instagramLink: '', variants: [], seller: '' };
+  const BLANK_FORM = { name: '', description: '', shortDescription: '', price: '', discountPrice: '', stock: '', category: '', brand: '', tags: '', isFeatured: false, codAvailable: true, gstRate: 18, priceIncludesGst: true, hsnCode: '', costPrice: '', sellerPrice: '', eptomartMargin: '', instagramLink: '', variants: [], location: { city: '', state: '', pincode: '' }, freeShippingAbove: 499, seller: '' };
 
   const openAdd = () => {
     setEditProduct(null);
@@ -92,6 +94,8 @@ export default function AdminProducts() {
       eptomartMargin:    product.eptomartMargin ?? product.platformMargin ?? '',
       instagramLink:     product.instagramLink     || '',
       variants:          product.variants          || [],
+      location:          product.location          || { city: '', state: '', pincode: '' },
+      freeShippingAbove: product.freeShippingAbove ?? 499,
       seller:            product.seller?._id       || product.seller || '',
     });
     setImageFiles([]);
@@ -126,7 +130,7 @@ export default function AdminProducts() {
       };
       Object.entries(payload).forEach(([k, v]) => {
         if (v !== '' && v !== undefined && v !== null) {
-          if (Array.isArray(v)) formData.append(k, JSON.stringify(v));
+          if (typeof v === 'object') formData.append(k, JSON.stringify(v));
           else formData.append(k, v);
         }
       });
@@ -482,6 +486,75 @@ export default function AdminProducts() {
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* Product Location */}
+              <div className="border-t pt-4">
+                <p className="text-sm font-semibold text-gray-700 mb-3">Product Location</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                    <input type="text" value={form.location?.city || ''} onChange={e => setForm(f => ({ ...f, location: { ...f.location, city: e.target.value } }))} placeholder="Chennai" className="input-field" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                    <input type="text" value={form.location?.state || ''} onChange={e => setForm(f => ({ ...f, location: { ...f.location, state: e.target.value } }))} placeholder="Tamil Nadu" className="input-field" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pincode</label>
+                    <input type="text" value={form.location?.pincode || ''} onChange={e => setForm(f => ({ ...f, location: { ...f.location, pincode: e.target.value } }))} placeholder="600001" className="input-field" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Variants */}
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-gray-700">
+                    Product Variants <span className="text-xs font-normal text-gray-400">(optional — e.g. 500g, 1L)</span>
+                  </p>
+                  <button type="button"
+                    onClick={() => setForm(f => ({ ...f, variants: [...(f.variants || []), { label: '', value: '', unit: 'g', price: '', stock: '' }] }))}
+                    className="text-xs text-primary-600 border border-primary-300 rounded-lg px-3 py-1 hover:bg-primary-50">
+                    + Add Variant
+                  </button>
+                </div>
+                {(form.variants || []).length === 0 && (
+                  <p className="text-xs text-gray-400">No variants. Click "Add Variant" for sizes like 250g, 500ml, 1kg.</p>
+                )}
+                <div className="space-y-2">
+                  {(form.variants || []).map((v, idx) => (
+                    <div key={idx} className="grid grid-cols-5 gap-2 items-end bg-gray-50 rounded-xl p-3">
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Label *</label>
+                        <input value={v.label} placeholder="e.g. 500g" onChange={e => { const arr = [...form.variants]; arr[idx] = { ...arr[idx], label: e.target.value }; setForm(f => ({ ...f, variants: arr })); }} className="input-field text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Value</label>
+                        <input type="number" value={v.value} placeholder="500" onChange={e => { const arr = [...form.variants]; arr[idx] = { ...arr[idx], value: e.target.value }; setForm(f => ({ ...f, variants: arr })); }} className="input-field text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Unit</label>
+                        <select value={v.unit} onChange={e => { const arr = [...form.variants]; arr[idx] = { ...arr[idx], unit: e.target.value }; setForm(f => ({ ...f, variants: arr })); }} className="input-field text-sm">
+                          {['g', 'kg', 'ml', 'l', 'pieces', 'pack', 'other'].map(u => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Price (₹)</label>
+                        <input type="number" value={v.price} placeholder="Optional" onChange={e => { const arr = [...form.variants]; arr[idx] = { ...arr[idx], price: e.target.value }; setForm(f => ({ ...f, variants: arr })); }} className="input-field text-sm" />
+                      </div>
+                      <button type="button" onClick={() => { const arr = [...form.variants]; arr.splice(idx, 1); setForm(f => ({ ...f, variants: arr })); }}
+                        className="text-red-400 hover:text-red-600 text-xl font-bold pb-0.5 self-end">×</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Free Shipping Threshold */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Free Shipping Above (₹)</label>
+                <input type="number" value={form.freeShippingAbove} onChange={e => setForm(f => ({ ...f, freeShippingAbove: e.target.value }))} placeholder="499" min="0" className="input-field max-w-xs" />
+                <p className="text-xs text-gray-400 mt-1">Orders above this amount get free shipping</p>
               </div>
 
               {/* Seller assignment */}

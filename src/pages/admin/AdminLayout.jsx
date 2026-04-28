@@ -87,7 +87,7 @@ export default function AdminLayout() {
         {/* Back to Store — top of sidebar */}
         <div className="px-3 pt-3 pb-1">
           <Link to="/" className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold bg-primary-500 text-white hover:bg-primary-600 transition-colors">
-            <FiHome size={15} /> ← Back to Store
+            <FiHome size={15} /> Back to Store
           </Link>
         </div>
 
