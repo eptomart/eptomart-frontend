@@ -1,54 +1,171 @@
 // ============================================
 // ADMIN — ORDER MANAGEMENT
 // ============================================
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiTruck, FiRefreshCw } from 'react-icons/fi';
 import Loader from '../../components/common/Loader';
 import { formatINR, formatDate } from '../../utils/currency';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
-const ORDER_STATUSES = ['placed', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+const ORDER_STATUSES   = ['placed', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
 const PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'refunded'];
 
-export default function AdminOrders() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+// ── Shiprocket shipment panel (per order) ───────────────
+function ShiprocketPanel({ order, onDone }) {
+  const [sellerId,    setSellerId]    = useState('');
+  const [sellers,     setSellers]     = useState([]);     // sellers who have items in this order
+  const [addresses,   setAddresses]   = useState([]);
+  const [addrId,      setAddrId]      = useState('');
+  const [loadingAddr, setLoadingAddr] = useState(false);
+  const [shipping,    setShipping]    = useState(false);
 
-  const fetchOrders = async () => {
+  // Derive unique seller IDs from order items (populated products → seller)
+  useEffect(() => {
+    if (!order.items) return;
+    const seen = new Map();
+    order.items.forEach(item => {
+      const s = item.product?.seller;
+      if (s && !seen.has(s._id || s)) {
+        seen.set(s._id || s, { _id: s._id || s, businessName: s.businessName || 'Seller' });
+      }
+    });
+    const list = [...seen.values()];
+    setSellers(list);
+    if (list.length === 1) setSellerId(list[0]._id);
+  }, [order.items]);
+
+  // Load seller pickup addresses when sellerId changes
+  useEffect(() => {
+    if (!sellerId) { setAddresses([]); setAddrId(''); return; }
+    setLoadingAddr(true);
+    api.get(`/sellers/${sellerId}/pickup-addresses`)
+      .then(r => {
+        setAddresses(r.data.addresses || []);
+        const def = r.data.addresses?.find(a => a.isDefault);
+        setAddrId(def?._id || r.data.addresses?.[0]?._id || 'main');
+      })
+      .catch(() => toast.error('Could not load seller addresses'))
+      .finally(() => setLoadingAddr(false));
+  }, [sellerId]);
+
+  const handleShip = async () => {
+    if (!addrId) return toast.error('Select a pickup address first');
+    setShipping(true);
+    try {
+      const { data } = await api.post(`/admin/orders/${order._id}/ship`, { pickupAddressId: addrId });
+      toast.success(`Shipment created! AWB: ${data.shiprocket?.awb || '—'}`);
+      onDone();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create shipment');
+    } finally {
+      setShipping(false);
+    }
+  };
+
+  // Already shipped
+  if (order.shiprocket?.orderId) {
+    return (
+      <div className="bg-indigo-50 rounded-xl p-4 space-y-1">
+        <p className="text-sm font-semibold text-indigo-800 flex items-center gap-2">
+          <FiTruck size={14} /> Shiprocket Shipment Created
+        </p>
+        <p className="text-xs text-indigo-600">AWB: <span className="font-mono">{order.shiprocket.awb || '—'}</span> · {order.shiprocket.courier || '—'}</p>
+        {order.shiprocket.trackingUrl && (
+          <a href={order.shiprocket.trackingUrl} target="_blank" rel="noreferrer"
+            className="text-xs text-indigo-600 underline">Track shipment</a>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+      <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+        <FiTruck size={14} /> Create Shiprocket Shipment
+      </p>
+
+      {sellers.length > 1 && (
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Seller</label>
+          <select value={sellerId} onChange={e => setSellerId(e.target.value)} className="input-field text-sm py-2">
+            <option value="">Select seller…</option>
+            {sellers.map(s => <option key={s._id} value={s._id}>{s.businessName}</option>)}
+          </select>
+        </div>
+      )}
+
+      {sellerId && (
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Pickup Address {loadingAddr && <span className="text-gray-400">(loading…)</span>}
+          </label>
+          {addresses.length === 0 && !loadingAddr ? (
+            <p className="text-xs text-orange-600">No pickup addresses found. Seller's main address will be used.</p>
+          ) : (
+            <select value={addrId} onChange={e => setAddrId(e.target.value)} className="input-field text-sm py-2" disabled={loadingAddr}>
+              {addresses.map(a => (
+                <option key={a._id} value={a._id}>
+                  {a.isMain ? '📍 ' : ''}{a.label || 'Address'} — {a.city}, {a.pincode}{a.isDefault ? ' ★' : ''}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+
+      <button
+        onClick={handleShip}
+        disabled={shipping || !sellerId || loadingAddr}
+        className="btn-primary text-sm flex items-center gap-2 py-2 disabled:opacity-50"
+      >
+        {shipping ? <><FiRefreshCw size={13} className="animate-spin" /> Creating…</> : <><FiTruck size={13} /> Create Shipment</>}
+      </button>
+    </div>
+  );
+}
+
+// ── Main component ───────────────────────────────────────
+export default function AdminOrders() {
+  const [orders,      setOrders]      = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [expanded,    setExpanded]    = useState(null);
+  const [statusFilter,setStatusFilter]= useState('');
+  const [page,        setPage]        = useState(1);
+  const [totalPages,  setTotalPages]  = useState(1);
+
+  const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/admin/orders?page=${page}&limit=15${statusFilter ? `&status=${statusFilter}` : ''}`);
+      const { data } = await api.get(
+        `/admin/orders?page=${page}&limit=15${statusFilter ? `&status=${statusFilter}` : ''}`
+      );
       setOrders(data.orders || []);
       setTotalPages(data.totalPages || 1);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  };
+  }, [page, statusFilter]);
 
-  useEffect(() => { fetchOrders(); }, [page, statusFilter]);
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   const updateStatus = async (orderId, updates) => {
     try {
       await api.put(`/admin/orders/${orderId}/status`, updates);
       toast.success('Order updated');
       fetchOrders();
-    } catch (err) {
+    } catch {
       toast.error('Failed to update order');
     }
   };
 
   const STATUS_COLORS = {
-    placed: 'bg-blue-100 text-blue-700',
-    confirmed: 'bg-purple-100 text-purple-700',
+    placed:     'bg-blue-100 text-blue-700',
+    confirmed:  'bg-purple-100 text-purple-700',
     processing: 'bg-yellow-100 text-yellow-700',
-    shipped: 'bg-indigo-100 text-indigo-700',
-    delivered: 'bg-green-100 text-green-700',
-    cancelled: 'bg-red-100 text-red-700',
+    shipped:    'bg-indigo-100 text-indigo-700',
+    delivered:  'bg-green-100 text-green-700',
+    cancelled:  'bg-red-100 text-red-700',
   };
 
   return (
@@ -58,7 +175,8 @@ export default function AdminOrders() {
       <div>
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold text-gray-800">Orders</h1>
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="input-field w-auto">
+          <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+            className="input-field w-auto">
             <option value="">All Statuses</option>
             {ORDER_STATUSES.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
           </select>
@@ -72,7 +190,7 @@ export default function AdminOrders() {
                   onClick={() => setExpanded(expanded === order._id ? null : order._id)}
                   className="w-full flex items-center justify-between p-4 hover:bg-gray-50"
                 >
-                  <div className="flex items-center gap-4 text-left">
+                  <div className="flex items-center gap-4 text-left flex-wrap">
                     <div>
                       <p className="font-mono font-bold text-sm">#{order.orderId}</p>
                       <p className="text-xs text-gray-400">{formatDate(order.createdAt)}</p>
@@ -85,10 +203,15 @@ export default function AdminOrders() {
                       {order.orderStatus}
                     </span>
                     <span className={`badge capitalize ${order.paymentStatus === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {order.paymentStatus} • {order.paymentMethod?.toUpperCase()}
+                      {order.paymentStatus} · {order.paymentMethod?.toUpperCase()}
                     </span>
+                    {order.shiprocket?.awb && (
+                      <span className="badge bg-indigo-100 text-indigo-700 flex items-center gap-1">
+                        <FiTruck size={11} /> {order.shiprocket.awb}
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 ml-2 shrink-0">
                     <span className="font-bold text-primary-600">{formatINR(order.pricing?.total)}</span>
                     {expanded === order._id ? <FiChevronUp /> : <FiChevronDown />}
                   </div>
@@ -114,7 +237,7 @@ export default function AdminOrders() {
                         <label className="block text-xs font-medium text-gray-600 mb-1">Order Status</label>
                         <select
                           defaultValue={order.orderStatus}
-                          onChange={(e) => updateStatus(order._id, { status: e.target.value })}
+                          onChange={e => updateStatus(order._id, { status: e.target.value })}
                           className="input-field text-sm py-2"
                         >
                           {ORDER_STATUSES.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
@@ -124,7 +247,7 @@ export default function AdminOrders() {
                         <label className="block text-xs font-medium text-gray-600 mb-1">Payment Status</label>
                         <select
                           defaultValue={order.paymentStatus}
-                          onChange={(e) => updateStatus(order._id, { paymentStatus: e.target.value })}
+                          onChange={e => updateStatus(order._id, { paymentStatus: e.target.value })}
                           className="input-field text-sm py-2"
                         >
                           {PAYMENT_STATUSES.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
@@ -132,7 +255,7 @@ export default function AdminOrders() {
                       </div>
                     </div>
 
-                    {/* Confirm Order with Seller (placed → confirmed) */}
+                    {/* Confirm Order */}
                     {order.orderStatus === 'placed' && (
                       <div className="bg-blue-50 rounded-xl p-4 flex items-start justify-between gap-4">
                         <div>
@@ -162,18 +285,29 @@ export default function AdminOrders() {
                       </div>
                     )}
 
-                    {/* Address */}
+                    {/* Shiprocket Shipment Panel — show for confirmed / processing / paid orders */}
+                    {['confirmed', 'processing', 'placed', 'shipped'].includes(order.orderStatus) &&
+                     order.paymentStatus === 'paid' && (
+                      <ShiprocketPanel order={order} onDone={fetchOrders} />
+                    )}
+
+                    {/* Delivery Address */}
                     <div className="text-sm">
                       <p className="font-semibold mb-1">Delivery Address</p>
                       <p className="text-gray-500">
-                        {order.shippingAddress?.fullName} • {order.shippingAddress?.phone}<br />
-                        {order.shippingAddress?.addressLine1}, {order.shippingAddress?.city}, {order.shippingAddress?.state} — {order.shippingAddress?.pincode}
+                        {order.shippingAddress?.fullName} · {order.shippingAddress?.phone}<br />
+                        {order.shippingAddress?.addressLine1}, {order.shippingAddress?.city},{' '}
+                        {order.shippingAddress?.state} — {order.shippingAddress?.pincode}
                       </p>
                     </div>
                   </div>
                 )}
               </div>
             ))}
+
+            {orders.length === 0 && (
+              <div className="card p-10 text-center text-gray-400">No orders found.</div>
+            )}
           </div>
         )}
 
