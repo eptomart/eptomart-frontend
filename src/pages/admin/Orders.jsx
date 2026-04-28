@@ -70,6 +70,41 @@ function PickupAcknowledgePanel({ order, onDone }) {
 }
 
 // ── Shiprocket shipment panel (per order) ───────────────
+// ── Refresh AWB button — calls backend which calls Shiprocket assign/awb ──
+function AwbRefreshButton({ orderId, onDone }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.post(`/admin/orders/${orderId}/refresh-awb`);
+      if (data.awb) {
+        toast.success(`AWB assigned: ${data.awb} (${data.courier || ''})`);
+      } else {
+        toast('Courier not assigned yet — try again in a few seconds', { icon: '⏳' });
+      }
+      onDone();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not refresh AWB');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleRefresh}
+      disabled={loading}
+      className="flex items-center gap-1 text-xs bg-yellow-500 text-white px-2.5 py-1 rounded-lg hover:bg-yellow-600 transition-all disabled:opacity-60"
+    >
+      {loading
+        ? <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+        : <FiRefreshCw size={11} />}
+      {loading ? 'Fetching…' : 'Refresh AWB'}
+    </button>
+  );
+}
+
 function ShiprocketPanel({ order, onDone }) {
   const [sellerId,    setSellerId]    = useState('');
   const [sellers,     setSellers]     = useState([]);     // sellers who have items in this order
@@ -121,17 +156,31 @@ function ShiprocketPanel({ order, onDone }) {
     }
   };
 
-  // Already shipped
+  // Already shipped — show AWB info + Refresh button if AWB is missing
   if (order.shiprocket?.orderId) {
+    const awbMissing = !order.shiprocket.awb;
     return (
-      <div className="bg-indigo-50 rounded-xl p-4 space-y-1">
-        <p className="text-sm font-semibold text-indigo-800 flex items-center gap-2">
+      <div className={`rounded-xl p-4 space-y-2 ${awbMissing ? 'bg-yellow-50 border border-yellow-300' : 'bg-indigo-50'}`}>
+        <p className={`text-sm font-semibold flex items-center gap-2 ${awbMissing ? 'text-yellow-800' : 'text-indigo-800'}`}>
           <FiTruck size={14} /> Shiprocket Shipment Created
         </p>
-        <p className="text-xs text-indigo-600">AWB: <span className="font-mono">{order.shiprocket.awb || '—'}</span> · {order.shiprocket.courier || '—'}</p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <p className={`text-xs ${awbMissing ? 'text-yellow-700' : 'text-indigo-600'}`}>
+            AWB: <span className="font-mono font-semibold">{order.shiprocket.awb || '—'}</span>
+            {order.shiprocket.courier && <span> · {order.shiprocket.courier}</span>}
+          </p>
+          {awbMissing && (
+            <AwbRefreshButton orderId={order._id} onDone={onDone} />
+          )}
+        </div>
         {order.shiprocket.trackingUrl && (
           <a href={order.shiprocket.trackingUrl} target="_blank" rel="noreferrer"
-            className="text-xs text-indigo-600 underline">Track shipment</a>
+            className="text-xs text-indigo-600 underline block">Track shipment →</a>
+        )}
+        {awbMissing && (
+          <p className="text-xs text-yellow-600">
+            ⏳ Shiprocket assigns the AWB after matching a courier. Click Refresh to fetch it.
+          </p>
         )}
       </div>
     );
