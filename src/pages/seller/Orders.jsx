@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
 import toast from 'react-hot-toast';
-import { FiChevronDown, FiChevronUp, FiCheckCircle, FiPackage } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiCheckCircle, FiPackage, FiMapPin, FiX } from 'react-icons/fi';
 
 const STATUS_COLOR = {
   placed:     'bg-yellow-100 text-yellow-700',
@@ -13,11 +13,150 @@ const STATUS_COLOR = {
   cancelled:  'bg-red-100 text-red-700',
 };
 
+// ── Confirm Modal with pickup address selector ────────────
+function ConfirmModal({ order, onClose, onConfirmed }) {
+  const [addresses,      setAddresses]      = useState([]);
+  const [loadingAddrs,   setLoadingAddrs]   = useState(true);
+  const [selectedId,     setSelectedId]     = useState('');
+  const [confirming,     setConfirming]     = useState(false);
+
+  useEffect(() => {
+    setLoadingAddrs(true);
+    api.get('/sellers/me/pickup-addresses')
+      .then(r => {
+        const all = r.data.addresses || [];
+        setAddresses(all);
+        // Pre-select default approved address, or main
+        const def = all.find(a => a.isDefault && a.status === 'approved');
+        const first = all.find(a => a.status === 'approved');
+        setSelectedId(def?._id || first?._id || 'main');
+      })
+      .catch(() => toast.error('Could not load addresses'))
+      .finally(() => setLoadingAddrs(false));
+  }, []);
+
+  const approvedAddresses = addresses.filter(a => a.status === 'approved');
+  const hasPending        = addresses.some(a => a.status === 'pending');
+
+  const handleConfirm = async () => {
+    if (!selectedId) {
+      toast.error('Please select a pickup address');
+      return;
+    }
+    setConfirming(true);
+    try {
+      await api.patch(`/orders/${order._id}/seller-confirm`, { pickupAddressId: selectedId });
+      toast.success('Order confirmed! Admin will acknowledge the pickup.');
+      onConfirmed(order._id);
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to confirm order');
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div>
+            <h3 className="font-bold text-gray-800">Confirm Order #{order.orderId}</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Select the warehouse this order will ship from</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <FiX size={20} />
+          </button>
+        </div>
+
+        <div className="px-6 py-4 space-y-4">
+          {/* Order summary */}
+          <div className="bg-gray-50 rounded-xl p-3 text-sm text-gray-600">
+            <p><span className="font-medium">Items:</span> {order.items?.length} · <span className="font-medium">Total:</span> {formatINR(order.pricing?.total)}</p>
+            <p className="mt-0.5"><span className="font-medium">Ship to:</span>{' '}
+              {[order.shippingAddress?.city, order.shippingAddress?.state].filter(Boolean).join(', ')}
+            </p>
+          </div>
+
+          {/* Pickup address selector */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
+              <FiMapPin size={14} /> Select Pickup / Warehouse
+            </label>
+
+            {loadingAddrs ? (
+              <div className="flex items-center gap-2 text-sm text-gray-400 py-3">
+                <div className="w-4 h-4 border-2 border-gray-300 border-t-primary-500 rounded-full animate-spin" />
+                Loading addresses…
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {/* Main address (always available) */}
+                <label className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${selectedId === 'main' ? 'border-primary-400 bg-primary-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                  <input type="radio" name="pickup" value="main"
+                    checked={selectedId === 'main'}
+                    onChange={() => setSelectedId('main')}
+                    className="mt-0.5 accent-primary-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Main Business Address</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Default registered address</p>
+                  </div>
+                </label>
+
+                {/* Approved pickup addresses */}
+                {approvedAddresses.map(addr => (
+                  <label key={addr._id}
+                    className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${selectedId === addr._id ? 'border-primary-400 bg-primary-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                    <input type="radio" name="pickup" value={addr._id}
+                      checked={selectedId === addr._id}
+                      onChange={() => setSelectedId(addr._id)}
+                      className="mt-0.5 accent-primary-500" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{addr.label}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {[addr.street, addr.city, addr.state, addr.pincode].filter(Boolean).join(', ')}
+                      </p>
+                    </div>
+                  </label>
+                ))}
+
+                {/* Pending addresses notice */}
+                {hasPending && (
+                  <p className="text-xs text-orange-600 bg-orange-50 rounded-lg px-3 py-2">
+                    ⏳ Some of your addresses are awaiting admin approval and cannot be selected yet.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t flex justify-end gap-3">
+          <button onClick={onClose}
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border rounded-xl">
+            Cancel
+          </button>
+          <button onClick={handleConfirm} disabled={confirming || !selectedId || loadingAddrs}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2 rounded-xl transition-all disabled:opacity-60">
+            {confirming
+              ? <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Confirming…</>
+              : <><FiCheckCircle size={15} /> Confirm Order</>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────
 export default function SellerOrders() {
-  const [orders,    setOrders]    = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [expanded,  setExpanded]  = useState({});
-  const [confirming, setConfirming] = useState({});
+  const [orders,     setOrders]     = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [expanded,   setExpanded]   = useState({});
+  const [modalOrder, setModalOrder] = useState(null); // order to confirm
 
   useEffect(() => {
     api.get('/orders/seller/mine')
@@ -28,19 +167,10 @@ export default function SellerOrders() {
 
   const toggleExpand = (id) => setExpanded(e => ({ ...e, [id]: !e[id] }));
 
-  const confirmOrder = async (orderId) => {
-    setConfirming(c => ({ ...c, [orderId]: true }));
-    try {
-      await api.patch(`/orders/${orderId}/seller-confirm`);
-      setOrders(prev => prev.map(o =>
-        o._id === orderId ? { ...o, orderStatus: 'confirmed' } : o
-      ));
-      toast.success('Order confirmed! Customer will be notified.');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to confirm order');
-    } finally {
-      setConfirming(c => ({ ...c, [orderId]: false }));
-    }
+  const handleConfirmed = (orderId) => {
+    setOrders(prev => prev.map(o =>
+      o._id === orderId ? { ...o, orderStatus: 'confirmed' } : o
+    ));
   };
 
   if (loading) return (
@@ -53,6 +183,15 @@ export default function SellerOrders() {
 
   return (
     <div>
+      {/* Confirm modal */}
+      {modalOrder && (
+        <ConfirmModal
+          order={modalOrder}
+          onClose={() => setModalOrder(null)}
+          onConfirmed={handleConfirmed}
+        />
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-gray-800">My Orders</h2>
         {pendingCount > 0 && (
@@ -84,6 +223,14 @@ export default function SellerOrders() {
                         ⏳ Awaiting your confirmation
                       </span>
                     )}
+                    {/* Show pickup info for confirmed orders */}
+                    {o.sellerPickup?.city && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 ${o.sellerPickup.adminAcknowledged ? 'bg-green-50 text-green-700 border-green-200' : 'bg-orange-50 text-orange-600 border-orange-200'}`}>
+                        <FiMapPin size={10} />
+                        {o.sellerPickup.label} · {o.sellerPickup.city}
+                        {o.sellerPickup.adminAcknowledged ? ' ✓' : ' (pending admin ack)'}
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-x-3">
                     <span>👤 {o.user?.name || '—'}</span>
@@ -101,15 +248,11 @@ export default function SellerOrders() {
                   {/* Confirm button — only for 'placed' orders */}
                   {o.orderStatus === 'placed' && (
                     <button
-                      onClick={() => confirmOrder(o._id)}
-                      disabled={confirming[o._id]}
-                      className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all disabled:opacity-60"
+                      onClick={() => setModalOrder(o)}
+                      className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all"
                     >
-                      {confirming[o._id]
-                        ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                        : <FiCheckCircle size={15} />
-                      }
-                      {confirming[o._id] ? 'Confirming…' : 'Confirm Order'}
+                      <FiCheckCircle size={15} />
+                      Confirm Order
                     </button>
                   )}
 
@@ -124,8 +267,8 @@ export default function SellerOrders() {
 
               {/* Expanded items detail */}
               {expanded[o._id] && (
-                <div className="border-t border-gray-100 bg-gray-50 px-4 py-3">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Order Items</p>
+                <div className="border-t border-gray-100 bg-gray-50 px-4 py-3 space-y-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Order Items</p>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-xs text-gray-500">
@@ -147,10 +290,25 @@ export default function SellerOrders() {
                     </tbody>
                   </table>
 
+                  {/* Pickup address */}
+                  {o.sellerPickup?.city && (
+                    <div className={`text-xs rounded-xl px-3 py-2 flex items-start gap-2 ${o.sellerPickup.adminAcknowledged ? 'bg-green-50 text-green-800' : 'bg-orange-50 text-orange-800'}`}>
+                      <FiMapPin size={12} className="mt-0.5 shrink-0" />
+                      <div>
+                        <span className="font-semibold">Pickup: </span>
+                        {o.sellerPickup.label} — {[o.sellerPickup.street, o.sellerPickup.city, o.sellerPickup.state, o.sellerPickup.pincode].filter(Boolean).join(', ')}
+                        {o.sellerPickup.adminAcknowledged
+                          ? <span className="ml-1 font-semibold text-green-700">✓ Admin acknowledged</span>
+                          : <span className="ml-1 text-orange-600"> — awaiting admin acknowledgment</span>
+                        }
+                      </div>
+                    </div>
+                  )}
+
                   {/* Shipping address */}
                   {o.shippingAddress && (
-                    <div className="mt-3 text-xs text-gray-500 border-t border-gray-200 pt-3">
-                      <span className="font-semibold text-gray-600">Ship to: </span>
+                    <div className="text-xs text-gray-500 border-t border-gray-200 pt-3">
+                      <span className="font-semibold text-gray-600">Deliver to: </span>
                       {[o.shippingAddress.fullName, o.shippingAddress.addressLine1, o.shippingAddress.city, o.shippingAddress.state, o.shippingAddress.pincode].filter(Boolean).join(', ')}
                       {o.shippingAddress.phone && <span> · 📞 {o.shippingAddress.phone}</span>}
                     </div>

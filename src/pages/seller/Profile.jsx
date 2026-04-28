@@ -244,36 +244,55 @@ export default function SellerProfile() {
           </p>
         )}
         <div className="space-y-2">
-          {pickupAddresses.map(addr => (
-            <div key={addr._id} className={`flex items-start justify-between rounded-xl p-3 border ${addr.isDefault ? 'border-primary-300 bg-primary-50' : 'border-gray-200 bg-gray-50'}`}>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-sm font-semibold text-gray-800">{addr.label || 'Warehouse'}</span>
-                  {addr.isDefault && (
-                    <span className="flex items-center gap-0.5 text-xs text-primary-600 font-medium">
-                      <FiStar size={11} /> Default
+          {pickupAddresses.map(addr => {
+            const statusStyle = addr.status === 'approved'
+              ? 'border-green-300 bg-green-50'
+              : addr.status === 'rejected'
+              ? 'border-red-300 bg-red-50'
+              : 'border-yellow-300 bg-yellow-50';
+            return (
+              <div key={addr._id} className={`flex items-start justify-between rounded-xl p-3 border ${addr.isDefault && addr.status === 'approved' ? 'border-primary-300 bg-primary-50' : statusStyle}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <span className="text-sm font-semibold text-gray-800">{addr.label || 'Warehouse'}</span>
+                    {/* Status badge */}
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium
+                      ${addr.status === 'approved'
+                        ? 'bg-green-100 text-green-700'
+                        : addr.status === 'rejected'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-yellow-100 text-yellow-700'}`}>
+                      {addr.status === 'approved' ? '✓ Approved' : addr.status === 'rejected' ? '✗ Rejected' : '⏳ Pending approval'}
                     </span>
+                    {addr.isDefault && addr.status === 'approved' && (
+                      <span className="flex items-center gap-0.5 text-xs text-primary-600 font-medium">
+                        <FiStar size={11} /> Default
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    {[addr.street, addr.city, addr.state, addr.pincode].filter(Boolean).join(', ')}
+                  </p>
+                  {addr.phone && <p className="text-xs text-gray-400 mt-0.5">{addr.phone}</p>}
+                  {addr.status === 'rejected' && addr.adminNote && (
+                    <p className="text-xs text-red-600 mt-0.5">❌ {addr.adminNote}</p>
                   )}
                 </div>
-                <p className="text-xs text-gray-600">
-                  {[addr.street, addr.city, addr.state, addr.pincode].filter(Boolean).join(', ')}
-                </p>
-                {addr.phone && <p className="text-xs text-gray-400 mt-0.5">{addr.phone}</p>}
-              </div>
-              <div className="flex items-center gap-2 ml-3 shrink-0">
-                {!addr.isDefault && (
-                  <button onClick={() => handleSetDefault(addr._id)}
-                    className="text-xs text-gray-500 hover:text-primary-600 border rounded-lg px-2 py-1">
-                    Set default
+                <div className="flex items-center gap-2 ml-3 shrink-0">
+                  {!addr.isDefault && addr.status === 'approved' && (
+                    <button onClick={() => handleSetDefault(addr._id)}
+                      className="text-xs text-gray-500 hover:text-primary-600 border rounded-lg px-2 py-1">
+                      Set default
+                    </button>
+                  )}
+                  <button onClick={() => handleDeleteAddress(addr._id)}
+                    className="text-red-400 hover:text-red-600 p-1">
+                    <FiTrash2 size={14} />
                   </button>
-                )}
-                <button onClick={() => handleDeleteAddress(addr._id)}
-                  className="text-red-400 hover:text-red-600 p-1">
-                  <FiTrash2 size={14} />
-                </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
