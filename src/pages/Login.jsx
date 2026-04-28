@@ -118,10 +118,11 @@ export default function Login() {
       return saved ? detectType(saved) : null;
     } catch { return null; }
   });
-  const [otp,      setOtp]      = useState('');
-  const [name,     setName]     = useState('');
-  const [loading,  setLoading]  = useState(false);
-  const [address,  setAddress]  = useState({ addressLine1: '', city: '', state: '', pincode: '', phone: '' });
+  const [otp,           setOtp]          = useState('');
+  const [name,          setName]         = useState('');
+  const [loading,       setLoading]      = useState(false);
+  const [address,       setAddress]      = useState({ addressLine1: '', city: '', state: '', pincode: '', phone: '' });
+  const [accountExists, setAccountExists] = useState(null); // null = unknown, true = existing, false = new
 
   const confirmRef   = useRef(null);
   const recaptchaRef = useRef(null);
@@ -135,6 +136,7 @@ export default function Login() {
     const val = e.target.value;
     setContact(val);
     setDetected(detectType(val));
+    setAccountExists(null); // reset hint when contact changes
     // Remember for next visit
     try { localStorage.setItem(LAST_CONTACT_KEY, val); } catch {}
   };
@@ -166,7 +168,8 @@ export default function Login() {
       } else {
         const res = await sendOtp(contact.trim().toLowerCase(), 'email');
         if (res.success) {
-          toast.success(res.message);
+          setAccountExists(res.accountExists ?? null);
+          toast.success(res.accountExists ? `Welcome back! OTP sent to ${contact.trim().toLowerCase()}` : res.message);
           setStep(STEPS.OTP);
           if (res.otp) { setOtp(res.otp); toast('🔧 Dev: OTP auto-filled', { icon: '🧪' }); }
         }
@@ -383,7 +386,7 @@ export default function Login() {
 
                 <div style={{ marginBottom:24 }}>
                   <h2 style={{ color:C.textPrimary, fontSize:20, fontWeight:700, margin:0 }}>
-                    Verify OTP 🔐
+                    {accountExists === true ? 'Welcome back! 👋' : accountExists === false ? 'Create your account ✨' : 'Verify OTP 🔐'}
                   </h2>
                   <p style={{ color:C.textMuted, fontSize:13, marginTop:4 }}>
                     6-digit code sent to{' '}
@@ -391,6 +394,18 @@ export default function Login() {
                       {detected==='phone' ? `+91 XXXXX${contact.slice(-5)}` : contact}
                     </span>
                   </p>
+                  {/* Account match badge */}
+                  {accountExists !== null && (
+                    <div style={{
+                      display:'inline-flex', alignItems:'center', gap:5,
+                      marginTop:8, padding:'4px 10px', borderRadius:20, fontSize:11, fontWeight:600,
+                      background: accountExists ? 'rgba(109,182,81,0.12)' : 'rgba(244,148,28,0.12)',
+                      color: accountExists ? C.green : C.orange,
+                      border: `1px solid ${accountExists ? 'rgba(109,182,81,0.3)' : 'rgba(244,148,28,0.3)'}`,
+                    }}>
+                      {accountExists ? '✓ Existing account found — logging you in' : '✦ New account will be created'}
+                    </div>
+                  )}
                 </div>
 
                 <form onSubmit={handleVerifyOtp} style={{ display:'flex', flexDirection:'column', gap:16 }}>
