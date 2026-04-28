@@ -1,10 +1,10 @@
 // ============================================
-// CHECKOUT PAGE — Address + Razorpay Payment
+// CHECKOUT PAGE — Address + Razorpay / COD Payment
 // ============================================
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiCheckCircle, FiShield } from 'react-icons/fi';
+import { FiCheckCircle, FiShield, FiTruck, FiLoader } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import DeliveryEstimate from '../components/product/DeliveryEstimate';
 import { useCart } from '../context/CartContext';
@@ -14,11 +14,6 @@ import { extractBasePrice } from '../utils/gst';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { usePincodeAutofill } from '../hooks/usePincodeAutofill';
-
-// Only Razorpay is accepted — COD and UPI are disabled
-const PAYMENT_METHODS = [
-  { id: 'razorpay', label: 'Pay Online (Razorpay)', icon: '💳', desc: 'Cards, UPI, NetBanking, Wallets — powered by Razorpay. Secure & instant.' },
-];
 
 // Load Razorpay SDK dynamically
 const loadRazorpay = () =>
@@ -32,7 +27,7 @@ const loadRazorpay = () =>
   });
 
 export default function Checkout() {
-  const { cartItems, enrichedItems, subtotalExGst, gstTotal, shipping, total, sellerGroups, clearCart } = useCart();
+  const { cartItems, enrichedItems, subtotalExGst, gstTotal, shipping, total, sellerGroups, clearCart, isCodBlocked } = useCart();
   const { user, loadUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -57,11 +52,23 @@ export default function Checkout() {
   const displayTotal    = buyNow ? bnTotal    : total;
 
   const [address, setAddress] = useState({
-    fullName: '', phone: '', addressLine1: '', addressLine2: '', city: '', state: '', pincode: '',
+    fullName: '', phone: '', addressLine1: '', addressLine2: '',
+    city: '', state: '', pincode: '', landmark: '', alternatePhone: '',
   });
   const [savedAddresses,    setSavedAddresses]    = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [showNewAddrForm,   setShowNewAddrForm]   = useState(false);
+
+  // COD serviceability state
+  const [codCheck, setCodCheck] = useState({
+    available: null,   // null = unchecked, true/false = result
+    edd: null,
+    eddDays: null,
+    courierName: null,
+    loading: false,
+    checked: false,
+  });
+  const codCheckRef = useRef('');  // last pincode checked
 
   // Fix: sync address state AFTER user loads (fixes race condition)
   useEffect(() => {
@@ -77,9 +84,10 @@ export default function Checkout() {
         city:         def.city         || '',
         state:        def.state        || '',
         pincode:      def.pincode      || '',
+        landmark:     def.landmark     || '',
+        alternatePhone: def.alternatePhone || '',
       });
     } else if (user) {
-      // No saved addresses — prefill name/phone only, show form
       setAddress(prev => ({
         ...prev,
         fullName: prev.fullName || user.name  || '',
@@ -89,35 +97,71 @@ export default function Checkout() {
     }
   }, [user]);
 
+  // Check COD serviceability when pincode is set on address
+  const checkCodServiceability = useCallback(async (pincode) => {
+    if (!pincode || pincode.length !== 6 || pincode === codCheckRef.current) return;
+    codCheckRef.current = pincode;
+    setCodCheck(prev => ({ ...prev, loading: true, checked: false }));
+    try {
+      const { data } = await api.get(`/delivery/cod-check?delivery=${pincode}`);
+      setCodCheck({
+        available:   data.codAvailable,
+        edd:         data.edd,
+        eddDays:     data.eddDays,
+        courierName: data.courierName,
+        loading:     false,
+        checked:     true,
+      });
+    } catch {
+      // Fallback — show COD optimistically
+      setCodCheck({ available: true, edd: null, eddDays: null, courierName: null, loading: false, checked: true });
+    }
+  }, []);
+
+  // Re-check COD when pincode changes
+  useEffect(() => {
+    if (address.pincode?.length === 6) checkCodServiceability(address.pincode);
+  }, [address.pincode, checkCodServiceability]);
+
   // Select a saved address
   const handleSelectAddress = (addr) => {
     setSelectedAddressId(addr._id?.toString());
     setAddress({
-      fullName:     addr.fullName     || '',
-      phone:        addr.phone        || '',
-      addressLine1: addr.addressLine1 || '',
-      addressLine2: addr.addressLine2 || '',
-      city:         addr.city         || '',
-      state:        addr.state        || '',
-      pincode:      addr.pincode      || '',
+      fullName:       addr.fullName       || '',
+      phone:          addr.phone          || '',
+      addressLine1:   addr.addressLine1   || '',
+      addressLine2:   addr.addressLine2   || '',
+      city:           addr.city           || '',
+      state:          addr.state          || '',
+      pincode:        addr.pincode        || '',
+      landmark:       addr.landmark       || '',
+      alternatePhone: addr.alternatePhone || '',
     });
     setShowNewAddrForm(false);
+    codCheckRef.current = '';  // force re-check for new pincode
   };
-  const [paymentMethod] = useState('razorpay'); // fixed — only Razorpay
+
+  const [paymentMethod, setPaymentMethod] = useState('razorpay');
   const [loading, setLoading] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(null);
   const [step, setStep] = useState(1);
-
-  const handleAddressChange = (e) => {
-    const { name, value } = e.target;
-    setAddress(prev => ({ ...prev, [name]: value }));
-    if (name === 'pincode') lookupPincode(value);
-  };
 
   // Pincode autofill for checkout address
   const { lookupPincode, pincodeLoading } = usePincodeAutofill(
     useCallback(({ city, state }) => setAddress(prev => ({ ...prev, city, state })), [])
   );
+
+  const handleAddressChange = (e) => {
+    const { name, value } = e.target;
+    setAddress(prev => ({ ...prev, [name]: value }));
+    if (name === 'pincode') {
+      lookupPincode(value);
+      if (value.length !== 6) {
+        codCheckRef.current = '';
+        setCodCheck({ available: null, edd: null, eddDays: null, courierName: null, loading: false, checked: false });
+      }
+    }
+  };
 
   const validateAddress = () => {
     const required = ['fullName', 'phone', 'addressLine1', 'city', 'state', 'pincode'];
@@ -195,10 +239,19 @@ export default function Checkout() {
 
   const handlePlaceOrder = async () => {
     if (!validateAddress()) return;
+    // Prevent COD if blocked by product or serviceability
+    if (paymentMethod === 'cod' && isCodBlocked) {
+      toast.error('One or more items do not support COD. Please pay online.');
+      return;
+    }
+    if (paymentMethod === 'cod' && codCheck.checked && codCheck.available === false) {
+      toast.error('COD is not available for your pincode. Please pay online.');
+      return;
+    }
     setLoading(true);
 
     try {
-      // Reliable address save — always save new addresses, skip duplicates
+      // Save new addresses
       const isDuplicate = savedAddresses.some(
         a => a.addressLine1?.trim().toLowerCase() === address.addressLine1?.trim().toLowerCase()
           && a.pincode === address.pincode
@@ -212,9 +265,9 @@ export default function Checkout() {
           });
           if (res.data.success) {
             setSavedAddresses(res.data.addresses);
-            await loadUser(); // refresh user context
+            await loadUser();
           }
-        } catch (addrErr) {
+        } catch {
           toast.error('Address could not be saved, but your order will proceed.');
         }
       }
@@ -228,36 +281,31 @@ export default function Checkout() {
 
       const order = data.order;
 
-      // Only Razorpay accepted
-      const paid = await handleRazorpayPayment(order._id);
-      if (!paid) {
-        setLoading(false);
-        return;
+      if (paymentMethod === 'razorpay') {
+        const paid = await handleRazorpayPayment(order._id);
+        if (!paid) {
+          setLoading(false);
+          return;
+        }
+        toast.success('Payment successful! Order confirmed 🎉');
+      } else {
+        // COD — order is already placed, Shiprocket is triggered server-side
+        toast.success('Order placed! Pay on delivery 📦');
       }
+
       clearCart();
-      setOrderPlaced(order);
+      setOrderPlaced({ ...order, codEdd: codCheck.edd, codEddDays: codCheck.eddDays, codCourier: codCheck.courierName });
       setStep(3);
-      toast.success('Payment successful! Order confirmed 🎉');
     } catch (err) {
-      toast.error(err.message || 'Failed to place order');
+      toast.error(err.response?.data?.message || err.message || 'Failed to place order');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConfirmUpiPayment = async () => {
-    if (!upiRef.trim()) return toast.error('Enter UPI transaction ID');
-    try {
-      await api.post('/payment/confirm-upi', { orderId: orderPlaced._id, upiRef: upiRef.trim() });
-      toast.success('Payment reference submitted!');
-      navigate('/orders');
-    } catch {
-      toast.error('Failed to submit UPI reference');
-    }
-  };
-
   // ── Order Success Screen ─────────────────────────────────
   if (step === 3 && orderPlaced) {
+    const isCod = orderPlaced.paymentMethod === 'cod';
     return (
       <>
         <Helmet><title>Order Placed! — Eptomart</title></Helmet>
@@ -266,13 +314,33 @@ export default function Checkout() {
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <FiCheckCircle size={40} className="text-green-500" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Payment Successful! 🎉</h1>
-          <p className="text-gray-500 mb-1">Order ID: <span className="font-mono font-bold text-primary-600">#{orderPlaced.orderId}</span></p>
-          <p className="text-gray-500 mb-6">Total: <span className="font-bold">{formatINR(orderPlaced.pricing?.total)}</span></p>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">
+            {isCod ? 'Order Placed! 📦' : 'Payment Successful! 🎉'}
+          </h1>
+          <p className="text-gray-500 mb-1">
+            Order ID: <span className="font-mono font-bold text-primary-600">#{orderPlaced.orderId}</span>
+          </p>
+          <p className="text-gray-500 mb-4">
+            Total: <span className="font-bold">{formatINR(orderPlaced.pricing?.total)}</span>
+          </p>
 
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-sm text-green-700">
-            ✅ Payment confirmed via Razorpay. Your order is being processed. You will receive an invoice shortly.
-          </div>
+          {isCod ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 text-sm text-blue-700">
+              <p className="font-semibold mb-1">💵 Cash on Delivery</p>
+              <p>Keep ₹{orderPlaced.pricing?.total?.toLocaleString('en-IN')} ready when the order arrives.</p>
+              {orderPlaced.codEdd && (
+                <p className="mt-2 flex items-center gap-1.5 justify-center">
+                  <FiTruck size={14} />
+                  Expected delivery: <strong>{new Date(orderPlaced.codEdd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+                  {orderPlaced.codCourier && <span className="text-xs">via {orderPlaced.codCourier}</span>}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4 text-sm text-green-700">
+              ✅ Payment confirmed via Razorpay. Your order is being processed. You will receive an invoice shortly.
+            </div>
+          )}
 
           <div className="flex gap-3">
             <button onClick={() => navigate('/orders')} className="btn-primary flex-1">Track Order</button>
@@ -284,6 +352,11 @@ export default function Checkout() {
   }
 
   // ── Checkout Form ────────────────────────────────────────
+  const codAvailableForCart = !isCodBlocked;
+  const showCodOption = codAvailableForCart && (
+    !codCheck.checked || codCheck.available !== false
+  );
+
   return (
     <>
       <Helmet><title>Checkout — Eptomart</title></Helmet>
@@ -298,7 +371,7 @@ export default function Checkout() {
             <div className="card p-6">
               <h2 className="text-lg font-bold mb-4">📍 Delivery Address</h2>
 
-              {/* Saved addresses — show selection cards */}
+              {/* Saved addresses */}
               {savedAddresses.length > 0 && !showNewAddrForm && (
                 <div className="space-y-3 mb-4">
                   {savedAddresses.map(addr => (
@@ -322,6 +395,7 @@ export default function Checkout() {
                         </p>
                         <p className="text-sm text-gray-600 truncate">
                           {addr.addressLine1}{addr.addressLine2 ? `, ${addr.addressLine2}` : ''}
+                          {addr.landmark ? ` (${addr.landmark})` : ''}
                         </p>
                         <p className="text-sm text-gray-600">
                           {addr.city}, {addr.state} — {addr.pincode}
@@ -348,7 +422,11 @@ export default function Checkout() {
                   {savedAddresses.length > 0 && (
                     <button
                       type="button"
-                      onClick={() => { setShowNewAddrForm(false); setSelectedAddressId(savedAddresses.find(a => a.isDefault)?._id?.toString() || savedAddresses[0]?._id?.toString()); }}
+                      onClick={() => {
+                        setShowNewAddrForm(false);
+                        const def = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
+                        setSelectedAddressId(def?._id?.toString());
+                      }}
                       className="text-sm text-primary-600 hover:underline mb-3 block"
                     >
                       ← Use saved address
@@ -357,13 +435,15 @@ export default function Checkout() {
                   <p className="text-xs text-gray-400 mb-4">Fields marked <span className="text-red-500 font-bold">*</span> are required</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {[
-                      { name: 'fullName',     label: 'Full Name',               placeholder: 'John Doe',                  required: true,  col: 1 },
-                      { name: 'phone',        label: 'Mobile Number',            placeholder: '98765 43210',               required: true,  col: 1 },
-                      { name: 'addressLine1', label: 'Address Line 1',           placeholder: 'House No, Street Name',     required: true,  col: 2 },
-                      { name: 'addressLine2', label: 'Address Line 2',           placeholder: 'Landmark, Area (optional)', required: false, col: 2 },
-                      { name: 'city',         label: 'City',                     placeholder: 'Mumbai',                    required: true },
-                      { name: 'state',        label: 'State',                    placeholder: 'Maharashtra',               required: true },
-                      { name: 'pincode',      label: 'Pincode',                  placeholder: '400001',                    required: true },
+                      { name: 'fullName',       label: 'Full Name',        placeholder: 'John Doe',                  required: true,  col: 1 },
+                      { name: 'phone',          label: 'Mobile Number',    placeholder: '98765 43210',               required: true,  col: 1 },
+                      { name: 'addressLine1',   label: 'Address Line 1',   placeholder: 'House No, Street Name',     required: true,  col: 2 },
+                      { name: 'addressLine2',   label: 'Address Line 2',   placeholder: 'Apartment, Floor (optional)',required: false, col: 2 },
+                      { name: 'landmark',       label: 'Landmark',         placeholder: 'Near school, temple, etc.', required: false, col: 2 },
+                      { name: 'pincode',        label: 'Pincode',          placeholder: '400001',                    required: true },
+                      { name: 'city',           label: 'City',             placeholder: 'Mumbai',                    required: true },
+                      { name: 'state',          label: 'State',            placeholder: 'Maharashtra',               required: true },
+                      { name: 'alternatePhone', label: 'Alternate Phone',  placeholder: 'Optional',                  required: false },
                     ].map(field => {
                       const isEmpty = field.required && !address[field.name]?.trim();
                       const isPincode = field.name === 'pincode';
@@ -380,16 +460,14 @@ export default function Checkout() {
                               placeholder={field.placeholder}
                               value={address[field.name]}
                               onChange={handleAddressChange}
-                              maxLength={isPincode ? 6 : undefined}
+                              maxLength={isPincode ? 6 : field.name === 'phone' || field.name === 'alternatePhone' ? 10 : undefined}
                               className={`input-field transition-all ${isPincode ? 'pr-8' : ''} ${isEmpty && address[field.name] !== undefined ? 'border-red-400 bg-red-50 focus:ring-red-300' : ''}`}
                             />
-                            {isPincode && pincodeLoading && (
+                            {isPincode && (pincodeLoading || codCheck.loading) && (
                               <span className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
                             )}
                           </div>
-                          {isPincode && (
-                            <p className="text-xs text-gray-400 mt-0.5">City & state auto-filled from pincode</p>
-                          )}
+                          {isPincode && <p className="text-xs text-gray-400 mt-0.5">City & state auto-filled from pincode</p>}
                           {isEmpty && address[field.name] !== undefined && (
                             <p className="text-xs text-red-500 mt-1">This field is required</p>
                           )}
@@ -401,19 +479,80 @@ export default function Checkout() {
               )}
             </div>
 
-            {/* Payment Method — Razorpay only */}
+            {/* Payment Method */}
             <div className="card p-6">
               <h2 className="text-lg font-bold mb-4">💳 Payment Method</h2>
-              <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-primary-500 bg-orange-50">
-                <span className="text-2xl">💳</span>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-800">Pay Online (Razorpay)</p>
-                  <p className="text-xs text-gray-500">Cards, UPI, NetBanking, Wallets — secure & instant</p>
-                </div>
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Secure</span>
+
+              <div className="space-y-3">
+                {/* Razorpay */}
+                <label
+                  className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all
+                    ${paymentMethod === 'razorpay' ? 'border-primary-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'}`}
+                >
+                  <input
+                    type="radio" name="paymentMethod" value="razorpay"
+                    checked={paymentMethod === 'razorpay'}
+                    onChange={() => setPaymentMethod('razorpay')}
+                    className="accent-primary-500"
+                  />
+                  <span className="text-2xl">💳</span>
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-800">Pay Online (Razorpay)</p>
+                    <p className="text-xs text-gray-500">Cards, UPI, NetBanking, Wallets — secure &amp; instant</p>
+                  </div>
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Secure</span>
+                </label>
+
+                {/* COD */}
+                {!isCodBlocked && (
+                  <div>
+                    <label
+                      className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all
+                        ${codCheck.checked && codCheck.available === false
+                          ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                          : 'cursor-pointer ' + (paymentMethod === 'cod' ? 'border-primary-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300')}`}
+                    >
+                      <input
+                        type="radio" name="paymentMethod" value="cod"
+                        checked={paymentMethod === 'cod'}
+                        onChange={() => setPaymentMethod('cod')}
+                        disabled={codCheck.checked && codCheck.available === false}
+                        className="accent-primary-500"
+                      />
+                      <span className="text-2xl">💵</span>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800">Cash on Delivery (COD)</p>
+                        {codCheck.loading ? (
+                          <p className="text-xs text-gray-400 flex items-center gap-1"><FiLoader size={10} className="animate-spin" /> Checking COD for your pincode...</p>
+                        ) : codCheck.checked && codCheck.available === false ? (
+                          <p className="text-xs text-red-500">COD not available for pincode {address.pincode}. Please pay online.</p>
+                        ) : codCheck.checked && codCheck.available && codCheck.edd ? (
+                          <p className="text-xs text-gray-500">
+                            Pay when delivered · EDD: {new Date(codCheck.edd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                            {codCheck.courierName ? ` via ${codCheck.courierName}` : ''}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-500">Pay when delivered to your door</p>
+                        )}
+                      </div>
+                      {codCheck.checked && codCheck.available ? (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">Available</span>
+                      ) : !codCheck.checked && !codCheck.loading ? (
+                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">Enter pincode</span>
+                      ) : null}
+                    </label>
+                  </div>
+                )}
+
+                {isCodBlocked && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+                    ⚠️ One or more items in your cart are not eligible for COD. Please pay online.
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-gray-400 mt-2 text-center">
-                🔒 All payments are processed securely via Razorpay
+
+              <p className="text-xs text-gray-400 mt-3 text-center">
+                🔒 All online payments are processed securely via Razorpay
               </p>
             </div>
           </div>
@@ -444,6 +583,7 @@ export default function Checkout() {
                     </p>
                     <DeliveryEstimate
                       sellerId={group.seller._id}
+                      deliveryPincode={address.pincode?.length === 6 ? address.pincode : undefined}
                     />
                   </div>
                 )
@@ -473,7 +613,11 @@ export default function Checkout() {
                 disabled={loading || checkoutItems.length === 0}
                 className="btn-primary w-full"
               >
-                {loading ? 'Processing...' : paymentMethod === 'razorpay' ? `Pay ${formatINR(displayTotal)}` : `Place Order — ${formatINR(displayTotal)}`}
+                {loading
+                  ? 'Processing...'
+                  : paymentMethod === 'razorpay'
+                    ? `Pay ${formatINR(displayTotal)}`
+                    : `Place COD Order — ${formatINR(displayTotal)}`}
               </button>
 
               <div className="flex items-center justify-center gap-1.5 mt-3">
