@@ -1,7 +1,7 @@
 // ============================================
 // CHECKOUT PAGE — Address + Razorpay Payment
 // ============================================
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { FiCheckCircle, FiShield } from 'react-icons/fi';
@@ -13,6 +13,7 @@ import { formatINR } from '../utils/currency';
 import { extractBasePrice } from '../utils/gst';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { usePincodeAutofill } from '../hooks/usePincodeAutofill';
 
 // Only Razorpay is accepted — COD and UPI are disabled
 const PAYMENT_METHODS = [
@@ -107,8 +108,16 @@ export default function Checkout() {
   const [orderPlaced, setOrderPlaced] = useState(null);
   const [step, setStep] = useState(1);
 
-  const handleAddressChange = (e) =>
-    setAddress(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleAddressChange = (e) => {
+    const { name, value } = e.target;
+    setAddress(prev => ({ ...prev, [name]: value }));
+    if (name === 'pincode') lookupPincode(value);
+  };
+
+  // Pincode autofill for checkout address
+  const { lookupPincode, pincodeLoading } = usePincodeAutofill(
+    useCallback(({ city, state }) => setAddress(prev => ({ ...prev, city, state })), [])
+  );
 
   const validateAddress = () => {
     const required = ['fullName', 'phone', 'addressLine1', 'city', 'state', 'pincode'];
@@ -357,20 +366,30 @@ export default function Checkout() {
                       { name: 'pincode',      label: 'Pincode',                  placeholder: '400001',                    required: true },
                     ].map(field => {
                       const isEmpty = field.required && !address[field.name]?.trim();
+                      const isPincode = field.name === 'pincode';
                       return (
                         <div key={field.name} className={field.col === 2 ? 'sm:col-span-2' : ''}>
                           <label className="block text-sm font-medium text-gray-700 mb-1.5">
                             {field.label}
                             {field.required && <span className="text-red-500 ml-0.5">*</span>}
                           </label>
-                          <input
-                            type="text"
-                            name={field.name}
-                            placeholder={field.placeholder}
-                            value={address[field.name]}
-                            onChange={handleAddressChange}
-                            className={`input-field transition-all ${isEmpty && address[field.name] !== undefined ? 'border-red-400 bg-red-50 focus:ring-red-300' : ''}`}
-                          />
+                          <div className={isPincode ? 'relative' : ''}>
+                            <input
+                              type="text"
+                              name={field.name}
+                              placeholder={field.placeholder}
+                              value={address[field.name]}
+                              onChange={handleAddressChange}
+                              maxLength={isPincode ? 6 : undefined}
+                              className={`input-field transition-all ${isPincode ? 'pr-8' : ''} ${isEmpty && address[field.name] !== undefined ? 'border-red-400 bg-red-50 focus:ring-red-300' : ''}`}
+                            />
+                            {isPincode && pincodeLoading && (
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+                            )}
+                          </div>
+                          {isPincode && (
+                            <p className="text-xs text-gray-400 mt-0.5">City & state auto-filled from pincode</p>
+                          )}
                           {isEmpty && address[field.name] !== undefined && (
                             <p className="text-xs text-red-500 mt-1">This field is required</p>
                           )}

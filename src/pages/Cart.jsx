@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiTrash2, FiShoppingBag, FiTruck } from 'react-icons/fi';
+import { FiTrash2, FiShoppingBag, FiTruck, FiMinus } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import QuantityControl from '../components/cart/QuantityControl';
@@ -87,12 +87,14 @@ export default function Cart() {
                         </div>
 
                         <div className="flex items-center justify-between flex-wrap gap-2">
+                          {/* min=0 so clicking minus at qty=1 removes the item via CartContext */}
                           <QuantityControl
                             quantity={item.quantity}
-                            min={1}
+                            min={0}
                             max={item.stock}
                             loading={updating[item._id]}
                             onChange={(q) => handleQtyChange(item._id, q)}
+                            showTrashAtMin
                           />
 
                           <div className="text-right">

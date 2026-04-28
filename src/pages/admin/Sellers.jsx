@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiSearch, FiUser, FiX, FiRefreshCw, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
+import { usePincodeAutofill } from '../../hooks/usePincodeAutofill';
 
 const BLANK_FORM = {
   businessName: '', email: '', phone: '',
   address: { street: '', city: '', state: '', pincode: '' },
-  gstNumber: '', notes: '',
+  gstNumber: '', fssaiLicenseNumber: '', notes: '',
 };
 
 const STATUS_COLOR = {
@@ -56,17 +57,18 @@ export default function AdminSellers() {
   const openEdit = (s) => {
     setEditing(s);
     setForm({
-      businessName: s.businessName || '',
-      email:        s.contact?.email || s.user?.email || '',
-      phone:        s.contact?.phone || s.user?.phone || '',
+      businessName:       s.businessName || '',
+      email:              s.contact?.email || s.user?.email || '',
+      phone:              s.contact?.phone || s.user?.phone || '',
       address: {
         street:  s.address?.street  || '',
         city:    s.address?.city    || '',
         state:   s.address?.state   || '',
         pincode: s.address?.pincode || '',
       },
-      gstNumber: s.gstNumber || '',
-      notes:     s.notes     || '',
+      gstNumber:          s.gstNumber || '',
+      fssaiLicenseNumber: s.fssaiLicenseNumber || '',
+      notes:              s.notes || '',
     });
     setModal('edit');
   };
@@ -84,6 +86,8 @@ export default function AdminSellers() {
   const createSeller = async () => {
     if (!form.businessName || !form.address.pincode || (!form.email && !form.phone))
       return toast.error('Business name, pincode, and email or phone required');
+    if (!form.gstNumber || form.gstNumber.trim().length < 15)
+      return toast.error('A valid 15-character GST number is required');
     setSaving(true);
     try {
       await api.post('/sellers', form);
@@ -99,11 +103,12 @@ export default function AdminSellers() {
     setSaving(true);
     try {
       await api.put(`/sellers/${editing._id}`, {
-        businessName: form.businessName,
-        contact:      { email: form.email, phone: form.phone },
-        address:      form.address,
-        gstNumber:    form.gstNumber,
-        notes:        form.notes,
+        businessName:       form.businessName,
+        contact:            { email: form.email, phone: form.phone },
+        address:            form.address,
+        gstNumber:          form.gstNumber,
+        fssaiLicenseNumber: form.fssaiLicenseNumber,
+        notes:              form.notes,
       });
       toast.success('Seller updated');
       closeModal(); load();
@@ -139,6 +144,11 @@ export default function AdminSellers() {
 
   const set    = (key, val) => setForm(f => ({ ...f, [key]: val }));
   const setAddr = (key, val) => setForm(f => ({ ...f, address: { ...f.address, [key]: val } }));
+
+  // Pincode autofill — auto-populate city + state from India Post API
+  const { lookupPincode, pincodeLoading } = usePincodeAutofill(
+    useCallback(({ city, state }) => setForm(f => ({ ...f, address: { ...f.address, city, state } })), [])
+  );
 
   return (
     <div>
@@ -341,27 +351,56 @@ export default function AdminSellers() {
                   className="input-field" placeholder="12 Main Street" />
               </div>
               <div className="grid grid-cols-2 gap-3">
+                {/* Pincode with autofill */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Pincode *</label>
+                  <div className="relative">
+                    <input value={form.address.pincode}
+                      onChange={e => { setAddr('pincode', e.target.value); lookupPincode(e.target.value); }}
+                      className="input-field pr-8" placeholder="600001" maxLength={6} />
+                    {pincodeLoading && (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">City & state auto-filled</p>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
                   <input value={form.address.city} onChange={e => setAddr('city', e.target.value)}
                     className="input-field" placeholder="Chennai" />
                 </div>
-                <div>
+                <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
                   <input value={form.address.state} onChange={e => setAddr('state', e.target.value)}
                     className="input-field" placeholder="Tamil Nadu" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pincode {modal === 'create' ? '*' : ''}</label>
-                  <input value={form.address.pincode} onChange={e => setAddr('pincode', e.target.value)}
-                    className="input-field" placeholder="600001" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">GST Number</label>
-                  <input value={form.gstNumber} onChange={e => set('gstNumber', e.target.value)}
-                    className="input-field" placeholder="Optional" />
-                </div>
               </div>
+
+              {/* GST — mandatory */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">GST Number *</label>
+                <input value={form.gstNumber}
+                  onChange={e => set('gstNumber', e.target.value.toUpperCase())}
+                  className="input-field font-mono" placeholder="29ABCDE1234F1Z5" maxLength={15} />
+                {form.gstNumber && form.gstNumber.trim().length !== 15 && (
+                  <p className="text-xs text-red-500 mt-0.5">GST number must be 15 characters</p>
+                )}
+                {!form.gstNumber && (
+                  <p className="text-xs text-red-500 mt-0.5">GST number is mandatory</p>
+                )}
+              </div>
+
+              {/* FSSAI — optional but shown for completeness */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  FSSAI License Number
+                  <span className="ml-1 text-xs font-normal text-gray-400">(for food/beverage sellers)</span>
+                </label>
+                <input value={form.fssaiLicenseNumber}
+                  onChange={e => set('fssaiLicenseNumber', e.target.value)}
+                  className="input-field font-mono" placeholder="e.g. 10018022000123" maxLength={14} />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Internal Notes</label>
                 <textarea value={form.notes} onChange={e => set('notes', e.target.value)}

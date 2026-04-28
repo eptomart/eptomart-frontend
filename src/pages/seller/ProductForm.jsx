@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { FiUploadCloud, FiX, FiInfo, FiEye, FiArrowLeft } from 'react-icons/fi';
+import { usePincodeAutofill } from '../../hooks/usePincodeAutofill';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
 import { GST_SLABS, extractBasePrice } from '../../utils/gst';
@@ -66,6 +67,11 @@ export default function ProductForm() {
   }, [id, isEdit]);
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+
+  // Pincode autofill for product location
+  const { lookupPincode: lookupLocationPincode, pincodeLoading: locationPincodeLoading } = usePincodeAutofill(
+    useCallback(({ city, state }) => setForm(f => ({ ...f, location: { ...f.location, city, state } })), [])
+  );
 
   // Derived margin calculations (read-only, auto-computed from inputs)
   const cp  = parseFloat(form.costPrice)      || 0;
@@ -171,7 +177,7 @@ export default function ProductForm() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
               <select value={form.category} onChange={e => set('category', e.target.value)} className="input-field">
                 <option value="">Select category</option>
-                {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                {categories.map(c => <option key={c._id} value={c._id}>{c.name}{c.requiresFSSAI ? ' 🍽' : ''}</option>)}
               </select>
             </div>
             <div>
@@ -179,6 +185,25 @@ export default function ProductForm() {
               <input value={form.brand} onChange={e => set('brand', e.target.value)} placeholder="Samsung" className="input-field" />
             </div>
           </div>
+
+          {/* FSSAI warning when food category is selected */}
+          {(() => {
+            const selectedCat = categories.find(c => c._id === form.category);
+            if (!selectedCat?.requiresFSSAI) return null;
+            return (
+              <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex items-start gap-2">
+                <span className="text-lg">🍽</span>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">FSSAI License Required</p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    This is a food/beverage category. Your seller profile must have a valid FSSAI license number
+                    before this product can be submitted for approval.
+                    <a href="/seller/profile" target="_blank" className="ml-1 underline font-medium">Update Profile →</a>
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
@@ -318,16 +343,24 @@ export default function ProductForm() {
               <input type="number" min={0} value={form.stock} onChange={e => set('stock', e.target.value)} placeholder="0" className="input-field" />
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pincode *</label>
+              <div className="relative">
+                <input value={form.location.pincode}
+                  onChange={e => { set('location', { ...form.location, pincode: e.target.value }); lookupLocationPincode(e.target.value); }}
+                  placeholder="600001" maxLength={6} className="input-field pr-8" />
+                {locationPincodeLoading && (
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5">City & state auto-filled</p>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Product Location — City *</label>
-              <input value={form.location.city} onChange={e => set('location', { ...form.location, city: e.target.value })} placeholder="Chennai" className="input-field" />
+              <input value={form.location.city} onChange={e => set('location', { ...form.location, city: e.target.value })} placeholder="Auto-filled or enter manually" className="input-field" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">State *</label>
-              <input value={form.location.state} onChange={e => set('location', { ...form.location, state: e.target.value })} placeholder="Tamil Nadu" className="input-field" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Pincode *</label>
-              <input value={form.location.pincode} onChange={e => set('location', { ...form.location, pincode: e.target.value })} placeholder="600001" className="input-field" />
+              <input value={form.location.state} onChange={e => set('location', { ...form.location, state: e.target.value })} placeholder="Auto-filled or enter manually" className="input-field" />
             </div>
           </div>
 

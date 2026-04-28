@@ -30,14 +30,14 @@ export default function AdminCategories() {
 
   const openAdd = () => {
     setEditCat(null);
-    setForm({ name: '', description: '', icon: '', sortOrder: 0 });
+    setForm({ name: '', description: '', icon: '', sortOrder: 0, requiresFSSAI: false });
     setImageFile(null);
     setShowModal(true);
   };
 
   const openEdit = (cat) => {
     setEditCat(cat);
-    setForm({ name: cat.name, description: cat.description || '', icon: cat.icon || '', sortOrder: cat.sortOrder || 0 });
+    setForm({ name: cat.name, description: cat.description || '', icon: cat.icon || '', sortOrder: cat.sortOrder || 0, requiresFSSAI: cat.requiresFSSAI || false });
     setImageFile(null);
     setShowModal(true);
   };
@@ -118,6 +118,9 @@ export default function AdminCategories() {
                 )}
                 <p className="font-semibold text-gray-800 text-sm">{cat.name}</p>
                 {cat.description && <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{cat.description}</p>}
+                {cat.requiresFSSAI && (
+                  <span className="inline-block mt-1 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">🍽 FSSAI req.</span>
+                )}
               </div>
             ))}
           </div>
@@ -168,6 +171,21 @@ export default function AdminCategories() {
                 <label className="block text-sm font-medium mb-1">Sort Order</label>
                 <input type="number" value={form.sortOrder} onChange={e => setForm(f => ({ ...f, sortOrder: e.target.value }))}
                   className="input-field" min="0" />
+              </div>
+
+              {/* FSSAI toggle */}
+              <div className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Requires FSSAI License</p>
+                  <p className="text-xs text-gray-500">Enable for food, beverage, dairy, bakery, etc.</p>
+                </div>
+                <button type="button"
+                  onClick={() => setForm(f => ({ ...f, requiresFSSAI: !f.requiresFSSAI }))}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none
+                    ${form.requiresFSSAI ? 'bg-green-500' : 'bg-gray-300'}`}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform
+                    ${form.requiresFSSAI ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
               </div>
 
               <div className="flex gap-3 pt-2">

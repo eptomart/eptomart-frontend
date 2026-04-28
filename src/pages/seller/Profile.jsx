@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { FiSave, FiUser, FiBriefcase, FiMapPin, FiPhone, FiPlus, FiTrash2, FiStar } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FiSave, FiUser, FiBriefcase, FiMapPin, FiPhone, FiPlus, FiTrash2, FiStar, FiLoader } from 'react-icons/fi';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+import { usePincodeAutofill } from '../../hooks/usePincodeAutofill';
 
 export default function SellerProfile() {
   const { user } = useAuth();
@@ -11,6 +12,7 @@ export default function SellerProfile() {
   const [saving,           setSaving]           = useState(false);
   const [form,             setForm]             = useState({
     displayName: '', description: '',
+    fssaiLicenseNumber: '',
     contact: { phone: '', website: '' },
     bankDetails: { accountNumber: '', ifscCode: '', bankName: '', accountHolder: '' },
   });
@@ -20,6 +22,11 @@ export default function SellerProfile() {
   const [addingAddr,      setAddingAddr]      = useState(false);
   const [addrForm,        setAddrForm]        = useState({ label: '', street: '', city: '', state: '', pincode: '', phone: '', isDefault: false });
   const [addrSaving,      setAddrSaving]      = useState(false);
+
+  // Pincode autofill for pickup address form
+  const { lookupPincode: lookupAddrPincode, pincodeLoading: addrPincodeLoading } = usePincodeAutofill(
+    useCallback(({ city, state }) => setAddrForm(f => ({ ...f, city, state })), [])
+  );
 
   const loadPickupAddresses = () => {
     api.get('/sellers/me/pickup-addresses')
@@ -33,8 +40,9 @@ export default function SellerProfile() {
         const s = r.data.seller;
         setProfile(s);
         setForm({
-          displayName:  s.displayName || '',
-          description:  s.description || '',
+          displayName:        s.displayName || '',
+          description:        s.description || '',
+          fssaiLicenseNumber: s.fssaiLicenseNumber || '',
           contact: {
             phone:   s.contact?.phone   || '',
             website: s.contact?.website || '',
@@ -199,19 +207,26 @@ export default function SellerProfile() {
                   placeholder="Street / Area" className="input-field text-sm" />
               </div>
               <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Pincode *</label>
+                <div className="relative">
+                  <input value={addrForm.pincode}
+                    onChange={e => { setAddr('pincode', e.target.value); lookupAddrPincode(e.target.value); }}
+                    placeholder="600001" maxLength={6} className="input-field text-sm pr-8" />
+                  {addrPincodeLoading && (
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-0.5">City & state auto-filled from pincode</p>
+              </div>
+              <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">City *</label>
                 <input value={addrForm.city} onChange={e => setAddr('city', e.target.value)}
-                  placeholder="City" className="input-field text-sm" />
+                  placeholder="Auto-filled or enter manually" className="input-field text-sm" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">State *</label>
                 <input value={addrForm.state} onChange={e => setAddr('state', e.target.value)}
-                  placeholder="Tamil Nadu" className="input-field text-sm" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Pincode *</label>
-                <input value={addrForm.pincode} onChange={e => setAddr('pincode', e.target.value)}
-                  placeholder="600001" maxLength={6} className="input-field text-sm" />
+                  placeholder="Auto-filled or enter manually" className="input-field text-sm" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
@@ -346,27 +361,45 @@ export default function SellerProfile() {
         </div>
       </div>
 
-      {/* GST/PAN (read-only) */}
-      {(profile.gstNumber || profile.panNumber) && (
-        <div className="card p-6 space-y-3">
-          <h3 className="font-semibold text-gray-800 border-b pb-2">Tax Details</h3>
-          <div className="grid grid-cols-2 gap-4">
-            {profile.gstNumber && (
-              <div>
-                <label className="block text-xs text-gray-500 mb-0.5">GST Number</label>
-                <p className="text-sm font-mono font-medium text-gray-800">{profile.gstNumber}</p>
-              </div>
-            )}
-            {profile.panNumber && (
-              <div>
-                <label className="block text-xs text-gray-500 mb-0.5">PAN Number</label>
-                <p className="text-sm font-mono font-medium text-gray-800">{profile.panNumber}</p>
-              </div>
-            )}
-          </div>
-          <p className="text-xs text-gray-400">Contact admin to update tax details</p>
+      {/* GST / PAN / FSSAI */}
+      <div className="card p-6 space-y-4">
+        <h3 className="font-semibold text-gray-800 border-b pb-2">Tax & Compliance</h3>
+        <div className="grid grid-cols-2 gap-4">
+          {profile.gstNumber && (
+            <div>
+              <label className="block text-xs text-gray-500 mb-0.5">GST Number</label>
+              <p className="text-sm font-mono font-medium text-gray-800">{profile.gstNumber}</p>
+            </div>
+          )}
+          {profile.panNumber && (
+            <div>
+              <label className="block text-xs text-gray-500 mb-0.5">PAN Number</label>
+              <p className="text-sm font-mono font-medium text-gray-800">{profile.panNumber}</p>
+            </div>
+          )}
         </div>
-      )}
+        <p className="text-xs text-gray-400">Contact admin to update GST / PAN details</p>
+
+        {/* FSSAI — seller can update themselves */}
+        <div className="border-t pt-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            FSSAI License Number
+            <span className="ml-1 text-xs font-normal text-gray-400">(required for food / beverage products)</span>
+          </label>
+          <input
+            value={form.fssaiLicenseNumber}
+            onChange={e => set('fssaiLicenseNumber', e.target.value)}
+            placeholder="e.g. 10018022000123"
+            maxLength={14}
+            className="input-field font-mono"
+          />
+          {!form.fssaiLicenseNumber && (
+            <p className="text-xs text-orange-500 mt-0.5">
+              ⚠️ Add your FSSAI license to list food products
+            </p>
+          )}
+        </div>
+      </div>
 
       {/* Account Info */}
       <div className="card p-4 bg-gray-50 text-sm text-gray-500 space-y-1">

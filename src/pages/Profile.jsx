@@ -1,7 +1,7 @@
 // ============================================
 // PROFILE PAGE — with saved addresses
 // ============================================
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { FiUser, FiSave, FiMapPin, FiPlus, FiTrash2, FiCheck, FiPackage, FiHeart } from 'react-icons/fi';
@@ -10,6 +10,7 @@ import Footer from '../components/common/Footer';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { usePincodeAutofill } from '../hooks/usePincodeAutofill';
 
 const BLANK_ADDR = { label: 'Home', fullName: '', phone: '', addressLine1: '', addressLine2: '', city: '', state: '', pincode: '', isDefault: false };
 
@@ -20,6 +21,10 @@ export default function Profile() {
   const [showAddAddr, setShowAddAddr] = useState(false);
   const [addrForm,    setAddrForm]    = useState(BLANK_ADDR);
   const [savingAddr,  setSavingAddr]  = useState(false);
+
+  const { lookupPincode, pincodeLoading } = usePincodeAutofill(
+    useCallback(({ city, state }) => setAddrForm(f => ({ ...f, city, state })), [])
+  );
 
   const addresses = user?.addresses || [];
 
@@ -180,7 +185,15 @@ export default function Profile() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Pincode *</label>
-                  <input value={addrForm.pincode} onChange={e => setA('pincode', e.target.value.replace(/\D/g,'').slice(0,6))} className="input-field text-sm" placeholder="600001" />
+                  <div className="relative">
+                    <input value={addrForm.pincode}
+                      onChange={e => { const v = e.target.value.replace(/\D/g,'').slice(0,6); setA('pincode', v); lookupPincode(v); }}
+                      className="input-field text-sm pr-8" placeholder="600001" />
+                    {pincodeLoading && (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">City & state auto-filled</p>
                 </div>
               </div>
               <div>
