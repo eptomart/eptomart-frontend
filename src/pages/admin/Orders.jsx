@@ -3,7 +3,7 @@
 // ============================================
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { FiChevronDown, FiChevronUp, FiTruck, FiRefreshCw, FiMapPin, FiCheckCircle } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiTruck, FiRefreshCw, FiMapPin, FiCheckCircle, FiXCircle, FiAlertTriangle } from 'react-icons/fi';
 import Loader from '../../components/common/Loader';
 import { formatINR, formatDate } from '../../utils/currency';
 import api from '../../utils/api';
@@ -183,6 +183,106 @@ function ShiprocketPanel({ order, onDone }) {
   );
 }
 
+// ── Refund status panel ──────────────────────────────────
+function RefundPanel({ refund }) {
+  if (!refund || refund.status === 'not_applicable') return null;
+
+  const config = {
+    initiated:       { bg: 'bg-green-50 border-green-200',  icon: <FiCheckCircle size={14} className="text-green-600 shrink-0 mt-0.5" />, label: '💰 Refund Initiated', labelColor: 'text-green-800' },
+    processed:       { bg: 'bg-green-50 border-green-200',  icon: <FiCheckCircle size={14} className="text-green-600 shrink-0 mt-0.5" />, label: '✅ Refund Processed',  labelColor: 'text-green-800' },
+    manual_required: { bg: 'bg-orange-50 border-orange-300', icon: <FiAlertTriangle size={14} className="text-orange-600 shrink-0 mt-0.5" />, label: '⚠️ Manual Refund Required', labelColor: 'text-orange-800' },
+    failed:          { bg: 'bg-red-50 border-red-300',      icon: <FiXCircle size={14} className="text-red-600 shrink-0 mt-0.5" />, label: '❌ Refund Failed',       labelColor: 'text-red-800' },
+    pending:         { bg: 'bg-yellow-50 border-yellow-300', icon: <FiRefreshCw size={14} className="text-yellow-600 shrink-0 mt-0.5" />, label: '🔄 Refund Pending',    labelColor: 'text-yellow-800' },
+  };
+
+  const c = config[refund.status] || config.pending;
+
+  return (
+    <div className={`rounded-xl border p-4 flex items-start gap-3 ${c.bg}`}>
+      {c.icon}
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-semibold ${c.labelColor}`}>{c.label}</p>
+        {refund.amount && (
+          <p className="text-xs text-gray-600 mt-0.5">Amount: <span className="font-medium">{formatINR(refund.amount)}</span></p>
+        )}
+        {refund.razorpayRefundId && (
+          <p className="text-xs text-gray-500 mt-0.5 font-mono">Refund ID: {refund.razorpayRefundId}</p>
+        )}
+        {refund.note && (
+          <p className="text-xs text-gray-600 mt-1">{refund.note}</p>
+        )}
+        {refund.initiatedAt && (
+          <p className="text-xs text-gray-400 mt-0.5">{new Date(refund.initiatedAt).toLocaleString('en-IN')}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Cancel + Refund button (admin) ───────────────────────
+function CancelRefundButton({ order, onDone }) {
+  const [cancelling, setCancelling] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [note, setNote] = useState('');
+
+  if (['cancelled', 'delivered', 'returned'].includes(order.orderStatus)) return null;
+
+  const handle = async () => {
+    setCancelling(true);
+    try {
+      const { data } = await api.post(`/admin/orders/${order._id}/cancel-refund`, { note });
+      const refundStatus = data.refund?.status;
+      if (refundStatus === 'initiated') {
+        toast.success('Order cancelled & Razorpay refund initiated automatically');
+      } else if (refundStatus === 'manual_required') {
+        toast('Order cancelled. Manual refund required — check refund panel.', { icon: '⚠️' });
+      } else {
+        toast.success('Order cancelled');
+      }
+      setShowConfirm(false);
+      onDone();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel order');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  return (
+    <>
+      <button onClick={() => setShowConfirm(true)}
+        className="flex items-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 text-sm font-semibold px-4 py-2 rounded-xl transition-all">
+        <FiXCircle size={14} /> Cancel & Refund
+      </button>
+
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="font-bold text-gray-800 mb-1">Cancel Order #{order.orderId}</h3>
+            <p className="text-sm text-gray-500 mb-3">
+              {order.paymentStatus === 'paid' && order.paymentMethod === 'razorpay'
+                ? '💰 Razorpay refund of ' + formatINR(order.pricing?.total) + ' will be initiated automatically.'
+                : order.paymentStatus === 'paid' && order.paymentMethod === 'upi'
+                ? '⚠️ UPI refund requires manual transfer. Admin will be notified.'
+                : 'No payment to refund.'}
+            </p>
+            <textarea value={note} onChange={e => setNote(e.target.value)}
+              placeholder="Reason for cancellation (optional)"
+              rows={2} className="input-field mb-4 resize-none text-sm" />
+            <div className="flex gap-3">
+              <button onClick={() => setShowConfirm(false)} className="btn-outline flex-1 text-sm">Cancel</button>
+              <button onClick={handle} disabled={cancelling}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-xl text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2">
+                {cancelling ? <><FiRefreshCw size={13} className="animate-spin" /> Processing…</> : 'Confirm Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── Main component ───────────────────────────────────────
 export default function AdminOrders() {
   const [orders,      setOrders]      = useState([]);
@@ -352,6 +452,16 @@ export default function AdminOrders() {
                      order.paymentStatus === 'paid' && (
                       <ShiprocketPanel order={order} onDone={fetchOrders} />
                     )}
+
+                    {/* Refund status */}
+                    {order.refund && order.refund.status !== 'not_applicable' && (
+                      <RefundPanel refund={order.refund} />
+                    )}
+
+                    {/* Cancel & Refund button */}
+                    <div className="flex justify-end">
+                      <CancelRefundButton order={order} onDone={fetchOrders} />
+                    </div>
 
                     {/* Delivery Address */}
                     <div className="text-sm">

@@ -50,9 +50,18 @@ export default function Orders() {
   const cancelOrder = async (orderId) => {
     if (!confirm('Cancel this order?')) return;
     try {
-      await api.put(`/orders/${orderId}/cancel`);
-      setOrders(prev => prev.map(o => o._id === orderId ? { ...o, orderStatus: 'cancelled' } : o));
-      toast.success('Order cancelled');
+      const { data } = await api.put(`/orders/${orderId}/cancel`);
+      setOrders(prev => prev.map(o =>
+        o._id === orderId ? { ...o, orderStatus: 'cancelled', refund: data.refund } : o
+      ));
+      const refundStatus = data.refund?.status;
+      if (refundStatus === 'initiated') {
+        toast.success('Order cancelled! Refund initiated — credit in 5-7 business days.');
+      } else if (refundStatus === 'manual_required') {
+        toast('Order cancelled. Refund will be processed manually within 2-3 business days.', { icon: '🔄', duration: 5000 });
+      } else {
+        toast.success(data.message || 'Order cancelled');
+      }
     } catch { toast.error('Cannot cancel this order'); }
   };
 
@@ -126,8 +135,17 @@ export default function Orders() {
                     {(() => { const s = getStatusLabel(order); return (
                       <span className={`badge ${s.color} capitalize`}>{s.label}</span>
                     ); })()}
-                    {order.paymentStatus === 'paid' && order.orderStatus !== 'placed' && (
+                    {order.paymentStatus === 'paid' && order.orderStatus !== 'placed' && order.orderStatus !== 'cancelled' && (
                       <span className="badge bg-green-100 text-green-700">Paid</span>
+                    )}
+                    {order.paymentStatus === 'refunded' && (
+                      <span className="badge bg-purple-100 text-purple-700">Refunded</span>
+                    )}
+                    {order.refund?.status === 'initiated' && (
+                      <span className="badge bg-blue-100 text-blue-700">💰 Refund Initiated</span>
+                    )}
+                    {order.refund?.status === 'manual_required' && (
+                      <span className="badge bg-orange-100 text-orange-700">🔄 Refund Processing</span>
                     )}
                     {order.invoice?.invoiceNumber && (
                       <span className="text-xs text-gray-400 font-mono hidden sm:block">
@@ -235,6 +253,28 @@ export default function Orders() {
                         <OrderTrackingTimeline order={order} />
                       </div>
                     </div>
+
+                    {/* Refund info banner */}
+                    {order.refund && order.refund.status !== 'not_applicable' && (
+                      <div className={`mt-3 rounded-xl p-3 text-xs
+                        ${order.refund.status === 'initiated' || order.refund.status === 'processed'
+                          ? 'bg-blue-50 border border-blue-200 text-blue-800'
+                          : 'bg-orange-50 border border-orange-200 text-orange-800'}`}>
+                        <p className="font-semibold mb-0.5">
+                          {order.refund.status === 'initiated' ? '💰 Refund Initiated' :
+                           order.refund.status === 'processed' ? '✅ Refund Processed' :
+                           '🔄 Refund in Progress'}
+                        </p>
+                        {order.refund.amount && (
+                          <p>Amount: <span className="font-medium">{formatINR(order.refund.amount)}</span></p>
+                        )}
+                        <p className="mt-0.5 text-opacity-80">
+                          {order.refund.status === 'initiated'
+                            ? 'Will reflect in your account within 5-7 business days.'
+                            : 'Our team will process the refund within 2-3 business days.'}
+                        </p>
+                      </div>
+                    )}
 
                     {['placed', 'confirmed'].includes(order.orderStatus) && (
                       <button onClick={() => cancelOrder(order._id)} className="mt-3 text-sm text-red-500 hover:underline">
