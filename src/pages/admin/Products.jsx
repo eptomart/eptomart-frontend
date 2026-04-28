@@ -32,9 +32,30 @@ export default function AdminProducts() {
     codAvailable: true,
     instagramLink: '',
     variants: [],
-    platformMargin: '', sellerMargin: '',
     seller: '',
   });
+
+  // Auto-calculate margins when pricing fields change
+  const setPricing = (key, val) => {
+    setForm(f => {
+      const updated = { ...f, [key]: val };
+      if (key === 'costPrice' || key === 'sellerPrice') {
+        const cp = parseFloat(key === 'costPrice' ? val : f.costPrice) || 0;
+        const sp = parseFloat(key === 'sellerPrice' ? val : f.sellerPrice) || 0;
+        if (cp > 0 && sp > 0) {
+          updated.eptomartMargin = ((sp - cp) / cp * 100).toFixed(2);
+        }
+      }
+      if (key === 'eptomartMargin') {
+        const cp = parseFloat(f.costPrice) || 0;
+        const margin = parseFloat(val) || 0;
+        if (cp > 0 && margin > 0) {
+          updated.sellerPrice = (cp * (1 + margin / 100)).toFixed(2);
+        }
+      }
+      return updated;
+    });
+  };
   const [imageFiles,    setImageFiles]    = useState([]);
   const [existingImages,setExistingImages]= useState([]);
 
@@ -57,7 +78,7 @@ export default function AdminProducts() {
     api.get('/sellers?limit=100').then(res => setSellers(res.data.sellers || [])).catch(() => {});
   }, []);
 
-  const BLANK_FORM = { name: '', description: '', shortDescription: '', price: '', discountPrice: '', stock: '', category: '', brand: '', tags: '', isFeatured: false, codAvailable: true, gstRate: 18, priceIncludesGst: true, hsnCode: '', costPrice: '', sellerPrice: '', eptomartMargin: '', instagramLink: '', variants: [], platformMargin: '', sellerMargin: '', seller: '' };
+  const BLANK_FORM = { name: '', description: '', shortDescription: '', price: '', discountPrice: '', stock: '', category: '', brand: '', tags: '', isFeatured: false, codAvailable: true, gstRate: 18, priceIncludesGst: true, hsnCode: '', costPrice: '', sellerPrice: '', eptomartMargin: '', instagramLink: '', variants: [], seller: '' };
 
   const openAdd = () => {
     setEditProduct(null);
@@ -87,11 +108,9 @@ export default function AdminProducts() {
       hsnCode:           product.hsnCode           || '',
       costPrice:         product.costPrice         || '',
       sellerPrice:       product.sellerPrice       || '',
-      eptomartMargin:    product.eptomartMargin     || '',
+      eptomartMargin:    product.eptomartMargin ?? product.platformMargin ?? '',
       instagramLink:     product.instagramLink     || '',
       variants:          product.variants          || [],
-      platformMargin:    product.platformMargin    || '',
-      sellerMargin:      product.sellerMargin      || '',
       seller:            product.seller?._id       || product.seller || '',
     });
     setImageFiles([]);
@@ -119,7 +138,10 @@ export default function AdminProducts() {
         priceIncludesGst: form.priceIncludesGst,
         ...(form.costPrice      && { costPrice:      Number(form.costPrice) }),
         ...(form.sellerPrice    && { sellerPrice:    Number(form.sellerPrice) }),
-        ...(form.eptomartMargin !== '' && form.eptomartMargin !== undefined && { eptomartMargin: Number(form.eptomartMargin) }),
+        ...(form.eptomartMargin !== '' && form.eptomartMargin !== undefined && {
+          eptomartMargin: Number(form.eptomartMargin),
+          platformMargin: Number(form.eptomartMargin), // keep alias in sync
+        }),
       };
       Object.entries(payload).forEach(([k, v]) => {
         if (v !== '' && v !== undefined && v !== null) {
@@ -367,7 +389,7 @@ export default function AdminProducts() {
 
                 <div>
                   <label className="block text-sm font-medium mb-1">Cost Price (₹) <span className="text-gray-400 font-normal">— for margin calc</span></label>
-                  <input type="number" value={form.costPrice} onChange={e => setForm(f => ({ ...f, costPrice: e.target.value }))}
+                  <input type="number" value={form.costPrice} onChange={e => setPricing('costPrice', e.target.value)}
                     className="input-field" min="0" placeholder="Your purchase cost (optional)" />
                 </div>
 
@@ -518,29 +540,34 @@ export default function AdminProducts() {
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Cost Price (₹)</label>
-                    <input type="number" value={form.costPrice} onChange={e => setForm(f => ({ ...f, costPrice: e.target.value }))} placeholder="e.g. 150" min="0" className="input-field" />
+                    <input type="number" value={form.costPrice} onChange={e => setPricing('costPrice', e.target.value)} placeholder="e.g. 150" min="0" className="input-field" />
+                    <p className="text-xs text-gray-400 mt-1">Seller's purchase cost</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Seller Price (₹)</label>
-                    <input type="number" value={form.sellerPrice} onChange={e => setForm(f => ({ ...f, sellerPrice: e.target.value }))} placeholder="e.g. 200" min="0" className="input-field" />
+                    <input type="number" value={form.sellerPrice} onChange={e => setPricing('sellerPrice', e.target.value)} placeholder="e.g. 200" min="0" className="input-field" />
+                    <p className="text-xs text-gray-400 mt-1">Desired selling price</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Eptomart Margin (%)</label>
-                    <input type="number" value={form.eptomartMargin} onChange={e => setForm(f => ({ ...f, eptomartMargin: e.target.value }))} placeholder="e.g. 10" min="0" max="100" className="input-field" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Eptomart Margin (%)
+                      <span className="ml-1 text-xs text-green-600 font-normal">auto</span>
+                    </label>
+                    <input type="number" value={form.eptomartMargin} onChange={e => setPricing('eptomartMargin', e.target.value)} placeholder="Auto-calculated" min="0" max="100" className="input-field bg-green-50" />
+                    <p className="text-xs text-gray-400 mt-1">Edit to recalc price</p>
                   </div>
                 </div>
-              </div>
-
-              {/* Margin fields */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Platform Margin (%)</label>
-                  <input type="number" value={form.platformMargin} onChange={e => setForm(f => ({ ...f, platformMargin: e.target.value }))} placeholder="10" min="0" max="100" className="input-field" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Seller Margin (%)</label>
-                  <input type="number" value={form.sellerMargin} onChange={e => setForm(f => ({ ...f, sellerMargin: e.target.value }))} placeholder="20" min="0" max="100" className="input-field" />
-                </div>
+                {form.costPrice && form.sellerPrice && (
+                  <div className="mt-3 bg-blue-50 rounded-xl p-3 text-xs space-y-1">
+                    <p className="font-semibold text-gray-700">Margin Breakdown</p>
+                    <p className="text-gray-600">Cost: <strong>{formatINR(Number(form.costPrice))}</strong> → Sell: <strong>{formatINR(Number(form.sellerPrice))}</strong></p>
+                    {form.eptomartMargin && (
+                      <p className={`font-semibold ${Number(form.eptomartMargin) > 0 ? 'text-blue-700' : 'text-red-500'}`}>
+                        Profit: {formatINR(Number(form.sellerPrice) - Number(form.costPrice))} ({Number(form.eptomartMargin).toFixed(1)}% markup)
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2">

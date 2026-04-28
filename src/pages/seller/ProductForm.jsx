@@ -15,9 +15,8 @@ const BLANK = {
   location: { city: '', state: '', pincode: '' },
   hsnCode: '',
   variants: [],
-  // Mandatory pricing fields
+  // Mandatory pricing fields (platformMargin removed — same as eptomartMargin)
   costPrice: '', sellerPrice: '', eptomartMargin: '',
-  platformMargin: '', sellerMargin: '',
   freeShippingAbove: 499,
 };
 
@@ -59,16 +58,36 @@ export default function ProductForm() {
           variants:        p.variants || [],
           costPrice:       p.costPrice || '',
           sellerPrice:     p.sellerPrice || '',
-          eptomartMargin:  p.eptomartMargin || '',
-          platformMargin:  p.platformMargin || '',
-          sellerMargin:    p.sellerMargin || '',
+          eptomartMargin:  p.eptomartMargin ?? p.platformMargin ?? '',
           freeShippingAbove: p.freeShippingAbove || 499,
         });
       }).catch(() => toast.error('Failed to load product')).finally(() => setLoading(false));
     }
   }, [id, isEdit]);
 
-  const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+  const set = (key, val) => setForm(f => {
+    const updated = { ...f, [key]: val };
+
+    // Auto-calculate eptomartMargin when costPrice or sellerPrice changes
+    if (key === 'costPrice' || key === 'sellerPrice') {
+      const cp = parseFloat(key === 'costPrice' ? val : f.costPrice) || 0;
+      const sp = parseFloat(key === 'sellerPrice' ? val : f.sellerPrice) || 0;
+      if (cp > 0 && sp > 0) {
+        updated.eptomartMargin = ((sp - cp) / cp * 100).toFixed(2);
+      }
+    }
+
+    // Auto-calculate sellerPrice when eptomartMargin is manually changed
+    if (key === 'eptomartMargin') {
+      const cp = parseFloat(f.costPrice) || 0;
+      const margin = parseFloat(val) || 0;
+      if (cp > 0 && margin > 0) {
+        updated.sellerPrice = (cp * (1 + margin / 100)).toFixed(2);
+      }
+    }
+
+    return updated;
+  });
 
   // Computed preview price
   const basePrice = form.price ? (form.priceIncludesGst ? extractBasePrice(Number(form.price), Number(form.gstRate)) : Number(form.price)) : 0;
@@ -103,8 +122,7 @@ export default function ProductForm() {
         costPrice:      form.costPrice ? Number(form.costPrice) : undefined,
         sellerPrice:    form.sellerPrice ? Number(form.sellerPrice) : undefined,
         eptomartMargin: form.eptomartMargin !== '' ? Number(form.eptomartMargin) : undefined,
-        platformMargin: form.platformMargin !== '' ? Number(form.platformMargin) : undefined,
-        sellerMargin:   form.sellerMargin !== '' ? Number(form.sellerMargin) : undefined,
+        platformMargin: form.eptomartMargin !== '' ? Number(form.eptomartMargin) : undefined, // sync alias
         tags:           form.tags.split(',').map(t => t.trim()).filter(Boolean),
         approvalStatus: submitForApproval ? 'pending' : (form.approvalStatus === 'approved' ? 'pending' : form.approvalStatus || 'draft'),
         submittedAt:    submitForApproval ? new Date().toISOString() : undefined,
@@ -242,26 +260,46 @@ export default function ProductForm() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Cost Price (₹) *</label>
               <input type="number" value={form.costPrice} onChange={e => set('costPrice', e.target.value)} placeholder="Your purchase cost" min="0" className="input-field" />
-              <p className="text-xs text-gray-400 mt-1">What you paid for this</p>
+              <p className="text-xs text-gray-400 mt-1">What you paid for this product</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Seller Price (₹) *</label>
-              <input type="number" value={form.sellerPrice} onChange={e => set('sellerPrice', e.target.value)} placeholder="Your listed price" min="0" className="input-field" />
-              <p className="text-xs text-gray-400 mt-1">Price before Eptomart margin</p>
+              <input type="number" value={form.sellerPrice} onChange={e => set('sellerPrice', e.target.value)} placeholder="Your selling price" min="0" className="input-field" />
+              <p className="text-xs text-gray-400 mt-1">Price you want to sell at</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Eptomart Margin (%) *</label>
-              <input type="number" value={form.eptomartMargin} onChange={e => set('eptomartMargin', e.target.value)} placeholder="e.g. 10" min="0" max="100" className="input-field" />
-              <p className="text-xs text-gray-400 mt-1">Eptomart's commission %</p>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Eptomart Margin (%) *
+                <span className="ml-1 text-xs text-green-600 font-normal">auto-calculated</span>
+              </label>
+              <input
+                type="number"
+                value={form.eptomartMargin}
+                onChange={e => set('eptomartMargin', e.target.value)}
+                placeholder="Auto from cost & price"
+                min="0" max="100"
+                className="input-field bg-green-50"
+              />
+              <p className="text-xs text-gray-400 mt-1">Edit to recalculate seller price</p>
             </div>
           </div>
           {form.costPrice && form.sellerPrice && (
             <div className="bg-blue-50 rounded-xl p-3 text-sm space-y-1">
-              <p className="font-medium text-gray-700">Pricing Breakdown</p>
-              <p className="text-gray-600">Cost price: {formatINR(Number(form.costPrice))}</p>
-              <p className="text-gray-600">Seller price: {formatINR(Number(form.sellerPrice))}</p>
-              {form.eptomartMargin && <p className="text-gray-600">Eptomart margin ({form.eptomartMargin}%): {formatINR(Number(form.sellerPrice) * Number(form.eptomartMargin) / 100)}</p>}
-              <p className="font-semibold text-blue-700">Final selling price: {formatINR(basePrice + (basePrice * Number(form.gstRate) / 100))}</p>
+              <p className="font-medium text-gray-700">Margin Breakdown</p>
+              <p className="text-gray-600">Your cost price: <strong>{formatINR(Number(form.costPrice))}</strong></p>
+              <p className="text-gray-600">Your selling price: <strong>{formatINR(Number(form.sellerPrice))}</strong></p>
+              {form.eptomartMargin && (
+                <>
+                  <p className="text-gray-600">
+                    Eptomart margin ({form.eptomartMargin}%):&nbsp;
+                    <strong>{formatINR(Number(form.costPrice) * Number(form.eptomartMargin) / 100)}</strong>
+                  </p>
+                  <p className={`font-semibold ${Number(form.eptomartMargin) > 0 ? 'text-blue-700' : 'text-red-500'}`}>
+                    Your profit: {formatINR(Number(form.sellerPrice) - Number(form.costPrice))}
+                    &nbsp;({Number(form.eptomartMargin).toFixed(1)}% markup)
+                  </p>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -338,25 +376,13 @@ export default function ProductForm() {
           )}
         </div>
 
-        {/* Margin & Shipping */}
+        {/* Shipping */}
         <div className="card p-6 space-y-4">
-          <h3 className="font-semibold text-gray-800 border-b pb-2">Pricing & Shipping</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Platform Margin (%)</label>
-              <input type="number" value={form.platformMargin} onChange={e => set('platformMargin', e.target.value)} placeholder="e.g. 10" min="0" max="100" className="input-field" />
-              <p className="text-xs text-gray-400 mt-1">Eptomart commission %</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Seller Margin (%)</label>
-              <input type="number" value={form.sellerMargin} onChange={e => set('sellerMargin', e.target.value)} placeholder="e.g. 20" min="0" max="100" className="input-field" />
-              <p className="text-xs text-gray-400 mt-1">Your target profit %</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Free Shipping Above (₹)</label>
-              <input type="number" value={form.freeShippingAbove} onChange={e => set('freeShippingAbove', e.target.value)} placeholder="499" min="0" className="input-field" />
-              <p className="text-xs text-gray-400 mt-1">Free if order total ≥ this</p>
-            </div>
+          <h3 className="font-semibold text-gray-800 border-b pb-2">Shipping</h3>
+          <div className="max-w-xs">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Free Shipping Above (₹)</label>
+            <input type="number" value={form.freeShippingAbove} onChange={e => set('freeShippingAbove', e.target.value)} placeholder="499" min="0" className="input-field" />
+            <p className="text-xs text-gray-400 mt-1">Orders above this amount get free shipping</p>
           </div>
         </div>
 
