@@ -40,7 +40,7 @@ export default function SellerLayout() {
           {/* Back to Store — top of nav */}
           <div className="px-4 pt-3 pb-1">
             <Link to="/" className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold bg-primary-500 text-white hover:bg-primary-600 transition-colors">
-              <FiArrowLeft size={14} /> ← Back to Store
+              <FiArrowLeft size={14} /> Back to Store
             </Link>
           </div>
 
