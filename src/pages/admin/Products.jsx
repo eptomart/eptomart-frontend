@@ -35,27 +35,8 @@ export default function AdminProducts() {
     seller: '',
   });
 
-  // Auto-calculate margins when pricing fields change
-  const setPricing = (key, val) => {
-    setForm(f => {
-      const updated = { ...f, [key]: val };
-      if (key === 'costPrice' || key === 'sellerPrice') {
-        const cp = parseFloat(key === 'costPrice' ? val : f.costPrice) || 0;
-        const sp = parseFloat(key === 'sellerPrice' ? val : f.sellerPrice) || 0;
-        if (cp > 0 && sp > 0) {
-          updated.eptomartMargin = ((sp - cp) / cp * 100).toFixed(2);
-        }
-      }
-      if (key === 'eptomartMargin') {
-        const cp = parseFloat(f.costPrice) || 0;
-        const margin = parseFloat(val) || 0;
-        if (cp > 0 && margin > 0) {
-          updated.sellerPrice = (cp * (1 + margin / 100)).toFixed(2);
-        }
-      }
-      return updated;
-    });
-  };
+  // Shorthand setter for form fields
+  const setPricing = (key, val) => setForm(f => ({ ...f, [key]: val }));
   const [imageFiles,    setImageFiles]    = useState([]);
   const [existingImages,setExistingImages]= useState([]);
 
@@ -546,28 +527,55 @@ export default function AdminProducts() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Seller Price (₹)</label>
                     <input type="number" value={form.sellerPrice} onChange={e => setPricing('sellerPrice', e.target.value)} placeholder="e.g. 200" min="0" className="input-field" />
-                    <p className="text-xs text-gray-400 mt-1">Desired selling price</p>
+                    <p className="text-xs text-gray-400 mt-1">The price seller lists at</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Eptomart Margin (%)
-                      <span className="ml-1 text-xs text-green-600 font-normal">auto</span>
-                    </label>
-                    <input type="number" value={form.eptomartMargin} onChange={e => setPricing('eptomartMargin', e.target.value)} placeholder="Auto-calculated" min="0" max="100" className="input-field bg-green-50" />
-                    <p className="text-xs text-gray-400 mt-1">Edit to recalc price</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Eptomart Commission (%)</label>
+                    <input type="number" value={form.eptomartMargin} onChange={e => setPricing('eptomartMargin', e.target.value)} placeholder="e.g. 10" min="0" max="100" className="input-field border-orange-300" />
+                    <p className="text-xs text-gray-400 mt-1">Commission % seller pays us</p>
                   </div>
                 </div>
-                {form.costPrice && form.sellerPrice && (
-                  <div className="mt-3 bg-blue-50 rounded-xl p-3 text-xs space-y-1">
-                    <p className="font-semibold text-gray-700">Margin Breakdown</p>
-                    <p className="text-gray-600">Cost: <strong>{formatINR(Number(form.costPrice))}</strong> → Sell: <strong>{formatINR(Number(form.sellerPrice))}</strong></p>
-                    {form.eptomartMargin && (
-                      <p className={`font-semibold ${Number(form.eptomartMargin) > 0 ? 'text-blue-700' : 'text-red-500'}`}>
-                        Profit: {formatINR(Number(form.sellerPrice) - Number(form.costPrice))} ({Number(form.eptomartMargin).toFixed(1)}% markup)
-                      </p>
-                    )}
-                  </div>
-                )}
+                {/* Auto-computed breakdown */}
+                {(() => {
+                  const cp  = parseFloat(form.costPrice) || 0;
+                  const sp  = parseFloat(form.sellerPrice) || 0;
+                  const epm = parseFloat(form.eptomartMargin) || 0;
+                  if (sp <= 0 || epm <= 0) return null;
+                  const commissionAmt  = sp * epm / 100;
+                  const sellerPayout   = sp - commissionAmt;
+                  const sellerMarginPct = cp > 0 ? ((sellerPayout - cp) / cp * 100) : null;
+                  return (
+                    <div className="mt-3 rounded-xl border border-gray-200 overflow-hidden text-xs">
+                      <div className="bg-gray-50 px-3 py-1.5 font-semibold text-gray-600 uppercase tracking-wide text-[10px]">
+                        Commission & Margin Breakdown
+                      </div>
+                      <div className="divide-y divide-gray-100">
+                        <div className="flex justify-between px-3 py-2">
+                          <span className="text-gray-600">Seller price</span>
+                          <span className="font-medium">{formatINR(sp)}</span>
+                        </div>
+                        <div className="flex justify-between px-3 py-2 bg-orange-50">
+                          <span className="text-orange-700 font-medium">Eptomart commission ({epm}%)</span>
+                          <span className="font-bold text-orange-700">− {formatINR(commissionAmt)}</span>
+                        </div>
+                        <div className="flex justify-between px-3 py-2">
+                          <span className="text-gray-600">Seller receives</span>
+                          <span className="font-semibold">{formatINR(sellerPayout)}</span>
+                        </div>
+                        {sellerMarginPct !== null && (
+                          <div className={`flex justify-between px-3 py-2 ${sellerMarginPct >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+                            <span className={`font-semibold ${sellerMarginPct >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                              Seller profit margin <span className="font-normal opacity-70">(auto)</span>
+                            </span>
+                            <span className={`font-bold ${sellerMarginPct >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                              {sellerMarginPct >= 0 ? '+' : ''}{sellerMarginPct.toFixed(1)}% ({formatINR(sellerPayout - cp)})
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="flex gap-3 pt-2">

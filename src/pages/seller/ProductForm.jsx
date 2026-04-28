@@ -65,29 +65,15 @@ export default function ProductForm() {
     }
   }, [id, isEdit]);
 
-  const set = (key, val) => setForm(f => {
-    const updated = { ...f, [key]: val };
+  const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
-    // Auto-calculate eptomartMargin when costPrice or sellerPrice changes
-    if (key === 'costPrice' || key === 'sellerPrice') {
-      const cp = parseFloat(key === 'costPrice' ? val : f.costPrice) || 0;
-      const sp = parseFloat(key === 'sellerPrice' ? val : f.sellerPrice) || 0;
-      if (cp > 0 && sp > 0) {
-        updated.eptomartMargin = ((sp - cp) / cp * 100).toFixed(2);
-      }
-    }
-
-    // Auto-calculate sellerPrice when eptomartMargin is manually changed
-    if (key === 'eptomartMargin') {
-      const cp = parseFloat(f.costPrice) || 0;
-      const margin = parseFloat(val) || 0;
-      if (cp > 0 && margin > 0) {
-        updated.sellerPrice = (cp * (1 + margin / 100)).toFixed(2);
-      }
-    }
-
-    return updated;
-  });
+  // Derived margin calculations (read-only, auto-computed from inputs)
+  const cp  = parseFloat(form.costPrice)      || 0;
+  const sp  = parseFloat(form.sellerPrice)    || 0;
+  const epm = parseFloat(form.eptomartMargin) || 0;
+  const eptomartCommissionAmt = sp > 0 && epm > 0 ? sp * epm / 100 : 0;
+  const sellerPayout          = sp - eptomartCommissionAmt;
+  const sellerMarginPct       = cp > 0 && sellerPayout > 0 ? ((sellerPayout - cp) / cp * 100) : null;
 
   // Computed preview price
   const basePrice = form.price ? (form.priceIncludesGst ? extractBasePrice(Number(form.price), Number(form.gstRate)) : Number(form.price)) : 0;
@@ -256,50 +242,68 @@ export default function ProductForm() {
           <h3 className="font-semibold text-gray-800 border-b pb-2">
             Seller Pricing Details <span className="text-xs text-red-500 font-normal ml-1">* Required before submission</span>
           </h3>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Cost Price */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Cost Price (₹) *</label>
-              <input type="number" value={form.costPrice} onChange={e => set('costPrice', e.target.value)} placeholder="Your purchase cost" min="0" className="input-field" />
+              <input type="number" value={form.costPrice} onChange={e => set('costPrice', e.target.value)}
+                placeholder="Your purchase cost" min="0" className="input-field" />
               <p className="text-xs text-gray-400 mt-1">What you paid for this product</p>
             </div>
+
+            {/* Seller Price */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Seller Price (₹) *</label>
-              <input type="number" value={form.sellerPrice} onChange={e => set('sellerPrice', e.target.value)} placeholder="Your selling price" min="0" className="input-field" />
-              <p className="text-xs text-gray-400 mt-1">Price you want to sell at</p>
+              <input type="number" value={form.sellerPrice} onChange={e => set('sellerPrice', e.target.value)}
+                placeholder="Your listed price" min="0" className="input-field" />
+              <p className="text-xs text-gray-400 mt-1">The price you sell at</p>
             </div>
+
+            {/* Eptomart Margin % — MANUAL, this is platform commission */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Eptomart Margin (%) *
-                <span className="ml-1 text-xs text-green-600 font-normal">auto-calculated</span>
+                Eptomart Commission (%) *
               </label>
-              <input
-                type="number"
-                value={form.eptomartMargin}
-                onChange={e => set('eptomartMargin', e.target.value)}
-                placeholder="Auto from cost & price"
-                min="0" max="100"
-                className="input-field bg-green-50"
-              />
-              <p className="text-xs text-gray-400 mt-1">Edit to recalculate seller price</p>
+              <input type="number" value={form.eptomartMargin} onChange={e => set('eptomartMargin', e.target.value)}
+                placeholder="e.g. 10" min="0" max="100" className="input-field border-orange-300 focus:border-orange-500" />
+              <p className="text-xs text-gray-400 mt-1">Commission % you pay Eptomart</p>
             </div>
           </div>
-          {form.costPrice && form.sellerPrice && (
-            <div className="bg-blue-50 rounded-xl p-3 text-sm space-y-1">
-              <p className="font-medium text-gray-700">Margin Breakdown</p>
-              <p className="text-gray-600">Your cost price: <strong>{formatINR(Number(form.costPrice))}</strong></p>
-              <p className="text-gray-600">Your selling price: <strong>{formatINR(Number(form.sellerPrice))}</strong></p>
-              {form.eptomartMargin && (
-                <>
-                  <p className="text-gray-600">
-                    Eptomart margin ({form.eptomartMargin}%):&nbsp;
-                    <strong>{formatINR(Number(form.costPrice) * Number(form.eptomartMargin) / 100)}</strong>
-                  </p>
-                  <p className={`font-semibold ${Number(form.eptomartMargin) > 0 ? 'text-blue-700' : 'text-red-500'}`}>
-                    Your profit: {formatINR(Number(form.sellerPrice) - Number(form.costPrice))}
-                    &nbsp;({Number(form.eptomartMargin).toFixed(1)}% markup)
-                  </p>
-                </>
-              )}
+
+          {/* Auto-computed breakdown — shown once all 3 are filled */}
+          {sp > 0 && epm > 0 && (
+            <div className="rounded-xl border border-gray-200 overflow-hidden text-sm">
+              <div className="bg-gray-50 px-4 py-2 font-semibold text-gray-700 text-xs uppercase tracking-wide">
+                Commission & Margin Breakdown
+              </div>
+              <div className="divide-y divide-gray-100">
+                <div className="flex justify-between px-4 py-2.5">
+                  <span className="text-gray-600">Seller price</span>
+                  <span className="font-medium">{formatINR(sp)}</span>
+                </div>
+                <div className="flex justify-between px-4 py-2.5 bg-orange-50">
+                  <span className="text-orange-700 font-medium">
+                    Eptomart commission ({epm}%)
+                  </span>
+                  <span className="font-bold text-orange-700">− {formatINR(eptomartCommissionAmt)}</span>
+                </div>
+                <div className="flex justify-between px-4 py-2.5">
+                  <span className="text-gray-600">You receive</span>
+                  <span className="font-semibold text-gray-800">{formatINR(sellerPayout)}</span>
+                </div>
+                {cp > 0 && sellerMarginPct !== null && (
+                  <div className={`flex justify-between px-4 py-2.5 ${sellerMarginPct >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+                    <span className={`font-semibold ${sellerMarginPct >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                      Your profit margin <span className="font-normal text-xs">(auto-calculated)</span>
+                    </span>
+                    <span className={`font-bold ${sellerMarginPct >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                      {sellerMarginPct >= 0 ? '+' : ''}{sellerMarginPct.toFixed(1)}%
+                      &nbsp;({formatINR(sellerPayout - cp)})
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
