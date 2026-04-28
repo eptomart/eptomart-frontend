@@ -3,7 +3,8 @@
 // ============================================
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { FiPlus, FiEdit2, FiTrash2, FiImage, FiSearch, FiInfo } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
+import { FiPlus, FiEdit2, FiTrash2, FiImage, FiSearch, FiInfo, FiEye, FiCopy } from 'react-icons/fi';
 import Loader from '../../components/common/Loader';
 import { formatINR } from '../../utils/currency';
 import { extractBasePrice, GST_SLABS } from '../../utils/gst';
@@ -26,14 +27,16 @@ export default function AdminProducts() {
     name: '', description: '', shortDescription: '', price: '',
     discountPrice: '', stock: '', category: '', brand: '', tags: '',
     isFeatured: false,
-    gstRate: 18, priceIncludesGst: true, hsnCode: '', costPrice: '',
+    gstRate: 18, priceIncludesGst: true, hsnCode: '',
+    costPrice: '', sellerPrice: '', eptomartMargin: '',
     codAvailable: true,
-    instagramLink: '',   // admin-only field
+    instagramLink: '',
     variants: [],
     platformMargin: '', sellerMargin: '',
-    seller: '',          // assign product to a specific seller
+    seller: '',
   });
-  const [imageFiles, setImageFiles] = useState([]);
+  const [imageFiles,    setImageFiles]    = useState([]);
+  const [existingImages,setExistingImages]= useState([]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -54,15 +57,19 @@ export default function AdminProducts() {
     api.get('/sellers?limit=100').then(res => setSellers(res.data.sellers || [])).catch(() => {});
   }, []);
 
+  const BLANK_FORM = { name: '', description: '', shortDescription: '', price: '', discountPrice: '', stock: '', category: '', brand: '', tags: '', isFeatured: false, codAvailable: true, gstRate: 18, priceIncludesGst: true, hsnCode: '', costPrice: '', sellerPrice: '', eptomartMargin: '', instagramLink: '', variants: [], platformMargin: '', sellerMargin: '', seller: '' };
+
   const openAdd = () => {
     setEditProduct(null);
-    setForm({ name: '', description: '', shortDescription: '', price: '', discountPrice: '', stock: '', category: '', brand: '', tags: '', isFeatured: false, codAvailable: true, gstRate: 18, priceIncludesGst: true, hsnCode: '', costPrice: '', instagramLink: '', variants: [], platformMargin: '', sellerMargin: '', seller: '' });
+    setForm(BLANK_FORM);
     setImageFiles([]);
+    setExistingImages([]);
     setShowModal(true);
   };
 
   const openEdit = (product) => {
     setEditProduct(product);
+    setExistingImages(product.images || []);
     setForm({
       name:              product.name              || '',
       description:       product.description       || '',
@@ -79,15 +86,24 @@ export default function AdminProducts() {
       priceIncludesGst:  product.priceIncludesGst  !== false,
       hsnCode:           product.hsnCode           || '',
       costPrice:         product.costPrice         || '',
+      sellerPrice:       product.sellerPrice       || '',
+      eptomartMargin:    product.eptomartMargin     || '',
       instagramLink:     product.instagramLink     || '',
       variants:          product.variants          || [],
       platformMargin:    product.platformMargin    || '',
       sellerMargin:      product.sellerMargin      || '',
-      // seller may be populated object or raw ObjectId string
       seller:            product.seller?._id       || product.seller || '',
     });
     setImageFiles([]);
     setShowModal(true);
+  };
+
+  const cloneProduct = async (id) => {
+    try {
+      await api.post(`/products/${id}/clone`);
+      toast.success('Product cloned as draft!');
+      fetchProducts();
+    } catch { toast.error('Failed to clone product'); }
   };
 
   const handleSave = async (e) => {
@@ -96,7 +112,15 @@ export default function AdminProducts() {
     try {
       const formData = new FormData();
       // Admin products are auto-approved and visible immediately
-      const payload = { ...form, approvalStatus: 'approved', isActive: true, priceIncludesGst: form.priceIncludesGst };
+      const payload = {
+        ...form,
+        approvalStatus: 'approved',
+        isActive: true,
+        priceIncludesGst: form.priceIncludesGst,
+        ...(form.costPrice      && { costPrice:      Number(form.costPrice) }),
+        ...(form.sellerPrice    && { sellerPrice:    Number(form.sellerPrice) }),
+        ...(form.eptomartMargin !== '' && form.eptomartMargin !== undefined && { eptomartMargin: Number(form.eptomartMargin) }),
+      };
       Object.entries(payload).forEach(([k, v]) => {
         if (v !== '' && v !== undefined && v !== null) {
           if (Array.isArray(v)) formData.append(k, JSON.stringify(v));
@@ -240,7 +264,7 @@ export default function AdminProducts() {
                         {product.isFeatured ? '⭐' : '—'}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center justify-center gap-1">
                           {!product.isActive && (
                             <button
                               onClick={() => handleActivate(product._id)}
@@ -250,10 +274,16 @@ export default function AdminProducts() {
                               Activate
                             </button>
                           )}
-                          <button onClick={() => openEdit(product)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500">
+                          <Link to={`/preview/${product._id}`} target="_blank" title="Preview" className="p-1.5 rounded-lg hover:bg-orange-50 text-gray-400 hover:text-primary-500">
+                            <FiEye size={15} />
+                          </Link>
+                          <button onClick={() => openEdit(product)} title="Edit" className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500">
                             <FiEdit2 size={15} />
                           </button>
-                          <button onClick={() => handleDelete(product._id, product.name)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500">
+                          <button onClick={() => cloneProduct(product._id)} title="Clone as draft" className="p-1.5 rounded-lg hover:bg-purple-50 text-purple-400 hover:text-purple-600">
+                            <FiCopy size={15} />
+                          </button>
+                          <button onClick={() => handleDelete(product._id, product.name)} title="Delete" className="p-1.5 rounded-lg hover:bg-red-50 text-red-500">
                             <FiTrash2 size={15} />
                           </button>
                         </div>
@@ -407,11 +437,23 @@ export default function AdminProducts() {
 
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium mb-1">Product Images (max 5)</label>
+                  {/* Show existing images when editing */}
+                  {existingImages.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {existingImages.map((img, idx) => (
+                        <div key={idx} className="relative">
+                          <img src={img.url} alt="" className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                          {img.isDefault && <span className="absolute bottom-0 left-0 right-0 text-center text-[8px] bg-primary-500 text-white rounded-b-lg">Main</span>}
+                        </div>
+                      ))}
+                      <p className="w-full text-xs text-gray-400">Upload new images below to add more</p>
+                    </div>
+                  )}
                   <input type="file" accept="image/*" multiple
                     onChange={e => setImageFiles(Array.from(e.target.files).slice(0, 5))}
                     className="input-field" />
                   {imageFiles.length > 0 && (
-                    <p className="text-xs text-gray-500 mt-1">{imageFiles.length} file(s) selected</p>
+                    <p className="text-xs text-gray-500 mt-1">{imageFiles.length} new file(s) selected</p>
                   )}
                 </div>
 
@@ -468,6 +510,25 @@ export default function AdminProducts() {
                   placeholder="https://www.instagram.com/p/..."
                   className="input-field"
                 />
+              </div>
+
+              {/* Seller Mandatory Pricing */}
+              <div className="border-t pt-4">
+                <p className="text-sm font-semibold text-gray-700 mb-3">Seller Pricing Details</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cost Price (₹)</label>
+                    <input type="number" value={form.costPrice} onChange={e => setForm(f => ({ ...f, costPrice: e.target.value }))} placeholder="e.g. 150" min="0" className="input-field" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Seller Price (₹)</label>
+                    <input type="number" value={form.sellerPrice} onChange={e => setForm(f => ({ ...f, sellerPrice: e.target.value }))} placeholder="e.g. 200" min="0" className="input-field" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Eptomart Margin (%)</label>
+                    <input type="number" value={form.eptomartMargin} onChange={e => setForm(f => ({ ...f, eptomartMargin: e.target.value }))} placeholder="e.g. 10" min="0" max="100" className="input-field" />
+                  </div>
+                </div>
               </div>
 
               {/* Margin fields */}
