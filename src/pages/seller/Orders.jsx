@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
 import toast from 'react-hot-toast';
-import { FiChevronDown, FiChevronUp, FiCheckCircle, FiPackage, FiMapPin, FiX } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiCheckCircle, FiPackage, FiMapPin, FiX, FiDownload } from 'react-icons/fi';
 
 const STATUS_COLOR = {
   placed:     'bg-yellow-100 text-yellow-700',
@@ -311,6 +311,33 @@ export default function SellerOrders() {
                       <span className="font-semibold text-gray-600">Deliver to: </span>
                       {[o.shippingAddress.fullName, o.shippingAddress.addressLine1, o.shippingAddress.city, o.shippingAddress.state, o.shippingAddress.pincode].filter(Boolean).join(', ')}
                       {o.shippingAddress.phone && <span> · 📞 {o.shippingAddress.phone}</span>}
+                    </div>
+                  )}
+
+                  {/* Seller payout invoice download */}
+                  {['shipped','delivered','processing'].includes(o.orderStatus) && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            const res = await api.get(`/invoices/seller/order/${o._id}/download`, { responseType: 'blob' });
+                            const blob = new Blob([res.data], { type: 'application/pdf' });
+                            const url  = URL.createObjectURL(blob);
+                            const a    = document.createElement('a');
+                            a.href     = url;
+                            a.download = `seller-invoice-${o.orderId}.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            toast.success('Payout statement downloaded!');
+                          } catch { toast.error('Could not download seller invoice'); }
+                        }}
+                        className="flex items-center gap-1.5 text-xs text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-all"
+                      >
+                        <FiDownload size={12} /> Download Payout Statement
+                      </button>
                     </div>
                   )}
                 </div>

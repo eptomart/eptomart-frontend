@@ -59,12 +59,13 @@ export default function Checkout() {
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [showNewAddrForm,   setShowNewAddrForm]   = useState(false);
 
-  // COD serviceability state
+  // COD + Shiprocket serviceability state
   const [codCheck, setCodCheck] = useState({
     available: null,   // null = unchecked, true/false = result
     edd: null,
     eddDays: null,
     courierName: null,
+    shippingRate: null,   // actual courier rate in ₹ from Shiprocket
     loading: false,
     checked: false,
   });
@@ -105,12 +106,13 @@ export default function Checkout() {
     try {
       const { data } = await api.get(`/delivery/cod-check?delivery=${pincode}`);
       setCodCheck({
-        available:   data.codAvailable,
-        edd:         data.edd,
-        eddDays:     data.eddDays,
-        courierName: data.courierName,
-        loading:     false,
-        checked:     true,
+        available:    data.codAvailable,
+        edd:          data.edd,
+        eddDays:      data.eddDays,
+        courierName:  data.courierName,
+        shippingRate: data.shippingRate || null,
+        loading:      false,
+        checked:      true,
       });
     } catch {
       // Fallback — show COD optimistically
@@ -599,8 +601,12 @@ export default function Checkout() {
                   <span>{formatINR(displayGst)}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
-                  <span>Shipping</span>
-                  <span className={displayShipping === 0 ? 'text-green-500' : ''}>{displayShipping === 0 ? 'FREE' : formatINR(displayShipping)}</span>
+                  <span>Shipping{codCheck.courierName ? <span className="text-xs text-gray-400 ml-1">via {codCheck.courierName}</span> : null}</span>
+                  <span className={displayShipping === 0 ? 'text-green-500' : ''}>
+                    {codCheck.shippingRate != null
+                      ? formatINR(codCheck.shippingRate)
+                      : displayShipping === 0 ? 'FREE' : formatINR(displayShipping)}
+                  </span>
                 </div>
                 <div className="flex justify-between font-bold text-base pt-2 border-t">
                   <span>Grand Total</span>

@@ -3,7 +3,7 @@
 // ============================================
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiSearch, FiShoppingCart, FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiSettings, FiHeart, FiGrid } from 'react-icons/fi';
+import { FiSearch, FiShoppingCart, FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiSettings, FiHeart, FiGrid, FiMapPin } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
@@ -158,12 +158,16 @@ export default function Navbar() {
                 </button>
 
                 {showUserMenu && (
-                  <div className="absolute right-0 top-12 bg-white shadow-2xl rounded-2xl p-2 w-52 border z-50">
+                  <div className="absolute right-0 top-12 bg-white shadow-2xl rounded-2xl p-2 w-56 border z-50">
                     <Link to="/profile" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}>
                       <FiUser size={16} /> My Profile
                     </Link>
                     <Link to="/orders" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}>
                       <FiPackage size={16} /> My Orders
+                    </Link>
+                    <Link to="/cart" className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}>
+                      <span className="flex items-center gap-3"><FiShoppingCart size={16} /> My Cart</span>
+                      {cartCount > 0 && <span className="text-xs font-bold text-white px-2 py-0.5 rounded-full" style={{background:'#f4941c'}}>{cartCount}</span>}
                     </Link>
                     <Link to="/wishlist" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}>
                       <FiHeart size={16} /> My Wishlist
