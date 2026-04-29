@@ -29,6 +29,7 @@ export default function ProductForm() {
   const [form,          setForm]          = useState(BLANK);
   const [images,        setImages]        = useState([]);
   const [existingImages,setExistingImages]= useState([]);
+  const [deletingImgId, setDeletingImgId] = useState(null);
   const [categories,    setCategories]    = useState([]);
   const [saving,        setSaving]        = useState(false);
   const [loading,       setLoading]       = useState(isEdit);
@@ -89,6 +90,20 @@ export default function ProductForm() {
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files).slice(0, 5);
     setImages(files);
+  };
+
+  const handleRemoveExistingImage = async (imageId) => {
+    if (!confirm('Remove this image? This cannot be undone.')) return;
+    setDeletingImgId(imageId);
+    try {
+      const { data } = await api.delete(`/products/${id}/image/${imageId}`);
+      setExistingImages(data.images || []);
+      toast.success('Image removed');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to remove image');
+    } finally {
+      setDeletingImgId(null);
+    }
   };
 
   const handleSave = async (submitForApproval = false) => {
@@ -429,18 +444,41 @@ export default function ProductForm() {
           {/* Existing images */}
           {existingImages.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Saved Images</p>
+              <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                Saved Images <span className="normal-case font-normal text-gray-400">— hover to remove</span>
+              </p>
               <div className="flex flex-wrap gap-3">
                 {existingImages.map((img, idx) => (
-                  <div key={img._id || idx} className="relative group">
-                    <img src={img.url} alt={`Product ${idx + 1}`} className="w-20 h-20 object-cover rounded-xl border border-gray-200" />
+                  <div key={img._id || idx} className="relative group w-20 h-20">
+                    <img
+                      src={img.url}
+                      alt={`Product ${idx + 1}`}
+                      className="w-20 h-20 object-cover rounded-xl border border-gray-200"
+                    />
                     {img.isDefault && (
-                      <span className="absolute bottom-0 left-0 right-0 text-center text-[9px] bg-primary-500 text-white rounded-b-xl py-0.5">Main</span>
+                      <span className="absolute bottom-0 left-0 right-0 text-center text-[9px] bg-primary-500 text-white rounded-b-xl py-0.5">
+                        Main
+                      </span>
+                    )}
+                    {/* Delete button — visible on hover */}
+                    {isEdit && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveExistingImage(img._id)}
+                        disabled={deletingImgId === img._id}
+                        title="Remove image"
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold
+                                   flex items-center justify-center shadow
+                                   opacity-0 group-hover:opacity-100 transition-opacity
+                                   disabled:opacity-50 hover:bg-red-600"
+                      >
+                        {deletingImgId === img._id ? '…' : '×'}
+                      </button>
                     )}
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-gray-400 mt-1">Upload new images below to add more (existing images are kept)</p>
+              <p className="text-xs text-gray-400 mt-2">Upload new images below to add more</p>
             </div>
           )}
           {/* New image upload */}
