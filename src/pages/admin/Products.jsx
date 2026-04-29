@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiEdit2, FiTrash2, FiImage, FiSearch, FiInfo, FiEye, FiCopy } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiImage, FiSearch, FiInfo, FiEye, FiCopy, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
 import Loader from '../../components/common/Loader';
 import { formatINR } from '../../utils/currency';
 import { extractBasePrice, GST_SLABS } from '../../utils/gst';
@@ -168,16 +168,22 @@ export default function AdminProducts() {
     }
   };
 
-  const handleActivate = async (id) => {
+  const [togglingId, setTogglingId] = useState(null);
+
+  const handleToggleActive = async (product) => {
+    const { _id: id, isActive, name } = product;
+    const action = isActive ? 'deactivate' : 'activate';
+    if (isActive && !confirm(`Deactivate "${name}"?\nIt will be hidden from the storefront immediately.`)) return;
+    setTogglingId(id);
     try {
-      const fd = new FormData();
-      fd.append('isActive', 'true');
-      fd.append('approvalStatus', 'approved');
-      await api.put(`/products/${id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      toast.success('Product activated!');
-      fetchProducts();
+      const { data } = await api.patch(`/products/${id}/toggle-active`);
+      toast.success(data.message || (isActive ? 'Product deactivated' : 'Product activated'));
+      // Optimistic update — flip isActive in local state without full refetch
+      setProducts(prev => prev.map(p => p._id === id ? { ...p, isActive: data.isActive } : p));
     } catch (err) {
-      toast.error('Failed to activate product');
+      toast.error(`Failed to ${action} product`);
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -272,15 +278,25 @@ export default function AdminProducts() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1">
-                          {!product.isActive && (
-                            <button
-                              onClick={() => handleActivate(product._id)}
-                              title="Activate product"
-                              className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200"
-                            >
-                              Activate
-                            </button>
-                          )}
+                          {/* Active / Inactive toggle */}
+                          <button
+                            onClick={() => handleToggleActive(product)}
+                            disabled={togglingId === product._id}
+                            title={product.isActive ? 'Deactivate — hide from storefront' : 'Activate — make visible'}
+                            className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors
+                              ${product.isActive
+                                ? 'bg-green-100 text-green-700 hover:bg-red-100 hover:text-red-700'
+                                : 'bg-gray-100 text-gray-500 hover:bg-green-100 hover:text-green-700'}
+                              ${togglingId === product._id ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                          >
+                            {togglingId === product._id
+                              ? <span className="animate-spin">⟳</span>
+                              : product.isActive
+                                ? <FiToggleRight size={13} />
+                                : <FiToggleLeft size={13} />}
+                            {product.isActive ? 'Active' : 'Inactive'}
+                          </button>
+
                           <Link to={`/preview/${product._id}`} target="_blank" title="Preview" className="p-1.5 rounded-lg hover:bg-orange-50 text-gray-400 hover:text-primary-500">
                             <FiEye size={15} />
                           </Link>
