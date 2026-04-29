@@ -369,7 +369,7 @@ function InvoiceActionsPanel({ order }) {
       <div className="flex flex-wrap gap-2">
         {/* Customer Invoice */}
         <button
-          onClick={() => dl('cust', `/invoices/${id}/download`, `invoice-${oid}.pdf`, 'Customer Invoice')}
+          onClick={() => dl('cust', `/invoices/admin/order/${id}/customer-invoice`, `invoice-${oid}.pdf`, 'Customer Invoice')}
           disabled={loading.cust}
           className="flex items-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-all disabled:opacity-60"
         >
