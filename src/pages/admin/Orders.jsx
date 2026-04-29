@@ -3,7 +3,7 @@
 // ============================================
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { FiChevronDown, FiChevronUp, FiTruck, FiRefreshCw, FiMapPin, FiCheckCircle, FiXCircle, FiAlertTriangle } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiTruck, FiRefreshCw, FiMapPin, FiCheckCircle, FiXCircle, FiAlertTriangle, FiDownload, FiFileText, FiTag } from 'react-icons/fi';
 import Loader from '../../components/common/Loader';
 import { formatINR, formatDate } from '../../utils/currency';
 import api from '../../utils/api';
@@ -332,6 +332,81 @@ function CancelRefundButton({ order, onDone }) {
   );
 }
 
+// ── Invoice / Document download helper ──────────────────
+async function downloadBlob(url, filename, label) {
+  try {
+    const res  = await api.get(url, { responseType: 'blob' });
+    const blob = new Blob([res.data], { type: 'application/pdf' });
+    const link = document.createElement('a');
+    link.href     = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+    toast.success(`${label} downloaded!`);
+  } catch {
+    toast.error(`Could not download ${label}`);
+  }
+}
+
+// ── Invoice Actions Panel (per order) ───────────────────
+function InvoiceActionsPanel({ order }) {
+  const [loading, setLoading] = useState({});
+
+  const dl = async (key, url, filename, label) => {
+    setLoading(l => ({ ...l, [key]: true }));
+    await downloadBlob(url, filename, label);
+    setLoading(l => ({ ...l, [key]: false }));
+  };
+
+  const id = order._id;
+  const oid = order.orderId;
+
+  return (
+    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">📄 Documents</p>
+      <div className="flex flex-wrap gap-2">
+        {/* Customer Invoice */}
+        <button
+          onClick={() => dl('cust', `/invoices/${id}/download`, `invoice-${oid}.pdf`, 'Customer Invoice')}
+          disabled={loading.cust}
+          className="flex items-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-all disabled:opacity-60"
+        >
+          {loading.cust
+            ? <span className="w-3 h-3 border-2 border-blue-400/40 border-t-blue-600 rounded-full animate-spin" />
+            : <FiFileText size={12} />}
+          Customer Invoice
+        </button>
+
+        {/* Admin Summary */}
+        <button
+          onClick={() => dl('admin', `/invoices/admin/order/${id}/download`, `admin-summary-${oid}.pdf`, 'Admin Summary')}
+          disabled={loading.admin}
+          className="flex items-center gap-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-all disabled:opacity-60"
+        >
+          {loading.admin
+            ? <span className="w-3 h-3 border-2 border-purple-400/40 border-t-purple-600 rounded-full animate-spin" />
+            : <FiDownload size={12} />}
+          Admin Summary
+        </button>
+
+        {/* Shipping Label */}
+        <button
+          onClick={() => dl('label', `/invoices/admin/order/${id}/shipping-label`, `shipping-label-${oid}.pdf`, 'Shipping Label')}
+          disabled={loading.label}
+          className="flex items-center gap-1.5 text-xs font-medium text-orange-700 bg-orange-50 border border-orange-200 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition-all disabled:opacity-60"
+        >
+          {loading.label
+            ? <span className="w-3 h-3 border-2 border-orange-400/40 border-t-orange-600 rounded-full animate-spin" />
+            : <FiTag size={12} />}
+          Shipping Label
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ───────────────────────────────────────
 export default function AdminOrders() {
   const [orders,      setOrders]      = useState([]);
@@ -511,6 +586,9 @@ export default function AdminOrders() {
                     <div className="flex justify-end">
                       <CancelRefundButton order={order} onDone={fetchOrders} />
                     </div>
+
+                    {/* Invoice / Document downloads */}
+                    <InvoiceActionsPanel order={order} />
 
                     {/* Delivery Address */}
                     <div className="text-sm">

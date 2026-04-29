@@ -314,9 +314,10 @@ export default function SellerOrders() {
                     </div>
                   )}
 
-                  {/* Seller payout invoice download */}
+                  {/* Seller payout invoice + customer invoice downloads */}
                   {['shipped','delivered','processing'].includes(o.orderStatus) && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
+                    <div className="mt-3 pt-3 border-t border-gray-200 flex flex-wrap gap-2">
+                      {/* Payout Statement */}
                       <button
                         onClick={async (e) => {
                           e.stopPropagation();
@@ -326,17 +327,40 @@ export default function SellerOrders() {
                             const url  = URL.createObjectURL(blob);
                             const a    = document.createElement('a');
                             a.href     = url;
-                            a.download = `seller-invoice-${o.orderId}.pdf`;
+                            a.download = `payout-statement-${o.orderId}.pdf`;
                             document.body.appendChild(a);
                             a.click();
                             document.body.removeChild(a);
                             URL.revokeObjectURL(url);
                             toast.success('Payout statement downloaded!');
-                          } catch { toast.error('Could not download seller invoice'); }
+                          } catch { toast.error('Could not download payout statement'); }
                         }}
                         className="flex items-center gap-1.5 text-xs text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-all"
                       >
-                        <FiDownload size={12} /> Download Payout Statement
+                        <FiDownload size={12} /> Payout Statement
+                      </button>
+
+                      {/* Customer Invoice */}
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            const res = await api.get(`/invoices/seller/order/${o._id}/customer-invoice`, { responseType: 'blob' });
+                            const blob = new Blob([res.data], { type: 'application/pdf' });
+                            const url  = URL.createObjectURL(blob);
+                            const a    = document.createElement('a');
+                            a.href     = url;
+                            a.download = `customer-invoice-${o.orderId}.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            toast.success('Customer invoice downloaded!');
+                          } catch { toast.error('Could not download customer invoice'); }
+                        }}
+                        className="flex items-center gap-1.5 text-xs text-blue-600 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-all"
+                      >
+                        <FiDownload size={12} /> Customer Invoice
                       </button>
                     </div>
                   )}
