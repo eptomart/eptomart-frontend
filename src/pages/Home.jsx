@@ -57,16 +57,16 @@ const SLIDES = [
   },
 ];
 
-// ── Category color palette ─────────────────────────────────
-const CAT_COLORS = [
-  'from-orange-400 to-red-400',
-  'from-violet-400 to-purple-500',
-  'from-cyan-400 to-blue-500',
-  'from-green-400 to-teal-500',
-  'from-pink-400 to-rose-500',
-  'from-amber-400 to-orange-500',
-  'from-indigo-400 to-blue-600',
-  'from-emerald-400 to-green-600',
+// ── Category tile colour palette (pastel cards with accent tones) ──────────
+const CAT_PALETTE = [
+  { card: 'bg-orange-50  border-orange-200', circle: 'bg-orange-100',  label: 'text-orange-700'  },
+  { card: 'bg-violet-50  border-violet-200', circle: 'bg-violet-100',  label: 'text-violet-700'  },
+  { card: 'bg-cyan-50    border-cyan-200',   circle: 'bg-cyan-100',    label: 'text-cyan-700'    },
+  { card: 'bg-green-50   border-green-200',  circle: 'bg-green-100',   label: 'text-green-700'   },
+  { card: 'bg-pink-50    border-pink-200',   circle: 'bg-pink-100',    label: 'text-pink-700'    },
+  { card: 'bg-amber-50   border-amber-200',  circle: 'bg-amber-100',   label: 'text-amber-700'   },
+  { card: 'bg-indigo-50  border-indigo-200', circle: 'bg-indigo-100',  label: 'text-indigo-700'  },
+  { card: 'bg-teal-50    border-teal-200',   circle: 'bg-teal-100',    label: 'text-teal-700'    },
 ];
 
 // ── Countdown timer hook ────────────────────────────────────
@@ -296,25 +296,34 @@ export default function Home() {
                   All Categories <FiArrowRight size={14} />
                 </Link>
               </div>
-              <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-                {categories.slice(0, 8).map((cat, i) => (
-                  <Link
-                    key={cat._id}
-                    to={`/shop/${cat.slug}`}
-                    className="flex flex-col items-center gap-2 group"
-                  >
-                    <div className={`w-full aspect-square bg-gradient-to-br ${CAT_COLORS[i % CAT_COLORS.length]} rounded-2xl flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-200`}>
-                      {cat.image?.url ? (
-                        <img src={cat.image.url} alt={cat.name} className="w-10 h-10 object-cover rounded-xl" />
-                      ) : (
-                        <span className="text-3xl">{cat.icon || '🛍️'}</span>
-                      )}
-                    </div>
-                    <span className="text-xs font-semibold text-gray-700 text-center line-clamp-1 group-hover:text-primary-600 transition-colors">
-                      {cat.name}
-                    </span>
-                  </Link>
-                ))}
+              {/* Mobile: horizontal scroll row — Desktop: responsive grid */}
+              <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory
+                              sm:grid sm:grid-cols-4 sm:overflow-visible sm:pb-0
+                              md:grid-cols-6 lg:grid-cols-8">
+                {categories.slice(0, 8).map((cat, i) => {
+                  const pal = CAT_PALETTE[i % CAT_PALETTE.length];
+                  return (
+                    <Link
+                      key={cat._id}
+                      to={`/shop/${cat.slug}`}
+                      className={`flex-shrink-0 snap-start w-28 sm:w-auto
+                                  flex flex-col items-center gap-2.5 p-3 rounded-2xl border
+                                  ${pal.card}
+                                  hover:-translate-y-1 hover:shadow-md transition-all duration-200 group`}
+                    >
+                      <div className={`w-12 h-12 rounded-full ${pal.circle} flex items-center justify-center flex-shrink-0`}>
+                        {cat.image?.url ? (
+                          <img src={cat.image.url} alt={cat.name} className="w-8 h-8 object-cover rounded-full" />
+                        ) : (
+                          <span className="text-2xl leading-none">{cat.icon || '🛍️'}</span>
+                        )}
+                      </div>
+                      <span className={`text-xs font-bold text-center line-clamp-2 leading-tight ${pal.label}`}>
+                        {cat.name}
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
             </section>
           )}
