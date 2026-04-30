@@ -25,6 +25,10 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data } = await api.get('/auth/me');
       setUser(data.user);
+      // Auto-refresh: server sends a new token when the current one is near expiry
+      if (data.token) {
+        localStorage.setItem('eptomart_token', data.token);
+      }
     } catch {
       localStorage.removeItem('eptomart_token');
       setUser(null);

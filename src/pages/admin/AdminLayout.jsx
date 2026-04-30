@@ -8,7 +8,7 @@ import {
   FiGrid, FiPackage, FiShoppingBag, FiUsers,
   FiBarChart2, FiTag, FiMenu, FiX, FiLogOut, FiHome,
   FiUploadCloud, FiBell, FiCheckSquare, FiUserCheck, FiDollarSign, FiSettings,
-  FiShield, FiCreditCard,
+  FiShield, FiCreditCard, FiMessageSquare,
 } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import EptomartLogo from '../../components/common/EptomartLogo';
@@ -25,6 +25,7 @@ const ALL_NAV = [
   { path: '/admin/analytics',    label: 'Analytics',     icon: FiBarChart2,             permission: 'analytics' },
   { path: '/admin/expenses',     label: 'Expenses',      icon: FiDollarSign,            permission: 'expenses'  },
   { path: '/admin/settlements',  label: 'Settlements',   icon: FiCreditCard,            permission: 'settlements'},
+  { path: '/admin/enquiries',    label: 'Enquiries',     icon: FiMessageSquare,         permission: 'orders'    },
   { path: '/admin/admins',       label: 'Admin Accounts',icon: FiShield,                permission: 'admins'    },
   { path: '/admin/bulk-import',  label: 'Bulk Import',   icon: FiUploadCloud,           permission: null        },
   { path: '/admin/notifications',label: 'Notifications', icon: FiBell,                  permission: null        },

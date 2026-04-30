@@ -6,7 +6,7 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   FiShoppingCart, FiHeart, FiStar, FiTruck, FiShield,
-  FiMinus, FiPlus, FiRepeat, FiColumns, FiMapPin, FiInfo,
+  FiMinus, FiPlus, FiRepeat, FiColumns, FiMapPin, FiInfo, FiArrowLeft,
 } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
@@ -121,6 +121,15 @@ export default function ProductPage() {
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* Back button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-600 font-medium mb-4 transition-colors group"
+        >
+          <FiArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
+          Back
+        </button>
+
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6 flex-wrap">
           <Link to="/" className="hover:text-primary-500">Home</Link>
