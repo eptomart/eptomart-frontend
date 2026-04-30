@@ -57,16 +57,16 @@ const SLIDES = [
   },
 ];
 
-// ── Category tile colour palette (pastel cards with accent tones) ──────────
-const CAT_PALETTE = [
-  { card: 'bg-orange-50  border-orange-200', circle: 'bg-orange-100',  label: 'text-orange-700'  },
-  { card: 'bg-violet-50  border-violet-200', circle: 'bg-violet-100',  label: 'text-violet-700'  },
-  { card: 'bg-cyan-50    border-cyan-200',   circle: 'bg-cyan-100',    label: 'text-cyan-700'    },
-  { card: 'bg-green-50   border-green-200',  circle: 'bg-green-100',   label: 'text-green-700'   },
-  { card: 'bg-pink-50    border-pink-200',   circle: 'bg-pink-100',    label: 'text-pink-700'    },
-  { card: 'bg-amber-50   border-amber-200',  circle: 'bg-amber-100',   label: 'text-amber-700'   },
-  { card: 'bg-indigo-50  border-indigo-200', circle: 'bg-indigo-100',  label: 'text-indigo-700'  },
-  { card: 'bg-teal-50    border-teal-200',   circle: 'bg-teal-100',    label: 'text-teal-700'    },
+// ── Category vivid gradient palette ─────────────────────────
+const CAT_GRADIENTS = [
+  'from-orange-400 to-rose-500',
+  'from-violet-500 to-purple-700',
+  'from-cyan-400   to-blue-600',
+  'from-emerald-400 to-teal-600',
+  'from-pink-400   to-fuchsia-600',
+  'from-amber-400  to-orange-600',
+  'from-indigo-500 to-blue-700',
+  'from-teal-400   to-green-600',
 ];
 
 // ── Countdown timer hook ────────────────────────────────────
@@ -297,28 +297,33 @@ export default function Home() {
                 </Link>
               </div>
               {/* Mobile: horizontal scroll row — Desktop: responsive grid */}
-              <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory
+              <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory
                               sm:grid sm:grid-cols-4 sm:overflow-visible sm:pb-0
                               md:grid-cols-6 lg:grid-cols-8">
                 {categories.slice(0, 8).map((cat, i) => {
-                  const pal = CAT_PALETTE[i % CAT_PALETTE.length];
+                  const grad = CAT_GRADIENTS[i % CAT_GRADIENTS.length];
                   return (
                     <Link
                       key={cat._id}
                       to={`/shop/${cat.slug}`}
-                      className={`flex-shrink-0 snap-start w-32 sm:w-auto
-                                  flex flex-col items-center gap-3 p-4 rounded-2xl border
-                                  ${pal.card}
-                                  hover:-translate-y-1 hover:shadow-md transition-all duration-200 group`}
+                      className="flex-shrink-0 snap-start w-28 sm:w-auto flex flex-col items-center gap-2 group"
                     >
-                      <div className={`w-16 h-16 rounded-full ${pal.circle} flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform`}>
+                      {/* Gradient square tile */}
+                      <div className={`w-full aspect-square rounded-2xl bg-gradient-to-br ${grad}
+                                       flex items-center justify-center shadow-md
+                                       group-hover:-translate-y-1 group-hover:shadow-xl
+                                       transition-all duration-200 overflow-hidden`}>
                         {cat.image?.url ? (
-                          <img src={cat.image.url} alt={cat.name} className="w-12 h-12 object-cover rounded-full" />
+                          <img src={cat.image.url} alt={cat.name}
+                               className="w-16 h-16 object-cover rounded-xl group-hover:scale-110 transition-transform duration-200" />
                         ) : (
-                          <span className="text-4xl leading-none">{cat.icon || '🛍️'}</span>
+                          <span className="text-5xl leading-none drop-shadow group-hover:scale-110 transition-transform duration-200">
+                            {cat.icon || '🛍️'}
+                          </span>
                         )}
                       </div>
-                      <span className={`text-xs font-bold text-center line-clamp-2 leading-tight ${pal.label}`}>
+                      {/* Label below tile */}
+                      <span className="text-xs font-bold text-center line-clamp-2 leading-tight text-gray-800 group-hover:text-primary-600 transition-colors px-1">
                         {cat.name}
                       </span>
                     </Link>
