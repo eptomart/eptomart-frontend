@@ -306,16 +306,16 @@ export default function Home() {
                     <Link
                       key={cat._id}
                       to={`/shop/${cat.slug}`}
-                      className={`flex-shrink-0 snap-start w-28 sm:w-auto
-                                  flex flex-col items-center gap-2.5 p-3 rounded-2xl border
+                      className={`flex-shrink-0 snap-start w-32 sm:w-auto
+                                  flex flex-col items-center gap-3 p-4 rounded-2xl border
                                   ${pal.card}
                                   hover:-translate-y-1 hover:shadow-md transition-all duration-200 group`}
                     >
-                      <div className={`w-12 h-12 rounded-full ${pal.circle} flex items-center justify-center flex-shrink-0`}>
+                      <div className={`w-16 h-16 rounded-full ${pal.circle} flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform`}>
                         {cat.image?.url ? (
-                          <img src={cat.image.url} alt={cat.name} className="w-8 h-8 object-cover rounded-full" />
+                          <img src={cat.image.url} alt={cat.name} className="w-12 h-12 object-cover rounded-full" />
                         ) : (
-                          <span className="text-2xl leading-none">{cat.icon || '🛍️'}</span>
+                          <span className="text-4xl leading-none">{cat.icon || '🛍️'}</span>
                         )}
                       </div>
                       <span className={`text-xs font-bold text-center line-clamp-2 leading-tight ${pal.label}`}>
