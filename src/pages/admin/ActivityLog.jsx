@@ -5,7 +5,10 @@ import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { FiSearch, FiFilter, FiRefreshCw } from 'react-icons/fi';
 import Loader from '../../components/common/Loader';
-import { formatDate, formatTime } from '../../utils/currency';
+import { formatDate } from '../../utils/currency';
+
+const formatTime = (date) =>
+  new Date(date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
