@@ -14,13 +14,13 @@ export default function AdminCategories() {
   const [showModal, setShowModal] = useState(false);
   const [editCat, setEditCat] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '', icon: '', sortOrder: 0 });
+  const [form, setForm] = useState({ name: '', description: '', icon: '', sortOrder: 0, parentCategory: null });
   const [imageFile, setImageFile] = useState(null);
 
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/categories?parent=null');
+      const { data } = await api.get('/categories?all=true');
       setCategories(data.categories || []);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
@@ -30,14 +30,14 @@ export default function AdminCategories() {
 
   const openAdd = () => {
     setEditCat(null);
-    setForm({ name: '', description: '', icon: '', sortOrder: 0, requiresFSSAI: false });
+    setForm({ name: '', description: '', icon: '', sortOrder: 0, requiresFSSAI: false, parentCategory: null });
     setImageFile(null);
     setShowModal(true);
   };
 
   const openEdit = (cat) => {
     setEditCat(cat);
-    setForm({ name: cat.name, description: cat.description || '', icon: cat.icon || '', sortOrder: cat.sortOrder || 0, requiresFSSAI: cat.requiresFSSAI || false });
+    setForm({ name: cat.name, description: cat.description || '', icon: cat.icon || '', sortOrder: cat.sortOrder || 0, requiresFSSAI: cat.requiresFSSAI || false, parentCategory: cat.parentCategory || null });
     setImageFile(null);
     setShowModal(true);
   };
@@ -96,33 +96,46 @@ export default function AdminCategories() {
         </div>
 
         {loading ? <Loader fullPage={false} /> : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {categories.map(cat => (
-              <div key={cat._id} className="card p-4 text-center group relative">
-                {/* Actions */}
-                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => openEdit(cat)} className="w-7 h-7 bg-blue-500 text-white rounded-lg flex items-center justify-center">
-                    <FiEdit2 size={12} />
-                  </button>
-                  <button onClick={() => handleDelete(cat._id, cat.name)} className="w-7 h-7 bg-red-500 text-white rounded-lg flex items-center justify-center">
-                    <FiTrash2 size={12} />
-                  </button>
-                </div>
-
-                {cat.image?.url ? (
-                  <img src={cat.image.url} alt={cat.name} className="w-16 h-16 object-cover rounded-xl mx-auto mb-2" />
-                ) : (
-                  <div className="w-16 h-16 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-2 text-3xl">
-                    {cat.icon || '🛍️'}
+          <div className="space-y-2">
+            {categories.map(cat => {
+              const isSubcategory = cat.parentCategory;
+              const parentName = isSubcategory ? categories.find(c => c._id === cat.parentCategory)?.name : null;
+              return (
+                <div key={cat._id} className={`card p-4 flex items-start justify-between group relative ${isSubcategory ? 'ml-8 border-l-4 border-orange-200' : ''}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3">
+                      {cat.image?.url ? (
+                        <img src={cat.image.url} alt={cat.name} className="w-12 h-12 object-cover rounded-lg flex-shrink-0" />
+                      ) : (
+                        <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0 text-2xl">
+                          {cat.icon || '🛍️'}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-800">{cat.name}</p>
+                        {cat.description && <p className="text-xs text-gray-400 line-clamp-1">{cat.description}</p>}
+                        {isSubcategory && (
+                          <p className="text-xs text-orange-600 font-medium mt-0.5">Sub of: {parentName}</p>
+                        )}
+                        {cat.requiresFSSAI && (
+                          <span className="inline-block mt-1 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">🍽 FSSAI req.</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
-                <p className="font-semibold text-gray-800 text-sm">{cat.name}</p>
-                {cat.description && <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{cat.description}</p>}
-                {cat.requiresFSSAI && (
-                  <span className="inline-block mt-1 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">🍽 FSSAI req.</span>
-                )}
-              </div>
-            ))}
+
+                  {/* Actions */}
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-3 flex-shrink-0">
+                    <button onClick={() => openEdit(cat)} className="w-7 h-7 bg-blue-500 text-white rounded-lg flex items-center justify-center hover:bg-blue-600">
+                      <FiEdit2 size={12} />
+                    </button>
+                    <button onClick={() => handleDelete(cat._id, cat.name)} className="w-7 h-7 bg-red-500 text-white rounded-lg flex items-center justify-center hover:bg-red-600">
+                      <FiTrash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -146,6 +159,18 @@ export default function AdminCategories() {
                 <label className="block text-sm font-medium mb-1">Description</label>
                 <input type="text" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                   className="input-field" placeholder="Brief category description" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Parent Category</label>
+                <select value={form.parentCategory || ''} onChange={e => setForm(f => ({ ...f, parentCategory: e.target.value || null }))}
+                  className="input-field">
+                  <option value="">None (Top Level)</option>
+                  {categories.filter(c => !c.parentCategory && (!editCat || c._id !== editCat._id)).map(cat => (
+                    <option key={cat._id} value={cat._id}>{cat.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-400 mt-0.5">Select a parent to make this a sub-category</p>
               </div>
 
               <div>

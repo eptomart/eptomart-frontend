@@ -11,6 +11,7 @@ import CompareBar from './components/product/CompareBar';
 const Home           = lazy(() => import('./pages/Home'));
 const Shop           = lazy(() => import('./pages/Shop'));
 const ProductPage    = lazy(() => import('./pages/ProductPage'));
+const SellerStore    = lazy(() => import('./pages/SellerStore'));
 const Cart           = lazy(() => import('./pages/Cart'));
 const Checkout       = lazy(() => import('./pages/Checkout'));
 const Orders         = lazy(() => import('./pages/Orders'));
@@ -40,6 +41,7 @@ const AdminAdmins       = lazy(() => import('./pages/admin/Admins'));
 const AdminSettlements  = lazy(() => import('./pages/admin/Settlements'));
 const AdminEnquiries    = lazy(() => import('./pages/admin/Enquiries'));
 const AdminSettings     = lazy(() => import('./pages/admin/Settings'));
+const AdminActivityLog  = lazy(() => import('./pages/admin/ActivityLog'));
 
 // ── Seller pages ─────────────────────────────
 const SellerLayout  = lazy(() => import('./pages/seller/SellerLayout'));
@@ -80,6 +82,7 @@ function AppRoutes() {
           <Route path="/shop"          element={<Shop />} />
           <Route path="/shop/:category"element={<Shop />} />
           <Route path="/product/:slug" element={<ProductPage />} />
+          <Route path="/store/:sellerId" element={<SellerStore />} />
           <Route path="/cart"          element={<Cart />} />
           <Route path="/login"         element={<Login />} />
           <Route path="/compare"       element={<Compare />} />
@@ -122,6 +125,7 @@ function AppRoutes() {
             <Route path="admins"           element={<AdminAdmins />} />
             <Route path="bulk-import"      element={<AdminBulkImport />} />
             <Route path="notifications"    element={<AdminNotifications />} />
+            <Route path="activity-log"     element={<AdminActivityLog />} />
             <Route path="settings"         element={<AdminSettings />} />
           </Route>
 

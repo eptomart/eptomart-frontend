@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
 import toast from 'react-hot-toast';
-import { FiChevronDown, FiChevronUp, FiCheckCircle, FiPackage, FiMapPin, FiX, FiDownload } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiCheckCircle, FiPackage, FiMapPin, FiX, FiDownload, FiUploadCloud, FiAlertCircle, FiTruck, FiExternalLink } from 'react-icons/fi';
 
 const STATUS_COLOR = {
   placed:     'bg-yellow-100 text-yellow-700',
@@ -151,6 +151,101 @@ function ConfirmModal({ order, onClose, onConfirmed }) {
   );
 }
 
+// ── Packaging Upload Section ──────────────────────────────
+function PackagingUploadSection({ order, onPackagingUpdated }) {
+  const [uploading, setUploading] = useState(false);
+  const [packagingData, setPackagingData] = useState({ images: [] });
+
+  useEffect(() => {
+    if (order.packaging) {
+      setPackagingData(order.packaging);
+    }
+  }, [order]);
+
+  const handlePackagingImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    setPackagingData(d => ({ ...d, images: files }));
+  };
+
+  const handlePackagingUpload = async () => {
+    if (packagingData.images.length === 0) {
+      toast.error('Select at least 1 image');
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      packagingData.images.forEach(f => fd.append('images', f));
+      const { data } = await api.post(`/orders/${order._id}/package-images`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setPackagingData(data.packaging || {});
+      toast.success(`${packagingData.images.length} image(s) uploaded!`);
+      onPackagingUpdated(order._id, data.packaging);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const packagingStatus = packagingData.status || 'not_submitted';
+  const uploadedCount = packagingData.uploadedImages?.length || 0;
+  const minRequired = 4;
+
+  return (
+    <div className="border-t border-gray-200 pt-3 mt-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="font-semibold text-sm text-gray-700">📦 Packaging Photos</span>
+        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+          packagingStatus === 'approved' ? 'bg-green-100 text-green-700' :
+          packagingStatus === 'pending_review' ? 'bg-yellow-100 text-yellow-700' :
+          packagingStatus === 'rejected' ? 'bg-red-100 text-red-700' :
+          'bg-gray-100 text-gray-700'
+        }`}>
+          {packagingStatus === 'approved' ? '✓ Approved' :
+           packagingStatus === 'pending_review' ? '⏳ Pending Review' :
+           packagingStatus === 'rejected' ? '✗ Rejected' :
+           '○ Not Submitted'}
+        </span>
+      </div>
+
+      {packagingStatus === 'rejected' && packagingData.rejectionReason && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-2 mb-2">
+          <FiAlertCircle size={13} className="text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="text-xs text-red-600">{packagingData.rejectionReason}</div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
+        <span>{uploadedCount} / {minRequired} images</span>
+      </div>
+
+      {/* Existing thumbnails */}
+      {packagingData.uploadedImages?.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {packagingData.uploadedImages.map((img, idx) => (
+            <img key={idx} src={img.url} alt={`Packaging ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+          ))}
+        </div>
+      )}
+
+      {/* File input + Upload button */}
+      <div className="flex items-center gap-2">
+        <label className="flex-1 flex items-center gap-1.5 text-xs border border-dashed border-gray-300 rounded-lg px-3 py-2 cursor-pointer hover:border-orange-400 transition-colors">
+          <FiUploadCloud size={13} />
+          <span className="text-gray-600">Add images</span>
+          <input type="file" accept="image/*" multiple onChange={handlePackagingImageChange} className="hidden" />
+        </label>
+        <button onClick={handlePackagingUpload} disabled={uploading || packagingData.images.length === 0}
+          className="text-xs px-3 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-medium disabled:opacity-50 transition-all">
+          {uploading ? 'Uploading…' : 'Upload'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────
 export default function SellerOrders() {
   const [orders,     setOrders]     = useState([]);
@@ -170,6 +265,12 @@ export default function SellerOrders() {
   const handleConfirmed = (orderId) => {
     setOrders(prev => prev.map(o =>
       o._id === orderId ? { ...o, orderStatus: 'confirmed' } : o
+    ));
+  };
+
+  const handlePackagingUpdated = (orderId, packagingData) => {
+    setOrders(prev => prev.map(o =>
+      o._id === orderId ? { ...o, packaging: packagingData } : o
     ));
   };
 
@@ -305,6 +406,46 @@ export default function SellerOrders() {
                     </div>
                   )}
 
+                  {/* Shipping section — AWB and tracking for shipped/delivered orders */}
+                  {(o.orderStatus === 'shipped' || o.orderStatus === 'delivered') && (
+                    <div className="border-t border-gray-200 pt-3 mt-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FiTruck size={14} className="text-blue-600" />
+                        <span className="font-semibold text-sm text-gray-700">Shipping Details</span>
+                      </div>
+                      <div className="space-y-2 text-xs">
+                        {/* AWB Number */}
+                        <div className="flex items-start justify-between">
+                          <span className="text-gray-600">AWB Number:</span>
+                          <span className="font-mono font-semibold text-gray-800">
+                            {o.shiprocket?.awb || o.trackingNumber || (
+                              <span className="text-orange-600">⏳ AWB Pending</span>
+                            )}
+                          </span>
+                        </div>
+
+                        {/* Courier */}
+                        {(o.shiprocket?.courier || o.deliveryPartner) && (
+                          <div className="flex items-start justify-between">
+                            <span className="text-gray-600">Courier:</span>
+                            <span className="font-semibold text-gray-800">{o.shiprocket?.courier || o.deliveryPartner}</span>
+                          </div>
+                        )}
+
+                        {/* Tracking Link */}
+                        {o.shiprocket?.trackingUrl && (
+                          <div className="flex items-start justify-between">
+                            <span className="text-gray-600">Track Shipment:</span>
+                            <a href={o.shiprocket.trackingUrl} target="_blank" rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                              Track Now <FiExternalLink size={11} />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Shipping address */}
                   {o.shippingAddress && (
                     <div className="text-xs text-gray-500 border-t border-gray-200 pt-3">
@@ -312,6 +453,11 @@ export default function SellerOrders() {
                       {[o.shippingAddress.fullName, o.shippingAddress.addressLine1, o.shippingAddress.city, o.shippingAddress.state, o.shippingAddress.pincode].filter(Boolean).join(', ')}
                       {o.shippingAddress.phone && <span> · 📞 {o.shippingAddress.phone}</span>}
                     </div>
+                  )}
+
+                  {/* Packaging upload section — shown only for confirmed/processing orders */}
+                  {(o.orderStatus === 'confirmed' || o.orderStatus === 'processing') && (
+                    <PackagingUploadSection order={o} onPackagingUpdated={handlePackagingUpdated} />
                   )}
 
                   {/* Seller payout invoice + customer invoice downloads */}

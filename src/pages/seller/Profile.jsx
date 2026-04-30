@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiSave, FiUser, FiBriefcase, FiMapPin, FiPhone, FiPlus, FiTrash2, FiStar, FiLoader } from 'react-icons/fi';
+import { FiSave, FiUser, FiBriefcase, FiMapPin, FiPhone, FiPlus, FiTrash2, FiStar, FiLoader, FiUploadCloud, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -27,6 +27,9 @@ export default function SellerProfile() {
   const { lookupPincode: lookupAddrPincode, pincodeLoading: addrPincodeLoading } = usePincodeAutofill(
     useCallback(({ city, state }) => setAddrForm(f => ({ ...f, city, state })), [])
   );
+
+  // KYC state
+  const [kycUploading, setKycUploading] = useState({ cheque: false, agreement: false });
 
   const loadPickupAddresses = () => {
     api.get('/sellers/me/pickup-addresses')
@@ -116,6 +119,25 @@ export default function SellerProfile() {
       toast.error(err.response?.data?.message || 'Update failed');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleKycUpload = async (kycType, file) => {
+    if (!file) return;
+    setKycUploading(s => ({ ...s, [kycType]: true }));
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const endpoint = kycType === 'cheque' ? '/sellers/me/kyc/cheque' : '/sellers/me/kyc/agreement';
+      const { data } = await api.post(endpoint, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setProfile(data.seller);
+      toast.success(`${kycType === 'cheque' ? 'Cancelled cheque' : 'Signed agreement'} uploaded!`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Upload failed');
+    } finally {
+      setKycUploading(s => ({ ...s, [kycType]: false }));
     }
   };
 
@@ -410,6 +432,92 @@ export default function SellerProfile() {
             {profile.status}
           </span>
         </p>
+      </div>
+
+      {/* KYC Documents */}
+      <div className="card p-6 space-y-4">
+        <h3 className="font-semibold text-gray-800 border-b pb-2">KYC Documents</h3>
+        <p className="text-sm text-gray-600">Upload required KYC documents for seller verification</p>
+
+        {/* Cancelled Cheque */}
+        <div className="border rounded-xl p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🏦</span>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Cancelled Cheque</p>
+                <p className="text-xs text-gray-500">For bank account verification</p>
+              </div>
+            </div>
+            {profile.cancelledCheque?.url ? (
+              <div className="flex items-center gap-1.5">
+                <FiCheck size={16} className="text-green-600" />
+                <div className="text-right">
+                  <p className="text-xs font-medium text-green-600">Uploaded</p>
+                  {profile.cancelledCheque?.uploadedAt && (
+                    <p className="text-xs text-gray-500">{new Date(profile.cancelledCheque.uploadedAt).toLocaleDateString('en-IN')}</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <FiAlertCircle size={16} className="text-orange-500" />
+            )}
+          </div>
+
+          {!profile.cancelledCheque?.url && (
+            <label className="flex items-center gap-2 border-2 border-dashed border-gray-300 rounded-lg px-3 py-2 cursor-pointer hover:border-orange-400 transition-colors">
+              <FiUploadCloud size={14} className="text-gray-400" />
+              <span className="text-sm text-gray-600">Click to upload cheque</span>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={e => handleKycUpload('cheque', e.target.files?.[0])}
+                disabled={kycUploading.cheque}
+                className="hidden"
+              />
+            </label>
+          )}
+        </div>
+
+        {/* Signed Agreement */}
+        <div className="border rounded-xl p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">📋</span>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Signed Agreement</p>
+                <p className="text-xs text-gray-500">Seller terms & conditions agreement</p>
+              </div>
+            </div>
+            {profile.agreementFile?.url ? (
+              <div className="flex items-center gap-1.5">
+                <FiCheck size={16} className="text-green-600" />
+                <div className="text-right">
+                  <p className="text-xs font-medium text-green-600">Uploaded</p>
+                  {profile.agreementFile?.uploadedAt && (
+                    <p className="text-xs text-gray-500">{new Date(profile.agreementFile.uploadedAt).toLocaleDateString('en-IN')}</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <FiAlertCircle size={16} className="text-orange-500" />
+            )}
+          </div>
+
+          {!profile.agreementFile?.url && (
+            <label className="flex items-center gap-2 border-2 border-dashed border-gray-300 rounded-lg px-3 py-2 cursor-pointer hover:border-orange-400 transition-colors">
+              <FiUploadCloud size={14} className="text-gray-400" />
+              <span className="text-sm text-gray-600">Click to upload agreement</span>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={e => handleKycUpload('agreement', e.target.files?.[0])}
+                disabled={kycUploading.agreement}
+                className="hidden"
+              />
+            </label>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiSearch, FiUser, FiX, FiRefreshCw, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiSearch, FiUser, FiX, FiRefreshCw, FiChevronDown, FiChevronUp, FiCheckCircle, FiXCircle, FiDownload, FiUpload } from 'react-icons/fi';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 import { usePincodeAutofill } from '../../hooks/usePincodeAutofill';
@@ -180,6 +180,7 @@ export default function AdminSellers() {
                 <th className="text-left p-4">Seller</th>
                 <th className="text-left p-4 hidden sm:table-cell">Contact</th>
                 <th className="text-left p-4 hidden md:table-cell">City</th>
+                <th className="text-left p-4 hidden lg:table-cell">KYC Status</th>
                 <th className="text-left p-4">Status</th>
                 <th className="text-right p-4">Actions</th>
               </tr>
@@ -195,6 +196,7 @@ export default function AdminSellers() {
                       <div>
                         <p className="font-medium text-gray-800">{s.businessName}</p>
                         <p className="text-xs text-gray-400">{s.user?.email || s.contact?.email || '—'}</p>
+                        {s.sellerId && <p className="text-xs text-gray-400 font-mono">{s.sellerId}</p>}
                       </div>
                     </div>
                   </td>
@@ -203,6 +205,31 @@ export default function AdminSellers() {
                   </td>
                   <td className="p-4 hidden md:table-cell text-gray-600">
                     {s.address?.city || '—'}
+                  </td>
+                  <td className="p-4 hidden lg:table-cell">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span title="Agreement" className="flex items-center gap-1">
+                        {s.kycStatus?.agreementUploaded ? (
+                          <FiCheckCircle size={14} className="text-green-600" />
+                        ) : (
+                          <FiXCircle size={14} className="text-gray-400" />
+                        )}
+                      </span>
+                      <span title="Cheque" className="flex items-center gap-1">
+                        {s.kycStatus?.chequeUploaded ? (
+                          <FiCheckCircle size={14} className="text-green-600" />
+                        ) : (
+                          <FiXCircle size={14} className="text-gray-400" />
+                        )}
+                      </span>
+                      <span title="Bank Details" className="flex items-center gap-1">
+                        {s.kycStatus?.bankDetailsComplete ? (
+                          <FiCheckCircle size={14} className="text-green-600" />
+                        ) : (
+                          <FiXCircle size={14} className="text-gray-400" />
+                        )}
+                      </span>
+                    </div>
                   </td>
                   <td className="p-4">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[s.status] || 'bg-gray-100 text-gray-600'}`}>
@@ -406,6 +433,65 @@ export default function AdminSellers() {
                 <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
                   rows={2} className="input-field resize-none" placeholder="Any internal notes..." />
               </div>
+
+              {/* KYC Agreement Section — shown in edit mode */}
+              {modal === 'edit' && editing && (
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">KYC & Agreements</h4>
+                  <div className="space-y-3">
+                    {/* Agreement File */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                        <FiUpload size={14} /> Signed Agreement
+                      </label>
+                      {editing.agreementFile?.url ? (
+                        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg p-3">
+                          <FiCheckCircle size={16} className="text-green-600" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-green-800">Agreement Uploaded</p>
+                            <a href={editing.agreementFile.url} target="_blank" rel="noopener noreferrer"
+                              className="text-xs text-green-600 hover:text-green-800 flex items-center gap-1 mt-0.5">
+                              <FiDownload size={12} /> View Document
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                          <p className="text-sm text-gray-600">No agreement uploaded yet</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* KYC Status Badges */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className={`rounded-lg p-3 text-center text-xs font-medium ${
+                        editing.kycStatus?.agreementUploaded
+                          ? 'bg-green-50 text-green-700 border border-green-200'
+                          : 'bg-gray-50 text-gray-600 border border-gray-200'
+                      }`}>
+                        {editing.kycStatus?.agreementUploaded ? <FiCheckCircle size={16} className="mx-auto mb-1" /> : <FiXCircle size={16} className="mx-auto mb-1" />}
+                        Agreement
+                      </div>
+                      <div className={`rounded-lg p-3 text-center text-xs font-medium ${
+                        editing.kycStatus?.chequeUploaded
+                          ? 'bg-green-50 text-green-700 border border-green-200'
+                          : 'bg-gray-50 text-gray-600 border border-gray-200'
+                      }`}>
+                        {editing.kycStatus?.chequeUploaded ? <FiCheckCircle size={16} className="mx-auto mb-1" /> : <FiXCircle size={16} className="mx-auto mb-1" />}
+                        Cheque
+                      </div>
+                      <div className={`rounded-lg p-3 text-center text-xs font-medium ${
+                        editing.kycStatus?.bankDetailsComplete
+                          ? 'bg-green-50 text-green-700 border border-green-200'
+                          : 'bg-gray-50 text-gray-600 border border-gray-200'
+                      }`}>
+                        {editing.kycStatus?.bankDetailsComplete ? <FiCheckCircle size={16} className="mx-auto mb-1" /> : <FiXCircle size={16} className="mx-auto mb-1" />}
+                        Bank Details
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 mt-5">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { FiUploadCloud, FiX, FiInfo, FiEye, FiArrowLeft } from 'react-icons/fi';
+import { FiUploadCloud, FiX, FiInfo, FiEye, FiArrowLeft, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 import { usePincodeAutofill } from '../../hooks/usePincodeAutofill';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
@@ -110,6 +110,9 @@ export default function ProductForm() {
     if (!form.name || !form.price || !form.stock || !form.category) {
       return toast.error('Name, price, stock and category are required');
     }
+    if (!form.hsnCode) {
+      return toast.error('HSN Code is required');
+    }
     if (submitForApproval) {
       if (!form.costPrice)     return toast.error('Cost price is required for submission');
       if (!form.sellerPrice)   return toast.error('Seller price is required for submission');
@@ -169,6 +172,34 @@ export default function ProductForm() {
           </Link>
         )}
       </div>
+
+      {/* Approval status banners */}
+      {isEdit && form.approvalStatus === 'approved' && (
+        <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-2">
+          <FiInfo size={15} className="text-blue-500 mt-0.5 shrink-0" />
+          <p className="text-sm text-blue-800">
+            This product is <strong>live</strong>. Any changes you save will send it back for admin review and temporarily pause it from the store.
+          </p>
+        </div>
+      )}
+      {isEdit && form.approvalStatus === 'correction_needed' && form.approvalNote && (
+        <div className="flex items-start gap-2 bg-orange-50 border border-orange-300 rounded-xl px-4 py-3 mb-2">
+          <FiAlertCircle size={15} className="text-orange-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-orange-800">Correction required by admin</p>
+            <p className="text-sm text-orange-700 mt-0.5">{form.approvalNote}</p>
+          </div>
+        </div>
+      )}
+      {isEdit && form.approvalStatus === 'rejected' && form.approvalNote && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-2">
+          <FiAlertCircle size={15} className="text-red-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-red-800">Product rejected</p>
+            <p className="text-sm text-red-700 mt-0.5">{form.approvalNote}</p>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* Basic Info */}
@@ -271,8 +302,9 @@ export default function ProductForm() {
               <input type="number" value={form.discountPrice} onChange={e => set('discountPrice', e.target.value)} placeholder="Sale price" className="input-field" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">HSN Code</label>
-              <input value={form.hsnCode} onChange={e => set('hsnCode', e.target.value)} placeholder="e.g. 8528" className="input-field" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">HSN Code *</label>
+              <input value={form.hsnCode} onChange={e => set('hsnCode', e.target.value)} placeholder="e.g. 8528" className="input-field" required />
+              <p className="text-xs text-gray-400 mt-0.5">Harmonized System of Nomenclature code (required)</p>
             </div>
           </div>
         </div>

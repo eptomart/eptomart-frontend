@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiCheck, FiX, FiEdit3, FiEye, FiMapPin } from 'react-icons/fi';
+import { FiCheck, FiX, FiEdit3, FiEye, FiMapPin, FiClock, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
 import toast from 'react-hot-toast';
@@ -11,6 +11,65 @@ const PRODUCT_TABS = [
   { key: 'rejected',          label: 'Rejected',          color: 'text-red-600'    },
   { key: 'correction_needed', label: 'Correction Needed', color: 'text-orange-600' },
 ];
+
+// ── Approval history (collapsible per product) ──────────
+function ApprovalHistory({ productId }) {
+  const [open,    setOpen]    = useState(false);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    if (!open) { setOpen(true); setLoading(true); }
+    else       { setOpen(false); return; }
+    try {
+      const { data } = await api.get(`/approvals/${productId}/history`);
+      setHistory(data.history || []);
+    } catch (_) {}
+    finally { setLoading(false); }
+  };
+
+  const ACTION_STYLE = {
+    submitted:            { dot: 'bg-blue-400',   text: 'text-blue-700'  },
+    approved:             { dot: 'bg-green-500',  text: 'text-green-700' },
+    rejected:             { dot: 'bg-red-500',    text: 'text-red-700'   },
+    correction_requested: { dot: 'bg-orange-400', text: 'text-orange-700'},
+    resubmitted:          { dot: 'bg-indigo-400', text: 'text-indigo-700'},
+  };
+
+  return (
+    <div className="mt-2">
+      <button onClick={load}
+        className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors">
+        <FiClock size={11} />
+        Approval History
+        {open ? <FiChevronUp size={11} /> : <FiChevronDown size={11} />}
+      </button>
+
+      {open && (
+        <div className="mt-2 pl-2 border-l-2 border-gray-100 space-y-2">
+          {loading && <p className="text-xs text-gray-400">Loading…</p>}
+          {!loading && history.length === 0 && <p className="text-xs text-gray-400">No history yet.</p>}
+          {history.map((h, i) => {
+            const st = ACTION_STYLE[h.action] || { dot: 'bg-gray-400', text: 'text-gray-700' };
+            return (
+              <div key={i} className="flex items-start gap-2">
+                <span className={`w-2 h-2 rounded-full mt-1 shrink-0 ${st.dot}`} />
+                <div>
+                  <p className={`text-xs font-semibold capitalize ${st.text}`}>
+                    {h.action?.replace(/_/g, ' ')}
+                    <span className="text-gray-400 font-normal ml-1">by {h.performedBy?.name || '—'}</span>
+                  </p>
+                  {h.note && <p className="text-xs text-gray-500 mt-0.5">📌 {h.note}</p>}
+                  <p className="text-xs text-gray-400">{new Date(h.createdAt).toLocaleString('en-IN')}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Pickup address approval section ─────────────────────
 function AddressApprovals() {
@@ -263,11 +322,15 @@ export default function AdminApprovals() {
                           <h3 className="font-semibold text-gray-800">{p.name}</h3>
                           <p className="text-sm text-gray-500">
                             Seller: <span className="font-medium text-gray-700">{p.seller?.businessName || '—'}</span>
+                            {p.seller?.sellerId && <span className="text-xs font-mono text-gray-400 ml-1">({p.seller.sellerId})</span>}
                             {p.seller?.address?.city && ` · ${p.seller.address.city}`}
                           </p>
                           <p className="text-sm text-gray-500">
                             {formatINR(p.discountPrice || p.price)} · GST {p.gstRate}% · Stock: {p.stock}
                           </p>
+                          {p.productCode && (
+                            <p className="text-xs text-gray-400 font-mono mt-0.5">Code: {p.productCode}</p>
+                          )}
                           {p.approvalNote && (
                             <p className="text-xs text-orange-600 mt-1">📌 Note: {p.approvalNote}</p>
                           )}
@@ -276,6 +339,7 @@ export default function AdminApprovals() {
                               Submitted: {new Date(p.submittedAt).toLocaleString('en-IN')}
                             </p>
                           )}
+                          <ApprovalHistory productId={p._id} />
                         </div>
                         <a href={`/product/${p._id}?byId=true`} target="_blank" rel="noreferrer"
                           className="flex items-center gap-1 text-xs text-primary-500 hover:underline">

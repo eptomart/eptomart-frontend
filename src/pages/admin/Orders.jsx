@@ -3,7 +3,7 @@
 // ============================================
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { FiChevronDown, FiChevronUp, FiTruck, FiRefreshCw, FiMapPin, FiCheckCircle, FiXCircle, FiAlertTriangle, FiDownload, FiFileText, FiTag } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiTruck, FiRefreshCw, FiMapPin, FiCheckCircle, FiXCircle, FiAlertTriangle, FiDownload, FiFileText, FiTag, FiPackage, FiImage } from 'react-icons/fi';
 import Loader from '../../components/common/Loader';
 import { formatINR, formatDate } from '../../utils/currency';
 import api from '../../utils/api';
@@ -66,6 +66,167 @@ function PickupAcknowledgePanel({ order, onDone }) {
         }
       </button>
     </div>
+  );
+}
+
+// ── Packaging Review Panel ──────────────────────────────
+function PackagingReviewPanel({ order, onDone }) {
+  const [lightbox,     setLightbox]     = useState(null); // url to show full-screen
+  const [reviewing,    setReviewing]    = useState(false);
+  const [showReject,   setShowReject]   = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+
+  const pkg = order.packaging;
+  if (!pkg || (!pkg.images?.length && pkg.status === 'not_submitted')) return null;
+
+  const STATUS_CONFIG = {
+    not_submitted:  { bg: 'bg-gray-50 border-gray-200',    label: 'No Packaging Submitted',    badge: 'bg-gray-100 text-gray-600'  },
+    pending_review: { bg: 'bg-yellow-50 border-yellow-300', label: 'Packaging Awaiting Review', badge: 'bg-yellow-100 text-yellow-800' },
+    approved:       { bg: 'bg-green-50 border-green-200',  label: 'Packaging Approved ✓',       badge: 'bg-green-100 text-green-800'  },
+    rejected:       { bg: 'bg-red-50 border-red-200',      label: 'Packaging Rejected',         badge: 'bg-red-100 text-red-800'    },
+  };
+
+  const cfg = STATUS_CONFIG[pkg.status] || STATUS_CONFIG.not_submitted;
+
+  const handleReview = async (action) => {
+    if (action === 'rejected' && !rejectReason.trim()) {
+      return toast.error('Enter a rejection reason for the seller');
+    }
+    setReviewing(true);
+    try {
+      await api.patch(`/admin/orders/${order._id}/packaging-review`, {
+        action,
+        reason: rejectReason,
+      });
+      toast.success(action === 'approved' ? 'Packaging approved! AWB can now be generated.' : 'Packaging rejected. Seller will be notified.');
+      setShowReject(false);
+      setRejectReason('');
+      onDone();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Action failed');
+    } finally {
+      setReviewing(false);
+    }
+  };
+
+  return (
+    <>
+      <div className={`rounded-xl border p-4 space-y-3 ${cfg.bg}`}>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+            <FiPackage size={14} /> Packaging Photos
+          </p>
+          <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${cfg.badge}`}>
+            {cfg.label}
+          </span>
+        </div>
+
+        {/* Images grid */}
+        {pkg.images?.length > 0 && (
+          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+            {pkg.images.map((img, i) => (
+              <button
+                key={i}
+                onClick={() => setLightbox(img.url)}
+                className="aspect-square rounded-lg overflow-hidden border border-gray-200 hover:border-primary-400 transition-all relative group"
+              >
+                <img src={img.url} alt={`Package ${i + 1}`} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <FiImage size={16} className="text-white" />
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {pkg.images?.length === 0 && (
+          <p className="text-xs text-gray-500">No images uploaded yet by seller.</p>
+        )}
+
+        {/* Submitted info */}
+        {pkg.submittedAt && (
+          <p className="text-xs text-gray-500">
+            Submitted: {new Date(pkg.submittedAt).toLocaleString('en-IN')}
+          </p>
+        )}
+
+        {/* Rejection reason (if rejected) */}
+        {pkg.status === 'rejected' && pkg.rejectedReason && (
+          <div className="bg-red-100 rounded-lg px-3 py-2">
+            <p className="text-xs text-red-700 font-medium">Rejection reason: {pkg.rejectedReason}</p>
+            {pkg.reviewedAt && (
+              <p className="text-xs text-red-500 mt-0.5">
+                Rejected on {new Date(pkg.reviewedAt).toLocaleString('en-IN')}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Approval date (if approved) */}
+        {pkg.status === 'approved' && pkg.reviewedAt && (
+          <p className="text-xs text-green-600">
+            Approved on {new Date(pkg.reviewedAt).toLocaleString('en-IN')}
+          </p>
+        )}
+
+        {/* Action buttons — only when pending_review */}
+        {pkg.status === 'pending_review' && pkg.images?.length > 0 && (
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => handleReview('approved')}
+              disabled={reviewing}
+              className="flex items-center gap-1.5 text-sm bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold transition-all disabled:opacity-60"
+            >
+              {reviewing ? <FiRefreshCw size={13} className="animate-spin" /> : <FiCheckCircle size={13} />}
+              Approve Packaging
+            </button>
+            <button
+              onClick={() => setShowReject(true)}
+              disabled={reviewing}
+              className="flex items-center gap-1.5 text-sm bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition-all disabled:opacity-60"
+            >
+              <FiXCircle size={13} /> Reject
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Reject modal */}
+      {showReject && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <h3 className="font-bold text-gray-800 mb-1">Reject Packaging</h3>
+            <p className="text-sm text-gray-500 mb-4">Tell the seller what's wrong so they can re-photograph.</p>
+            <textarea
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+              placeholder="e.g. Images are blurry, please retake with better lighting..."
+              rows={3}
+              className="input-field mb-4 resize-none"
+            />
+            <div className="flex gap-3">
+              <button onClick={() => { setShowReject(false); setRejectReason(''); }}
+                className="btn-outline flex-1">Cancel</button>
+              <button onClick={() => handleReview('rejected')} disabled={reviewing}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-xl transition-all disabled:opacity-60 flex items-center justify-center gap-2">
+                {reviewing ? <><FiRefreshCw size={13} className="animate-spin"/> Sending…</> : 'Confirm Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="Package" className="max-w-full max-h-full rounded-xl object-contain" />
+          <button onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 text-white bg-black/40 hover:bg-black/60 rounded-full p-2">
+            <FiXCircle size={22} />
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -491,6 +652,11 @@ export default function AdminOrders() {
                         <FiTruck size={11} /> {order.shiprocket.awb}
                       </span>
                     )}
+                    {order.packaging?.status === 'pending_review' && (
+                      <span className="badge bg-yellow-100 text-yellow-700 flex items-center gap-1">
+                        <FiPackage size={11} /> Packaging Review
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-4 ml-2 shrink-0">
                     <span className="font-bold text-primary-600">{formatINR(order.pricing?.total)}</span>
@@ -569,6 +735,11 @@ export default function AdminOrders() {
                     {/* Seller pickup acknowledgment — show whenever sellerPickup is set */}
                     {order.sellerPickup?.addressId && (
                       <PickupAcknowledgePanel order={order} onDone={fetchOrders} />
+                    )}
+
+                    {/* Packaging review — show if seller has uploaded any images */}
+                    {(order.packaging?.images?.length > 0 || order.packaging?.status === 'pending_review') && (
+                      <PackagingReviewPanel order={order} onDone={fetchOrders} />
                     )}
 
                     {/* Shiprocket Shipment Panel — show for confirmed / processing / paid orders */}

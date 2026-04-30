@@ -217,11 +217,19 @@ export default function ProductPage() {
 
             {/* Seller info */}
             {product.seller && (
-              <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 mb-4 text-sm">
+              <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 mb-4 text-sm flex items-center justify-between">
                 <p className="text-gray-600">
                   Sold by <span className="font-semibold text-gray-800">{product.seller.businessName || 'Eptomart'}</span>
                   {product.seller.address?.city && <span className="text-gray-500"> · {product.seller.address.city}</span>}
                 </p>
+                {product.seller._id && (
+                  <Link
+                    to={`/store/${product.seller._id}`}
+                    className="text-xs font-semibold text-primary-600 hover:text-primary-700 border border-primary-200 hover:border-primary-300 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap ml-3"
+                  >
+                    Visit Store →
+                  </Link>
+                )}
               </div>
             )}
 
