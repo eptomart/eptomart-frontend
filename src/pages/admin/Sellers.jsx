@@ -1,8 +1,83 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiSearch, FiUser, FiX, FiRefreshCw, FiChevronDown, FiChevronUp, FiCheckCircle, FiXCircle, FiDownload, FiUpload } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiSearch, FiUser, FiX, FiRefreshCw, FiChevronDown, FiChevronUp, FiCheckCircle, FiXCircle, FiDownload, FiUpload, FiUploadCloud } from 'react-icons/fi';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 import { usePincodeAutofill } from '../../hooks/usePincodeAutofill';
+
+// ── KYC Document Upload Row ─────────────────────────────────
+function KycDocRow({ sellerId, docType, label, hint, icon, existing, uploading, extraSelect, onUpload }) {
+  const [selVal, setSelVal] = useState(extraSelect?.options?.[0]?.value || '');
+
+  const handleFile = (file) => {
+    if (!file) return;
+    const extra = extraSelect ? { name: extraSelect.name, value: selVal } : null;
+    onUpload(sellerId, docType, file, extra);
+  };
+
+  return (
+    <div className="border rounded-xl p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-base">{icon}</span>
+          <div>
+            <p className="text-sm font-semibold text-gray-800">{label}</p>
+            <p className="text-xs text-gray-500">{hint}</p>
+          </div>
+        </div>
+        {existing?.url ? (
+          <div className="flex items-center gap-2">
+            <FiCheckCircle size={14} className="text-green-600" />
+            <a href={existing.url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+              <FiDownload size={11} /> View
+            </a>
+            {/* Allow re-upload even if already uploaded */}
+            <label className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg border border-dashed cursor-pointer transition-colors ${
+              uploading ? 'border-gray-200 text-gray-300' : 'border-orange-300 text-orange-600 hover:bg-orange-50'
+            }`}>
+              {uploading
+                ? <span className="w-3 h-3 border-2 border-orange-300 border-t-orange-500 rounded-full animate-spin" />
+                : <FiUploadCloud size={11} />}
+              {uploading ? 'Uploading…' : 'Replace'}
+              <input type="file" accept="image/*,.pdf"
+                onChange={e => handleFile(e.target.files?.[0])}
+                disabled={uploading} className="hidden" />
+            </label>
+          </div>
+        ) : (
+          <span className="text-xs text-orange-500 font-medium">⚠ Missing</span>
+        )}
+      </div>
+
+      {/* Select doc type (if needed) + upload button when not yet uploaded */}
+      {!existing?.url && (
+        <div className="space-y-1.5">
+          {extraSelect && (
+            <select value={selVal} onChange={e => setSelVal(e.target.value)}
+              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400">
+              {extraSelect.options.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          )}
+          <label className={`flex items-center gap-2 border-2 border-dashed rounded-lg px-3 py-2 cursor-pointer transition-colors ${
+            uploading ? 'border-gray-200 opacity-60 cursor-not-allowed' : 'border-gray-300 hover:border-blue-400'
+          }`}>
+            {uploading
+              ? <span className="w-3.5 h-3.5 border-2 border-blue-300 border-t-blue-500 rounded-full animate-spin" />
+              : <FiUploadCloud size={14} className="text-gray-400" />}
+            <span className="text-sm text-gray-600">
+              {uploading ? 'Uploading…' : `Upload ${label}`}
+            </span>
+            <input type="file" accept="image/*,.pdf"
+              onChange={e => handleFile(e.target.files?.[0])}
+              disabled={uploading} className="hidden" />
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const BLANK_FORM = {
   businessName: '', email: '', phone: '',
@@ -28,6 +103,8 @@ export default function AdminSellers() {
   const [deleting,      setDeleting]      = useState(null);
   const [restoring,     setRestoring]     = useState(null);
   const [showDeleted,   setShowDeleted]   = useState(false);
+  const [kycUploading,  setKycUploading]  = useState({});
+  const [kycSeller,     setKycSeller]     = useState(null); // tracks seller being edited for KYC refresh
 
   const load = async (q = '') => {
     setLoading(true);
@@ -152,6 +229,29 @@ export default function AdminSellers() {
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to restore');
     } finally { setRestoring(null); }
+  };
+
+  // Upload KYC doc on behalf of a seller (admin)
+  const handleAdminKycUpload = async (sellerId, docType, file, extraField) => {
+    if (!file) return;
+    const key = `${sellerId}_${docType}`;
+    setKycUploading(s => ({ ...s, [key]: true }));
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      if (extraField) fd.append(extraField.name, extraField.value);
+      const { data } = await api.post(`/sellers/${sellerId}/kyc/${docType}`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      // Refresh the editing seller data so the uploaded doc shows immediately
+      setEditing(prev => ({ ...prev, ...data.seller }));
+      setSellers(s => s.map(x => x._id === sellerId ? { ...x, ...data.seller } : x));
+      toast.success('Document uploaded successfully!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Upload failed');
+    } finally {
+      setKycUploading(s => ({ ...s, [key]: false }));
+    }
   };
 
   const set    = (key, val) => setForm(f => ({ ...f, [key]: val }));
@@ -454,62 +554,98 @@ export default function AdminSellers() {
                   rows={2} className="input-field resize-none" placeholder="Any internal notes..." />
               </div>
 
-              {/* KYC Agreement Section — shown in edit mode */}
+              {/* KYC Documents — shown in edit mode */}
               {modal === 'edit' && editing && (
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">KYC & Agreements</h4>
-                  <div className="space-y-3">
-                    {/* Agreement File */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                        <FiUpload size={14} /> Signed Agreement
-                      </label>
-                      {editing.agreementFile?.url ? (
-                        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg p-3">
-                          <FiCheckCircle size={16} className="text-green-600" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-green-800">Agreement Uploaded</p>
-                            <a href={editing.agreementFile.url} target="_blank" rel="noopener noreferrer"
-                              className="text-xs text-green-600 hover:text-green-800 flex items-center gap-1 mt-0.5">
-                              <FiDownload size={12} /> View Document
-                            </a>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                          <p className="text-sm text-gray-600">No agreement uploaded yet</p>
-                        </div>
-                      )}
-                    </div>
+                <div className="border-t pt-4 mt-4 space-y-3">
+                  <h4 className="text-sm font-semibold text-gray-700">KYC Documents</h4>
 
-                    {/* KYC Status Badges */}
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { key: 'idProofUploaded',      label: 'ID Proof',      fileKey: 'idProof' },
-                        { key: 'addressProofUploaded', label: 'Address Proof', fileKey: 'addressProof' },
-                        { key: 'agreementUploaded',    label: 'Agreement',     fileKey: 'agreementFile' },
-                        { key: 'chequeUploaded',       label: 'Cheque',        fileKey: 'cancelledCheque' },
-                        { key: 'bankDetailsComplete',  label: 'Bank Details',  fileKey: null },
-                      ].map(({ key, label, fileKey }) => {
-                        const done = editing.kycStatus?.[key];
-                        const url  = fileKey ? editing[fileKey]?.url : null;
-                        return (
-                          <div key={key} className={`rounded-lg p-3 text-center text-xs font-medium ${
-                            done ? 'bg-green-50 text-green-700 border border-green-200'
-                                 : 'bg-gray-50 text-gray-600 border border-gray-200'
-                          }`}>
-                            {done ? <FiCheckCircle size={16} className="mx-auto mb-1" /> : <FiXCircle size={16} className="mx-auto mb-1" />}
-                            {label}
-                            {url && (
-                              <a href={url} target="_blank" rel="noopener noreferrer"
-                                className="block mt-1 text-xs text-green-600 hover:underline flex items-center justify-center gap-0.5">
-                                <FiDownload size={10} /> View
-                              </a>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                  {[
+                    {
+                      docType: 'idProof',
+                      label:   'ID Proof',
+                      hint:    'Aadhaar / PAN / Passport / Driving License',
+                      icon:    '🪪',
+                      fileField: 'idProof',
+                      extraSelect: {
+                        name:    'idDocType',
+                        options: [
+                          { value: 'aadhaar',         label: 'Aadhaar Card' },
+                          { value: 'pan',             label: 'PAN Card' },
+                          { value: 'passport',        label: 'Passport' },
+                          { value: 'driving_license', label: 'Driving License' },
+                        ],
+                      },
+                    },
+                    {
+                      docType: 'addressProof',
+                      label:   'Address Proof',
+                      hint:    'Utility Bill / Rental Agreement / Bank Statement',
+                      icon:    '🏠',
+                      fileField: 'addressProof',
+                      extraSelect: {
+                        name:    'addressDocType',
+                        options: [
+                          { value: 'utility_bill',      label: 'Electricity / Water / Gas Bill' },
+                          { value: 'rental_agreement',  label: 'Rental Agreement' },
+                          { value: 'bank_statement',    label: 'Bank Statement' },
+                          { value: 'aadhaar',           label: 'Aadhaar Card' },
+                          { value: 'passport',          label: 'Passport' },
+                        ],
+                      },
+                    },
+                    {
+                      docType: 'cheque',
+                      label:   'Cancelled Cheque',
+                      hint:    'For bank account verification',
+                      icon:    '🏦',
+                      fileField: 'cancelledCheque',
+                      extraSelect: null,
+                    },
+                    {
+                      docType: 'agreement',
+                      label:   'Signed Agreement',
+                      hint:    'Seller terms & conditions',
+                      icon:    '📋',
+                      fileField: 'agreementFile',
+                      extraSelect: null,
+                    },
+                  ].map(({ docType, label, hint, icon, fileField, extraSelect }) => {
+                    const existing = editing[fileField];
+                    const uploading = kycUploading[`${editing._id}_${docType}`];
+                    const [selVal, setSelVal] = [
+                      // local select per row — we use a component-level ref trick via data attr
+                      docType === 'idProof' ? 'aadhaar' : 'utility_bill',
+                      () => {},
+                    ];
+                    return (
+                      <KycDocRow
+                        key={docType}
+                        sellerId={editing._id}
+                        docType={docType}
+                        label={label}
+                        hint={hint}
+                        icon={icon}
+                        existing={existing}
+                        uploading={uploading}
+                        extraSelect={extraSelect}
+                        onUpload={handleAdminKycUpload}
+                      />
+                    );
+                  })}
+
+                  {/* Bank details status (read-only) */}
+                  <div className={`flex items-center gap-2 p-3 rounded-lg border text-sm ${
+                    editing.kycStatus?.bankDetailsComplete
+                      ? 'bg-green-50 border-green-200 text-green-700'
+                      : 'bg-gray-50 border-gray-200 text-gray-500'
+                  }`}>
+                    {editing.kycStatus?.bankDetailsComplete
+                      ? <FiCheckCircle size={14} />
+                      : <FiXCircle size={14} />}
+                    <span className="font-medium">Bank Details</span>
+                    <span className="text-xs ml-1">
+                      {editing.kycStatus?.bankDetailsComplete ? 'Complete' : 'Incomplete — seller must fill in their profile'}
+                    </span>
                   </div>
                 </div>
               )}
