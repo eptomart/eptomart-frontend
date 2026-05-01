@@ -259,8 +259,9 @@ export default function ProductForm() {
             {/* Sub-category — only shown when selected parent has children */}
             {(() => {
               const subs = subCategories.filter(s => {
-                const pid = typeof s.parentCategory === 'object' ? s.parentCategory?._id : s.parentCategory;
-                return pid?.toString() === form.category;
+                // Works for raw ObjectId, populated object, or plain string
+                const pid = s.parentCategory?._id?.toString() || s.parentCategory?.toString();
+                return pid === form.category;
               });
               if (!form.category || subs.length === 0) return (
                 <div>
