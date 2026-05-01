@@ -57,16 +57,16 @@ const SLIDES = [
   },
 ];
 
-// ── Category vivid gradient palette ─────────────────────────
-const CAT_GRADIENTS = [
-  'from-orange-400 to-rose-500',
-  'from-violet-500 to-purple-700',
-  'from-cyan-400   to-blue-600',
-  'from-emerald-400 to-teal-600',
-  'from-pink-400   to-fuchsia-600',
-  'from-amber-400  to-orange-600',
-  'from-indigo-500 to-blue-700',
-  'from-teal-400   to-green-600',
+// ── Category accent colours (icon bg + border + label) ───────
+const CAT_ACCENTS = [
+  { bg: 'bg-orange-100',  border: 'border-orange-200',  text: 'text-orange-600'  },
+  { bg: 'bg-violet-100',  border: 'border-violet-200',  text: 'text-violet-600'  },
+  { bg: 'bg-sky-100',     border: 'border-sky-200',     text: 'text-sky-600'     },
+  { bg: 'bg-emerald-100', border: 'border-emerald-200', text: 'text-emerald-600' },
+  { bg: 'bg-pink-100',    border: 'border-pink-200',    text: 'text-pink-600'    },
+  { bg: 'bg-amber-100',   border: 'border-amber-200',   text: 'text-amber-600'   },
+  { bg: 'bg-indigo-100',  border: 'border-indigo-200',  text: 'text-indigo-600'  },
+  { bg: 'bg-teal-100',    border: 'border-teal-200',    text: 'text-teal-600'    },
 ];
 
 // ── Countdown timer hook ────────────────────────────────────
@@ -287,43 +287,52 @@ export default function Home() {
           {/* ── Categories ── */}
           {categories.length > 0 && (
             <section>
-              <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-xl font-extrabold text-gray-900">Shop by Category</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Find what you're looking for</p>
+                  <p className="text-sm text-gray-400 mt-0.5">What are you looking for today?</p>
                 </div>
-                <Link to="/shop" className="text-primary-500 text-sm font-semibold hover:underline flex items-center gap-1">
-                  All Categories <FiArrowRight size={14} />
+                <Link to="/shop"
+                  className="flex items-center gap-1 text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors">
+                  See all <FiArrowRight size={14} />
                 </Link>
               </div>
-              {/* Mobile: horizontal scroll row — Desktop: responsive grid */}
-              <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory
-                              sm:grid sm:grid-cols-4 sm:overflow-visible sm:pb-0
-                              md:grid-cols-6 lg:grid-cols-8">
+
+              {/* Mobile: 2-row horizontal scroll — Desktop: single-row grid */}
+              <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
                 {categories.slice(0, 8).map((cat, i) => {
-                  const grad = CAT_GRADIENTS[i % CAT_GRADIENTS.length];
+                  const acc = CAT_ACCENTS[i % CAT_ACCENTS.length];
                   return (
                     <Link
                       key={cat._id}
                       to={`/shop/${cat.slug}`}
-                      className="flex-shrink-0 snap-start w-28 sm:w-auto flex flex-col items-center gap-2 group"
+                      className="group flex flex-col items-center gap-2.5"
                     >
-                      {/* Gradient square tile */}
-                      <div className={`w-full aspect-square rounded-2xl bg-gradient-to-br ${grad}
-                                       flex items-center justify-center shadow-md
-                                       group-hover:-translate-y-1 group-hover:shadow-xl
-                                       transition-all duration-200 overflow-hidden`}>
+                      {/* Icon circle */}
+                      <div className={`
+                        w-full aspect-square rounded-2xl border-2 ${acc.bg} ${acc.border}
+                        flex items-center justify-center
+                        shadow-sm group-hover:shadow-md group-hover:-translate-y-0.5
+                        transition-all duration-200
+                      `}>
                         {cat.image?.url ? (
-                          <img src={cat.image.url} alt={cat.name}
-                               className="w-16 h-16 object-cover rounded-xl group-hover:scale-110 transition-transform duration-200" />
+                          <img
+                            src={cat.image.url}
+                            alt={cat.name}
+                            className="w-3/5 h-3/5 object-contain rounded-xl"
+                          />
                         ) : (
-                          <span className="text-5xl leading-none drop-shadow group-hover:scale-110 transition-transform duration-200">
+                          <span className="text-3xl sm:text-4xl leading-none select-none">
                             {cat.icon || '🛍️'}
                           </span>
                         )}
                       </div>
-                      {/* Label below tile */}
-                      <span className="text-xs font-bold text-center line-clamp-2 leading-tight text-gray-800 group-hover:text-primary-600 transition-colors px-1">
+
+                      {/* Name */}
+                      <span className={`
+                        text-xs font-semibold text-center leading-tight line-clamp-2
+                        text-gray-700 group-hover:${acc.text} transition-colors
+                      `}>
                         {cat.name}
                       </span>
                     </Link>
