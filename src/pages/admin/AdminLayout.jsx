@@ -3,6 +3,7 @@
 // ============================================
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
+import NotificationBell from '../../components/common/NotificationBell';
 import {
   FiGrid, FiPackage, FiShoppingBag, FiUsers,
   FiBarChart2, FiTag, FiMenu, FiX, FiLogOut, FiHome,
@@ -223,8 +224,11 @@ export default function AdminLayout() {
           <div className="hidden lg:block">
             <h1 className="text-base font-bold text-gray-800">{currentLabel}</h1>
           </div>
-          <div className="text-xs text-gray-400">
-            {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <span className="text-xs text-gray-400">
+              {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+            </span>
           </div>
         </header>
 

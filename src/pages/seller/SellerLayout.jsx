@@ -3,6 +3,7 @@ import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
 import { FiGrid, FiPackage, FiPlus, FiShoppingBag, FiUser, FiMenu, FiX, FiLogOut, FiArrowLeft } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import EptomartLogo from '../../components/common/EptomartLogo';
+import NotificationBell from '../../components/common/NotificationBell';
 
 const NAV = [
   { path: '/seller/dashboard', label: 'Dashboard',   icon: FiGrid },
@@ -79,6 +80,7 @@ export default function SellerLayout() {
           </button>
           <h1 className="font-semibold text-gray-800">Seller Dashboard</h1>
           <div className="ml-auto flex items-center gap-2">
+            <NotificationBell />
             <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
               <span className="text-primary-600 font-bold text-sm">{user?.name?.[0]?.toUpperCase()}</span>
             </div>

@@ -122,31 +122,61 @@ function PackagingReviewPanel({ order, onDone }) {
           </span>
         </div>
 
-        {/* Images grid with side labels */}
-        {pkg.images?.length > 0 && (
-          <div className="grid grid-cols-4 gap-2">
-            {pkg.images.map((img, i) => (
-              <div key={i} className="flex flex-col gap-1">
-                <button
-                  onClick={() => setLightbox(img.url)}
-                  className="aspect-square rounded-lg overflow-hidden border border-gray-200 hover:border-primary-400 transition-all relative group"
-                >
-                  <img src={img.url} alt={img.side ? `${img.side} side` : `Package ${i + 1}`} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <FiImage size={16} className="text-white" />
-                  </div>
-                </button>
-                {img.side && (
-                  <span className="text-[10px] text-center font-semibold text-gray-600 capitalize tracking-wide">
-                    {{ front: '🔵 Front', back: '🟢 Back', left: '🟡 Left', right: '🟠 Right' }[img.side] || img.side}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Images grid with side labels — 4 fixed slots */}
+        {(() => {
+          const SIDES = [
+            { key: 'front', label: 'Front', emoji: '🔵' },
+            { key: 'back',  label: 'Back',  emoji: '🟢' },
+            { key: 'left',  label: 'Left',  emoji: '🟡' },
+            { key: 'right', label: 'Right', emoji: '🟠' },
+          ];
+          // Build side → image map (latest per side)
+          const bySlot = {};
+          (pkg.images || []).forEach(img => { if (img.side) bySlot[img.side] = img; });
+          // Also handle legacy images without side (fill slots sequentially)
+          const unsided = (pkg.images || []).filter(img => !img.side);
+          let fill = 0;
+          SIDES.forEach(s => { if (!bySlot[s.key] && unsided[fill]) { bySlot[s.key] = unsided[fill++]; } });
 
-        {pkg.images?.length === 0 && (
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {SIDES.map(({ key, label, emoji }) => {
+                const img = bySlot[key];
+                return (
+                  <div key={key} className={`rounded-xl overflow-hidden border-2 flex flex-col ${
+                    img ? 'border-gray-200 shadow-sm' : 'border-dashed border-gray-200 bg-gray-50'
+                  }`}>
+                    {img ? (
+                      <button
+                        onClick={() => setLightbox(img.url)}
+                        className="flex-1 relative group"
+                      >
+                        <img
+                          src={img.url}
+                          alt={`${label} side`}
+                          className="w-full aspect-[4/3] object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                          <FiImage size={20} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </button>
+                    ) : (
+                      <div className="aspect-[4/3] flex flex-col items-center justify-center gap-1 text-gray-300">
+                        <FiImage size={22} />
+                        <span className="text-[10px]">Not uploaded</span>
+                      </div>
+                    )}
+                    <div className={`text-center text-xs font-semibold py-1.5 ${img ? 'text-gray-700 bg-gray-50' : 'text-gray-400'}`}>
+                      {emoji} {label}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {!pkg.images?.length && (
           <p className="text-xs text-gray-500">No images uploaded yet by seller.</p>
         )}
 
