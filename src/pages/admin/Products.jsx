@@ -236,11 +236,11 @@ export default function AdminProducts() {
                   <tr>
                     <th className="px-4 py-3 text-left">Product</th>
                     <th className="px-4 py-3 text-left">Seller</th>
-                    <th className="px-4 py-3 text-left">Category</th>
+                    <th className="px-4 py-3 text-left hidden md:table-cell">Category</th>
                     <th className="px-4 py-3 text-right">Price</th>
-                    <th className="px-4 py-3 text-right">Stock</th>
+                    <th className="px-4 py-3 text-right hidden sm:table-cell">Stock</th>
                     <th className="px-4 py-3 text-center">Status</th>
-                    <th className="px-4 py-3 text-center">Featured</th>
+                    <th className="px-4 py-3 text-center hidden lg:table-cell">Featured</th>
                     <th className="px-4 py-3 text-center">Actions</th>
                   </tr>
                 </thead>
@@ -258,16 +258,27 @@ export default function AdminProducts() {
                           )}
                           <div>
                             <p className="font-medium text-gray-800 line-clamp-1">{product.name}</p>
-                            {product.brand && <p className="text-xs text-gray-400">{product.brand}</p>}
+                            {product.productCode
+                              ? <p className="text-xs font-mono font-semibold text-primary-600 mt-0.5">{product.productCode}</p>
+                              : product.brand
+                                ? <p className="text-xs text-gray-400">{product.brand}</p>
+                                : null}
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-gray-600">
-                        {product.seller?.businessName
-                          ? <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">{product.seller.businessName}</span>
-                          : <span className="text-xs text-gray-400">Platform</span>}
+                        {product.seller?.businessName ? (
+                          <div>
+                            <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">{product.seller.businessName}</span>
+                            {product.seller?.sellerId && (
+                              <p className="text-xs font-mono text-gray-400 mt-0.5 pl-0.5">{product.seller.sellerId}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">Platform</span>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{product.category?.name || '—'}</td>
+                      <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{product.category?.name || '—'}</td>
                       <td className="px-4 py-3 text-right">
                         <div>
                           <p className="font-bold">{formatINR(product.discountPrice || product.price)}</p>
@@ -276,7 +287,7 @@ export default function AdminProducts() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right hidden sm:table-cell">
                         <span className={`badge ${product.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                           {product.stock}
                         </span>

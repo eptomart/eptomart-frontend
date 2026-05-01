@@ -52,7 +52,12 @@ export default function SellerDashboard() {
           <div>
             <p className="text-sm text-gray-400 mb-1">Welcome back 👋</p>
             <h2 className="text-xl font-bold text-white">{businessName}</h2>
-            <p className="text-xs text-gray-400 mt-1">
+            {profile?.sellerId && (
+              <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-white/10 text-xs font-mono font-semibold text-orange-300 tracking-widest">
+                ID: {profile.sellerId}
+              </span>
+            )}
+            <p className="text-xs text-gray-400 mt-1.5">
               {isNewSeller
                 ? 'Start by adding your first product to go live on Eptomart.'
                 : `You have ${stats?.products?.approved || 0} live product(s) and ${stats?.orders?.totalOrders || 0} order(s).`}

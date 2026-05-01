@@ -427,7 +427,15 @@ export default function SellerProfile() {
       </div>
 
       {/* Account Info */}
-      <div className="card p-4 bg-gray-50 text-sm text-gray-500 space-y-1">
+      <div className="card p-4 bg-gray-50 text-sm text-gray-500 space-y-2">
+        {profile?.sellerId && (
+          <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">Seller ID</p>
+              <p className="text-lg font-mono font-bold text-primary-600 tracking-widest">{profile.sellerId}</p>
+            </div>
+          </div>
+        )}
         <p><span className="font-medium text-gray-700">Login email:</span> {user?.email || '—'}</p>
         <p><span className="font-medium text-gray-700">Login phone:</span> {user?.phone || '—'}</p>
         <p><span className="font-medium text-gray-700">Account status:</span>{' '}

@@ -232,10 +232,10 @@ GHI789,100
                         <img src={p.images?.[0]?.url} alt={p.name} className="w-10 h-10 object-cover rounded-lg bg-gray-100 flex-shrink-0" />
                         <div className="min-w-0">
                           <p className="font-medium text-gray-800 truncate max-w-[180px]">{p.name}</p>
-                          <p className="text-xs text-gray-400">{p.category?.name}</p>
-                          {p.productCode && (
-                            <p className="text-xs text-gray-400 font-mono">{p.productCode}</p>
-                          )}
+                          {p.productCode
+                            ? <p className="text-xs font-mono font-semibold text-primary-600">{p.productCode}</p>
+                            : <p className="text-xs text-gray-400">{p.category?.name}</p>
+                          }
                         </div>
                       </td>
                       <td className="p-4 hidden sm:table-cell">
