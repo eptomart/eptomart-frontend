@@ -62,6 +62,10 @@ export default function SellerProducts() {
 
   const confirmResubmit = async () => {
     if (!resubmitModal) return;
+    if (!resubmitNote.trim()) {
+      toast.error('Please describe what you fixed before resubmitting.');
+      return;
+    }
     setResubmitting(true);
     try {
       await api.post(`/approvals/${resubmitModal.id}/resubmit`, { note: resubmitNote.trim() });
@@ -215,7 +219,7 @@ GHI789,100
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  What did you fix? <span className="text-gray-400 font-normal">(optional but recommended)</span>
+                  What did you fix? <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={resubmitNote}
@@ -238,8 +242,8 @@ GHI789,100
               </button>
               <button
                 onClick={confirmResubmit}
-                disabled={resubmitting}
-                className="flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
+                disabled={resubmitting || !resubmitNote.trim()}
+                className="flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {resubmitting
                   ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Submitting...</>
