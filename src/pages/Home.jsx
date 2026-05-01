@@ -310,7 +310,7 @@ export default function Home() {
                       <CategoryIcon cat={cat} index={i} size={72} className="w-full h-full max-w-[72px] max-h-[72px]" />
                     </div>
                     {/* Name */}
-                    <span className="text-xs font-semibold text-center leading-tight line-clamp-2 text-gray-700 group-hover:text-primary-600 transition-colors">
+                    <span className="text-sm font-semibold text-center leading-tight line-clamp-2 text-gray-700 group-hover:text-primary-600 transition-colors">
                       {cat.name}
                     </span>
                   </Link>
