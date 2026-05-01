@@ -42,6 +42,8 @@ const AdminSettlements  = lazy(() => import('./pages/admin/Settlements'));
 const AdminEnquiries    = lazy(() => import('./pages/admin/Enquiries'));
 const AdminSettings     = lazy(() => import('./pages/admin/Settings'));
 const AdminActivityLog  = lazy(() => import('./pages/admin/ActivityLog'));
+const AdminSellerOrders = lazy(() => import('./pages/admin/SellerOrders'));
+const AdminVisitors     = lazy(() => import('./pages/admin/Visitors'));
 
 // ── Seller pages ─────────────────────────────
 const SellerLayout  = lazy(() => import('./pages/seller/SellerLayout'));
@@ -115,6 +117,7 @@ function AppRoutes() {
             <Route path="products"         element={<AdminProducts />} />
             <Route path="approvals"        element={<AdminApprovals />} />
             <Route path="sellers"          element={<AdminSellers />} />
+            <Route path="sellers/:sellerId/orders" element={<AdminSellerOrders />} />
             <Route path="orders"           element={<AdminOrders />} />
             <Route path="users"            element={<AdminUsers />} />
             <Route path="analytics"        element={<AdminAnalytics />} />
@@ -126,6 +129,7 @@ function AppRoutes() {
             <Route path="bulk-import"      element={<AdminBulkImport />} />
             <Route path="notifications"    element={<AdminNotifications />} />
             <Route path="activity-log"     element={<AdminActivityLog />} />
+            <Route path="visitors"         element={<AdminVisitors />} />
             <Route path="settings"         element={<AdminSettings />} />
           </Route>
 

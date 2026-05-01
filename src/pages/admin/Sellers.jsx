@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiSearch, FiUser, FiX, FiRefreshCw, FiChevronDown, FiChevronUp, FiCheckCircle, FiXCircle, FiDownload, FiUpload, FiUploadCloud } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiSearch, FiUser, FiX, FiRefreshCw, FiChevronDown, FiChevronUp, FiCheckCircle, FiXCircle, FiDownload, FiUpload, FiUploadCloud, FiShoppingBag } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 import { usePincodeAutofill } from '../../hooks/usePincodeAutofill';
@@ -92,6 +93,7 @@ const STATUS_COLOR = {
 };
 
 export default function AdminSellers() {
+  const navigate = useNavigate();
   const [sellers,       setSellers]       = useState([]);
   const [deletedSellers,setDeletedSellers] = useState([]);
   const [loading,       setLoading]       = useState(true);
@@ -348,6 +350,11 @@ export default function AdminSellers() {
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-1.5">
+                      {/* View Orders */}
+                      <button onClick={() => navigate(`/admin/sellers/${s._id}/orders`)} title="View Orders"
+                        className="p-1.5 rounded-lg text-orange-500 hover:bg-orange-50 hover:text-orange-700 transition-colors">
+                        <FiShoppingBag size={15} />
+                      </button>
                       {/* Edit */}
                       <button onClick={() => openEdit(s)} title="Edit Seller"
                         className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition-colors">
