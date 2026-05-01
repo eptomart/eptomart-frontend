@@ -136,8 +136,15 @@ export default function ProductPage() {
           <span>/</span>
           <Link to="/shop" className="hover:text-primary-500">Shop</Link>
           {product.category && (
-            <><span>/</span>
+            <>
+              <span>/</span>
               <Link to={`/shop/${product.category.slug}`} className="hover:text-primary-500">{product.category.name}</Link>
+            </>
+          )}
+          {product.subCategory && (
+            <>
+              <span>/</span>
+              <Link to={`/shop/${product.category?.slug}?sub=${product.subCategory._id}`} className="hover:text-primary-500">{product.subCategory.name}</Link>
             </>
           )}
           <span>/</span>
@@ -215,21 +222,33 @@ export default function ProductPage() {
               </div>
             </div>
 
-            {/* Seller info */}
-            {product.seller && (
-              <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 mb-4 text-sm flex items-center justify-between">
-                <p className="text-gray-600">
-                  Sold by <span className="font-semibold text-gray-800">{product.seller.businessName || 'Eptomart'}</span>
-                  {product.seller.address?.city && <span className="text-gray-500"> · {product.seller.address.city}</span>}
-                </p>
-                {product.seller._id && (
+            {/* Seller info — Amazon-style banner */}
+            {product.seller?.businessName && (
+              <div className="border border-orange-200 rounded-xl overflow-hidden mb-4">
+                <div className="bg-orange-50 px-4 py-2 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 mb-0.5">Sold by</p>
+                    <p className="font-bold text-gray-800 truncate">{product.seller.businessName}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {product.seller.sellerId && (
+                        <span className="text-xs font-mono text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded">
+                          {product.seller.sellerId}
+                        </span>
+                      )}
+                      {product.seller.address?.city && (
+                        <span className="text-xs text-gray-500 flex items-center gap-0.5">
+                          <FiMapPin size={10} /> {product.seller.address.city}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   <Link
                     to={`/store/${product.seller._id}`}
-                    className="text-xs font-semibold text-primary-600 hover:text-primary-700 border border-primary-200 hover:border-primary-300 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap ml-3"
+                    className="flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold text-white bg-primary-500 hover:bg-primary-600 px-3 py-2 rounded-lg transition-colors whitespace-nowrap"
                   >
-                    Visit Store →
+                    🏪 Visit Store
                   </Link>
-                )}
+                </div>
               </div>
             )}
 
