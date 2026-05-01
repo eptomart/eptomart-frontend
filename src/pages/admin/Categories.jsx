@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { FiPlus, FiEdit2, FiTrash2, FiChevronRight, FiChevronDown, FiTag } from 'react-icons/fi';
+import CategoryIcon from '../../components/common/CategoryIcon';
 import Loader from '../../components/common/Loader';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
@@ -14,7 +15,7 @@ export default function AdminCategories() {
   const [showModal, setShowModal] = useState(false);
   const [editCat, setEditCat] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '', icon: '', sortOrder: 0, parentCategory: null });
+  const [form, setForm] = useState({ name: '', description: '', icon: '', color: '', sortOrder: 0, parentCategory: null });
   const [imageFile, setImageFile] = useState(null);
   const [expandedCats, setExpandedCats] = useState(new Set());
 
@@ -53,14 +54,14 @@ export default function AdminCategories() {
 
   const openAdd = () => {
     setEditCat(null);
-    setForm({ name: '', description: '', icon: '', sortOrder: 0, requiresFSSAI: false, parentCategory: null });
+    setForm({ name: '', description: '', icon: '', color: '', sortOrder: 0, requiresFSSAI: false, parentCategory: null });
     setImageFile(null);
     setShowModal(true);
   };
 
   const openEdit = (cat) => {
     setEditCat(cat);
-    setForm({ name: cat.name, description: cat.description || '', icon: cat.icon || '', sortOrder: cat.sortOrder || 0, requiresFSSAI: cat.requiresFSSAI || false, parentCategory: cat.parentCategory || null });
+    setForm({ name: cat.name, description: cat.description || '', icon: cat.icon || '', color: cat.color || '', sortOrder: cat.sortOrder || 0, requiresFSSAI: cat.requiresFSSAI || false, parentCategory: cat.parentCategory || null });
     setImageFile(null);
     setShowModal(true);
   };
@@ -70,7 +71,7 @@ export default function AdminCategories() {
     setSaving(true);
     try {
       const formData = new FormData();
-      Object.entries(form).forEach(([k, v]) => formData.append(k, v));
+      Object.entries(form).forEach(([k, v]) => { if (v !== null && v !== undefined) formData.append(k, v); });
       if (imageFile) formData.append('image', imageFile);
 
       if (editCat) {
@@ -186,13 +187,7 @@ export default function AdminCategories() {
                       )}
 
                       {/* Icon */}
-                      {cat.image?.url ? (
-                        <img src={cat.image.url} alt={cat.name} className="w-11 h-11 object-cover rounded-lg flex-shrink-0" />
-                      ) : (
-                        <div className="w-11 h-11 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0 text-2xl leading-none">
-                          {cat.icon || '🛍️'}
-                        </div>
-                      )}
+                      <CategoryIcon cat={cat} index={0} size={44} />
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -237,13 +232,7 @@ export default function AdminCategories() {
                               <div className="w-2 h-px bg-orange-200" />
                             </div>
 
-                            {sub.image?.url ? (
-                              <img src={sub.image.url} alt={sub.name} className="w-8 h-8 object-cover rounded-lg flex-shrink-0" />
-                            ) : (
-                              <div className="w-8 h-8 bg-white border border-orange-200 rounded-lg flex items-center justify-center flex-shrink-0 text-base leading-none">
-                                {sub.icon || '📁'}
-                              </div>
-                            )}
+                            <CategoryIcon cat={sub} index={1} size={32} />
 
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
@@ -303,7 +292,7 @@ export default function AdminCategories() {
                 }).map(cat => (
                   <div key={cat._id} className="card p-3 flex items-center justify-between group mb-2 border-l-4 border-orange-300">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-base leading-none">{cat.icon || '📁'}</div>
+                      <CategoryIcon cat={cat} index={2} size={32} />
                       <div>
                         <p className="text-sm font-semibold text-gray-700">{cat.name}</p>
                         <p className="text-xs text-orange-500">Parent missing</p>
@@ -330,6 +319,22 @@ export default function AdminCategories() {
               <button onClick={() => setShowModal(false)} className="text-gray-400 text-2xl">×</button>
             </div>
             <form onSubmit={handleSave} className="p-5 space-y-4">
+
+              {/* Live preview */}
+              {form.name && (
+                <div className="flex items-center gap-4 bg-gray-50 rounded-xl px-4 py-3">
+                  <CategoryIcon
+                    cat={{ name: form.name, icon: form.icon, color: form.color || undefined, image: null }}
+                    index={0}
+                    size={56}
+                  />
+                  <div>
+                    <p className="font-semibold text-gray-800">{form.name}</p>
+                    <p className="text-xs text-gray-400">Icon preview</p>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium mb-1">Category Name *</label>
                 <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -369,9 +374,38 @@ export default function AdminCategories() {
                   className="input-field" placeholder="Or paste any emoji directly" />
               </div>
 
+              {/* Circle color */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Circle Color <span className="text-gray-400 font-normal text-xs">(auto-picked from name if left blank)</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={form.color || '#f97316'}
+                    onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
+                    className="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer p-0.5"
+                  />
+                  <div className="flex flex-wrap gap-1.5">
+                    {['#e91e8c','#22c55e','#2563eb','#f97316','#7c3aed','#0891b2','#dc2626','#d97706','#0f766e','#db2777'].map(c => (
+                      <button key={c} type="button"
+                        onClick={() => setForm(f => ({ ...f, color: c }))}
+                        className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${form.color === c ? 'border-gray-800 scale-110' : 'border-transparent'}`}
+                        style={{ background: c }}
+                      />
+                    ))}
+                  </div>
+                  {form.color && (
+                    <button type="button" onClick={() => setForm(f => ({ ...f, color: '' }))}
+                      className="text-xs text-gray-400 hover:text-gray-600 underline">reset</button>
+                  )}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-1">Category Image (optional)</label>
                 <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files[0])} className="input-field" />
+                <p className="text-xs text-gray-400 mt-0.5">If uploaded, image replaces the circle icon</p>
               </div>
 
               <div>

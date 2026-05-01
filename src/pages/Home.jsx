@@ -12,6 +12,7 @@ import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import ProductCard from '../components/product/ProductCard';
 import RecentlyViewed from '../components/product/RecentlyViewed';
+import CategoryIcon from '../components/common/CategoryIcon';
 import { ProductGridSkeleton } from '../components/common/Loader';
 import api from '../utils/api';
 
@@ -297,45 +298,23 @@ export default function Home() {
               </div>
 
               {/* Mobile: 2-row horizontal scroll — Desktop: single-row grid */}
-              <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
-                {categories.slice(0, 8).map((cat, i) => {
-                  const acc = CAT_ACCENTS[i % CAT_ACCENTS.length];
-                  return (
-                    <Link
-                      key={cat._id}
-                      to={`/shop/${cat.slug}`}
-                      className="group flex flex-col items-center gap-2.5"
-                    >
-                      {/* Icon circle */}
-                      <div className={`
-                        w-full aspect-square rounded-2xl border-2 ${acc.bg} ${acc.border}
-                        flex items-center justify-center
-                        shadow-sm group-hover:shadow-md group-hover:-translate-y-0.5
-                        transition-all duration-200
-                      `}>
-                        {cat.image?.url ? (
-                          <img
-                            src={cat.image.url}
-                            alt={cat.name}
-                            className="w-3/5 h-3/5 object-contain rounded-xl"
-                          />
-                        ) : (
-                          <span className="text-3xl sm:text-4xl leading-none select-none">
-                            {cat.icon || '🛍️'}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Name */}
-                      <span className={`
-                        text-xs font-semibold text-center leading-tight line-clamp-2
-                        text-gray-700 group-hover:${acc.text} transition-colors
-                      `}>
-                        {cat.name}
-                      </span>
-                    </Link>
-                  );
-                })}
+              <div className="grid grid-cols-4 gap-4 sm:grid-cols-8">
+                {categories.slice(0, 8).map((cat, i) => (
+                  <Link
+                    key={cat._id}
+                    to={`/shop/${cat.slug}`}
+                    className="group flex flex-col items-center gap-2.5"
+                  >
+                    {/* Vibrant circle icon */}
+                    <div className="w-full aspect-square flex items-center justify-center transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-105">
+                      <CategoryIcon cat={cat} index={i} size={72} className="w-full h-full max-w-[72px] max-h-[72px]" />
+                    </div>
+                    {/* Name */}
+                    <span className="text-xs font-semibold text-center leading-tight line-clamp-2 text-gray-700 group-hover:text-primary-600 transition-colors">
+                      {cat.name}
+                    </span>
+                  </Link>
+                ))}
               </div>
             </section>
           )}
