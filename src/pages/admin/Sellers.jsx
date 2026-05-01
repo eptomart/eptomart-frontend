@@ -7,7 +7,7 @@ import { usePincodeAutofill } from '../../hooks/usePincodeAutofill';
 const BLANK_FORM = {
   businessName: '', email: '', phone: '',
   address: { street: '', city: '', state: '', pincode: '' },
-  gstNumber: '', fssaiLicenseNumber: '', notes: '',
+  gstNumber: '', panNumber: '', fssaiLicenseNumber: '', notes: '',
 };
 
 const STATUS_COLOR = {
@@ -67,6 +67,7 @@ export default function AdminSellers() {
         pincode: s.address?.pincode || '',
       },
       gstNumber:          s.gstNumber || '',
+      panNumber:          s.panNumber || '',
       fssaiLicenseNumber: s.fssaiLicenseNumber || '',
       notes:              s.notes || '',
     });
@@ -84,10 +85,21 @@ export default function AdminSellers() {
   };
 
   const createSeller = async () => {
-    if (!form.businessName || !form.address.pincode || (!form.email && !form.phone))
-      return toast.error('Business name, pincode, and email or phone required');
-    if (!form.gstNumber || form.gstNumber.trim().length < 15)
-      return toast.error('A valid 15-character GST number is required');
+    const missing = [];
+    if (!form.businessName.trim())                    missing.push('Business Name');
+    if (!form.email.trim() && !form.phone.trim())     missing.push('Email or Phone');
+    if (!form.address.street.trim())                  missing.push('Street Address');
+    if (!form.address.city.trim())                    missing.push('City');
+    if (!form.address.state.trim())                   missing.push('State');
+    if (!form.address.pincode.trim())                 missing.push('Pincode');
+    if (!form.gstNumber.trim())                       missing.push('GST Number');
+    if (!form.panNumber.trim())                       missing.push('PAN Number');
+    if (missing.length > 0)
+      return toast.error(`Please fill: ${missing.join(', ')}`);
+    if (form.gstNumber.trim().length !== 15)
+      return toast.error('GST number must be exactly 15 characters');
+    if (form.panNumber.trim().length !== 10)
+      return toast.error('PAN number must be exactly 10 characters');
     setSaving(true);
     try {
       await api.post('/sellers', form);
@@ -207,28 +219,26 @@ export default function AdminSellers() {
                     {s.address?.city || '—'}
                   </td>
                   <td className="p-4 hidden lg:table-cell">
-                    <div className="flex items-center gap-2 text-xs">
-                      <span title="Agreement" className="flex items-center gap-1">
-                        {s.kycStatus?.agreementUploaded ? (
-                          <FiCheckCircle size={14} className="text-green-600" />
-                        ) : (
-                          <FiXCircle size={14} className="text-gray-400" />
-                        )}
-                      </span>
-                      <span title="Cheque" className="flex items-center gap-1">
-                        {s.kycStatus?.chequeUploaded ? (
-                          <FiCheckCircle size={14} className="text-green-600" />
-                        ) : (
-                          <FiXCircle size={14} className="text-gray-400" />
-                        )}
-                      </span>
-                      <span title="Bank Details" className="flex items-center gap-1">
-                        {s.kycStatus?.bankDetailsComplete ? (
-                          <FiCheckCircle size={14} className="text-green-600" />
-                        ) : (
-                          <FiXCircle size={14} className="text-gray-400" />
-                        )}
-                      </span>
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                      {[
+                        { key: 'idProofUploaded',      label: 'ID' },
+                        { key: 'addressProofUploaded', label: 'Addr' },
+                        { key: 'agreementUploaded',    label: 'Agr' },
+                        { key: 'chequeUploaded',       label: 'Chq' },
+                        { key: 'bankDetailsComplete',  label: 'Bank' },
+                      ].map(({ key, label }) => (
+                        <span key={key} title={label}
+                          className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full font-medium ${
+                            s.kycStatus?.[key]
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-400'
+                          }`}>
+                          {s.kycStatus?.[key]
+                            ? <FiCheckCircle size={10} />
+                            : <FiXCircle size={10} />}
+                          {label}
+                        </span>
+                      ))}
                     </div>
                   </td>
                   <td className="p-4">
@@ -403,18 +413,28 @@ export default function AdminSellers() {
                 </div>
               </div>
 
-              {/* GST — mandatory */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">GST Number *</label>
-                <input value={form.gstNumber}
-                  onChange={e => set('gstNumber', e.target.value.toUpperCase())}
-                  className="input-field font-mono" placeholder="29ABCDE1234F1Z5" maxLength={15} />
-                {form.gstNumber && form.gstNumber.trim().length !== 15 && (
-                  <p className="text-xs text-red-500 mt-0.5">GST number must be 15 characters</p>
-                )}
-                {!form.gstNumber && (
-                  <p className="text-xs text-red-500 mt-0.5">GST number is mandatory</p>
-                )}
+              {/* GST + PAN — both mandatory */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">GST Number *</label>
+                  <input value={form.gstNumber}
+                    onChange={e => set('gstNumber', e.target.value.toUpperCase())}
+                    className="input-field font-mono" placeholder="29ABCDE1234F1Z5" maxLength={15} />
+                  {form.gstNumber && form.gstNumber.trim().length !== 15 && (
+                    <p className="text-xs text-red-500 mt-0.5">Must be 15 characters</p>
+                  )}
+                  {!form.gstNumber && <p className="text-xs text-red-500 mt-0.5">Required</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">PAN Number *</label>
+                  <input value={form.panNumber}
+                    onChange={e => set('panNumber', e.target.value.toUpperCase())}
+                    className="input-field font-mono" placeholder="ABCDE1234F" maxLength={10} />
+                  {form.panNumber && form.panNumber.trim().length !== 10 && (
+                    <p className="text-xs text-red-500 mt-0.5">Must be 10 characters</p>
+                  )}
+                  {!form.panNumber && <p className="text-xs text-red-500 mt-0.5">Required</p>}
+                </div>
               </div>
 
               {/* FSSAI — optional but shown for completeness */}
@@ -464,30 +484,31 @@ export default function AdminSellers() {
 
                     {/* KYC Status Badges */}
                     <div className="grid grid-cols-3 gap-2">
-                      <div className={`rounded-lg p-3 text-center text-xs font-medium ${
-                        editing.kycStatus?.agreementUploaded
-                          ? 'bg-green-50 text-green-700 border border-green-200'
-                          : 'bg-gray-50 text-gray-600 border border-gray-200'
-                      }`}>
-                        {editing.kycStatus?.agreementUploaded ? <FiCheckCircle size={16} className="mx-auto mb-1" /> : <FiXCircle size={16} className="mx-auto mb-1" />}
-                        Agreement
-                      </div>
-                      <div className={`rounded-lg p-3 text-center text-xs font-medium ${
-                        editing.kycStatus?.chequeUploaded
-                          ? 'bg-green-50 text-green-700 border border-green-200'
-                          : 'bg-gray-50 text-gray-600 border border-gray-200'
-                      }`}>
-                        {editing.kycStatus?.chequeUploaded ? <FiCheckCircle size={16} className="mx-auto mb-1" /> : <FiXCircle size={16} className="mx-auto mb-1" />}
-                        Cheque
-                      </div>
-                      <div className={`rounded-lg p-3 text-center text-xs font-medium ${
-                        editing.kycStatus?.bankDetailsComplete
-                          ? 'bg-green-50 text-green-700 border border-green-200'
-                          : 'bg-gray-50 text-gray-600 border border-gray-200'
-                      }`}>
-                        {editing.kycStatus?.bankDetailsComplete ? <FiCheckCircle size={16} className="mx-auto mb-1" /> : <FiXCircle size={16} className="mx-auto mb-1" />}
-                        Bank Details
-                      </div>
+                      {[
+                        { key: 'idProofUploaded',      label: 'ID Proof',      fileKey: 'idProof' },
+                        { key: 'addressProofUploaded', label: 'Address Proof', fileKey: 'addressProof' },
+                        { key: 'agreementUploaded',    label: 'Agreement',     fileKey: 'agreementFile' },
+                        { key: 'chequeUploaded',       label: 'Cheque',        fileKey: 'cancelledCheque' },
+                        { key: 'bankDetailsComplete',  label: 'Bank Details',  fileKey: null },
+                      ].map(({ key, label, fileKey }) => {
+                        const done = editing.kycStatus?.[key];
+                        const url  = fileKey ? editing[fileKey]?.url : null;
+                        return (
+                          <div key={key} className={`rounded-lg p-3 text-center text-xs font-medium ${
+                            done ? 'bg-green-50 text-green-700 border border-green-200'
+                                 : 'bg-gray-50 text-gray-600 border border-gray-200'
+                          }`}>
+                            {done ? <FiCheckCircle size={16} className="mx-auto mb-1" /> : <FiXCircle size={16} className="mx-auto mb-1" />}
+                            {label}
+                            {url && (
+                              <a href={url} target="_blank" rel="noopener noreferrer"
+                                className="block mt-1 text-xs text-green-600 hover:underline flex items-center justify-center gap-0.5">
+                                <FiDownload size={10} /> View
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
