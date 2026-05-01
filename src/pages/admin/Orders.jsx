@@ -89,7 +89,8 @@ function PackagingReviewPanel({ order, onDone }) {
   const cfg = STATUS_CONFIG[pkg.status] || STATUS_CONFIG.not_submitted;
 
   const handleReview = async (action) => {
-    if (action === 'rejected' && !rejectReason.trim()) {
+    // action here is 'approve' or 'reject'
+    if (action === 'reject' && !rejectReason.trim()) {
       return toast.error('Enter a rejection reason for the seller');
     }
     setReviewing(true);
@@ -98,7 +99,7 @@ function PackagingReviewPanel({ order, onDone }) {
         action,
         reason: rejectReason,
       });
-      toast.success(action === 'approved' ? 'Packaging approved! AWB can now be generated.' : 'Packaging rejected. Seller will be notified.');
+      toast.success(action === 'approve' ? 'Packaging approved! Photos deleted & AWB can now be generated.' : 'Packaging rejected. Seller will be notified.');
       setShowReject(false);
       setRejectReason('');
       onDone();
@@ -179,7 +180,7 @@ function PackagingReviewPanel({ order, onDone }) {
         {pkg.status === 'pending_review' && pkg.images?.length > 0 && (
           <div className="flex gap-2 pt-1">
             <button
-              onClick={() => handleReview('approved')}
+              onClick={() => handleReview('approve')}
               disabled={reviewing}
               className="flex items-center gap-1.5 text-sm bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold transition-all disabled:opacity-60"
             >
@@ -213,7 +214,7 @@ function PackagingReviewPanel({ order, onDone }) {
             <div className="flex gap-3">
               <button onClick={() => { setShowReject(false); setRejectReason(''); }}
                 className="btn-outline flex-1">Cancel</button>
-              <button onClick={() => handleReview('rejected')} disabled={reviewing}
+              <button onClick={() => handleReview('reject')} disabled={reviewing}
                 className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-xl transition-all disabled:opacity-60 flex items-center justify-center gap-2">
                 {reviewing ? <><FiRefreshCw size={13} className="animate-spin"/> Sending…</> : 'Confirm Reject'}
               </button>
