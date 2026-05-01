@@ -16,11 +16,16 @@ const STATUS_MAP = {
 const TABS = ['all', 'approved', 'pending', 'draft', 'rejected', 'correction_needed'];
 
 export default function SellerProducts() {
-  const [products, setProducts] = useState([]);
-  const [tab,      setTab]      = useState('all');
-  const [loading,  setLoading]  = useState(true);
-  const [csvModal, setCsvModal] = useState(false);
+  const [products,   setProducts]   = useState([]);
+  const [tab,        setTab]        = useState('all');
+  const [loading,    setLoading]    = useState(true);
+  const [csvModal,   setCsvModal]   = useState(false);
   const [csvLoading, setCsvLoading] = useState(false);
+
+  // Resubmit modal state
+  const [resubmitModal, setResubmitModal] = useState(null); // { id, name } | null
+  const [resubmitNote,  setResubmitNote]  = useState('');
+  const [resubmitting,  setResubmitting]  = useState(false);
 
   const load = async (status) => {
     setLoading(true);
@@ -50,13 +55,23 @@ export default function SellerProducts() {
     } catch { toast.error('Failed to clone product'); }
   };
 
-  const resubmitProduct = async (id) => {
+  const openResubmitModal = (product) => {
+    setResubmitModal({ id: product._id, name: product.name });
+    setResubmitNote('');
+  };
+
+  const confirmResubmit = async () => {
+    if (!resubmitModal) return;
+    setResubmitting(true);
     try {
-      await api.post(`/approvals/${id}/resubmit`);
+      await api.post(`/approvals/${resubmitModal.id}/resubmit`, { note: resubmitNote.trim() });
       toast.success('Product resubmitted for review!');
+      setResubmitModal(null);
       load(tab);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Resubmit failed');
+    } finally {
+      setResubmitting(false);
     }
   };
 
@@ -178,6 +193,63 @@ GHI789,100
         </div>
       )}
 
+      {/* ── Resubmit Modal ──────────────────────────────── */}
+      {resubmitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <div>
+                <h3 className="font-bold text-gray-800">Resubmit for Review</h3>
+                <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{resubmitModal.name}</p>
+              </div>
+              <button onClick={() => setResubmitModal(null)} className="text-gray-400 hover:text-gray-600">
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 text-sm text-orange-800">
+                <p className="font-semibold mb-1">Before resubmitting:</p>
+                <p className="text-xs">Make sure you've edited the product to fix the issues raised by the admin. Use the <strong>Edit</strong> button to update the product first.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  What did you fix? <span className="text-gray-400 font-normal">(optional but recommended)</span>
+                </label>
+                <textarea
+                  value={resubmitNote}
+                  onChange={e => setResubmitNote(e.target.value)}
+                  rows={4}
+                  maxLength={500}
+                  placeholder="e.g. Updated product images with white background. Added correct HSN code. Fixed MRP to include GST..."
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-400 mt-1 text-right">{resubmitNote.length}/500</p>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t flex gap-3">
+              <button
+                onClick={() => setResubmitModal(null)}
+                className="flex-1 px-4 py-2.5 text-sm text-gray-600 hover:text-gray-800 border border-gray-200 rounded-xl font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmResubmit}
+                disabled={resubmitting}
+                className="flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
+              >
+                {resubmitting
+                  ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Submitting...</>
+                  : <><FiRefreshCw size={14} /> Submit for Review</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h2 className="text-xl font-bold text-gray-800">My Products</h2>
         <div className="flex items-center gap-2">
@@ -263,7 +335,7 @@ GHI789,100
                           {/* Resubmit — shown for correction_needed or rejected */}
                           {needsAction && (
                             <button
-                              onClick={() => resubmitProduct(p._id)}
+                              onClick={() => openResubmitModal(p)}
                               title="Resubmit for review"
                               className="flex items-center gap-1 text-xs bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded-lg font-medium transition-all"
                             >

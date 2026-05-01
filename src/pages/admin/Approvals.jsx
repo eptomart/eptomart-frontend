@@ -332,7 +332,12 @@ export default function AdminApprovals() {
                             <p className="text-xs text-gray-400 font-mono mt-0.5">Code: {p.productCode}</p>
                           )}
                           {p.approvalNote && (
-                            <p className="text-xs text-orange-600 mt-1">📌 Note: {p.approvalNote}</p>
+                            <p className="text-xs text-orange-600 mt-1">📌 Admin note: {p.approvalNote}</p>
+                          )}
+                          {p.sellerNote && (
+                            <div className="text-xs text-blue-700 mt-1.5 bg-blue-50 border border-blue-100 px-2.5 py-1.5 rounded-lg">
+                              💬 <strong>Seller says:</strong> "{p.sellerNote}"
+                            </div>
                           )}
                           {p.submittedAt && (
                             <p className="text-xs text-gray-400 mt-1">
