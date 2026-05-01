@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 const BLANK = {
   name: '', description: '', shortDescription: '',
   price: '', gstRate: 18, priceIncludesGst: true,
-  discountPrice: '', stock: '', category: '',
+  discountPrice: '', stock: '', category: '', subCategory: '',
   brand: '', sku: '', tags: '',
   codAvailable: true, approvalStatus: 'draft',
   location: { city: '', state: '', pincode: '' },
@@ -31,11 +31,16 @@ export default function ProductForm() {
   const [existingImages,setExistingImages]= useState([]);
   const [deletingImgId, setDeletingImgId] = useState(null);
   const [categories,    setCategories]    = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
   const [saving,        setSaving]        = useState(false);
   const [loading,       setLoading]       = useState(isEdit);
 
   useEffect(() => {
-    api.get('/categories').then(r => setCategories(r.data.categories || [])).catch(() => {});
+    api.get('/categories?all=true').then(r => {
+      const all = r.data.categories || [];
+      setCategories(all.filter(c => !c.parentCategory));
+      setSubCategories(all.filter(c => !!c.parentCategory));
+    }).catch(() => {});
     if (isEdit) {
       api.get(`/products/${id}/preview`).catch(() => api.get(`/products/${id}?byId=true`)).then(r => {
         const p = r.data.product;
@@ -50,6 +55,7 @@ export default function ProductForm() {
           discountPrice:   p.discountPrice || '',
           stock:           p.stock || '',
           category:        p.category?._id || p.category || '',
+          subCategory:     p.subCategory?._id || p.subCategory || '',
           brand:           p.brand || '',
           sku:             p.sku || '',
           tags:            (p.tags || []).join(', '),
@@ -144,6 +150,7 @@ export default function ProductForm() {
         platformMargin: form.eptomartMargin !== '' ? Number(form.eptomartMargin) : undefined, // sync alias
         tags:           form.tags.split(',').map(t => t.trim()).filter(Boolean),
         variants:       cleanVariants,
+        subCategory:    form.subCategory || undefined,
         approvalStatus: submitForApproval ? 'pending' : (form.approvalStatus === 'approved' ? 'pending' : form.approvalStatus || 'draft'),
         submittedAt:    submitForApproval ? new Date().toISOString() : undefined,
       };
@@ -228,19 +235,76 @@ export default function ProductForm() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Short Description</label>
             <input value={form.shortDescription} onChange={e => set('shortDescription', e.target.value)} placeholder="Brief one-line description" className="input-field" />
           </div>
+          {/* Category → Sub-category cascade */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
-              <select value={form.category} onChange={e => set('category', e.target.value)} className="input-field">
+              <select
+                value={form.category}
+                onChange={e => {
+                  set('category', e.target.value);
+                  set('subCategory', ''); // reset sub when parent changes
+                }}
+                className="input-field"
+              >
                 <option value="">Select category</option>
-                {categories.map(c => <option key={c._id} value={c._id}>{c.name}{c.requiresFSSAI ? ' 🍽' : ''}</option>)}
+                {categories.map(c => (
+                  <option key={c._id} value={c._id}>
+                    {c.icon ? `${c.icon} ` : ''}{c.name}{c.requiresFSSAI ? ' 🍽' : ''}
+                  </option>
+                ))}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-              <input value={form.brand} onChange={e => set('brand', e.target.value)} placeholder="Samsung" className="input-field" />
-            </div>
+
+            {/* Sub-category — only shown when selected parent has children */}
+            {(() => {
+              const subs = subCategories.filter(s => {
+                const pid = typeof s.parentCategory === 'object' ? s.parentCategory?._id : s.parentCategory;
+                return pid?.toString() === form.category;
+              });
+              if (!form.category || subs.length === 0) return (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+                  <input value={form.brand} onChange={e => set('brand', e.target.value)} placeholder="Samsung" className="input-field" />
+                </div>
+              );
+              return (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sub-category <span className="text-gray-400 font-normal text-xs">(optional)</span>
+                  </label>
+                  <select
+                    value={form.subCategory}
+                    onChange={e => set('subCategory', e.target.value)}
+                    className="input-field border-orange-300 focus:border-orange-500"
+                  >
+                    <option value="">— Select sub-category —</option>
+                    {subs.map(s => (
+                      <option key={s._id} value={s._id}>
+                        {s.icon ? `${s.icon} ` : ''}{s.name}{s.requiresFSSAI ? ' 🍽' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-0.5">Helps buyers find your product faster</p>
+                </div>
+              );
+            })()}
           </div>
+
+          {/* Brand — shown below when sub-category dropdown is also visible */}
+          {(() => {
+            const subs = subCategories.filter(s => {
+              const pid = typeof s.parentCategory === 'object' ? s.parentCategory?._id : s.parentCategory;
+              return pid?.toString() === form.category;
+            });
+            if (!form.category || subs.length === 0) return null; // brand already shown above
+            return (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+                <input value={form.brand} onChange={e => set('brand', e.target.value)} placeholder="Samsung" className="input-field" />
+              </div>
+            );
+          })()}
 
           {/* FSSAI warning when food category is selected */}
           {(() => {
