@@ -3,7 +3,7 @@
 // ============================================
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { FiChevronDown, FiChevronUp, FiTruck, FiRefreshCw, FiMapPin, FiCheckCircle, FiXCircle, FiAlertTriangle, FiDownload, FiFileText, FiTag, FiPackage, FiImage } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiTruck, FiRefreshCw, FiMapPin, FiCheckCircle, FiXCircle, FiAlertTriangle, FiDownload, FiFileText, FiTag, FiPackage, FiImage, FiUploadCloud, FiDollarSign, FiExternalLink } from 'react-icons/fi';
 import Loader from '../../components/common/Loader';
 import { formatINR, formatDate } from '../../utils/currency';
 import api from '../../utils/api';
@@ -426,6 +426,129 @@ function ShiprocketPanel({ order, onDone }) {
       >
         {shipping ? <><FiRefreshCw size={13} className="animate-spin" /> Creating…</> : <><FiTruck size={13} /> Create Shipment</>}
       </button>
+    </div>
+  );
+}
+
+// ── Shipping Charge + Shiprocket Bill Panel ─────────────
+function ShippingChargeAndBillPanel({ order, onDone }) {
+  const existing = order.shiprocket?.adminShippingCharge ?? order.shiprocket?.shippingCharge ?? 0;
+  const bill      = order.shiprocket?.bill;
+
+  const [charge,   setCharge]   = useState(existing || '');
+  const [saving,   setSaving]   = useState(false);
+  const [uploading,setUploading]= useState(false);
+  const billRef = React.useRef();
+
+  const saveCharge = async () => {
+    if (charge === '' || isNaN(Number(charge))) return toast.error('Enter a valid amount');
+    setSaving(true);
+    try {
+      await api.patch(`/admin/orders/${order._id}/shipping-charge`, { charge: Number(charge) });
+      toast.success(`Shipping charge saved as ₹${charge}`);
+      onDone();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save');
+    } finally { setSaving(false); }
+  };
+
+  const uploadBill = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('bill', file);
+      await api.post(`/admin/orders/${order._id}/shiprocket-bill`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success('Shiprocket bill uploaded');
+      onDone();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Upload failed');
+    } finally { setUploading(false); }
+  };
+
+  const isAdminOverride = order.shiprocket?.adminShippingCharge != null;
+
+  return (
+    <div className="border border-blue-200 bg-blue-50 rounded-xl p-4 space-y-4">
+      <p className="text-sm font-semibold text-blue-800 flex items-center gap-2">
+        <FiDollarSign size={14} /> Actual Shipping Charge &amp; Bill
+      </p>
+
+      {/* Shipping charge entry */}
+      <div>
+        <label className="text-xs font-medium text-gray-600 block mb-1">
+          Actual Shipping Charge (₹)
+          {isAdminOverride && <span className="ml-2 text-blue-600 text-[11px]">✓ Admin override active</span>}
+          {!isAdminOverride && existing > 0 && <span className="ml-2 text-gray-400 text-[11px]">(API value: ₹{existing})</span>}
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={charge}
+            onChange={e => setCharge(e.target.value)}
+            placeholder="e.g. 89.50"
+            className="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+          />
+          <button
+            onClick={saveCharge}
+            disabled={saving}
+            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors disabled:opacity-60"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+        <p className="text-[11px] text-gray-400 mt-1">
+          This value overrides the Shiprocket API charge in payout calculations.
+        </p>
+      </div>
+
+      {/* Bill upload */}
+      <div>
+        <label className="text-xs font-medium text-gray-600 block mb-1">Shiprocket Bill (PDF or Image)</label>
+        {bill?.url ? (
+          <div className="flex items-center gap-3 bg-white border border-blue-200 rounded-xl px-3 py-2">
+            <FiFileText size={14} className="text-blue-500 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-gray-700 truncate">Bill uploaded</p>
+              <p className="text-[11px] text-gray-400">
+                {bill.uploadedAt ? new Date(bill.uploadedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
+              </p>
+            </div>
+            <a href={bill.url} target="_blank" rel="noreferrer"
+              className="flex items-center gap-1 text-xs text-blue-600 hover:underline flex-shrink-0">
+              <FiExternalLink size={12} /> View
+            </a>
+            <button
+              onClick={() => billRef.current?.click()}
+              className="text-xs text-gray-400 hover:text-gray-600 flex-shrink-0"
+            >
+              Replace
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => billRef.current?.click()}
+            disabled={uploading}
+            className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-blue-300 rounded-xl py-3 text-sm text-blue-600 hover:bg-blue-100 transition-colors disabled:opacity-60"
+          >
+            {uploading
+              ? <><FiRefreshCw size={14} className="animate-spin" /> Uploading…</>
+              : <><FiUploadCloud size={14} /> Upload Shiprocket Bill</>
+            }
+          </button>
+        )}
+        <input
+          ref={billRef}
+          type="file"
+          accept="image/*,.pdf"
+          className="hidden"
+          onChange={e => uploadBill(e.target.files?.[0])}
+        />
+      </div>
     </div>
   );
 }
@@ -1151,6 +1274,12 @@ export default function AdminOrders() {
                         {['confirmed', 'processing', 'placed', 'shipped'].includes(order.orderStatus) &&
                           order.paymentStatus === 'paid' && (
                           <ShiprocketPanel order={order} onDone={fetchOrders} />
+                        )}
+
+                        {/* Shipping charge entry + bill upload (visible for all paid + in-progress/completed orders) */}
+                        {order.paymentStatus === 'paid' &&
+                          ['processing', 'placed', 'shipped', 'delivered'].includes(order.orderStatus) && (
+                          <ShippingChargeAndBillPanel order={order} onDone={fetchOrders} />
                         )}
 
                         {/* Payout finalization */}
