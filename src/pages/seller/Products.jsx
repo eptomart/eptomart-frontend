@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiEdit2, FiTrash2, FiAlertCircle, FiCheckCircle, FiClock, FiXCircle, FiEye, FiCopy, FiUpload, FiX, FiRefreshCw, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiAlertCircle, FiCheckCircle, FiClock, FiXCircle, FiEye, FiCopy, FiUpload, FiDownload, FiX, FiRefreshCw, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
 import toast from 'react-hot-toast';
@@ -85,47 +85,63 @@ export default function SellerProducts() {
 
     setCsvLoading(true);
     try {
-      const text = await file.text();
-      const lines = text.trim().split('\n').filter(l => l.trim());
+      const text  = await file.text();
+      // Strip comment lines (starting with #)
+      const lines = text.trim().split('\n')
+        .filter(l => l.trim() && !l.trim().startsWith('#'));
 
       if (lines.length < 2) {
-        toast.error('CSV must have header row and at least one data row');
+        toast.error('CSV must have a header row and at least one data row');
         setCsvLoading(false);
         return;
       }
 
-      // Parse CSV
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-      const skuIdx = headers.indexOf('sku');
-      const stockIdx = headers.indexOf('stock');
+      const parseRow = (line) => {
+        const result = [];
+        let cur = '', inQuotes = false;
+        for (const ch of line) {
+          if (ch === '"') { inQuotes = !inQuotes; }
+          else if (ch === ',' && !inQuotes) { result.push(cur.trim()); cur = ''; }
+          else { cur += ch; }
+        }
+        result.push(cur.trim());
+        return result;
+      };
 
-      if (skuIdx < 0 || stockIdx < 0) {
-        toast.error('CSV must have "sku" and "stock" columns');
+      const headers    = parseRow(lines[0]).map(h => h.toLowerCase());
+      const skuIdx     = headers.indexOf('sku');
+      const codeIdx    = headers.indexOf('product_code');
+      const stockIdx   = headers.findIndex(h => h === 'new_stock' || h === 'stock');
+
+      if ((skuIdx < 0 && codeIdx < 0) || stockIdx < 0) {
+        toast.error('CSV must have "sku" or "product_code" column AND "stock" or "new_stock" column');
         setCsvLoading(false);
         return;
       }
 
       const updates = [];
       for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(',').map(c => c.trim());
-        if (cols[skuIdx] && cols[stockIdx]) {
-          updates.push({
-            sku: cols[skuIdx],
-            stock: Number(cols[stockIdx]),
-          });
+        const cols      = parseRow(lines[i]);
+        const sku       = skuIdx  >= 0 ? (cols[skuIdx]   || '').trim() : '';
+        const code      = codeIdx >= 0 ? (cols[codeIdx]  || '').trim() : '';
+        const stockRaw  = (cols[stockIdx] || '').trim();
+        const identifier = sku || code;
+        if (identifier && stockRaw !== '') {
+          updates.push({ sku: identifier, stock: Number(stockRaw) });
         }
       }
 
       if (updates.length === 0) {
-        toast.error('No valid rows found in CSV');
+        toast.error('No valid rows found in CSV. Make sure stock values are filled in.');
         setCsvLoading(false);
         return;
       }
 
       const { data } = await api.post('/products/bulk-stock', { updates });
-      toast.success(`${data.updated} products updated, ${data.skipped} skipped`);
-      if (data.errors.length > 0) {
-        toast.error(`Errors: ${data.errors.slice(0, 3).join('; ')}`);
+      toast.success(`✅ ${data.updated} product${data.updated !== 1 ? 's' : ''} updated${data.skipped > 0 ? `, ${data.skipped} skipped` : ''}`);
+      if (data.errors?.length > 0) {
+        console.warn('Bulk stock errors:', data.errors);
+        toast.error(`Issues: ${data.errors.slice(0, 2).join('; ')}${data.errors.length > 2 ? ` (+${data.errors.length - 2} more)` : ''}`);
       }
       setCsvModal(false);
       load(tab);
@@ -136,60 +152,110 @@ export default function SellerProducts() {
     }
   };
 
+  const downloadSampleCsv = () => {
+    const rows = [
+      'product_code,sku,product_name,current_stock,new_stock',
+      'EPT-001,MY-SKU-001,Example Product A,10,50',
+      'EPT-002,MY-SKU-002,Example Product B,0,100',
+      ',MY-SKU-003,Example Product C (no code),5,25',
+      'EPT-004,,Example Product D (no sku),30,75',
+    ];
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'stock-update-sample.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadMyProducts = async () => {
+    try {
+      const res  = await api.get('/products/seller/export-stock', { responseType: 'blob' });
+      const url  = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'my-products-stock.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Your product list downloaded!');
+    } catch {
+      toast.error('Could not download product list');
+    }
+  };
+
   return (
     <div>
       {/* CSV Modal */}
       {csvModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
             <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h3 className="font-bold text-gray-800">Update Stock via CSV</h3>
+              <div>
+                <h3 className="font-bold text-gray-800">Bulk Stock Update via CSV</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Update multiple product stocks in one go</p>
+              </div>
               <button onClick={() => setCsvModal(false)} className="text-gray-400 hover:text-gray-600">
                 <FiX size={20} />
               </button>
             </div>
 
             <div className="px-6 py-4 space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-                <p className="font-semibold mb-2">CSV Format:</p>
-                <code className="block bg-white p-2 rounded border border-blue-100 text-xs overflow-x-auto">
-sku,stock
-ABC123,50
-DEF456,25
-GHI789,100
-                </code>
+
+              {/* Step 1 — Download */}
+              <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Step 1 — Get your product list</p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button onClick={downloadMyProducts}
+                    className="flex-1 flex items-center justify-center gap-2 text-sm font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-4 py-2.5 rounded-xl transition-colors">
+                    <FiDownload size={14} /> Download My Products
+                  </button>
+                  <button onClick={downloadSampleCsv}
+                    className="flex-1 flex items-center justify-center gap-2 text-sm font-medium bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 px-4 py-2.5 rounded-xl transition-colors">
+                    <FiDownload size={14} /> Download Sample CSV
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Use <strong>Download My Products</strong> to get a pre-filled CSV with all your products and current stock levels — then just fill in the <code className="bg-gray-100 px-1 rounded">new_stock</code> column.
+                </p>
               </div>
 
+              {/* Format reference */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                <p className="text-xs font-semibold text-blue-800 mb-1.5">CSV format (use either SKU or Product Code):</p>
+                <code className="block bg-white p-2 rounded border border-blue-100 text-[11px] overflow-x-auto whitespace-pre text-gray-700">product_code,sku,product_name,current_stock,new_stock
+EPT-001,MY-SKU-001,Product A,10,50
+EPT-002,,Product B (no SKU),0,100
+,MY-SKU-003,Product C (no code),5,25</code>
+                <p className="text-[11px] text-blue-600 mt-1.5">✓ Use <strong>product_code</strong> OR <strong>sku</strong> — both identify the product.<br/>✓ Only <strong>new_stock</strong> column is required; other columns are for reference.</p>
+              </div>
+
+              {/* Step 2 — Upload */}
               <div>
-                <p className="text-sm text-gray-600 mb-3">
-                  Download your product list, update the stock column, and upload the file here.
-                </p>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Step 2 — Upload filled CSV</p>
                 <label className="block">
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-colors">
-                    <FiUpload size={24} className="mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm font-medium text-gray-600">Click to upload CSV</p>
-                    <p className="text-xs text-gray-400 mt-1">or drag and drop</p>
+                  <div className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${csvLoading ? 'opacity-50 cursor-not-allowed' : 'border-gray-300 hover:border-primary-400 hover:bg-primary-50'}`}>
+                    {csvLoading ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-5 h-5 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+                        <span className="text-sm text-gray-600 font-medium">Processing…</span>
+                      </div>
+                    ) : (
+                      <>
+                        <FiUpload size={24} className="mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm font-medium text-gray-700">Click to upload your CSV</p>
+                        <p className="text-xs text-gray-400 mt-1">.csv files only</p>
+                      </>
+                    )}
                   </div>
-                  <input
-                    type="file"
-                    accept=".csv,.xlsx"
-                    onChange={handleCsvUpload}
-                    disabled={csvLoading}
-                    className="hidden"
-                  />
+                  <input type="file" accept=".csv" onChange={handleCsvUpload} disabled={csvLoading} className="hidden" />
                 </label>
               </div>
 
-              {csvLoading && (
-                <div className="flex items-center justify-center gap-2 py-3">
-                  <div className="w-4 h-4 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-sm text-gray-600">Processing...</span>
-                </div>
-              )}
             </div>
 
-            <div className="px-6 py-4 border-t flex justify-end gap-3">
-              <button onClick={() => setCsvModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border rounded-lg">
+            <div className="px-6 py-3 border-t flex justify-end">
+              <button onClick={() => setCsvModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border rounded-lg transition-colors">
                 Close
               </button>
             </div>
