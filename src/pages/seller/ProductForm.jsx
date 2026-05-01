@@ -123,6 +123,15 @@ export default function ProductForm() {
     setSaving(true);
     try {
       const fd = new FormData();
+      // Strip Mongoose _id from variant subdocuments before sending
+      const cleanVariants = (form.variants || []).map(({ _id, ...rest }) => ({
+        label:  rest.label  || '',
+        value:  rest.value  !== '' ? Number(rest.value)  : undefined,
+        unit:   rest.unit   || 'g',
+        price:  rest.price  !== '' ? Number(rest.price)  : undefined,
+        stock:  rest.stock  !== '' && rest.stock !== undefined ? Number(rest.stock) : undefined,
+      })).filter(v => v.label);
+
       const payload = {
         ...form,
         price:          Number(form.priceIncludesGst ? basePrice.toFixed(2) : form.price),
@@ -134,6 +143,7 @@ export default function ProductForm() {
         eptomartMargin: form.eptomartMargin !== '' ? Number(form.eptomartMargin) : undefined,
         platformMargin: form.eptomartMargin !== '' ? Number(form.eptomartMargin) : undefined, // sync alias
         tags:           form.tags.split(',').map(t => t.trim()).filter(Boolean),
+        variants:       cleanVariants,
         approvalStatus: submitForApproval ? 'pending' : (form.approvalStatus === 'approved' ? 'pending' : form.approvalStatus || 'draft'),
         submittedAt:    submitForApproval ? new Date().toISOString() : undefined,
       };
@@ -426,37 +436,92 @@ export default function ProductForm() {
         <div className="card p-6 space-y-4">
           <div className="flex items-center justify-between border-b pb-2">
             <h3 className="font-semibold text-gray-800">Product Variants <span className="text-xs font-normal text-gray-400">(optional — e.g. 500g, 1L)</span></h3>
-            <button type="button" onClick={() => set('variants', [...(form.variants || []), { label: '', value: '', unit: 'g', price: '', stock: '' }])}
+            <button type="button"
+              onClick={() => set('variants', [...(form.variants || []), { label: '', value: '', unit: 'g', price: '', stock: '' }])}
               className="text-xs text-primary-600 border border-primary-300 rounded-lg px-3 py-1 hover:bg-primary-50">
               + Add Variant
             </button>
           </div>
-          {(form.variants || []).map((v, idx) => (
-            <div key={idx} className="grid grid-cols-5 gap-2 items-end bg-gray-50 rounded-xl p-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Label *</label>
-                <input value={v.label} placeholder="e.g. 500g" onChange={e => { const arr = [...form.variants]; arr[idx].label = e.target.value; set('variants', arr); }} className="input-field text-sm" />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Value</label>
-                <input type="number" value={v.value} placeholder="500" onChange={e => { const arr = [...form.variants]; arr[idx].value = e.target.value; set('variants', arr); }} className="input-field text-sm" />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Unit</label>
-                <select value={v.unit} onChange={e => { const arr = [...form.variants]; arr[idx].unit = e.target.value; set('variants', arr); }} className="input-field text-sm">
-                  {['g', 'kg', 'ml', 'l', 'pieces', 'pack', 'other'].map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Price (₹)</label>
-                <input type="number" value={v.price} placeholder="Optional" onChange={e => { const arr = [...form.variants]; arr[idx].price = e.target.value; set('variants', arr); }} className="input-field text-sm" />
-              </div>
-              <button type="button" onClick={() => { const arr = [...form.variants]; arr.splice(idx, 1); set('variants', arr); }}
-                className="pb-0.5 text-red-400 hover:text-red-600 text-lg font-bold self-end">×</button>
+
+          {/* Column headers */}
+          {(form.variants || []).length > 0 && (
+            <div className="grid grid-cols-6 gap-2 px-3 text-xs text-gray-400 font-medium">
+              <span>Label *</span>
+              <span>Value</span>
+              <span>Unit</span>
+              <span>Price (₹)</span>
+              <span>Stock</span>
+              <span></span>
             </div>
-          ))}
+          )}
+
+          {(form.variants || []).map((v, idx) => {
+            // Immutable field updater — avoids direct state mutation
+            const setField = (field, val) =>
+              set('variants', form.variants.map((item, i) =>
+                i === idx ? { ...item, [field]: val } : item
+              ));
+
+            return (
+              <div key={v._id?.toString() || idx} className="grid grid-cols-6 gap-2 items-end bg-gray-50 rounded-xl p-3">
+                <div>
+                  <input
+                    value={v.label || ''}
+                    placeholder="e.g. 500g"
+                    onChange={e => setField('label', e.target.value)}
+                    className="input-field text-sm"
+                  />
+                </div>
+                <div>
+                  <input
+                    type="number"
+                    value={v.value || ''}
+                    placeholder="500"
+                    onChange={e => setField('value', e.target.value)}
+                    className="input-field text-sm"
+                  />
+                </div>
+                <div>
+                  <select
+                    value={v.unit || 'g'}
+                    onChange={e => setField('unit', e.target.value)}
+                    className="input-field text-sm"
+                  >
+                    {['g', 'kg', 'ml', 'l', 'pieces', 'pack', 'other'].map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <input
+                    type="number"
+                    value={v.price || ''}
+                    placeholder="Optional"
+                    onChange={e => setField('price', e.target.value)}
+                    className="input-field text-sm"
+                  />
+                </div>
+                <div>
+                  <input
+                    type="number"
+                    value={v.stock ?? ''}
+                    placeholder="Stock"
+                    min={0}
+                    onChange={e => setField('stock', e.target.value)}
+                    className={`input-field text-sm ${v.stock === 0 ? 'border-red-300 bg-red-50' : ''}`}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => set('variants', form.variants.filter((_, i) => i !== idx))}
+                  className="pb-0.5 text-red-400 hover:text-red-600 text-lg font-bold self-end"
+                >×</button>
+              </div>
+            );
+          })}
+
           {(form.variants || []).length === 0 && (
-            <p className="text-sm text-gray-400">No variants added. Click "Add Variant" to add sizes like 250g, 500ml, 1kg etc.</p>
+            <p className="text-sm text-gray-400">No variants added. Click "+ Add Variant" to add sizes like 250g, 500ml, 1kg etc.</p>
           )}
         </div>
 
