@@ -17,9 +17,7 @@ import api from '../utils/api';
 
 // ── Trust badges strip ──────────────────────────────────────
 const TRUST = [
-  { icon: FiTruck,      title: 'Free Delivery',   desc: 'Orders above ₹499',      color: 'text-blue-500',  bg: 'bg-blue-50' },
   { icon: FiShield,     title: 'Secure Payment',  desc: 'Razorpay & COD',         color: 'text-green-500', bg: 'bg-green-50' },
-  { icon: FiRefreshCw,  title: 'Easy Returns',    desc: '7-day return policy',     color: 'text-purple-500',bg: 'bg-purple-50' },
   { icon: FiHeadphones, title: '24/7 Support',    desc: 'Always here to help',     color: 'text-orange-500',bg: 'bg-orange-50' },
 ];
 
@@ -29,7 +27,7 @@ const SLIDES = [
     bg:       'from-orange-600 via-orange-500 to-amber-400',
     tag:      '🇮🇳 India\'s Fastest Growing Store',
     headline: 'Shop Everything,\nDelivered Fast 🚀',
-    sub:      'Quality products at the best prices. Free delivery on orders above ₹499.',
+    sub:      'Quality products at the best prices from verified local sellers.',
     cta:      { label: 'Shop Now', to: '/shop' },
     cta2:     { label: 'Browse Deals', to: '/shop' },
     emoji:    '🛒',

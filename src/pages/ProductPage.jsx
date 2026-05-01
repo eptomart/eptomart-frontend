@@ -349,19 +349,14 @@ export default function ProductPage() {
             </div>
 
             {/* Trust badges */}
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { icon: FiTruck,   label: 'Free Delivery',   sub: 'On orders above ₹499' },
-                { icon: FiShield,  label: 'Secure Payment',  sub: '100% safe checkout' },
-              ].map(({ icon: Icon, label, sub }) => (
-                <div key={label} className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl">
-                  <Icon className="text-primary-500 flex-shrink-0" size={16} />
-                  <div>
-                    <p className="text-xs font-semibold text-gray-800">{label}</p>
-                    <p className="text-xs text-gray-500">{sub}</p>
-                  </div>
+            <div className="flex gap-2">
+              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl flex-1">
+                <FiShield className="text-primary-500 flex-shrink-0" size={16} />
+                <div>
+                  <p className="text-xs font-semibold text-gray-800">Secure Payment</p>
+                  <p className="text-xs text-gray-500">100% safe checkout</p>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         </div>

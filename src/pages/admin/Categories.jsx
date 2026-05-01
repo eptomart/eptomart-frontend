@@ -104,7 +104,26 @@ export default function AdminCategories() {
     }
   };
 
-  const EMOJI_SUGGESTIONS = ['🛍️', '👗', '📱', '🏠', '🍎', '💄', '⚽', '📚', '🚗', '💊', '🎮', '🌿', '💍', '👟', '🔧'];
+  const EMOJI_SUGGESTIONS = [
+    // Food & Grocery
+    '🛒','🥦','🌾','🧄','🥛','🍳','🌶️','🫚','🧅','🥚',
+    // Spices & Herbs
+    '🌿','🍃','🫛','🌱','🍀','🌾','🫙','🧂','🍵','🌺',
+    // Fashion
+    '👗','👔','👟','👜','🧣','💍','👒','🕶️','🧦','👗',
+    // Electronics
+    '📱','💻','🖥️','🎧','📷','⌨️','🖨️','📺','🎮','🔌',
+    // Home
+    '🏠','🪑','🛋️','🪴','🕯️','🪞','🛏️','🧹','🪣','🧰',
+    // Health & Beauty
+    '💊','🧴','💆','🌸','🧼','💅','🪥','🩺','🌡️','💐',
+    // Sports
+    '⚽','🏏','🎾','🏊','🚴','🤸','🏋️','🎯','🧘','🏃',
+    // Books & Stationery
+    '📚','✏️','📔','🖊️','📐','📏','🗂️','📌','🔖','🖍️',
+    // Auto & Tools
+    '🚗','🔧','⚙️','🛠️','🔩','🪛','🔋','⛽','🚀','🛞',
+  ];
 
   return (
     <>
@@ -170,7 +189,7 @@ export default function AdminCategories() {
                       {cat.image?.url ? (
                         <img src={cat.image.url} alt={cat.name} className="w-11 h-11 object-cover rounded-lg flex-shrink-0" />
                       ) : (
-                        <div className="w-11 h-11 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0 text-2xl">
+                        <div className="w-11 h-11 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0 text-2xl leading-none">
                           {cat.icon || '🛍️'}
                         </div>
                       )}
@@ -221,7 +240,7 @@ export default function AdminCategories() {
                             {sub.image?.url ? (
                               <img src={sub.image.url} alt={sub.name} className="w-8 h-8 object-cover rounded-lg flex-shrink-0" />
                             ) : (
-                              <div className="w-8 h-8 bg-white border border-orange-200 rounded-lg flex items-center justify-center flex-shrink-0 text-base">
+                              <div className="w-8 h-8 bg-white border border-orange-200 rounded-lg flex items-center justify-center flex-shrink-0 text-base leading-none">
                                 {sub.icon || '📁'}
                               </div>
                             )}
@@ -284,7 +303,7 @@ export default function AdminCategories() {
                 }).map(cat => (
                   <div key={cat._id} className="card p-3 flex items-center justify-between group mb-2 border-l-4 border-orange-300">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-base">{cat.icon || '📁'}</div>
+                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-base leading-none">{cat.icon || '📁'}</div>
                       <div>
                         <p className="text-sm font-semibold text-gray-700">{cat.name}</p>
                         <p className="text-xs text-orange-500">Parent missing</p>
@@ -337,16 +356,17 @@ export default function AdminCategories() {
 
               <div>
                 <label className="block text-sm font-medium mb-2">Emoji Icon</label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {EMOJI_SUGGESTIONS.map(emoji => (
-                    <button key={emoji} type="button" onClick={() => setForm(f => ({ ...f, icon: emoji }))}
-                      className={`text-xl p-1.5 rounded-lg border ${form.icon === emoji ? 'border-primary-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                <div className="flex flex-wrap gap-1.5 mb-2 max-h-32 overflow-y-auto p-1">
+                  {EMOJI_SUGGESTIONS.map((emoji, idx) => (
+                    <button key={`${emoji}-${idx}`} type="button" onClick={() => setForm(f => ({ ...f, icon: emoji }))}
+                      className={`w-9 h-9 flex items-center justify-center text-xl leading-none rounded-lg border transition-colors
+                        ${form.icon === emoji ? 'border-primary-500 bg-orange-50 scale-110' : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50'}`}>
                       {emoji}
                     </button>
                   ))}
                 </div>
                 <input type="text" value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))}
-                  className="input-field" placeholder="Or type emoji/text" />
+                  className="input-field" placeholder="Or paste any emoji directly" />
               </div>
 
               <div>

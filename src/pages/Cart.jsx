@@ -145,7 +145,7 @@ export default function Cart() {
                 </div>
                 {shipping === 0 && (
                   <div className="flex items-center gap-1.5 text-xs text-green-600 bg-green-50 rounded-lg p-2">
-                    <FiTruck size={12} /> Free delivery on orders above ₹499
+                    <FiTruck size={12} /> Free delivery applied
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-base text-gray-900 pt-2 border-t border-gray-100">
