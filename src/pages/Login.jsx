@@ -1,7 +1,7 @@
 // ============================================
 // LOGIN — Centered, premium, brand-consistent
 // ============================================
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { FiArrowLeft, FiMail, FiPhone, FiShield, FiTruck, FiFileText } from 'react-icons/fi';
@@ -124,6 +124,9 @@ export default function Login() {
   const [address,       setAddress]      = useState({ addressLine1: '', city: '', state: '', pincode: '', phone: '' });
   const [accountExists, setAccountExists] = useState(null); // null = unknown, true = existing, false = new
 
+  const confirmRef   = useRef(null);
+  const recaptchaRef = useRef(null);
+
   const { sendOtp, verifyOtp, loadUser } = useAuth();
   const navigate  = useNavigate();
   const location  = useLocation();
@@ -133,60 +136,97 @@ export default function Login() {
     const val = e.target.value;
     setContact(val);
     setDetected(detectType(val));
-    setAccountExists(null);
+    setAccountExists(null); // reset hint when contact changes
+    // Remember for next visit
     try { localStorage.setItem(LAST_CONTACT_KEY, val); } catch {}
   };
 
-  // Unified OTP send — same backend flow for both email and phone.
-  // Phone OTP is delivered via WhatsApp (no Firebase / no CAPTCHA required).
+  useEffect(() => {
+    return () => {
+      if (recaptchaRef.current) {
+        try { recaptchaRef.current.clear(); } catch (_) {}
+      }
+    };
+  }, []);
+
   const handleSendOtp = async (e) => {
     e?.preventDefault();
     const type = detectType(contact);
     if (!type) return toast.error('Enter a valid email or 10-digit phone number');
     setLoading(true);
     try {
-      const normalised = type === 'email' ? contact.trim().toLowerCase() : contact.trim();
-      const res = await sendOtp(normalised, type);
-      if (res.success) {
-        setAccountExists(res.accountExists ?? null);
-        const hint = type === 'phone'
-          ? `OTP sent via WhatsApp to XXXXX${normalised.slice(-5)}`
-          : res.accountExists
-            ? `Welcome back! OTP sent to ${normalised}`
-            : res.message;
-        toast.success(hint);
+      if (type === 'phone') {
+        const { RecaptchaVerifier, signInWithPhoneNumber } = await import('firebase/auth');
+        const { auth } = await import('../utils/firebase');
+        if (recaptchaRef.current) { try { recaptchaRef.current.clear(); } catch (_) {} }
+        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible', callback: () => {} });
+        recaptchaRef.current = verifier;
+        const result = await signInWithPhoneNumber(auth, `+91${contact.trim()}`, verifier);
+        confirmRef.current = result;
+        toast.success(`OTP sent to +91 XXXXX${contact.trim().slice(-5)}`);
         setStep(STEPS.OTP);
-        if (res.otp) { setOtp(res.otp); toast('🔧 Dev: OTP auto-filled', { icon: '🧪' }); }
+      } else {
+        const res = await sendOtp(contact.trim().toLowerCase(), 'email');
+        if (res.success) {
+          setAccountExists(res.accountExists ?? null);
+          toast.success(res.accountExists ? `Welcome back! OTP sent to ${contact.trim().toLowerCase()}` : res.message);
+          setStep(STEPS.OTP);
+          if (res.otp) { setOtp(res.otp); toast('🔧 Dev: OTP auto-filled', { icon: '🧪' }); }
+        }
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to send OTP');
+      const msg = err.code === 'auth/too-many-requests' ? 'Too many attempts. Try later.'
+                : err.code === 'auth/invalid-phone-number' ? 'Invalid phone number'
+                : err.message || 'Failed to send OTP';
+      toast.error(msg);
+      if (recaptchaRef.current) { try { recaptchaRef.current.clear(); } catch (_) {} recaptchaRef.current = null; }
     } finally { setLoading(false); }
   };
 
-  // Unified OTP verify — same backend flow for both email and phone.
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     if (otp.length !== 6) return toast.error('Enter 6-digit OTP');
     const type = detectType(contact);
-    const normalised = type === 'email' ? contact.trim().toLowerCase() : contact.trim();
     setLoading(true);
     try {
-      const res = await verifyOtp(normalised, otp, type);
-      if (res.success) {
-        const needsProfile = res.isNewUser && res.user?.role === 'user' && !res.user?.name;
-        if (needsProfile) { setStep(STEPS.PROFILE); return; }
-        navigate(from, { replace: true });
+      if (type === 'phone') {
+        if (!confirmRef.current) return toast.error('Please request OTP again');
+        const result  = await confirmRef.current.confirm(otp);
+        const idToken = await result.user.getIdToken();
+        const { data } = await api.post('/auth/firebase-phone-verify', { idToken });
+        if (data.success) {
+          localStorage.setItem('eptomart_token', data.token);
+          await loadUser();
+          toast.success(data.message || 'Login successful!');
+          // Only ask for profile details if brand-new plain customer with no name yet
+          const needsProfile = data.isNewUser && data.user?.role === 'user' && !data.user?.name;
+          if (needsProfile) { setStep(STEPS.PROFILE); return; }
+          navigate(from, { replace: true });
+        }
+      } else {
+        const res = await verifyOtp(contact, otp, 'email');
+        if (res.success) {
+          const needsProfile = res.isNewUser && res.user?.role === 'user' && !res.user?.name;
+          if (needsProfile) { setStep(STEPS.PROFILE); return; }
+          navigate(from, { replace: true });
+        }
       }
     } catch (err) {
+      // Check for account-blocked response from our backend
       const serverMsg = err.response?.data?.message || err.message;
+      const msg = err.code === 'auth/invalid-verification-code' ? 'Wrong OTP. Try again.'
+                : err.code === 'auth/code-expired' ? 'OTP expired. Request new one.'
+                : serverMsg || 'Invalid OTP';
+      // Show longer duration for blocked-account message
       const isBlocked = err.response?.data?.blocked || serverMsg?.includes('deactivated');
-      toast.error(serverMsg || 'Invalid OTP', { duration: isBlocked ? 8000 : 4000 });
+      toast.error(msg, { duration: isBlocked ? 8000 : 4000 });
     } finally { setLoading(false); }
   };
 
   const handleBack = () => {
     setStep(STEPS.CONTACT);
     setOtp('');
+    if (recaptchaRef.current) { try { recaptchaRef.current.clear(); } catch (_) {} recaptchaRef.current = null; }
   };
 
   const handleSaveProfile = async (e) => {
@@ -207,6 +247,7 @@ export default function Login() {
     <>
       <Helmet><title>Login — Eptomart</title></Helmet>
       <style>{`@keyframes btn-spin { to { transform: rotate(360deg); } }`}</style>
+      <div id="recaptcha-container" />
       {/* ── Full-page background ── */}
       <div style={{
         minHeight: '100vh',
