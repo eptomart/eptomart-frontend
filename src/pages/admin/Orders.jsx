@@ -121,20 +121,26 @@ function PackagingReviewPanel({ order, onDone }) {
           </span>
         </div>
 
-        {/* Images grid */}
+        {/* Images grid with side labels */}
         {pkg.images?.length > 0 && (
-          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {pkg.images.map((img, i) => (
-              <button
-                key={i}
-                onClick={() => setLightbox(img.url)}
-                className="aspect-square rounded-lg overflow-hidden border border-gray-200 hover:border-primary-400 transition-all relative group"
-              >
-                <img src={img.url} alt={`Package ${i + 1}`} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <FiImage size={16} className="text-white" />
-                </div>
-              </button>
+              <div key={i} className="flex flex-col gap-1">
+                <button
+                  onClick={() => setLightbox(img.url)}
+                  className="aspect-square rounded-lg overflow-hidden border border-gray-200 hover:border-primary-400 transition-all relative group"
+                >
+                  <img src={img.url} alt={img.side ? `${img.side} side` : `Package ${i + 1}`} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <FiImage size={16} className="text-white" />
+                  </div>
+                </button>
+                {img.side && (
+                  <span className="text-[10px] text-center font-semibold text-gray-600 capitalize tracking-wide">
+                    {{ front: '🔵 Front', back: '🟢 Back', left: '🟡 Left', right: '🟠 Right' }[img.side] || img.side}
+                  </span>
+                )}
+              </div>
             ))}
           </div>
         )}

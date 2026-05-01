@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
 import toast from 'react-hot-toast';
@@ -151,97 +151,165 @@ function ConfirmModal({ order, onClose, onConfirmed }) {
   );
 }
 
-// ── Packaging Upload Section ──────────────────────────────
+// ── Packaging Upload Section (per-side: Front/Back/Left/Right) ────────────
+const PACKAGING_SIDES = [
+  { key: 'front', label: 'Front',  emoji: '🔵', hint: 'Facing label side' },
+  { key: 'back',  label: 'Back',   emoji: '🟢', hint: 'Bottom/seal side'  },
+  { key: 'left',  label: 'Left',   emoji: '🟡', hint: 'Left side view'    },
+  { key: 'right', label: 'Right',  emoji: '🟠', hint: 'Right side view'   },
+];
+
 function PackagingUploadSection({ order, onPackagingUpdated }) {
-  const [uploading, setUploading] = useState(false);
-  const [packagingData, setPackagingData] = useState({ images: [] });
+  // Track uploading state per side
+  const [uploadingFor, setUploadingFor] = useState(null); // 'front'|'back'|'left'|'right'|null
+  const [packaging,    setPackaging]    = useState(order.packaging || {});
 
   useEffect(() => {
-    if (order.packaging) {
-      setPackagingData(order.packaging);
-    }
-  }, [order]);
+    setPackaging(order.packaging || {});
+  }, [order.packaging]);
 
-  const handlePackagingImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    setPackagingData(d => ({ ...d, images: files }));
-  };
+  // Map existing images by side for quick lookup
+  const imagesBySide = useMemo(() => {
+    const map = {};
+    (packaging.images || []).forEach(img => {
+      if (img.side) map[img.side] = img;
+    });
+    return map;
+  }, [packaging]);
 
-  const handlePackagingUpload = async () => {
-    if (packagingData.images.length === 0) {
-      toast.error('Select at least 1 image');
-      return;
-    }
-    setUploading(true);
+  const coveredSides = Object.keys(imagesBySide);
+  const allDone      = coveredSides.length >= 4;
+
+  const handleSideUpload = async (side, file) => {
+    if (!file) return;
+    setUploadingFor(side);
     try {
       const fd = new FormData();
-      packagingData.images.forEach(f => fd.append('images', f));
+      fd.append('images', file);
+      fd.append('side', side);
       const { data } = await api.post(`/orders/${order._id}/package-images`, fd, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setPackagingData(data.packaging || {});
-      toast.success(`${packagingData.images.length} image(s) uploaded!`);
+      setPackaging(data.packaging || {});
       onPackagingUpdated(order._id, data.packaging);
+
+      if (data.missingSides?.length === 0) {
+        toast.success('✅ All 4 sides uploaded! Submitted for admin review.');
+      } else {
+        const sideLabel = PACKAGING_SIDES.find(s => s.key === side)?.label || side;
+        const next = data.missingSides?.[0];
+        const nextLabel = PACKAGING_SIDES.find(s => s.key === next)?.label;
+        toast.success(`${sideLabel} side uploaded!${nextLabel ? ` Upload ${nextLabel} next.` : ''}`);
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Upload failed');
     } finally {
-      setUploading(false);
+      setUploadingFor(null);
     }
   };
 
-  const packagingStatus = packagingData.status || 'not_submitted';
-  const uploadedCount = packagingData.uploadedImages?.length || 0;
-  const minRequired = 4;
+  const packagingStatus = packaging.status || 'not_submitted';
+  const locked = packagingStatus === 'approved';
 
   return (
     <div className="border-t border-gray-200 pt-3 mt-3">
-      <div className="flex items-center justify-between mb-2">
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-3">
         <span className="font-semibold text-sm text-gray-700">📦 Packaging Photos</span>
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-          packagingStatus === 'approved' ? 'bg-green-100 text-green-700' :
+          packagingStatus === 'approved'       ? 'bg-green-100 text-green-700' :
           packagingStatus === 'pending_review' ? 'bg-yellow-100 text-yellow-700' :
-          packagingStatus === 'rejected' ? 'bg-red-100 text-red-700' :
+          packagingStatus === 'rejected'       ? 'bg-red-100 text-red-700' :
           'bg-gray-100 text-gray-700'
         }`}>
-          {packagingStatus === 'approved' ? '✓ Approved' :
+          {packagingStatus === 'approved'       ? '✓ Approved' :
            packagingStatus === 'pending_review' ? '⏳ Pending Review' :
-           packagingStatus === 'rejected' ? '✗ Rejected' :
-           '○ Not Submitted'}
+           packagingStatus === 'rejected'       ? '✗ Rejected — Re-upload' :
+           `○ ${coveredSides.length}/4 Uploaded`}
         </span>
       </div>
 
-      {packagingStatus === 'rejected' && packagingData.rejectionReason && (
-        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-2 mb-2">
+      {/* Rejection reason */}
+      {packagingStatus === 'rejected' && packaging.rejectedReason && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-2 mb-3">
           <FiAlertCircle size={13} className="text-red-600 mt-0.5 flex-shrink-0" />
-          <div className="text-xs text-red-600">{packagingData.rejectionReason}</div>
+          <div className="text-xs text-red-600">{packaging.rejectedReason}</div>
         </div>
       )}
 
-      <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
-        <span>{uploadedCount} / {minRequired} images</span>
+      {/* 4 side cards */}
+      <div className="grid grid-cols-2 gap-2">
+        {PACKAGING_SIDES.map(({ key, label, emoji, hint }) => {
+          const uploaded  = imagesBySide[key];
+          const isBusy    = uploadingFor === key;
+          const inputId   = `pkg-${order._id}-${key}`;
+
+          return (
+            <div key={key} className={`relative rounded-xl border-2 transition-all overflow-hidden ${
+              uploaded
+                ? 'border-green-400 bg-green-50'
+                : packagingStatus === 'rejected'
+                  ? 'border-red-300 bg-red-50'
+                  : 'border-dashed border-gray-300 bg-gray-50'
+            }`}>
+              {/* Thumbnail or placeholder */}
+              {uploaded ? (
+                <div className="relative">
+                  <img src={uploaded.url} alt={`${label} side`}
+                    className="w-full h-20 object-cover" />
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    {!locked && (
+                      <label htmlFor={inputId} className="cursor-pointer text-white text-xs font-medium bg-black/60 px-2 py-1 rounded-lg">
+                        Replace
+                      </label>
+                    )}
+                  </div>
+                  <span className="absolute top-1 left-1 text-xs bg-green-500 text-white px-1.5 py-0.5 rounded-full font-medium">
+                    ✓ {label}
+                  </span>
+                </div>
+              ) : (
+                <div className="h-20 flex flex-col items-center justify-center gap-1">
+                  <span className="text-lg">{emoji}</span>
+                  <span className="text-xs font-semibold text-gray-700">{label}</span>
+                  <span className="text-[10px] text-gray-400">{hint}</span>
+                </div>
+              )}
+
+              {/* Upload trigger (hidden for approved) */}
+              {!locked && (
+                <>
+                  <input
+                    id={inputId}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => { if (e.target.files?.[0]) handleSideUpload(key, e.target.files[0]); e.target.value = ''; }}
+                  />
+                  {!uploaded && (
+                    <label htmlFor={inputId}
+                      className="flex items-center justify-center gap-1 text-[11px] font-medium text-orange-600 hover:text-orange-700 cursor-pointer py-1.5 border-t border-dashed border-gray-300 bg-white/70 hover:bg-orange-50 transition-colors">
+                      {isBusy
+                        ? <><span className="w-3 h-3 border-2 border-orange-400/40 border-t-orange-500 rounded-full animate-spin" /> Uploading…</>
+                        : <><FiUploadCloud size={12} /> Upload</>
+                      }
+                    </label>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {/* Existing thumbnails */}
-      {packagingData.uploadedImages?.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2">
-          {packagingData.uploadedImages.map((img, idx) => (
-            <img key={idx} src={img.url} alt={`Packaging ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
-          ))}
-        </div>
+      {/* Progress note */}
+      {!locked && (
+        <p className="text-[11px] text-gray-500 mt-2 text-center">
+          {allDone
+            ? '✅ All 4 sides submitted — awaiting admin approval'
+            : `Upload all 4 sides to submit for review. ${4 - coveredSides.length} remaining.`}
+        </p>
       )}
-
-      {/* File input + Upload button */}
-      <div className="flex items-center gap-2">
-        <label className="flex-1 flex items-center gap-1.5 text-xs border border-dashed border-gray-300 rounded-lg px-3 py-2 cursor-pointer hover:border-orange-400 transition-colors">
-          <FiUploadCloud size={13} />
-          <span className="text-gray-600">Add images</span>
-          <input type="file" accept="image/*" multiple onChange={handlePackagingImageChange} className="hidden" />
-        </label>
-        <button onClick={handlePackagingUpload} disabled={uploading || packagingData.images.length === 0}
-          className="text-xs px-3 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-medium disabled:opacity-50 transition-all">
-          {uploading ? 'Uploading…' : 'Upload'}
-        </button>
-      </div>
     </div>
   );
 }
