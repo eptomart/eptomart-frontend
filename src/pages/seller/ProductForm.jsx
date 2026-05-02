@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { FiUploadCloud, FiX, FiInfo, FiEye, FiArrowLeft, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+import { FiUploadCloud, FiX, FiInfo, FiEye, FiArrowLeft, FiAlertCircle, FiCheckCircle, FiZap } from 'react-icons/fi';
 import { usePincodeAutofill } from '../../hooks/usePincodeAutofill';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
@@ -34,6 +34,7 @@ export default function ProductForm() {
   const [subCategories, setSubCategories] = useState([]);
   const [saving,        setSaving]        = useState(false);
   const [loading,       setLoading]       = useState(isEdit);
+  const [aiLoading,     setAiLoading]     = useState(false);
 
   useEffect(() => {
     api.get('/categories?all=true').then(r => {
@@ -228,8 +229,40 @@ export default function ProductForm() {
             <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Samsung 43 inch LED TV" className="input-field" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">Description *</label>
+              <button
+                type="button"
+                disabled={!form.name || aiLoading}
+                onClick={async () => {
+                  setAiLoading(true);
+                  try {
+                    const { data } = await api.post('/ai/generate-description', {
+                      productName:  form.name,
+                      category:     form.category,
+                      keyFeatures:  form.shortDescription || '',
+                      weight:       form.sku || '',
+                    });
+                    set('description', data.description);
+                    toast.success('AI description generated!');
+                  } catch {
+                    toast.error('Could not generate description. Try again.');
+                  } finally { setAiLoading(false); }
+                }}
+                className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg transition-all disabled:opacity-40"
+                style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)', color: '#fff' }}
+                title={!form.name ? 'Enter a product name first' : 'Generate description with AI'}
+              >
+                {aiLoading
+                  ? <><span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Generating…</>
+                  : <><FiZap size={11} /> Write with AI</>
+                }
+              </button>
+            </div>
             <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={4} placeholder="Detailed product description..." className="input-field resize-none" />
+            {!form.description && form.name && (
+              <p className="text-[11px] text-orange-500 mt-1">💡 Click "Write with AI" to auto-generate a compelling description</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Short Description</label>

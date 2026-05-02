@@ -6,6 +6,7 @@ import { WishlistProvider } from './context/WishlistContext';
 import { CompareProvider } from './context/CompareContext';
 import Loader from './components/common/Loader';
 import CompareBar from './components/product/CompareBar';
+import AIAssistant from './components/AIAssistant';
 
 // ── Customer pages ───────────────────────────
 const Home           = lazy(() => import('./pages/Home'));
@@ -138,6 +139,7 @@ function AppRoutes() {
       </Suspense>
 
       <CompareBar />
+      <AIAssistant />
     </>
   );
 }

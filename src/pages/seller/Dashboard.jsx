@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPackage, FiShoppingBag, FiDollarSign, FiClock, FiPlus, FiAlertCircle, FiArrowRight, FiGift } from 'react-icons/fi';
+import { FiPackage, FiShoppingBag, FiDollarSign, FiClock, FiPlus, FiAlertCircle, FiArrowRight, FiGift, FiZap } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
@@ -12,6 +12,9 @@ export default function SellerDashboard() {
   const [products, setProducts] = useState([]);
   const [orders,   setOrders]   = useState([]);
   const [loading,  setLoading]  = useState(true);
+  const [insights,     setInsights]     = useState([]);
+  const [insightLoad,  setInsightLoad]  = useState(false);
+  const [insightFetched, setInsightFetched] = useState(false);
 
   useEffect(() => {
     const fetch = async () => {
@@ -173,6 +176,56 @@ export default function SellerDashboard() {
               </div>
             ))}
           </div>
+        )}
+      </div>
+
+      {/* AI Insights Card */}
+      <div className="card overflow-hidden">
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
+              <FiZap size={14} className="text-white" />
+            </div>
+            <h3 className="font-semibold text-gray-800">AI Insights</h3>
+            <span className="text-[10px] bg-orange-100 text-orange-600 font-semibold px-2 py-0.5 rounded-full">Powered by Claude</span>
+          </div>
+          <button
+            onClick={async () => {
+              setInsightLoad(true);
+              try {
+                const { data } = await api.get('/ai/seller-insights');
+                setInsights(data.insights || []);
+                setInsightFetched(true);
+              } catch {
+                setInsights(['Could not load insights right now. Try again later.']);
+                setInsightFetched(true);
+              } finally { setInsightLoad(false); }
+            }}
+            disabled={insightLoad}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)', color: '#fff' }}
+          >
+            {insightLoad
+              ? <span className="flex items-center gap-1"><span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Analysing…</span>
+              : insightFetched ? '↻ Refresh' : '✦ Get Insights'
+            }
+          </button>
+        </div>
+        {!insightFetched ? (
+          <div className="p-6 text-center">
+            <p className="text-sm text-gray-400">Click "Get Insights" to receive personalised AI recommendations based on your last 30 days of sales.</p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-gray-50">
+            {insights.map((tip, i) => (
+              <li key={i} className="flex items-start gap-3 px-4 py-3">
+                <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mt-0.5"
+                  style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>{i + 1}</span>
+                <p className="text-sm text-gray-700">{tip}</p>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
