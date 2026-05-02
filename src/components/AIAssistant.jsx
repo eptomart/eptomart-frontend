@@ -18,6 +18,35 @@ const TypingDots = () => (
   </div>
 );
 
+// Friendly AI bot face — used in the fab button, header, and message bubbles
+const BotFace = ({ size = 24, animated = false }) => (
+  <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* Antenna */}
+    <line x1="24" y1="4" x2="24" y2="10" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+    <circle cx="24" cy="3" r="2.5" fill="white" opacity="0.9">
+      {animated && <animate attributeName="opacity" values="0.9;0.3;0.9" dur="1.8s" repeatCount="indefinite"/>}
+    </circle>
+    {/* Head */}
+    <rect x="8" y="10" width="32" height="28" rx="9" fill="white" opacity="0.15"/>
+    <rect x="8" y="10" width="32" height="28" rx="9" stroke="white" strokeWidth="2" fill="none" opacity="0.9"/>
+    {/* Eyes */}
+    <rect x="14" y="18" width="8" height="7" rx="3" fill="white">
+      {animated && <animate attributeName="height" values="7;1;7" dur="3.5s" repeatCount="indefinite"/>}
+    </rect>
+    <rect x="26" y="18" width="8" height="7" rx="3" fill="white">
+      {animated && <animate attributeName="height" values="7;1;7" dur="3.5s" repeatCount="indefinite"/>}
+    </rect>
+    {/* Eye shine */}
+    <circle cx="20" cy="20" r="1.5" fill="rgba(249,115,22,0.8)"/>
+    <circle cx="32" cy="20" r="1.5" fill="rgba(249,115,22,0.8)"/>
+    {/* Smile */}
+    <path d="M17 31 Q24 37 31 31" stroke="white" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
+    {/* Ear bolts */}
+    <circle cx="8" cy="22" r="2.5" fill="white" opacity="0.7"/>
+    <circle cx="40" cy="22" r="2.5" fill="white" opacity="0.7"/>
+  </svg>
+);
+
 export default function AIAssistant() {
   const { user } = useAuth();
   const [open,     setOpen]     = useState(false);
@@ -93,10 +122,7 @@ export default function AIAssistant() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         ) : (
-          <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round"
-              d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-          </svg>
+          <BotFace size={28} animated={true} />
         )}
         {/* Pulse ring when closed */}
         {!open && (
@@ -115,10 +141,7 @@ export default function AIAssistant() {
             style={{ background: 'linear-gradient(135deg,#0B1729,#1a2f4a)' }}>
             <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round"
-                  d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-              </svg>
+              <BotFace size={22} animated={true} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-white leading-none">Eptomart AI</p>
@@ -136,10 +159,7 @@ export default function AIAssistant() {
                 {m.role === 'assistant' && (
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center mr-2 flex-shrink-0 self-end"
                     style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
-                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round"
-                        d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                    </svg>
+                    <BotFace size={18} />
                   </div>
                 )}
                 <div className={`max-w-[78%] px-3 py-2 rounded-2xl text-sm leading-relaxed ${
@@ -161,10 +181,7 @@ export default function AIAssistant() {
               <div className="flex justify-start">
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center mr-2 flex-shrink-0"
                   style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
-                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round"
-                      d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                  </svg>
+                  <BotFace size={18} animated={true} />
                 </div>
                 <div className="px-3 py-2 rounded-2xl rounded-bl-sm"
                   style={{ background: '#fff', border: '1px solid #ffe4cc' }}>
