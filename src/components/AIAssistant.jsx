@@ -120,8 +120,8 @@ export default function AIAssistant() {
         ) : (
           <>
             {/* Robot icon */}
-            <div className="w-11 h-11 flex items-center justify-center flex-shrink-0">
-              <BotFace size={42} animated={true} />
+            <div className="w-14 h-14 flex items-center justify-center flex-shrink-0">
+              <BotFace size={56} animated={true} />
             </div>
             {/* EPTO AI text */}
             <div className="flex flex-col items-start ml-1 mr-1">
@@ -152,9 +152,9 @@ export default function AIAssistant() {
           <div className="px-4 pt-4 pb-3 flex items-center gap-3"
             style={{ background: 'linear-gradient(135deg,#0a1628,#0f2040)' }}>
             {/* Robot avatar */}
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg,#14532d,#166534)', boxShadow: '0 0 16px rgba(34,197,94,0.3)' }}>
-              <BotFace size={44} animated={true} />
+            <div className="w-20 h-20 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden"
+              style={{ background: 'transparent' }}>
+              <BotFace size={80} animated={true} />
             </div>
 
             {/* Title block */}
@@ -233,9 +233,9 @@ export default function AIAssistant() {
                 {messages.map((m, i) => (
                   <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     {m.role === 'assistant' && (
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center mr-2 flex-shrink-0 self-end"
-                        style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
-                        <BotFace size={18} />
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center mr-2 flex-shrink-0 self-end overflow-hidden"
+                        style={{ background: '#0f2040' }}>
+                        <BotFace size={36} />
                       </div>
                     )}
                     <div className={`max-w-[78%] px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-line ${
@@ -271,9 +271,9 @@ export default function AIAssistant() {
                 {/* Typing indicator */}
                 {loading && (
                   <div className="flex justify-start">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center mr-2 flex-shrink-0"
-                      style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
-                      <BotFace size={18} animated={true} />
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center mr-2 flex-shrink-0 overflow-hidden"
+                      style={{ background: '#0f2040' }}>
+                      <BotFace size={36} animated={true} />
                     </div>
                     <div className="px-3 py-2 rounded-2xl rounded-bl-sm"
                       style={{ background: '#fff', border: '1px solid #ffe4cc' }}>
