@@ -23,109 +23,22 @@ const TypingDots = () => (
   </div>
 );
 
-// Cartoon robot — matches the EPTO AI logo style
-const BotFace = ({ size = 24, animated = false }) => {
-  const id = 'bot' + size;
-  return (
-  <svg width={size} height={size} viewBox="0 0 80 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <radialGradient id={`hg${id}`} cx="38%" cy="28%" r="60%">
-        <stop offset="0%" stopColor="#ffffff"/>
-        <stop offset="100%" stopColor="#c8d8e8"/>
-      </radialGradient>
-      <radialGradient id={`bg${id}`} cx="50%" cy="30%" r="70%">
-        <stop offset="0%" stopColor="#3dd68c"/>
-        <stop offset="100%" stopColor="#0d7a4e"/>
-      </radialGradient>
-      <radialGradient id={`orb${id}`} cx="35%" cy="30%" r="60%">
-        <stop offset="0%" stopColor="#fbbf24"/>
-        <stop offset="100%" stopColor="#f97316"/>
-      </radialGradient>
-      <radialGradient id={`ring${id}`} cx="50%" cy="50%" r="50%">
-        <stop offset="60%" stopColor="transparent"/>
-        <stop offset="100%" stopColor="#84cc16" stopOpacity="0.6"/>
-      </radialGradient>
-    </defs>
-
-    {/* Glow ring behind robot */}
-    <circle cx="38" cy="52" r="32" fill="none" stroke="url(#ring{id})" strokeWidth="4" opacity="0.5"/>
-    <circle cx="38" cy="52" r="28" fill="#0f2d1a" opacity="0.85"/>
-
-    {/* Antenna stem */}
-    <line x1="38" y1="10" x2="38" y2="20" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"/>
-    {/* Antenna orb */}
-    <circle cx="38" cy="7" r="6.5" fill={`url(#orb${id})`} filter="drop-shadow(0 0 3px #f97316)">
-      {animated && <animate attributeName="r" values="6.5;7.5;6.5" dur="1.8s" repeatCount="indefinite"/>}
-    </circle>
-    <circle cx="35.5" cy="4.5" r="2" fill="white" opacity="0.5"/>
-
-    {/* Sparkles */}
-    {animated && <>
-      <circle cx="56" cy="12" r="1.5" fill="#fbbf24">
-        <animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite"/>
-      </circle>
-      <circle cx="60" cy="20" r="1" fill="#fbbf24">
-        <animate attributeName="opacity" values="0;1;0" dur="2s" begin="0.5s" repeatCount="indefinite"/>
-      </circle>
-      <circle cx="15" cy="18" r="1.2" fill="#fbbf24">
-        <animate attributeName="opacity" values="1;0;1" dur="2.5s" begin="1s" repeatCount="indefinite"/>
-      </circle>
-    </>}
-
-    {/* Head — big round white helmet */}
-    <ellipse cx="38" cy="42" rx="23" ry="25" fill={`url(#hg${id})`}/>
-    {/* Helmet shadow bottom */}
-    <ellipse cx="38" cy="62" rx="18" ry="6" fill="#94a3b8" opacity="0.15"/>
-
-    {/* Dark visor / face panel */}
-    <rect x="18" y="31" width="40" height="23" rx="11.5" fill="#0c2a26"/>
-    {/* Visor gloss */}
-    <rect x="20" y="32" width="36" height="8" rx="8" fill="white" opacity="0.05"/>
-
-    {/* Left eye */}
-    <circle cx="28" cy="43" r="7" fill={`url(#bg${id})`} filter="drop-shadow(0 0 4px #22c55e)">
-      {animated && <animate attributeName="r" values="7;5;7" dur="3.5s" repeatCount="indefinite"/>}
-    </circle>
-    <circle cx="28" cy="43" r="4" fill="#065f46"/>
-    <circle cx="25.5" cy="40.5" r="1.8" fill="white" opacity="0.85"/>
-    <circle cx="29.5" cy="44.5" r="0.8" fill="white" opacity="0.4"/>
-
-    {/* Right eye */}
-    <circle cx="48" cy="43" r="7" fill={`url(#bg${id})`} filter="drop-shadow(0 0 4px #22c55e)">
-      {animated && <animate attributeName="r" values="7;5;7" dur="3.5s" repeatCount="indefinite"/>}
-    </circle>
-    <circle cx="48" cy="43" r="4" fill="#065f46"/>
-    <circle cx="45.5" cy="40.5" r="1.8" fill="white" opacity="0.85"/>
-    <circle cx="49.5" cy="44.5" r="0.8" fill="white" opacity="0.4"/>
-
-    {/* Smile */}
-    <path d="M30 51 Q38 57 46 51" stroke="#4ade80" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
-
-    {/* Ear bolts */}
-    <circle cx="15" cy="41" r="4" fill="#dde4ee"/>
-    <circle cx="15" cy="41" r="2.2" fill="#b0bec5"/>
-    <circle cx="61" cy="41" r="4" fill="#dde4ee"/>
-    <circle cx="61" cy="41" r="2.2" fill="#b0bec5"/>
-
-    {/* Body */}
-    <rect x="24" y="64" width="28" height="16" rx="8" fill="#e8f0f8"/>
-    {/* Body panel line */}
-    <rect x="27" y="68" width="22" height="2" rx="1" fill="#94a3b8" opacity="0.4"/>
-    {/* Body green buttons */}
-    <circle cx="31" cy="75" r="2.5" fill="#22c55e"/>
-    <circle cx="38" cy="75" r="2.5" fill="#22c55e"/>
-    <circle cx="45" cy="75" r="2.5" fill="#22c55e"/>
-
-    {/* Left waving arm */}
-    <path d="M24 68 Q12 60 10 50 Q9 45 13 44" stroke="#dde4ee" strokeWidth="5" strokeLinecap="round" fill="none"/>
-    <circle cx="13" cy="43" r="4" fill="#c8d8e8"/>
-
-    {/* Right arm */}
-    <path d="M52 68 Q62 62 63 55" stroke="#dde4ee" strokeWidth="5" strokeLinecap="round" fill="none"/>
-    <circle cx="63.5" cy="53" r="3.5" fill="#c8d8e8"/>
-  </svg>
-  );
-};
+// Bot icon — uses robot.png if available, otherwise clean SVG fallback
+const BOT_IMG = '/Robot.png';
+const BotFace = ({ size = 24, animated = false }) => (
+  <img
+    src={BOT_IMG}
+    alt="Epto AI"
+    width={size}
+    height={size}
+    style={{
+      objectFit: 'contain',
+      display: 'block',
+      mixBlendMode: 'screen',
+      borderRadius: '4px',
+    }}
+  />
+);
 
 export default function AIAssistant() {
   const { user } = useAuth();
