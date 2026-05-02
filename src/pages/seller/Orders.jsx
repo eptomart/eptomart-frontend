@@ -573,7 +573,17 @@ export default function SellerOrders() {
 
                   {/* Seller payout invoice + customer invoice downloads */}
                   {['shipped','delivered','processing'].includes(o.orderStatus) && (
-                    <div className="mt-3 pt-3 border-t border-gray-200 flex flex-wrap gap-2">
+                    <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                      {/* Bonus badge for this order */}
+                      {o.payout?.isNewSellerBonus && (
+                        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                          <span className="text-green-600 text-sm">🎁</span>
+                          <p className="text-xs font-semibold text-green-800">
+                            New Seller Offer — Platform fee waived for this order!
+                          </p>
+                        </div>
+                      )}
+                    <div className="flex flex-wrap gap-2">
                       {/* Payout Statement */}
                       <button
                         onClick={async (e) => {
@@ -619,6 +629,7 @@ export default function SellerOrders() {
                       >
                         <FiDownload size={12} /> Customer Invoice
                       </button>
+                    </div>
                     </div>
                   )}
                 </div>

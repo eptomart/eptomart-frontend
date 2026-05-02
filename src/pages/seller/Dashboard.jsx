@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPackage, FiShoppingBag, FiDollarSign, FiClock, FiPlus, FiAlertCircle, FiArrowRight } from 'react-icons/fi';
+import { FiPackage, FiShoppingBag, FiDollarSign, FiClock, FiPlus, FiAlertCircle, FiArrowRight, FiGift } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
@@ -42,6 +42,7 @@ export default function SellerDashboard() {
 
   const businessName = profile?.businessName || user?.name || 'Seller';
   const isNewSeller  = (stats?.products?.approved || 0) === 0 && (stats?.orders?.totalOrders || 0) === 0;
+  const bonus        = stats?.bonus || {};
 
   return (
     <div className="space-y-6">
@@ -73,6 +74,53 @@ export default function SellerDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── First 20 Orders Bonus Banner ── */}
+      {bonus.active ? (
+        <div className="rounded-2xl p-4 border border-green-300"
+          style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' }}>
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
+              <FiGift size={20} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-sm font-bold text-green-800">
+                  🎁 New Seller Offer — Zero Platform Fee!
+                </p>
+                <span className="text-xs font-semibold bg-green-500 text-white px-2.5 py-0.5 rounded-full">
+                  {bonus.ordersRemaining} orders left
+                </span>
+              </div>
+              <p className="text-xs text-green-700 mt-1">
+                Your first <strong>20 delivered orders</strong> are completely free — Eptomart charges <strong>0% platform commission</strong>. You keep more of every sale!
+              </p>
+              {/* Progress bar */}
+              <div className="mt-3">
+                <div className="flex justify-between text-[11px] text-green-600 font-medium mb-1">
+                  <span>{bonus.ordersUsed} of {bonus.limit} free orders used</span>
+                  <span>{bonus.ordersRemaining} remaining</span>
+                </div>
+                <div className="w-full bg-green-200 rounded-full h-2.5">
+                  <div
+                    className="bg-green-500 h-2.5 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, (bonus.ordersUsed / bonus.limit) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : bonus.limit != null && !bonus.active ? (
+        // Bonus exhausted — show a subtle congrats note
+        <div className="rounded-2xl p-4 border border-orange-200 bg-orange-50 flex items-center gap-3">
+          <span className="text-2xl">🏆</span>
+          <div>
+            <p className="text-sm font-semibold text-orange-800">You've completed your first 20 orders!</p>
+            <p className="text-xs text-orange-700 mt-0.5">Standard platform commission now applies. Thank you for growing with Eptomart.</p>
+          </div>
+        </div>
+      ) : null}
 
       <div className="flex items-center justify-between">
         <h3 className="text-base font-bold text-gray-700">Overview</h3>
