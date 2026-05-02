@@ -182,23 +182,44 @@ export default function AIAssistant() {
           style={{ maxHeight: '75vh', background: '#fff', border: '1px solid #fde8d0' }}>
 
           {/* Header */}
-          <div className="px-4 py-3 flex items-center gap-3"
-            style={{ background: 'linear-gradient(135deg,#0B1729,#1a2f4a)' }}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg"
-              style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
-              <BotFace size={24} animated={true} />
+          <div className="px-4 pt-4 pb-3 flex items-center gap-3"
+            style={{ background: 'linear-gradient(135deg,#0a1628,#0f2040)' }}>
+            {/* Robot avatar */}
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg,#14532d,#166534)', boxShadow: '0 0 16px rgba(34,197,94,0.3)' }}>
+              <BotFace size={44} animated={true} />
             </div>
+
+            {/* Title block */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="text-sm font-extrabold text-white leading-none tracking-wide">EPTOMART</p>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md text-white"
-                  style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>AI</span>
+              {/* EPTO AI row */}
+              <div className="flex items-baseline gap-1 leading-none">
+                <span className="text-xl font-black tracking-tight" style={{ color: '#22c55e' }}>EPTO</span>
+                <span className="text-xl font-black tracking-tight" style={{ color: '#f97316' }}>AI</span>
               </div>
-              <p className="text-[11px] mt-0.5" style={{ color: '#94a3b8' }}>✦ Smart Shopping Assistant</p>
+              {/* ASSISTANT */}
+              <div className="text-sm font-extrabold tracking-widest mt-0.5" style={{ color: '#f97316', letterSpacing: '0.15em' }}>
+                ASSISTANT
+              </div>
+              {/* Green separator */}
+              <div className="mt-1.5 mb-1.5 rounded-full" style={{ height: '2px', background: 'linear-gradient(90deg,#22c55e,#16a34a,transparent)', width: '90%' }}/>
+              {/* Powered by Claude pill */}
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full"
+                style={{ background: 'white', border: '1px solid #e5e7eb' }}>
+                {/* Anthropic asterisk */}
+                <svg width="11" height="11" viewBox="0 0 20 20" fill="none">
+                  <path d="M10 1v18M1 10h18M3.22 3.22l13.56 13.56M16.78 3.22L3.22 16.78" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round"/>
+                </svg>
+                <span className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Powered by</span>
+                <span className="text-[10px] font-extrabold tracking-wide" style={{ color: '#f97316' }}>CLAUDE</span>
+              </div>
             </div>
-            <span className="flex items-center gap-1 text-[10px] text-green-400 font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" /> Online
-            </span>
+
+            {/* Online badge */}
+            <div className="flex flex-col items-center gap-1 self-start pt-1">
+              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"/>
+              <span className="text-[9px] font-semibold text-green-400">LIVE</span>
+            </div>
           </div>
 
           {/* Body */}
@@ -212,10 +233,10 @@ export default function AIAssistant() {
                   style={{ background: 'linear-gradient(135deg,#fff7ed,#ffedd5)', border: '1px solid #fed7aa' }}>
                   <div className="text-2xl mb-1">👋</div>
                   <p className="font-bold text-gray-800 text-sm">
-                    Hi{user?.name ? ` ${user.name.split(' ')[0]}` : ''}! I'm Priya
+                    Hey{user?.name && user.name.toLowerCase() !== 'eptomart' ? ` ${user.name.split(' ')[0]}` : ''}! I'm Priya
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">Your Eptomart AI Shopping Assistant</p>
-                  <p className="text-xs text-orange-600 font-medium mt-2">What are you shopping for today?</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Your personal Eptomart Shopping Assistant</p>
+                  <p className="text-xs text-orange-600 font-medium mt-2">✨ What are you shopping for today?</p>
                 </div>
 
                 {/* Category grid */}
@@ -322,10 +343,8 @@ export default function AIAssistant() {
             </button>
           </div>
 
-          <div className="flex items-center justify-center gap-1.5 pb-2.5 pt-1">
-            <span className="text-[10px] font-medium" style={{ color: '#94a3b8' }}>Powered by</span>
-            <span className="text-[11px] font-extrabold tracking-wide" style={{ color: '#f97316' }}>Claude</span>
-            <span className="text-[9px]" style={{ color: '#cbd5e1' }}>· Eptomart AI</span>
+          <div className="text-center pb-2 pt-1">
+            <span className="text-[9px] font-medium" style={{ color: '#9ca3af' }}>Eptomart Smart Shopping · AI Powered</span>
           </div>
         </div>
       )}
