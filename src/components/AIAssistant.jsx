@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import robotImg from '../assets/robot.png';
 
 // Category quick-pick menu shown on first open
 const CATEGORIES = [
@@ -23,20 +24,13 @@ const TypingDots = () => (
   </div>
 );
 
-// Bot icon — uses robot.png if available, otherwise clean SVG fallback
-const BOT_IMG = '/Robot.png';
 const BotFace = ({ size = 24, animated = false }) => (
   <img
-    src={BOT_IMG}
+    src={robotImg}
     alt="Epto AI"
     width={size}
     height={size}
-    style={{
-      objectFit: 'contain',
-      display: 'block',
-      mixBlendMode: 'screen',
-      borderRadius: '4px',
-    }}
+    style={{ objectFit: 'contain', display: 'block' }}
   />
 );
 
