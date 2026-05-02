@@ -86,10 +86,11 @@ export default function AIAssistant() {
       });
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
     } catch (err) {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: "Sorry, I'm having a moment. Please try again! 🙏",
-      }]);
+      const serverMsg = err?.response?.data?.message;
+      const errContent = serverMsg
+        ? `⚠️ ${serverMsg}`
+        : "Sorry, I'm having a moment. Please try again! 🙏";
+      setMessages(prev => [...prev, { role: 'assistant', content: errContent }]);
     } finally {
       setLoading(false);
     }
@@ -139,17 +140,25 @@ export default function AIAssistant() {
           {/* Header */}
           <div className="px-4 py-3 flex items-center gap-3"
             style={{ background: 'linear-gradient(135deg,#0B1729,#1a2f4a)' }}>
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg"
               style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>
-              <BotFace size={22} animated={true} />
+              <BotFace size={24} animated={true} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-white leading-none">Eptomart AI</p>
-              <p className="text-[11px] text-orange-300 mt-0.5">Your personal shopping guide</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-extrabold text-white leading-none tracking-wide">EPTOMART</p>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md text-white"
+                  style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}>AI</span>
+              </div>
+              <p className="text-[11px] mt-0.5" style={{ color: '#94a3b8' }}>
+                ✦ Smart Shopping Assistant
+              </p>
             </div>
-            <span className="flex items-center gap-1 text-[10px] text-green-400 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" /> Live
-            </span>
+            <div className="flex flex-col items-end gap-1">
+              <span className="flex items-center gap-1 text-[10px] text-green-400 font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" /> Online
+              </span>
+            </div>
           </div>
 
           {/* Messages */}
@@ -228,8 +237,8 @@ export default function AIAssistant() {
             </button>
           </div>
 
-          <p className="text-center text-[10px] text-gray-400 pb-2">
-            Powered by Claude AI · Eptomart
+          <p className="text-center text-[10px] pb-2" style={{ color: '#cbd5e1' }}>
+            ⚡ Powered by Claude AI &nbsp;·&nbsp; Eptomart Smart Shopping
           </p>
         </div>
       )}
