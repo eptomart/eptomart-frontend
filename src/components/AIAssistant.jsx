@@ -199,7 +199,7 @@ export default function AIAssistant() {
                   style={{ background: 'linear-gradient(135deg,#fff7ed,#ffedd5)', border: '1px solid #fed7aa' }}>
                   <div className="text-2xl mb-1">👋</div>
                   <p className="font-bold text-gray-800 text-sm">
-                    Hey{user?.name && user.name.toLowerCase() !== 'eptomart' ? ` ${user.name.split(' ')[0]}` : ''}! I'm Priya
+                    Hey{user?.name && user.name.toLowerCase() !== 'eptomart' ? ` ${user.name.split(' ')[0]}` : ''}! I'm Zya
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">Your personal Eptomart Shopping Assistant</p>
                   <p className="text-xs text-orange-600 font-medium mt-2">✨ What are you shopping for today?</p>
