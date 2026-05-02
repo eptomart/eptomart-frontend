@@ -23,76 +23,109 @@ const TypingDots = () => (
   </div>
 );
 
-// Cute cartoon robot — orange antenna, round white head, green eyes
-const BotFace = ({ size = 24, animated = false }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+// Cartoon robot — matches the EPTO AI logo style
+const BotFace = ({ size = 24, animated = false }) => {
+  const id = 'bot' + size;
+  return (
+  <svg width={size} height={size} viewBox="0 0 80 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id={`hg${id}`} cx="38%" cy="28%" r="60%">
+        <stop offset="0%" stopColor="#ffffff"/>
+        <stop offset="100%" stopColor="#c8d8e8"/>
+      </radialGradient>
+      <radialGradient id={`bg${id}`} cx="50%" cy="30%" r="70%">
+        <stop offset="0%" stopColor="#3dd68c"/>
+        <stop offset="100%" stopColor="#0d7a4e"/>
+      </radialGradient>
+      <radialGradient id={`orb${id}`} cx="35%" cy="30%" r="60%">
+        <stop offset="0%" stopColor="#fbbf24"/>
+        <stop offset="100%" stopColor="#f97316"/>
+      </radialGradient>
+      <radialGradient id={`ring${id}`} cx="50%" cy="50%" r="50%">
+        <stop offset="60%" stopColor="transparent"/>
+        <stop offset="100%" stopColor="#84cc16" stopOpacity="0.6"/>
+      </radialGradient>
+    </defs>
+
+    {/* Glow ring behind robot */}
+    <circle cx="38" cy="52" r="32" fill="none" stroke="url(#ring{id})" strokeWidth="4" opacity="0.5"/>
+    <circle cx="38" cy="52" r="28" fill="#0f2d1a" opacity="0.85"/>
+
     {/* Antenna stem */}
-    <line x1="32" y1="5" x2="32" y2="13" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-    {/* Antenna ball — orange like in the logo */}
-    <circle cx="32" cy="4" r="4" fill="#f97316">
-      {animated && <animate attributeName="r" values="4;5;4" dur="1.8s" repeatCount="indefinite"/>}
+    <line x1="38" y1="10" x2="38" y2="20" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"/>
+    {/* Antenna orb */}
+    <circle cx="38" cy="7" r="6.5" fill={`url(#orb${id})`} filter="drop-shadow(0 0 3px #f97316)">
+      {animated && <animate attributeName="r" values="6.5;7.5;6.5" dur="1.8s" repeatCount="indefinite"/>}
     </circle>
-    <circle cx="30.5" cy="2.5" r="1.2" fill="white" opacity="0.6"/>
-
-    {/* Head — big round white helmet style */}
-    <ellipse cx="32" cy="34" rx="20" ry="22" fill="white" opacity="0.95"/>
-    {/* Head shading top */}
-    <ellipse cx="32" cy="34" rx="20" ry="22" fill="url(#headGrad)"/>
-
-    {/* Visor / face screen — dark teal like the image */}
-    <rect x="16" y="22" width="32" height="20" rx="10" fill="#0d3d3a"/>
-    <rect x="16" y="22" width="32" height="20" rx="10" fill="url(#visorGrad)" opacity="0.4"/>
-
-    {/* Left eye */}
-    <circle cx="24" cy="32" r="5.5" fill="#22c55e">
-      {animated && <animate attributeName="r" values="5.5;4;5.5" dur="3.5s" repeatCount="indefinite"/>}
-    </circle>
-    <circle cx="24" cy="32" r="3.2" fill="#16a34a"/>
-    <circle cx="22.5" cy="30.5" r="1.2" fill="white" opacity="0.9"/>
-
-    {/* Right eye */}
-    <circle cx="40" cy="32" r="5.5" fill="#22c55e">
-      {animated && <animate attributeName="r" values="5.5;4;5.5" dur="3.5s" repeatCount="indefinite"/>}
-    </circle>
-    <circle cx="40" cy="32" r="3.2" fill="#16a34a"/>
-    <circle cx="38.5" cy="30.5" r="1.2" fill="white" opacity="0.9"/>
-
-    {/* Smile */}
-    <path d="M26 39 Q32 44 38 39" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" fill="none"/>
-
-    {/* Ear bolts */}
-    <circle cx="12" cy="33" r="3.5" fill="#e2e8f0"/>
-    <circle cx="12" cy="33" r="2" fill="#cbd5e1"/>
-    <circle cx="52" cy="33" r="3.5" fill="#e2e8f0"/>
-    <circle cx="52" cy="33" r="2" fill="#cbd5e1"/>
-
-    {/* Body (small, peeking out) */}
-    <rect x="22" y="54" width="20" height="8" rx="5" fill="white" opacity="0.6"/>
-    <circle cx="28" cy="58" r="2" fill="#22c55e" opacity="0.8"/>
-    <circle cx="36" cy="58" r="2" fill="#22c55e" opacity="0.8"/>
+    <circle cx="35.5" cy="4.5" r="2" fill="white" opacity="0.5"/>
 
     {/* Sparkles */}
     {animated && <>
-      <text x="52" y="14" fontSize="6" fill="#fbbf24" opacity="0.9">✦
-        <animate attributeName="opacity" values="0.9;0.2;0.9" dur="2.1s" repeatCount="indefinite"/>
-      </text>
-      <text x="8" y="18" fontSize="4" fill="#fbbf24" opacity="0.7">✦
-        <animate attributeName="opacity" values="0.7;0.1;0.7" dur="2.7s" repeatCount="indefinite"/>
-      </text>
+      <circle cx="56" cy="12" r="1.5" fill="#fbbf24">
+        <animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="60" cy="20" r="1" fill="#fbbf24">
+        <animate attributeName="opacity" values="0;1;0" dur="2s" begin="0.5s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="15" cy="18" r="1.2" fill="#fbbf24">
+        <animate attributeName="opacity" values="1;0;1" dur="2.5s" begin="1s" repeatCount="indefinite"/>
+      </circle>
     </>}
 
-    <defs>
-      <radialGradient id="headGrad" cx="40%" cy="30%">
-        <stop offset="0%" stopColor="white" stopOpacity="0.3"/>
-        <stop offset="100%" stopColor="#cbd5e1" stopOpacity="0.1"/>
-      </radialGradient>
-      <linearGradient id="visorGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3"/>
-        <stop offset="100%" stopColor="#0d3d3a" stopOpacity="0"/>
-      </linearGradient>
-    </defs>
+    {/* Head — big round white helmet */}
+    <ellipse cx="38" cy="42" rx="23" ry="25" fill={`url(#hg${id})`}/>
+    {/* Helmet shadow bottom */}
+    <ellipse cx="38" cy="62" rx="18" ry="6" fill="#94a3b8" opacity="0.15"/>
+
+    {/* Dark visor / face panel */}
+    <rect x="18" y="31" width="40" height="23" rx="11.5" fill="#0c2a26"/>
+    {/* Visor gloss */}
+    <rect x="20" y="32" width="36" height="8" rx="8" fill="white" opacity="0.05"/>
+
+    {/* Left eye */}
+    <circle cx="28" cy="43" r="7" fill={`url(#bg${id})`} filter="drop-shadow(0 0 4px #22c55e)">
+      {animated && <animate attributeName="r" values="7;5;7" dur="3.5s" repeatCount="indefinite"/>}
+    </circle>
+    <circle cx="28" cy="43" r="4" fill="#065f46"/>
+    <circle cx="25.5" cy="40.5" r="1.8" fill="white" opacity="0.85"/>
+    <circle cx="29.5" cy="44.5" r="0.8" fill="white" opacity="0.4"/>
+
+    {/* Right eye */}
+    <circle cx="48" cy="43" r="7" fill={`url(#bg${id})`} filter="drop-shadow(0 0 4px #22c55e)">
+      {animated && <animate attributeName="r" values="7;5;7" dur="3.5s" repeatCount="indefinite"/>}
+    </circle>
+    <circle cx="48" cy="43" r="4" fill="#065f46"/>
+    <circle cx="45.5" cy="40.5" r="1.8" fill="white" opacity="0.85"/>
+    <circle cx="49.5" cy="44.5" r="0.8" fill="white" opacity="0.4"/>
+
+    {/* Smile */}
+    <path d="M30 51 Q38 57 46 51" stroke="#4ade80" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
+
+    {/* Ear bolts */}
+    <circle cx="15" cy="41" r="4" fill="#dde4ee"/>
+    <circle cx="15" cy="41" r="2.2" fill="#b0bec5"/>
+    <circle cx="61" cy="41" r="4" fill="#dde4ee"/>
+    <circle cx="61" cy="41" r="2.2" fill="#b0bec5"/>
+
+    {/* Body */}
+    <rect x="24" y="64" width="28" height="16" rx="8" fill="#e8f0f8"/>
+    {/* Body panel line */}
+    <rect x="27" y="68" width="22" height="2" rx="1" fill="#94a3b8" opacity="0.4"/>
+    {/* Body green buttons */}
+    <circle cx="31" cy="75" r="2.5" fill="#22c55e"/>
+    <circle cx="38" cy="75" r="2.5" fill="#22c55e"/>
+    <circle cx="45" cy="75" r="2.5" fill="#22c55e"/>
+
+    {/* Left waving arm */}
+    <path d="M24 68 Q12 60 10 50 Q9 45 13 44" stroke="#dde4ee" strokeWidth="5" strokeLinecap="round" fill="none"/>
+    <circle cx="13" cy="43" r="4" fill="#c8d8e8"/>
+
+    {/* Right arm */}
+    <path d="M52 68 Q62 62 63 55" stroke="#dde4ee" strokeWidth="5" strokeLinecap="round" fill="none"/>
+    <circle cx="63.5" cy="53" r="3.5" fill="#c8d8e8"/>
   </svg>
-);
+  );
+};
 
 export default function AIAssistant() {
   const { user } = useAuth();
@@ -156,23 +189,50 @@ export default function AIAssistant() {
         .ai-cat-btn { transition: transform .15s, box-shadow .15s; }
       `}</style>
 
-      {/* Floating button */}
+      {/* Floating button — pill with robot + "EPTO AI" text */}
       <button
         onClick={() => setOpen(o => !o)}
         aria-label="AI Shopping Assistant"
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
-        style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)' }}
+        className="fixed bottom-6 right-6 z-50 flex items-center shadow-2xl transition-transform hover:scale-105 active:scale-95 overflow-hidden"
+        style={{
+          background: 'linear-gradient(135deg,#0a1628,#0f2040)',
+          borderRadius: open ? '50%' : '999px',
+          width: open ? '52px' : 'auto',
+          height: '52px',
+          padding: open ? '0' : '0 16px 0 4px',
+          border: '2px solid #22c55e',
+          boxShadow: '0 0 18px rgba(34,197,94,0.3), 0 4px 20px rgba(0,0,0,0.4)',
+        }}
       >
         {open ? (
-          <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <div className="w-full h-full flex items-center justify-center">
+            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
         ) : (
-          <BotFace size={28} animated={true} />
+          <>
+            {/* Robot icon */}
+            <div className="w-11 h-11 flex items-center justify-center flex-shrink-0">
+              <BotFace size={42} animated={true} />
+            </div>
+            {/* EPTO AI text */}
+            <div className="flex flex-col items-start ml-1 mr-1">
+              <div className="flex items-baseline gap-1 leading-none">
+                <span className="text-sm font-black tracking-tight" style={{ color: '#22c55e' }}>EPTO</span>
+                <span className="text-sm font-black tracking-tight" style={{ color: '#f97316' }}>AI</span>
+              </div>
+              <span className="text-[9px] font-semibold tracking-widest mt-0.5" style={{ color: '#94a3b8' }}>ASSISTANT</span>
+            </div>
+            {/* Pulse dot */}
+            <span className="w-2 h-2 rounded-full bg-green-400 ml-1 flex-shrink-0"
+              style={{ boxShadow: '0 0 6px #22c55e' }}>
+            </span>
+          </>
         )}
         {!open && (
-          <span className="absolute inset-0 rounded-full animate-ping opacity-30"
-            style={{ background: '#f97316' }} />
+          <span className="absolute inset-0 rounded-full animate-ping opacity-10"
+            style={{ background: '#22c55e' }} />
         )}
       </button>
 
