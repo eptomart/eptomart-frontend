@@ -557,7 +557,10 @@ function ShippingChargeAndBillPanel({ order, onDone }) {
 function PayoutFinalizationPanel({ order, onDone }) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [applyFee, setApplyFee] = useState(!order.payout?.isNewSellerBonus);
+  // Fee starts unchecked if: bonus is active OR platformFee is 0 (e.g. legacy order with no bonus flag)
+  const [applyFee, setApplyFee] = useState(
+    !order.payout?.isNewSellerBonus && (order.payout?.platformFee || 0) > 0
+  );
   const [packingCharge, setPackingCharge] = useState(order.payout?.packingCharge || 0);
   const [customDed, setCustomDed] = useState(order.payout?.customDeduction || 0);
   const [customNote, setCustomNote] = useState(order.payout?.customDeductionNote || '');
@@ -623,7 +626,10 @@ function PayoutFinalizationPanel({ order, onDone }) {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Platform Fee:</span>
-              <span className={payout.isNewSellerBonus ? 'text-green-600 font-semibold' : 'text-red-600'}>{payout.isNewSellerBonus ? '✓ Waived' : `−${formatINR(payout.platformFee)}`}</span>
+              {(payout.isNewSellerBonus || (payout.platformFee || 0) === 0)
+                ? <span className="text-green-600 font-semibold">✓ Waived{payout.isNewSellerBonus ? ' (First 20 orders)' : ''}</span>
+                : <span className="text-red-600">−{formatINR(payout.platformFee)}</span>
+              }
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Shipping:</span>
