@@ -75,7 +75,10 @@ export default function Cart() {
         else toast.success(`Shipping to ${pincode}: ${rate === 0 ? 'FREE' : formatINR(rate)}`);
       }
     } catch {
-      if (!silent) toast.error('Could not calculate shipping');
+      // Network failure — apply flat default so buyer isn't blocked
+      setShippingRate(80);
+      setShippingPincode(pincode);
+      if (!silent) toast('Using estimated shipping rate', { icon: 'ℹ️' });
     } finally {
       setLoadingShipping(false);
     }
