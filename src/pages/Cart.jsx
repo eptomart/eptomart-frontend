@@ -1,27 +1,92 @@
 // ============================================
 // CART PAGE — with GST breakdown + quantity controls
 // ============================================
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiTrash2, FiShoppingBag, FiTruck, FiMinus } from 'react-icons/fi';
+import { FiTrash2, FiShoppingBag, FiTruck, FiMinus, FiLoader, FiEdit2 } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import QuantityControl from '../components/cart/QuantityControl';
+import VariantPickerModal from '../components/cart/VariantPickerModal';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { formatINR } from '../utils/currency';
+import api from '../utils/api';
+import toast from 'react-hot-toast';
 
 export default function Cart() {
-  const { enrichedItems, sellerGroups, cartCount, subtotalExGst, gstTotal, shipping, total, updateQuantity, removeFromCart, isCodBlocked, codBlockedItems } = useCart();
-  const { isLoggedIn } = useAuth();
+  const { enrichedItems, sellerGroups, cartCount, subtotalExGst, gstTotal, shipping, total, updateQuantity, removeFromCart, addToCart, isCodBlocked, codBlockedItems, setShippingRate } = useCart();
+  const { isLoggedIn, user } = useAuth();
   const navigate  = useNavigate();
   const [updating, setUpdating] = useState({});
+  const [pincodeInput, setPincodeInput] = useState('');
+  const [loadingShipping, setLoadingShipping] = useState(false);
+  const [variantPickerItem, setVariantPickerItem] = useState(null); // item whose variant is being changed
 
   const handleQtyChange = async (itemId, newQty) => {
     setUpdating(p => ({ ...p, [itemId]: true }));
     updateQuantity(itemId, newQty);
     setTimeout(() => setUpdating(p => ({ ...p, [itemId]: false })), 300);
+  };
+
+  // Called when user picks a new variant from the modal
+  const handleVariantSelect = (variant, vLabel) => {
+    if (!variantPickerItem) return;
+    const item = variantPickerItem;
+    // addToCart with variantChanged logic will replace price + variantLabel in CartContext
+    addToCart({
+      _id:           item._id,
+      name:          item.name,
+      price:         variant.price,
+      discountPrice: variant.price,
+      images:        [{ url: item.image }],
+      stock:         variant.stock,
+      slug:          item.slug,
+      gstRate:       item.gstRate,
+      codAvailable:  item.codAvailable,
+      selectedSeller:item.seller,
+      variantLabel:  vLabel,
+    }, item.quantity);
+    setVariantPickerItem(null);
+  };
+
+  // Auto-fetch shipping on mount if user has saved address
+  useEffect(() => {
+    if (user?.addresses?.length > 0) {
+      const defaultAddr = user.addresses.find(a => a.isDefault) || user.addresses[0];
+      if (defaultAddr?.pincode) {
+        fetchShipping(defaultAddr.pincode);
+      }
+    }
+  }, [user]);
+
+  const fetchShipping = async (pincode) => {
+    if (!pincode || pincode.length !== 6) {
+      toast.error('Invalid pincode');
+      return;
+    }
+    setLoadingShipping(true);
+    try {
+      const { data } = await api.get(`/delivery/cod-check?delivery=${pincode}`);
+      const rate = data.minShippingRate || data.shippingRate;
+      setShippingRate(rate);
+      toast.success(`Shipping calculated: ${rate === 0 ? 'FREE' : formatINR(rate)}`);
+    } catch (err) {
+      toast.error('Unable to calculate shipping');
+      setShippingRate(0);
+    } finally {
+      setLoadingShipping(false);
+    }
+  };
+
+  const handleCalculateShipping = async () => {
+    if (!pincodeInput || pincodeInput.length !== 6) {
+      toast.error('Enter a valid 6-digit pincode');
+      return;
+    }
+    await fetchShipping(pincodeInput);
+    setPincodeInput('');
   };
 
   if (cartCount === 0) {
@@ -80,6 +145,21 @@ export default function Cart() {
                           </h3>
                         </Link>
 
+                        {/* Variant label + change button */}
+                        {item.variantLabel && (
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <span className="text-xs bg-orange-100 text-orange-700 font-medium px-2 py-0.5 rounded-full">
+                              {item.variantLabel}
+                            </span>
+                            <button
+                              onClick={() => setVariantPickerItem(item)}
+                              className="flex items-center gap-0.5 text-xs text-primary-500 hover:text-primary-700 transition-colors"
+                            >
+                              <FiEdit2 size={10} /> Change
+                            </button>
+                          </div>
+                        )}
+
                         {/* GST detail */}
                         <div className="text-xs text-gray-500 mb-2 space-y-0.5">
                           <p>Price excl. GST: {formatINR(item.unitPriceExGst)}</p>
@@ -121,6 +201,34 @@ export default function Cart() {
                 {codBlockedItems.map(i => i.name).join(', ')}. Please pay online.
               </div>
             )}
+
+            {/* Shipping calculator */}
+            <div className="card p-4">
+              <h3 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                <FiTruck size={14} /> Calculate Shipping
+              </h3>
+              {user?.addresses?.length > 0 ? (
+                <p className="text-xs text-gray-500 mb-2">Your default address shipping is being calculated...</p>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    maxLength="6"
+                    placeholder="Enter 6-digit pincode"
+                    value={pincodeInput}
+                    onChange={(e) => setPincodeInput(e.target.value.replace(/\D/g, ''))}
+                    className="input-field flex-1 text-sm"
+                  />
+                  <button
+                    onClick={handleCalculateShipping}
+                    disabled={loadingShipping || pincodeInput.length !== 6}
+                    className="btn-primary text-sm px-4 disabled:opacity-60"
+                  >
+                    {loadingShipping ? <FiLoader size={14} className="animate-spin" /> : 'Calculate'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ── Order Summary ───────────────────────────────── */}
@@ -139,8 +247,8 @@ export default function Cart() {
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Shipping</span>
-                  <span className={shipping === 0 ? 'text-green-600 font-medium' : ''}>
-                    {shipping === 0 ? 'FREE' : formatINR(shipping)}
+                  <span className={shipping === 0 ? 'text-green-600 font-medium' : shipping === null ? 'text-gray-400' : ''}>
+                    {shipping === null ? 'Enter pincode to calculate' : shipping === 0 ? 'FREE' : formatINR(shipping)}
                   </span>
                 </div>
                 {shipping === 0 && (
@@ -148,15 +256,23 @@ export default function Cart() {
                     <FiTruck size={12} /> Free delivery applied
                   </div>
                 )}
-                <div className="flex justify-between font-bold text-base text-gray-900 pt-2 border-t border-gray-100">
-                  <span>Grand Total</span>
-                  <span className="text-primary-600">{formatINR(total)}</span>
-                </div>
+                {shipping !== null && (
+                  <div className="flex justify-between font-bold text-base text-gray-900 pt-2 border-t border-gray-100">
+                    <span>Grand Total</span>
+                    <span className="text-primary-600">{total !== null ? formatINR(total) : '—'}</span>
+                  </div>
+                )}
+                {shipping === null && (
+                  <div className="text-xs text-gray-400 text-center pt-2 border-t border-gray-100">
+                    Total will be calculated once shipping is set
+                  </div>
+                )}
               </div>
 
               <button
                 onClick={() => isLoggedIn ? navigate('/checkout') : navigate('/login', { state: { from: '/checkout' } })}
-                className="btn-primary w-full mb-3"
+                disabled={shipping === null}
+                className="btn-primary w-full mb-3 disabled:opacity-60"
               >
                 {isLoggedIn ? `Proceed to Checkout →` : 'Login to Checkout →'}
               </button>
@@ -172,6 +288,15 @@ export default function Cart() {
         </div>
       </main>
       <Footer />
+
+      {/* Variant picker modal */}
+      {variantPickerItem && (
+        <VariantPickerModal
+          item={variantPickerItem}
+          onSelect={handleVariantSelect}
+          onClose={() => setVariantPickerItem(null)}
+        />
+      )}
     </>
   );
 }

@@ -4,9 +4,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiCheckCircle, FiShield, FiTruck, FiLoader } from 'react-icons/fi';
+import { FiCheckCircle, FiShield, FiTruck, FiLoader, FiEdit2, FiMinus, FiPlus } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import DeliveryEstimate from '../components/product/DeliveryEstimate';
+import VariantPickerModal from '../components/cart/VariantPickerModal';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { formatINR } from '../utils/currency';
@@ -27,7 +28,7 @@ const loadRazorpay = () =>
   });
 
 export default function Checkout() {
-  const { cartItems, enrichedItems, subtotalExGst, gstTotal, shipping, total, sellerGroups, clearCart, isCodBlocked } = useCart();
+  const { cartItems, enrichedItems, subtotalExGst, gstTotal, shipping, total, sellerGroups, clearCart, isCodBlocked, addToCart, updateQuantity } = useCart();
   const { user, loadUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,30 +37,7 @@ export default function Checkout() {
   const buyNow = location.state?.buyNow || null;
   const checkoutItems = buyNow ? [buyNow] : cartItems;
 
-  // Buy Now pricing — computed independently (cart totals are always from cartItems)
-  const bnPrice    = buyNow?.price    || 0;
-  const bnQty      = buyNow?.quantity || 1;
-  const bnGstRate  = buyNow?.gstRate  || 18;
-  const bnExGst    = buyNow ? extractBasePrice(bnPrice, bnGstRate) * bnQty : 0;
-  const bnGst      = buyNow ? parseFloat((bnExGst * bnGstRate / 100).toFixed(2)) : 0;
-  const bnShipping = buyNow ? ((bnExGst + bnGst) >= 499 ? 0 : 49) : 0;
-  const bnTotal    = buyNow ? parseFloat((bnExGst + bnGst + bnShipping).toFixed(2)) : 0;
-
-  // Use correct totals based on flow
-  const displaySubtotal = buyNow ? parseFloat(bnExGst.toFixed(2)) : subtotalExGst;
-  const displayGst      = buyNow ? bnGst      : gstTotal;
-  const displayShipping = buyNow ? bnShipping : shipping;
-  const displayTotal    = buyNow ? bnTotal    : total;
-
-  const [address, setAddress] = useState({
-    fullName: '', phone: '', addressLine1: '', addressLine2: '',
-    city: '', state: '', pincode: '', landmark: '', alternatePhone: '',
-  });
-  const [savedAddresses,    setSavedAddresses]    = useState([]);
-  const [selectedAddressId, setSelectedAddressId] = useState(null);
-  const [showNewAddrForm,   setShowNewAddrForm]   = useState(false);
-
-  // COD + Shiprocket serviceability state
+  // COD + Shiprocket serviceability state — declared early so derived values below can use it
   const [codCheck, setCodCheck] = useState({
     available: null,   // null = unchecked, true/false = result
     edd: null,
@@ -69,6 +47,31 @@ export default function Checkout() {
     loading: false,
     checked: false,
   });
+
+  // Buy Now pricing — computed independently (cart totals are always from cartItems)
+  const bnPrice    = buyNow?.price    || 0;
+  const bnQty      = buyNow?.quantity || 1;
+  const bnGstRate  = buyNow?.gstRate  || 18;
+  const bnExGst    = buyNow ? extractBasePrice(bnPrice, bnGstRate) * bnQty : 0;
+  const bnGst      = buyNow ? parseFloat((bnExGst * bnGstRate / 100).toFixed(2)) : 0;
+  // Buy Now shipping will be determined after cod-check
+  const bnShipping = buyNow && codCheck.shippingRate !== null ? codCheck.shippingRate : (buyNow ? null : 0);
+  const bnTotal    = buyNow && bnShipping !== null ? parseFloat((bnExGst + bnGst + bnShipping).toFixed(2)) : null;
+
+  // Use correct totals based on flow — use real shipping from codCheck if available
+  const displaySubtotal = buyNow ? parseFloat(bnExGst.toFixed(2)) : subtotalExGst;
+  const displayGst      = buyNow ? bnGst      : gstTotal;
+  // For both cart and buy now, prefer real shipping from codCheck.shippingRate
+  const displayShipping = codCheck.shippingRate !== null ? codCheck.shippingRate : (buyNow ? bnShipping : shipping);
+  const displayTotal    = displayShipping !== null ? parseFloat((displaySubtotal + displayGst + displayShipping).toFixed(2)) : null;
+
+  const [address, setAddress] = useState({
+    fullName: '', phone: '', addressLine1: '', addressLine2: '',
+    city: '', state: '', pincode: '', landmark: '', alternatePhone: '',
+  });
+  const [savedAddresses,    setSavedAddresses]    = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [showNewAddrForm,   setShowNewAddrForm]   = useState(false);
   const codCheckRef = useRef('');  // last pincode checked
 
   // Fix: sync address state AFTER user loads (fixes race condition)
@@ -147,6 +150,7 @@ export default function Checkout() {
   const [loading, setLoading] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(null);
   const [step, setStep] = useState(1);
+  const [variantPickerItem, setVariantPickerItem] = useState(null);
 
   // Pincode autofill for checkout address
   const { lookupPincode, pincodeLoading } = usePincodeAutofill(
@@ -311,6 +315,26 @@ export default function Checkout() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ── Variant picker handler ───────────────────────────────
+  const handleVariantSelect = (variant, vLabel) => {
+    if (!variantPickerItem) return;
+    const item = variantPickerItem;
+    addToCart({
+      _id:           item._id,
+      name:          item.name,
+      price:         variant.price,
+      discountPrice: variant.price,
+      images:        [{ url: item.image }],
+      stock:         variant.stock,
+      slug:          item.slug,
+      gstRate:       item.gstRate,
+      codAvailable:  item.codAvailable,
+      selectedSeller:item.seller,
+      variantLabel:  vLabel,
+    }, item.quantity);
+    setVariantPickerItem(null);
   };
 
   // ── Order Success Screen ─────────────────────────────────
@@ -571,15 +595,67 @@ export default function Checkout() {
           <div className="lg:col-span-1">
             <div className="card p-6 sticky top-20">
               <h2 className="text-lg font-bold mb-4">Order Summary</h2>
-              <div className="space-y-3 mb-4 max-h-48 overflow-y-auto">
+              <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
                 {checkoutItems.map(item => (
-                  <div key={item._id || item.product} className="flex gap-3 text-sm">
-                    <img src={item.image || item.images?.[0]?.url} alt={item.name} className="w-12 h-12 object-cover rounded-lg" />
-                    <div className="flex-1">
-                      <p className="text-gray-800 line-clamp-1">{item.name}</p>
-                      <p className="text-gray-500">Qty: {item.quantity} × {formatINR(item.price)}</p>
+                  <div key={item._id || item.product} className="flex gap-3 text-sm pb-3 border-b border-gray-100 last:border-0">
+                    <img
+                      src={item.image || item.images?.[0]?.url}
+                      alt={item.name}
+                      className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-gray-800 line-clamp-1 font-medium">{item.name}</p>
+
+                      {/* Variant label + change button */}
+                      {item.variantLabel && (
+                        <div className="flex items-center gap-1 mt-0.5 mb-1">
+                          <span className="text-[11px] bg-orange-100 text-orange-700 font-medium px-1.5 py-0.5 rounded-full">
+                            {item.variantLabel}
+                          </span>
+                          {/* Only show Change button for cart flow (not Buy Now) */}
+                          {!buyNow && (
+                            <button
+                              onClick={() => setVariantPickerItem(item)}
+                              className="flex items-center gap-0.5 text-[11px] text-primary-500 hover:text-primary-700 transition-colors"
+                            >
+                              <FiEdit2 size={9} /> Change
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Price + quantity controls */}
+                      <div className="flex items-center justify-between mt-1 gap-2">
+                        {/* Qty stepper — only for cart flow */}
+                        {!buyNow ? (
+                          <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-1 py-0.5">
+                            <button
+                              onClick={() => updateQuantity(item._id, item.quantity - 1)}
+                              disabled={item.quantity <= 1}
+                              className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-primary-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <FiMinus size={10} />
+                            </button>
+                            <span className="text-xs font-semibold w-5 text-center">{item.quantity}</span>
+                            <button
+                              onClick={() => updateQuantity(item._id, item.quantity + 1)}
+                              disabled={item.quantity >= (item.stock || 99)}
+                              className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-primary-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <FiPlus size={10} />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">Qty: {item.quantity}</span>
+                        )}
+                        <span className="font-semibold text-gray-800 text-sm">
+                          {formatINR(item.price * item.quantity)}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {formatINR(item.price)} × {item.quantity}
+                      </p>
                     </div>
-                    <span className="font-medium">{formatINR(item.price * item.quantity)}</span>
                   </div>
                 ))}
               </div>
@@ -624,14 +700,16 @@ export default function Checkout() {
 
               <button
                 onClick={handlePlaceOrder}
-                disabled={loading || checkoutItems.length === 0}
-                className="btn-primary w-full"
+                disabled={loading || checkoutItems.length === 0 || displayTotal === null}
+                className="btn-primary w-full disabled:opacity-60"
               >
                 {loading
                   ? 'Processing...'
-                  : paymentMethod === 'razorpay'
-                    ? `Pay ${formatINR(displayTotal)}`
-                    : `Place COD Order — ${formatINR(displayTotal)}`}
+                  : displayTotal === null
+                    ? 'Enter pincode for shipping...'
+                    : paymentMethod === 'razorpay'
+                      ? `Pay ${formatINR(displayTotal)}`
+                      : `Place COD Order — ${formatINR(displayTotal)}`}
               </button>
 
               <div className="flex items-center justify-center gap-1.5 mt-3">
@@ -642,6 +720,15 @@ export default function Checkout() {
           </div>
         </div>
       </main>
+
+      {/* Variant picker modal */}
+      {variantPickerItem && (
+        <VariantPickerModal
+          item={variantPickerItem}
+          onSelect={handleVariantSelect}
+          onClose={() => setVariantPickerItem(null)}
+        />
+      )}
     </>
   );
 }
