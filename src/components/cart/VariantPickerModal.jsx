@@ -25,8 +25,10 @@ export default function VariantPickerModal({ item, onSelect, onClose }) {
       .finally(() => setLoading(false));
   }, [item?.slug, item?._id]);
 
+  // Must match ProductPage's variantLabel format exactly:
+  // [label, value, unit].filter(Boolean).join(' ')
   const buildLabel = (v) =>
-    [v.label, v.value ? `${v.value}${v.unit || ''}` : null].filter(Boolean).join(' – ');
+    [v.label, v.value, v.unit].filter(Boolean).join(' ');
 
   return (
     <div

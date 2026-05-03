@@ -638,7 +638,14 @@ export default function Checkout() {
                             </button>
                             <span className="text-xs font-semibold w-5 text-center">{item.quantity}</span>
                             <button
-                              onClick={() => updateQuantity(item._id, item.quantity + 1)}
+                              onClick={() => {
+                                if (item.variantLabel) {
+                                  // Item has variants — pop the picker so user can choose the right pack/price
+                                  setVariantPickerItem(item);
+                                } else {
+                                  updateQuantity(item._id, item.quantity + 1);
+                                }
+                              }}
                               disabled={item.quantity >= (item.stock || 99)}
                               className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-primary-600 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
