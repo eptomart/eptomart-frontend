@@ -89,9 +89,21 @@ export default function ProductForm() {
   const sellerPayout          = sp - eptomartCommissionAmt;
   const sellerMarginPct       = cp > 0 && sellerPayout > 0 ? ((sellerPayout - cp) / cp * 100) : null;
 
-  // Computed preview price
-  const basePrice = form.price ? (form.priceIncludesGst ? extractBasePrice(Number(form.price), Number(form.gstRate)) : Number(form.price)) : 0;
-  const gstAmount = basePrice * Number(form.gstRate) / 100;
+  // ── Variant price sync ─────────────────────────────────────
+  // If any variant carries a price, the product's base price is auto-derived
+  // from the lowest priced variant — the seller must NOT set it manually.
+  const pricedVariants   = (form.variants || []).filter(v => v.price !== '' && Number(v.price) > 0);
+  const variantsDrivePrice = pricedVariants.length > 0;
+  const autoSyncedPrice  = variantsDrivePrice
+    ? Math.min(...pricedVariants.map(v => Number(v.price)))
+    : null;
+
+  // Computed preview price — uses autoSyncedPrice when variants drive it
+  const effectivePriceInput = variantsDrivePrice ? autoSyncedPrice : (form.price || 0);
+  const basePrice  = effectivePriceInput
+    ? (form.priceIncludesGst ? extractBasePrice(Number(effectivePriceInput), Number(form.gstRate)) : Number(effectivePriceInput))
+    : 0;
+  const gstAmount  = basePrice * Number(form.gstRate) / 100;
   const finalPrice = basePrice + gstAmount;
 
   const handleImageChange = (e) => {
@@ -114,8 +126,12 @@ export default function ProductForm() {
   };
 
   const handleSave = async (submitForApproval = false) => {
-    if (!form.name || !form.price || !form.stock || !form.category) {
+    // Price is required — unless variants carry their own prices (autoSyncedPrice takes over)
+    if (!form.name || (!form.price && !variantsDrivePrice) || !form.stock || !form.category) {
       return toast.error('Name, price, stock and category are required');
+    }
+    if (variantsDrivePrice && !autoSyncedPrice) {
+      return toast.error('At least one variant must have a valid price');
     }
     if (!form.hsnCode) {
       return toast.error('HSN Code is required');
@@ -139,9 +155,15 @@ export default function ProductForm() {
         stock:  rest.stock  !== '' && rest.stock !== undefined ? Number(rest.stock) : undefined,
       })).filter(v => v.label);
 
+      // When variants carry prices, auto-set product.price = lowest variant price
+      // (ensures DB price is always a valid, real variant price — no random/stale value)
+      const resolvedPrice = variantsDrivePrice
+        ? autoSyncedPrice
+        : Number(form.priceIncludesGst ? basePrice.toFixed(2) : form.price);
+
       const payload = {
         ...form,
-        price:          Number(form.priceIncludesGst ? basePrice.toFixed(2) : form.price),
+        price:          resolvedPrice,
         gstRate:        Number(form.gstRate),
         discountPrice:  form.discountPrice ? Number(form.discountPrice) : undefined,
         stock:          Number(form.stock),
@@ -374,6 +396,21 @@ export default function ProductForm() {
         <div className="card p-6 space-y-4">
           <h3 className="font-semibold text-gray-800 border-b pb-2">Pricing & GST</h3>
 
+          {/* Variant-driven price notice */}
+          {variantsDrivePrice && (
+            <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+              <FiInfo size={15} className="text-blue-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-blue-800">Price auto-set from variants</p>
+                <p className="text-sm text-blue-700 mt-0.5">
+                  Your variants have their own prices. The product base price is automatically set to the
+                  <strong> lowest variant price: {formatINR(autoSyncedPrice)}</strong>.
+                  You don't need to fill in the price field below.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center gap-3">
             <input type="checkbox" id="inclGst" checked={form.priceIncludesGst} onChange={e => set('priceIncludesGst', e.target.checked)} className="accent-primary-500 w-4 h-4" />
             <label htmlFor="inclGst" className="text-sm font-medium text-gray-700">Price I enter includes GST</label>
@@ -382,9 +419,18 @@ export default function ProductForm() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {form.priceIncludesGst ? 'Price (incl. GST) *' : 'Base Price (excl. GST) *'}
+                {variantsDrivePrice
+                  ? 'Base Price (auto from variants)'
+                  : form.priceIncludesGst ? 'Price (incl. GST) *' : 'Base Price (excl. GST) *'}
               </label>
-              <input type="number" value={form.price} onChange={e => set('price', e.target.value)} placeholder="e.g. 590" className="input-field" />
+              {variantsDrivePrice ? (
+                <div className="input-field bg-gray-50 text-gray-500 cursor-not-allowed flex items-center">
+                  {formatINR(autoSyncedPrice)}
+                  <span className="ml-2 text-xs text-blue-500">(lowest variant)</span>
+                </div>
+              ) : (
+                <input type="number" value={form.price} onChange={e => set('price', e.target.value)} placeholder="e.g. 590" className="input-field" />
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">GST Rate *</label>
@@ -395,9 +441,11 @@ export default function ProductForm() {
           </div>
 
           {/* GST preview */}
-          {form.price > 0 && (
+          {(variantsDrivePrice || form.price > 0) && basePrice > 0 && (
             <div className="bg-orange-50 rounded-xl p-3 text-sm space-y-1">
-              <p className="font-medium text-gray-700">Price Breakdown Preview</p>
+              <p className="font-medium text-gray-700">Price Breakdown Preview
+                {variantsDrivePrice && <span className="text-xs text-blue-500 ml-1">(based on lowest variant)</span>}
+              </p>
               <p className="text-gray-600">Base price (excl. GST): {formatINR(basePrice)}</p>
               <p className="text-gray-600">GST ({form.gstRate}%): {formatINR(gstAmount)}</p>
               <p className="font-semibold text-primary-600">Customer pays: {formatINR(finalPrice)}</p>
