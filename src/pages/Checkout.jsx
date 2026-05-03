@@ -288,6 +288,7 @@ export default function Checkout() {
         })),
         shippingAddress: address,
         paymentMethod,
+        shipping: displayShipping ?? 0,  // always send actual Shiprocket-calculated rate
       });
 
       const order = data.order;

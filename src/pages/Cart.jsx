@@ -57,12 +57,19 @@ export default function Cart() {
     setLoadingShipping(true);
     try {
       const { data } = await api.get(`/delivery/cod-check?delivery=${pincode}`);
-      const rate = data.minShippingRate || data.shippingRate;
+      // Prefer minShippingRate (cheapest), fall back to shippingRate; treat undefined as null
+      const rate = data.minShippingRate != null ? data.minShippingRate
+                 : data.shippingRate    != null ? data.shippingRate
+                 : null;
       setShippingRate(rate);
-      toast.success(`Shipping calculated: ${rate === 0 ? 'FREE' : formatINR(rate)}`);
+      if (rate === null) {
+        toast('Shipping will be calculated at checkout', { icon: 'ℹ️' });
+      } else {
+        toast.success(`Shipping: ${rate === 0 ? 'FREE' : formatINR(rate)}`);
+      }
     } catch (err) {
-      toast.error('Unable to calculate shipping');
-      setShippingRate(0);
+      toast.error('Could not calculate shipping — enter pincode at checkout');
+      // Do NOT setShippingRate(0) — keep null so checkout shows correct message
     } finally {
       setLoadingShipping(false);
     }

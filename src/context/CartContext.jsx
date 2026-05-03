@@ -179,8 +179,9 @@ export const CartProvider = ({ children }) => {
 
   const subtotalExGst = enriched.reduce((s, i) => s + i.lineBase,      0);
   const gstTotal      = enriched.reduce((s, i) => s + i.lineGst,       0);
-  const shipping      = shippingRate !== null ? shippingRate : null;
-  const total         = shipping !== null ? parseFloat((subtotalExGst + gstTotal + shipping).toFixed(2)) : null;
+  // Use != null (loose) to catch both null and undefined from setShippingRate
+  const shipping      = shippingRate != null ? shippingRate : null;
+  const total         = shipping != null ? parseFloat((subtotalExGst + gstTotal + shipping).toFixed(2)) : null;
 
   // Group by seller for display
   const sellerGroups = enriched.reduce((acc, item) => {
