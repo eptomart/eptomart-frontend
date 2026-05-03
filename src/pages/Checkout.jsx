@@ -107,7 +107,8 @@ export default function Checkout() {
     codCheckRef.current = pincode;
     setCodCheck(prev => ({ ...prev, loading: true, checked: false }));
     try {
-      const { data } = await api.get(`/delivery/cod-check?delivery=${pincode}`);
+      const totalWeight = Math.max((checkoutItems.reduce((s, i) => s + i.quantity, 0)) * 0.5, 0.5);
+      const { data } = await api.get(`/delivery/cod-check?delivery=${pincode}&weight=${totalWeight}`);
       setCodCheck({
         available:    data.codAvailable,
         edd:          data.edd,

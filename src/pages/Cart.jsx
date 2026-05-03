@@ -22,7 +22,8 @@ export default function Cart() {
   const [updating, setUpdating] = useState({});
   const [pincodeInput, setPincodeInput] = useState('');
   const [loadingShipping, setLoadingShipping] = useState(false);
-  const [variantPickerItem, setVariantPickerItem] = useState(null); // item whose variant is being changed
+  const [variantPickerItem, setVariantPickerItem] = useState(null);
+  const [lastPincode, setLastPincode] = useState('');
 
   const handleQtyChange = async (cartItemId, newQty) => {
     // Just update quantity — the "Change" button already handles variant switching.
@@ -39,41 +40,44 @@ export default function Cart() {
     setVariantPickerItem(null);
   };
 
-  // Auto-fetch shipping on mount if user has saved address
-  useEffect(() => {
-    if (user?.addresses?.length > 0) {
-      const defaultAddr = user.addresses.find(a => a.isDefault) || user.addresses[0];
-      if (defaultAddr?.pincode) {
-        fetchShipping(defaultAddr.pincode);
-      }
-    }
-  }, [user]);
+  // Total weight = 0.5kg per unit (default; products without explicit weight)
+  const totalWeight = Math.max(cartCount * 0.5, 0.5);
 
-  const fetchShipping = async (pincode) => {
-    if (!pincode || pincode.length !== 6) {
-      toast.error('Invalid pincode');
-      return;
-    }
+  const fetchShipping = async (pincode, silent = false) => {
+    if (!pincode || pincode.length !== 6) return;
+    setLastPincode(pincode);
     setLoadingShipping(true);
     try {
-      const { data } = await api.get(`/delivery/cod-check?delivery=${pincode}`);
-      // Prefer minShippingRate (cheapest), fall back to shippingRate; treat undefined as null
+      const { data } = await api.get(
+        `/delivery/cod-check?delivery=${pincode}&weight=${totalWeight}`
+      );
       const rate = data.minShippingRate != null ? data.minShippingRate
                  : data.shippingRate    != null ? data.shippingRate
                  : null;
       setShippingRate(rate);
-      if (rate === null) {
-        toast('Shipping will be calculated at checkout', { icon: 'ℹ️' });
-      } else {
-        toast.success(`Shipping: ${rate === 0 ? 'FREE' : formatINR(rate)}`);
+      if (!silent) {
+        if (rate === null) toast('Shipping will be calculated at checkout', { icon: 'ℹ️' });
+        else toast.success(`Shipping: ${rate === 0 ? 'FREE' : formatINR(rate)}`);
       }
-    } catch (err) {
-      toast.error('Could not calculate shipping — enter pincode at checkout');
-      // Do NOT setShippingRate(0) — keep null so checkout shows correct message
+    } catch {
+      if (!silent) toast.error('Could not calculate shipping — enter pincode at checkout');
     } finally {
       setLoadingShipping(false);
     }
   };
+
+  // Auto-fetch on mount if user has saved address
+  useEffect(() => {
+    if (user?.addresses?.length > 0) {
+      const addr = user.addresses.find(a => a.isDefault) || user.addresses[0];
+      if (addr?.pincode) fetchShipping(addr.pincode);
+    }
+  }, [user]);
+
+  // Re-fetch silently when quantity changes (weight changes → rate changes)
+  useEffect(() => {
+    if (lastPincode.length === 6) fetchShipping(lastPincode, true);
+  }, [cartCount]);
 
   const handleCalculateShipping = async () => {
     if (!pincodeInput || pincodeInput.length !== 6) {
