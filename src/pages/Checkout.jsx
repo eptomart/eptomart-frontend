@@ -276,7 +276,12 @@ export default function Checkout() {
 
       // Create order in our system
       const { data } = await api.post('/orders', {
-        items: checkoutItems.map(item => ({ product: item._id || item.product, quantity: item.quantity })),
+        items: checkoutItems.map(item => ({
+          product:      item._id || item.product,
+          quantity:     item.quantity,
+          price:        item.price,
+          variantLabel: item.variantLabel || undefined,
+        })),
         shippingAddress: address,
         paymentMethod,
       });
