@@ -25,13 +25,8 @@ export default function Cart() {
   const [variantPickerItem, setVariantPickerItem] = useState(null); // item whose variant is being changed
 
   const handleQtyChange = async (cartItemId, newQty) => {
-    const item = enrichedItems.find(i => i.cartItemId === cartItemId);
-    // If quantity is INCREASING and the item has variants, pop the picker
-    // so the user can select the right variant/price for the new quantity.
-    if (item && newQty > item.quantity && item.variantLabel) {
-      setVariantPickerItem(item);
-      return;
-    }
+    // Just update quantity — the "Change" button already handles variant switching.
+    // Never intercept qty changes to open the variant picker.
     setUpdating(p => ({ ...p, [cartItemId]: true }));
     updateQuantity(cartItemId, newQty);
     setTimeout(() => setUpdating(p => ({ ...p, [cartItemId]: false })), 300);
