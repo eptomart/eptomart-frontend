@@ -16,7 +16,7 @@ import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 export default function Cart() {
-  const { enrichedItems, sellerGroups, cartCount, subtotalExGst, gstTotal, shipping, total, updateQuantity, removeFromCart, addToCart, isCodBlocked, codBlockedItems, setShippingRate } = useCart();
+  const { enrichedItems, sellerGroups, cartCount, subtotalExGst, gstTotal, shipping, total, updateQuantity, removeFromCart, updateItemVariant, isCodBlocked, codBlockedItems, setShippingRate } = useCart();
   const { isLoggedIn, user } = useAuth();
   const navigate  = useNavigate();
   const [updating, setUpdating] = useState({});
@@ -37,24 +37,10 @@ export default function Cart() {
     setTimeout(() => setUpdating(p => ({ ...p, [itemId]: false })), 300);
   };
 
-  // Called when user picks a new variant from the modal
+  // Called when user picks a new variant from the modal — directly updates the cart item
   const handleVariantSelect = (variant, vLabel) => {
     if (!variantPickerItem) return;
-    const item = variantPickerItem;
-    // addToCart with variantChanged logic will replace price + variantLabel in CartContext
-    addToCart({
-      _id:           item._id,
-      name:          item.name,
-      price:         variant.price,
-      discountPrice: variant.price,
-      images:        [{ url: item.image }],
-      stock:         variant.stock,
-      slug:          item.slug,
-      gstRate:       item.gstRate,
-      codAvailable:  item.codAvailable,
-      selectedSeller:item.seller,
-      variantLabel:  vLabel,
-    }, item.quantity);
+    updateItemVariant(variantPickerItem._id, variant.price, vLabel, variant.stock);
     setVariantPickerItem(null);
   };
 

@@ -28,7 +28,7 @@ const loadRazorpay = () =>
   });
 
 export default function Checkout() {
-  const { cartItems, enrichedItems, subtotalExGst, gstTotal, shipping, total, sellerGroups, clearCart, isCodBlocked, addToCart, updateQuantity } = useCart();
+  const { cartItems, enrichedItems, subtotalExGst, gstTotal, shipping, total, sellerGroups, clearCart, isCodBlocked, updateItemVariant, updateQuantity } = useCart();
   const { user, loadUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -320,20 +320,7 @@ export default function Checkout() {
   // ── Variant picker handler ───────────────────────────────
   const handleVariantSelect = (variant, vLabel) => {
     if (!variantPickerItem) return;
-    const item = variantPickerItem;
-    addToCart({
-      _id:           item._id,
-      name:          item.name,
-      price:         variant.price,
-      discountPrice: variant.price,
-      images:        [{ url: item.image }],
-      stock:         variant.stock,
-      slug:          item.slug,
-      gstRate:       item.gstRate,
-      codAvailable:  item.codAvailable,
-      selectedSeller:item.seller,
-      variantLabel:  vLabel,
-    }, item.quantity);
+    updateItemVariant(variantPickerItem._id, variant.price, vLabel, variant.stock);
     setVariantPickerItem(null);
   };
 

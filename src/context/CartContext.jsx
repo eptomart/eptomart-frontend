@@ -31,6 +31,7 @@ export const CartProvider = ({ children }) => {
   });
   const [isCartOpen,  setIsCartOpen]  = useState(false);
   const [isLoggedIn,  setIsLoggedIn]  = useState(!!localStorage.getItem('eptomart_token'));
+  const [shippingRate, setShippingRate] = useState(null);
 
   // Persist to localStorage
   useEffect(() => {
@@ -129,6 +130,24 @@ export const CartProvider = ({ children }) => {
     }));
   }, [removeFromCart]);
 
+  // Direct variant swap — bypasses addToCart's seller-match / variantChanged / stock checks.
+  // Called from VariantPickerModal so we always know exactly which item and new values to apply.
+  const updateItemVariant = useCallback((itemId, newPrice, newVariantLabel, newStock) => {
+    setCartItems(prev => {
+      const idx = prev.findIndex(i => i._id === itemId);
+      if (idx === -1) return prev;                 // item not found — nothing to update
+      const updated = [...prev];
+      updated[idx] = {
+        ...updated[idx],
+        price:        newPrice,
+        variantLabel: newVariantLabel,
+        stock:        newStock != null ? newStock : updated[idx].stock,
+      };
+      return updated;
+    });
+    toast.success('Variant updated! 🛒', { duration: 2000 });
+  }, []);
+
   const clearCart = useCallback(() => setCartItems([]), []);
 
   const isInCart = useCallback((id) => cartItems.some(i => i._id === id), [cartItems]);
@@ -143,8 +162,8 @@ export const CartProvider = ({ children }) => {
 
   const subtotalExGst = enriched.reduce((s, i) => s + i.lineBase,      0);
   const gstTotal      = enriched.reduce((s, i) => s + i.lineGst,       0);
-  const shipping      = (subtotalExGst + gstTotal) >= 499 ? 0 : 49;
-  const total         = parseFloat((subtotalExGst + gstTotal + shipping).toFixed(2));
+  const shipping      = shippingRate !== null ? shippingRate : null;
+  const total         = shipping !== null ? parseFloat((subtotalExGst + gstTotal + shipping).toFixed(2)) : null;
 
   // Group by seller for display
   const sellerGroups = enriched.reduce((acc, item) => {
@@ -169,12 +188,15 @@ export const CartProvider = ({ children }) => {
       shipping,
       tax:           parseFloat(gstTotal.toFixed(2)),
       total,
+      shippingRate,
+      setShippingRate,
       sellerGroups,
       codBlockedItems,
       isCodBlocked,
       isCartOpen,
       setIsCartOpen,
       addToCart,
+      updateItemVariant,
       removeFromCart,
       updateQuantity,
       clearCart,
