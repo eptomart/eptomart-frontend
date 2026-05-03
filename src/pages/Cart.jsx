@@ -24,23 +24,23 @@ export default function Cart() {
   const [loadingShipping, setLoadingShipping] = useState(false);
   const [variantPickerItem, setVariantPickerItem] = useState(null); // item whose variant is being changed
 
-  const handleQtyChange = async (itemId, newQty) => {
-    const item = enrichedItems.find(i => i._id === itemId);
+  const handleQtyChange = async (cartItemId, newQty) => {
+    const item = enrichedItems.find(i => i.cartItemId === cartItemId);
     // If quantity is INCREASING and the item has variants, pop the picker
     // so the user can select the right variant/price for the new quantity.
     if (item && newQty > item.quantity && item.variantLabel) {
       setVariantPickerItem(item);
       return;
     }
-    setUpdating(p => ({ ...p, [itemId]: true }));
-    updateQuantity(itemId, newQty);
-    setTimeout(() => setUpdating(p => ({ ...p, [itemId]: false })), 300);
+    setUpdating(p => ({ ...p, [cartItemId]: true }));
+    updateQuantity(cartItemId, newQty);
+    setTimeout(() => setUpdating(p => ({ ...p, [cartItemId]: false })), 300);
   };
 
   // Called when user picks a new variant from the modal — directly updates the cart item
   const handleVariantSelect = (variant, vLabel) => {
     if (!variantPickerItem) return;
-    updateItemVariant(variantPickerItem._id, variant.price, vLabel, variant.stock);
+    updateItemVariant(variantPickerItem.cartItemId, variant.price, vLabel, variant.stock);
     setVariantPickerItem(null);
   };
 
@@ -125,7 +125,7 @@ export default function Cart() {
 
                 <div className="divide-y divide-gray-100">
                   {group.items.map(item => (
-                    <div key={item._id} className="p-4 flex gap-4">
+                    <div key={item.cartItemId} className="p-4 flex gap-4">
                       <Link to={`/product/${item.slug}`} className="flex-shrink-0">
                         <img src={item.image} alt={item.name}
                           className="w-20 h-20 object-cover rounded-xl bg-gray-100" />
@@ -165,8 +165,8 @@ export default function Cart() {
                             quantity={item.quantity}
                             min={0}
                             max={item.stock}
-                            loading={updating[item._id]}
-                            onChange={(q) => handleQtyChange(item._id, q)}
+                            loading={updating[item.cartItemId]}
+                            onChange={(q) => handleQtyChange(item.cartItemId, q)}
                             showTrashAtMin
                           />
 
@@ -177,7 +177,7 @@ export default function Cart() {
                         </div>
                       </div>
 
-                      <button onClick={() => removeFromCart(item._id)}
+                      <button onClick={() => removeFromCart(item.cartItemId)}
                         className="text-gray-300 hover:text-red-400 transition-colors self-start mt-1">
                         <FiTrash2 size={16} />
                       </button>

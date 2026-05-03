@@ -320,7 +320,7 @@ export default function Checkout() {
   // ── Variant picker handler ───────────────────────────────
   const handleVariantSelect = (variant, vLabel) => {
     if (!variantPickerItem) return;
-    updateItemVariant(variantPickerItem._id, variant.price, vLabel, variant.stock);
+    updateItemVariant(variantPickerItem.cartItemId, variant.price, vLabel, variant.stock);
     setVariantPickerItem(null);
   };
 
@@ -584,7 +584,7 @@ export default function Checkout() {
               <h2 className="text-lg font-bold mb-4">Order Summary</h2>
               <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
                 {checkoutItems.map(item => (
-                  <div key={item._id || item.product} className="flex gap-3 text-sm pb-3 border-b border-gray-100 last:border-0">
+                  <div key={item.cartItemId || item._id || item.product} className="flex gap-3 text-sm pb-3 border-b border-gray-100 last:border-0">
                     <img
                       src={item.image || item.images?.[0]?.url}
                       alt={item.name}
@@ -617,7 +617,7 @@ export default function Checkout() {
                         {!buyNow ? (
                           <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-1 py-0.5">
                             <button
-                              onClick={() => updateQuantity(item._id, item.quantity - 1)}
+                              onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
                               disabled={item.quantity <= 1}
                               className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-primary-600 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
@@ -630,7 +630,7 @@ export default function Checkout() {
                                   // Item has variants — pop the picker so user can choose the right pack/price
                                   setVariantPickerItem(item);
                                 } else {
-                                  updateQuantity(item._id, item.quantity + 1);
+                                  updateQuantity(item.cartItemId, item.quantity + 1);
                                 }
                               }}
                               disabled={item.quantity >= (item.stock || 99)}

@@ -21,8 +21,11 @@ export default function ProductCard({ product }) {
   const { name, slug, price, discountPrice, images, ratings, stock, category, codAvailable, seller, location } = product;
   const sellerCity  = seller?.address?.city || seller?.city || location?.city || null;
   const inCart      = isInCart(product._id);
+  // For non-variant products there is exactly one cart entry per product.
+  // Variant products always navigate to /product/:slug so qty controls here are safe.
   const cartItem    = cartItems.find(i => i._id === product._id);
   const cartQty     = cartItem?.quantity || 0;
+  const cartItemId  = cartItem?.cartItemId || null;
   const inWishlist  = isInWishlist(product._id);
   const inCompare   = isInCompare(product._id);
   const discount    = getDiscountPercent(price, discountPrice);
@@ -64,11 +67,12 @@ export default function ProductCard({ product }) {
   const handleQtyChange = (e, delta) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!cartItemId) return;
     const newQty = cartQty + delta;
     if (newQty <= 0) {
-      removeFromCart(product._id);
+      removeFromCart(cartItemId);
     } else {
-      updateQuantity(product._id, newQty);
+      updateQuantity(cartItemId, newQty);
     }
   };
 

@@ -1,5 +1,6 @@
 // ============================================
 // CART CONTEXT — with GST, seller groups, server sync
+// Cart item uniqueness: cartItemId = productId + "_" + variantLabel
 // ============================================
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
@@ -9,6 +10,10 @@ import { BUSINESS } from '../utils/businessInfo';
 
 const CartContext = createContext(null);
 const CART_KEY   = 'eptomart_cart';
+
+// Stable composite key: guarantees each product+variant is a separate line item
+const makeCartItemId = (productId, variantLabel) =>
+  `${productId}_${variantLabel || ''}`;
 
 const calcItemGst = (item, buyerState = BUSINESS.state) => {
   const price      = item.price || 0;
@@ -25,9 +30,16 @@ const calcItemGst = (item, buyerState = BUSINESS.state) => {
   };
 };
 
+// Migrate old cart items that lack cartItemId (added in this version)
+const migrateItems = (items) =>
+  items.map(i => i.cartItemId ? i : { ...i, cartItemId: makeCartItemId(i._id, i.variantLabel) });
+
 export const CartProvider = ({ children }) => {
   const [cartItems,   setCartItems]   = useState(() => {
-    try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; }
+    try {
+      const raw = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+      return migrateItems(raw);
+    } catch { return []; }
   });
   const [isCartOpen,  setIsCartOpen]  = useState(false);
   const [isLoggedIn,  setIsLoggedIn]  = useState(!!localStorage.getItem('eptomart_token'));
@@ -45,40 +57,35 @@ export const CartProvider = ({ children }) => {
     return () => window.removeEventListener('storage', check);
   }, []);
 
+  // ── addToCart ─────────────────────────────────────────────
+  // Uniqueness: productId + variantLabel
+  //   Same product + SAME variant  → increment quantity of that line item
+  //   Same product + DIFF variant  → add as a SEPARATE new line item
+  //   Completely new product       → add new line item
   const addToCart = useCallback((product, quantity = 1) => {
     const incomingPrice        = product.discountPrice || product.price;
-    const incomingVariantLabel = product.variantLabel || null;
+    const incomingVariantLabel = product.variantLabel  || null;
+    const cartItemId           = makeCartItemId(product._id, incomingVariantLabel);
 
     setCartItems(prev => {
-      const existing = prev.find(i => i._id === product._id &&
-        (!product.selectedSeller || i.seller?._id === product.selectedSeller?._id));
+      // Find existing by composite key: productId + variantLabel (+ optional seller match)
+      const existing = prev.find(i =>
+        i.cartItemId === cartItemId &&
+        (!product.selectedSeller || i.seller?._id === product.selectedSeller?._id)
+      );
 
       if (existing) {
-        const variantChanged = incomingVariantLabel !== existing.variantLabel;
-
-        if (variantChanged) {
-          // Different variant selected — replace price, variant and reset to new quantity
-          if (quantity > product.stock) {
-            toast.error(`Only ${product.stock} units available`);
-            return prev;
-          }
-          toast.success('Cart updated with new variant! 🛒', { duration: 2000 });
-          return prev.map(i => i._id === existing._id
-            ? { ...i, price: incomingPrice, variantLabel: incomingVariantLabel, stock: product.stock, quantity }
-            : i
-          );
-        }
-
-        // Same variant — just increment quantity
+        // Same product AND same variant — just increase quantity
         const newQty = existing.quantity + quantity;
-        if (newQty > product.stock) {
-          toast.error(`Only ${product.stock} units available`);
+        if (newQty > existing.stock) {
+          toast.error(`Only ${existing.stock} units available`);
           return prev;
         }
         toast.success('Quantity updated!');
-        return prev.map(i => i._id === existing._id ? { ...i, quantity: newQty } : i);
+        return prev.map(i => i.cartItemId === cartItemId ? { ...i, quantity: newQty } : i);
       }
 
+      // No matching line item — add as a new entry (covers both new products and different variants)
       if (quantity > product.stock) {
         toast.error(`Only ${product.stock} units available`);
         return prev;
@@ -86,6 +93,7 @@ export const CartProvider = ({ children }) => {
 
       toast.success('Added to cart! 🛒', { duration: 2000 });
       return [...prev, {
+        cartItemId,                                          // ← composite unique key
         _id:          product._id,
         name:         product.name,
         price:        incomingPrice,
@@ -113,15 +121,19 @@ export const CartProvider = ({ children }) => {
     }
   }, [isLoggedIn]);
 
-  const removeFromCart = useCallback((productId) => {
-    setCartItems(prev => prev.filter(i => i._id !== productId));
+  // ── removeFromCart ────────────────────────────────────────
+  // Always pass cartItemId (not _id alone) — prevents removing all variants of a product
+  const removeFromCart = useCallback((cartItemId) => {
+    setCartItems(prev => prev.filter(i => i.cartItemId !== cartItemId));
     toast.success('Removed from cart');
   }, []);
 
-  const updateQuantity = useCallback((productId, quantity) => {
-    if (quantity <= 0) { removeFromCart(productId); return; }
+  // ── updateQuantity ────────────────────────────────────────
+  // Always pass cartItemId (not _id alone)
+  const updateQuantity = useCallback((cartItemId, quantity) => {
+    if (quantity <= 0) { removeFromCart(cartItemId); return; }
     setCartItems(prev => prev.map(item => {
-      if (item._id !== productId) return item;
+      if (item.cartItemId !== cartItemId) return item;
       if (quantity > item.stock) {
         toast.error(`Only ${item.stock} units available`);
         return item;
@@ -130,15 +142,19 @@ export const CartProvider = ({ children }) => {
     }));
   }, [removeFromCart]);
 
-  // Direct variant swap — bypasses addToCart's seller-match / variantChanged / stock checks.
-  // Called from VariantPickerModal so we always know exactly which item and new values to apply.
-  const updateItemVariant = useCallback((itemId, newPrice, newVariantLabel, newStock) => {
+  // ── updateItemVariant ─────────────────────────────────────
+  // Direct variant swap from VariantPickerModal.
+  // Pass cartItemId (not _id) to locate the correct line item.
+  // Updates cartItemId when variant label changes.
+  const updateItemVariant = useCallback((cartItemId, newPrice, newVariantLabel, newStock) => {
     setCartItems(prev => {
-      const idx = prev.findIndex(i => i._id === itemId);
-      if (idx === -1) return prev;                 // item not found — nothing to update
-      const updated = [...prev];
+      const idx = prev.findIndex(i => i.cartItemId === cartItemId);
+      if (idx === -1) return prev;
+      const updated   = [...prev];
+      const newCartId = makeCartItemId(updated[idx]._id, newVariantLabel);
       updated[idx] = {
         ...updated[idx],
+        cartItemId:   newCartId,
         price:        newPrice,
         variantLabel: newVariantLabel,
         stock:        newStock != null ? newStock : updated[idx].stock,
@@ -150,6 +166,7 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = useCallback(() => setCartItems([]), []);
 
+  // isInCart — checks if ANY variant of this product is in cart (used by ProductCard)
   const isInCart = useCallback((id) => cartItems.some(i => i._id === id), [cartItems]);
 
   // ── Derived values ─────────────────────────────────────
