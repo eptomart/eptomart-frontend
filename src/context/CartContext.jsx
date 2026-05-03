@@ -45,11 +45,30 @@ export const CartProvider = ({ children }) => {
   }, []);
 
   const addToCart = useCallback((product, quantity = 1) => {
+    const incomingPrice        = product.discountPrice || product.price;
+    const incomingVariantLabel = product.variantLabel || null;
+
     setCartItems(prev => {
       const existing = prev.find(i => i._id === product._id &&
         (!product.selectedSeller || i.seller?._id === product.selectedSeller?._id));
 
       if (existing) {
+        const variantChanged = incomingVariantLabel !== existing.variantLabel;
+
+        if (variantChanged) {
+          // Different variant selected — replace price, variant and reset to new quantity
+          if (quantity > product.stock) {
+            toast.error(`Only ${product.stock} units available`);
+            return prev;
+          }
+          toast.success('Cart updated with new variant! 🛒', { duration: 2000 });
+          return prev.map(i => i._id === existing._id
+            ? { ...i, price: incomingPrice, variantLabel: incomingVariantLabel, stock: product.stock, quantity }
+            : i
+          );
+        }
+
+        // Same variant — just increment quantity
         const newQty = existing.quantity + quantity;
         if (newQty > product.stock) {
           toast.error(`Only ${product.stock} units available`);
@@ -68,7 +87,7 @@ export const CartProvider = ({ children }) => {
       return [...prev, {
         _id:          product._id,
         name:         product.name,
-        price:        product.discountPrice || product.price,
+        price:        incomingPrice,
         originalPrice:product.price,
         image:        product.images?.[0]?.url || '',
         stock:        product.stock,
@@ -76,6 +95,7 @@ export const CartProvider = ({ children }) => {
         gstRate:      product.gstRate || 18,
         codAvailable: product.codAvailable !== false,
         seller:       product.selectedSeller || product.seller || null,
+        variantLabel: incomingVariantLabel,
         quantity,
       }];
     });
@@ -83,9 +103,11 @@ export const CartProvider = ({ children }) => {
     // Sync to server if logged in
     if (isLoggedIn) {
       api.post('/cart/add', {
-        productId: product._id,
-        sellerId:  product.selectedSeller?._id || product.seller?._id,
+        productId:    product._id,
+        sellerId:     product.selectedSeller?._id || product.seller?._id,
         quantity,
+        price:        incomingPrice,
+        variantLabel: incomingVariantLabel,
       }).catch(() => {});
     }
   }, [isLoggedIn]);
