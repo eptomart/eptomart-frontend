@@ -291,7 +291,10 @@ export default function Checkout() {
       if (paymentMethod === 'razorpay') {
         const paid = await handleRazorpayPayment(order._id);
         if (!paid) {
+          // Payment cancelled or failed — keep cart intact, go back to cart
+          toast.error('Payment was not completed. Your cart items are saved — try again when ready.', { duration: 5000 });
           setLoading(false);
+          navigate('/cart');
           return;
         }
         toast.success('Payment successful! Order confirmed 🎉');
