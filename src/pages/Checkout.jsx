@@ -689,7 +689,7 @@ export default function Checkout() {
 
               <button
                 onClick={handlePlaceOrder}
-                disabled={loading || checkoutItems.length === 0 || displayTotal === null}
+                disabled={loading || checkoutItems.length === 0 || (displayTotal === null && displaySubtotal + displayGst < 1499)}
                 className="btn-primary w-full disabled:opacity-60"
               >
                 {loading

@@ -24,6 +24,10 @@ export default function Cart() {
   const [loadingShipping, setLoadingShipping] = useState(false);
   const [variantPickerItem, setVariantPickerItem] = useState(null);
   const [lastPincode, setLastPincode] = useState('');
+  const [shippingPincode, setShippingPincode] = useState(''); // pincode currently used for calc
+
+  const FREE_SHIPPING_THRESHOLD = 1499;
+  const cartGrandExShipping = subtotalExGst + gstTotal;
 
   const handleQtyChange = async (cartItemId, newQty) => {
     // Just update quantity — the "Change" button already handles variant switching.
@@ -45,6 +49,16 @@ export default function Cart() {
 
   const fetchShipping = async (pincode, silent = false) => {
     if (!pincode || pincode.length !== 6) return;
+
+    // Free shipping threshold — skip Shiprocket call entirely
+    if (cartGrandExShipping >= FREE_SHIPPING_THRESHOLD) {
+      setShippingRate(0);
+      setShippingPincode(pincode);
+      setLastPincode(pincode);
+      if (!silent) toast.success('🎉 Free shipping on orders above ₹1,499!');
+      return;
+    }
+
     setLastPincode(pincode);
     setLoadingShipping(true);
     try {
@@ -55,29 +69,33 @@ export default function Cart() {
                  : data.shippingRate    != null ? data.shippingRate
                  : null;
       setShippingRate(rate);
+      setShippingPincode(pincode);
       if (!silent) {
-        if (rate === null) toast('Shipping will be calculated at checkout', { icon: 'ℹ️' });
-        else toast.success(`Shipping: ${rate === 0 ? 'FREE' : formatINR(rate)}`);
+        if (rate === null) toast('Could not get rate — try again at checkout', { icon: 'ℹ️' });
+        else toast.success(`Shipping to ${pincode}: ${rate === 0 ? 'FREE' : formatINR(rate)}`);
       }
     } catch {
-      if (!silent) toast.error('Could not calculate shipping — enter pincode at checkout');
+      if (!silent) toast.error('Could not calculate shipping');
     } finally {
       setLoadingShipping(false);
     }
   };
 
-  // Auto-fetch on mount if user has saved address
+  // Auto-fetch on mount if user has saved address — pre-fill pincode input too
   useEffect(() => {
     if (user?.addresses?.length > 0) {
       const addr = user.addresses.find(a => a.isDefault) || user.addresses[0];
-      if (addr?.pincode) fetchShipping(addr.pincode);
+      if (addr?.pincode) {
+        setPincodeInput(addr.pincode);
+        fetchShipping(addr.pincode);
+      }
     }
   }, [user]);
 
-  // Re-fetch silently when quantity changes (weight changes → rate changes)
+  // Re-fetch silently when qty or cart total changes (weight & free-threshold both change)
   useEffect(() => {
     if (lastPincode.length === 6) fetchShipping(lastPincode, true);
-  }, [cartCount]);
+  }, [cartCount, cartGrandExShipping]);
 
   const handleCalculateShipping = async () => {
     if (!pincodeInput || pincodeInput.length !== 6) {
@@ -85,7 +103,6 @@ export default function Cart() {
       return;
     }
     await fetchShipping(pincodeInput);
-    setPincodeInput('');
   };
 
   if (cartCount === 0) {
@@ -203,29 +220,48 @@ export default function Cart() {
 
             {/* Shipping calculator */}
             <div className="card p-4">
-              <h3 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
-                <FiTruck size={14} /> Calculate Shipping
+              <h3 className="font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
+                <FiTruck size={14} /> Delivery Charges
               </h3>
-              {user?.addresses?.length > 0 ? (
-                <p className="text-xs text-gray-500 mb-2">Your default address shipping is being calculated...</p>
+
+              {/* Free shipping banner */}
+              {cartGrandExShipping >= FREE_SHIPPING_THRESHOLD ? (
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-2 text-sm text-green-700 font-medium">
+                  🎉 You qualify for <strong>FREE shipping</strong> (orders above ₹1,499)
+                </div>
               ) : (
-                <div className="flex gap-2">
+                <p className="text-xs text-gray-400 mb-2">
+                  Add items worth {formatINR(FREE_SHIPPING_THRESHOLD - cartGrandExShipping)} more for free shipping
+                </p>
+              )}
+
+              {/* Pincode input — always visible, pre-filled from address */}
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
                   <input
                     type="text"
                     maxLength="6"
-                    placeholder="Enter 6-digit pincode"
+                    placeholder="Enter delivery pincode"
                     value={pincodeInput}
                     onChange={(e) => setPincodeInput(e.target.value.replace(/\D/g, ''))}
-                    className="input-field flex-1 text-sm"
+                    className="input-field w-full text-sm"
                   />
-                  <button
-                    onClick={handleCalculateShipping}
-                    disabled={loadingShipping || pincodeInput.length !== 6}
-                    className="btn-primary text-sm px-4 disabled:opacity-60"
-                  >
-                    {loadingShipping ? <FiLoader size={14} className="animate-spin" /> : 'Calculate'}
-                  </button>
+                  {shippingPincode && pincodeInput === shippingPincode && (
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-green-600 font-medium">✓ calculated</span>
+                  )}
                 </div>
+                <button
+                  onClick={handleCalculateShipping}
+                  disabled={loadingShipping || pincodeInput.length !== 6}
+                  className="btn-primary text-sm px-4 disabled:opacity-60 whitespace-nowrap"
+                >
+                  {loadingShipping ? <FiLoader size={14} className="animate-spin" /> : 'Check'}
+                </button>
+              </div>
+              {shippingPincode && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Showing charges for <strong>{shippingPincode}</strong> · Change pincode above to recalculate
+                </p>
               )}
             </div>
           </div>
