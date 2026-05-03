@@ -360,9 +360,12 @@ function PackagingUploadSection({ order, onPackagingUpdated }) {
 // ── Main component ────────────────────────────────────────
 export default function SellerOrders() {
   const [orders,     setOrders]     = useState([]);
+  const [pendingPaymentOrders, setPendingPaymentOrders] = useState([]);
   const [loading,    setLoading]    = useState(true);
+  const [pendingPaymentLoading, setPendingPaymentLoading] = useState(false);
   const [expanded,   setExpanded]   = useState({});
   const [modalOrder, setModalOrder] = useState(null); // order to confirm
+  const [activeTab,  setActiveTab]  = useState('all'); // 'all' or 'pending-payments'
 
   useEffect(() => {
     api.get('/orders/seller/mine')
@@ -370,6 +373,21 @@ export default function SellerOrders() {
       .catch(() => toast.error('Failed to load orders'))
       .finally(() => setLoading(false));
   }, []);
+
+  // Fetch pending payment orders
+  const fetchPendingPaymentOrders = () => {
+    setPendingPaymentLoading(true);
+    api.get('/orders/pending-payments')
+      .then(r => setPendingPaymentOrders(r.data.orders || []))
+      .catch(() => toast.error('Failed to load pending payment orders'))
+      .finally(() => setPendingPaymentLoading(false));
+  };
+
+  useEffect(() => {
+    if (activeTab === 'pending-payments') {
+      fetchPendingPaymentOrders();
+    }
+  }, [activeTab]);
 
   const toggleExpand = (id) => setExpanded(e => ({ ...e, [id]: !e[id] }));
 
@@ -385,6 +403,25 @@ export default function SellerOrders() {
     ));
   };
 
+  const handleCancelOrder = async (orderId, orderNum) => {
+    if (!confirm(`Are you sure you want to cancel order #${orderNum}? This will initiate a refund.`)) {
+      return;
+    }
+
+    try {
+      const { data } = await api.put(`/orders/${orderId}/cancel`, {
+        reason: 'Cancelled by seller - payment pending',
+      });
+      toast.success('Order cancelled. Customer will be refunded.');
+      // Remove from pending payments list
+      setPendingPaymentOrders(prev => prev.filter(o => o._id !== orderId));
+      // Update main orders list
+      setOrders(prev => prev.filter(o => o._id !== orderId));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel order');
+    }
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center h-48">
       <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"/>
@@ -392,6 +429,8 @@ export default function SellerOrders() {
   );
 
   const pendingCount = orders.filter(o => o.orderStatus === 'placed').length;
+  const displayOrders = activeTab === 'all' ? orders : pendingPaymentOrders;
+  const displayLoading = activeTab === 'all' ? loading : pendingPaymentLoading;
 
   return (
     <div>
@@ -404,24 +443,50 @@ export default function SellerOrders() {
         />
       )}
 
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-gray-800">My Orders</h2>
-        {pendingCount > 0 && (
-          <span className="bg-yellow-100 text-yellow-700 text-sm font-semibold px-3 py-1 rounded-full">
-            {pendingCount} pending confirmation
-          </span>
-        )}
+      <div className="mb-6">
+        <h2 className="text-xl font-bold text-gray-800 mb-4">My Orders</h2>
+
+        {/* Tab bar */}
+        <div className="flex gap-2 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${
+              activeTab === 'all'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            All Orders {orders.length > 0 && pendingCount > 0 && `(${pendingCount} pending)`}
+          </button>
+          <button
+            onClick={() => setActiveTab('pending-payments')}
+            className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${
+              activeTab === 'pending-payments'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            Pending Payments {pendingPaymentOrders.length > 0 && `(${pendingPaymentOrders.length})`}
+          </button>
+        </div>
       </div>
 
-      {orders.length === 0 ? (
+      {displayLoading ? (
+        <div className="flex items-center justify-center h-48">
+          <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"/>
+        </div>
+      ) : displayOrders.length === 0 ? (
         <div className="card p-12 text-center text-gray-400">
           <FiPackage size={40} className="mx-auto mb-3 opacity-40" />
-          <p>No orders yet</p>
+          <p>{activeTab === 'all' ? 'No orders yet' : 'No pending payment orders'}</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {orders.map(o => (
-            <div key={o._id} className={`card overflow-hidden ${o.orderStatus === 'placed' ? 'border-2 border-yellow-300' : ''}`}>
+          {displayOrders.map(o => (
+            <div key={o._id} className={`card overflow-hidden ${
+              o.orderStatus === 'placed' ? 'border-2 border-yellow-300' :
+              activeTab === 'pending-payments' ? 'border-2 border-orange-300' : ''
+            }`}>
               {/* Order header row */}
               <div className="p-4 flex flex-wrap items-center gap-3">
                 <div className="flex-1 min-w-0">
@@ -430,6 +495,11 @@ export default function SellerOrders() {
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[o.orderStatus] || 'bg-gray-100 text-gray-600'}`}>
                       {o.orderStatus}
                     </span>
+                    {activeTab === 'pending-payments' && (
+                      <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">
+                        💳 Payment Pending
+                      </span>
+                    )}
                     {o.orderStatus === 'placed' && (
                       <span className="text-xs bg-yellow-50 text-yellow-600 px-2 py-0.5 rounded-full border border-yellow-200 animate-pulse">
                         ⏳ Awaiting your confirmation
@@ -458,13 +528,24 @@ export default function SellerOrders() {
                   </div>
 
                   {/* Confirm button — only for 'placed' orders */}
-                  {o.orderStatus === 'placed' && (
+                  {o.orderStatus === 'placed' && activeTab === 'all' && (
                     <button
                       onClick={() => setModalOrder(o)}
                       className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all"
                     >
                       <FiCheckCircle size={15} />
                       Confirm Order
+                    </button>
+                  )}
+
+                  {/* Cancel button — for pending payment orders */}
+                  {activeTab === 'pending-payments' && (
+                    <button
+                      onClick={() => handleCancelOrder(o._id, o.orderId)}
+                      className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all"
+                    >
+                      <FiX size={15} />
+                      Mark as Cancelled
                     </button>
                   )}
 

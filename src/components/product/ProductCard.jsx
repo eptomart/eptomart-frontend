@@ -26,6 +26,10 @@ export default function ProductCard({ product }) {
   const inWishlist  = isInWishlist(product._id);
   const inCompare   = isInCompare(product._id);
   const discount    = getDiscountPercent(price, discountPrice);
+  // For variant products show "From ₹X" using lowest variant price; otherwise use product price
+  const pricedVariants = (product.variants || []).filter(v => v.price != null && v.price > 0);
+  const hasVariantPrices = pricedVariants.length > 0;
+  const lowestVariantPrice = hasVariantPrices ? Math.min(...pricedVariants.map(v => v.price)) : null;
   const effectivePrice = discountPrice || price;
   const mainImage   = imgCard(images?.[0]?.url) || 'https://via.placeholder.com/300x300?text=No+Image';
   const isUnavailable = product.isActive === false;
@@ -139,8 +143,16 @@ export default function ProductCard({ product }) {
         )}
 
         <div className="flex items-baseline gap-2 mb-2">
-          <span className="font-bold text-gray-900 text-base">{formatINR(effectivePrice)}</span>
-          {discount > 0 && <span className="text-xs text-gray-400 line-through">{formatINR(price)}</span>}
+          {hasVariantPrices ? (
+            <span className="font-bold text-gray-900 text-base">
+              From {formatINR(lowestVariantPrice)}
+            </span>
+          ) : (
+            <>
+              <span className="font-bold text-gray-900 text-base">{formatINR(effectivePrice)}</span>
+              {discount > 0 && <span className="text-xs text-gray-400 line-through">{formatINR(price)}</span>}
+            </>
+          )}
         </div>
 
         {/* Variant chips */}

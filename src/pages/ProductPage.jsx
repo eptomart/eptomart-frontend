@@ -21,6 +21,7 @@ import { useCompare } from '../context/CompareContext';
 import { formatINR, getDiscountPercent, formatDate } from '../utils/currency';
 import { extractBasePrice } from '../utils/gst';
 import api from '../utils/api';
+import toast from 'react-hot-toast';
 
 export default function ProductPage() {
   const { slug }  = useParams();
@@ -67,9 +68,29 @@ export default function ProductPage() {
 
   const isUnavailable  = product.isActive === false;
   const activeSeller   = selectedSeller || null;
-  const activePrice    = selectedVariant?.price || activeSeller?.product?.price || product.discountPrice || product.price;
-  const activeStock    = selectedVariant?.stock ?? activeSeller?.product?.stock ?? product.stock;
   const activeGstRate  = activeSeller?.product?.gstRate || product.gstRate || 18;
+
+  // ── Variant logic ─────────────────────────────────────────
+  const hasVariants   = product.variants?.length > 0;
+  // Variants that carry their own price — the ones the buyer must choose
+  const pricedVariants = hasVariants
+    ? product.variants.filter(v => v.price != null && v.price > 0)
+    : [];
+  const requireVariantSelect = pricedVariants.length > 0;  // block cart if true and none selected
+
+  // Lowest priced variant (for "From ₹X" display)
+  const lowestVariantPrice = requireVariantSelect
+    ? Math.min(...pricedVariants.map(v => v.price))
+    : null;
+
+  // Active price: variant price takes priority; then seller price; then product price
+  const activePrice =
+    selectedVariant?.price                          // selected variant with explicit price
+    || activeSeller?.product?.price                 // selected alt-seller price
+    || product.discountPrice                        // product-level discount
+    || product.price;                               // product base price
+
+  const activeStock    = selectedVariant?.stock ?? activeSeller?.product?.stock ?? product.stock;
   const priceExGst     = extractBasePrice(activePrice, activeGstRate);
   const gstAmount      = priceExGst * activeGstRate / 100;
   const discount       = getDiscountPercent(product.price, activePrice);
@@ -82,9 +103,14 @@ export default function ProductPage() {
     : null;
 
   const handleAddToCart = () => {
+    // Block if product has priced variants and none is selected
+    if (requireVariantSelect && !selectedVariant) {
+      toast.error('Please select a variant before adding to cart');
+      return;
+    }
     addToCart({
       ...product,
-      discountPrice: activePrice,
+      discountPrice: activePrice,   // always the correct variant/seller/product price
       selectedSeller: activeSeller?.seller,
       gstRate: activeGstRate,
       ...(variantLabel ? { variantLabel } : {}),
@@ -92,6 +118,10 @@ export default function ProductPage() {
   };
 
   const handleBuyNow = () => {
+    if (requireVariantSelect && !selectedVariant) {
+      toast.error('Please select a variant before buying');
+      return;
+    }
     navigate('/checkout', {
       state: {
         buyNow: {
@@ -207,19 +237,30 @@ export default function ProductPage() {
             {/* Price + GST */}
             <div className="mb-4">
               <div className="flex items-baseline gap-3 mb-1">
-                <span className="text-3xl font-bold text-gray-900">{formatINR(activePrice)}</span>
-                {discount > 0 && (
-                  <span className="text-lg text-gray-400 line-through">{formatINR(product.price)}</span>
+                {requireVariantSelect && !selectedVariant ? (
+                  // No variant selected yet — show "From ₹X"
+                  <span className="text-3xl font-bold text-gray-900">
+                    From {formatINR(lowestVariantPrice)}
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-3xl font-bold text-gray-900">{formatINR(activePrice)}</span>
+                    {discount > 0 && (
+                      <span className="text-lg text-gray-400 line-through">{formatINR(product.price)}</span>
+                    )}
+                  </>
                 )}
               </div>
-              <div className="text-xs text-gray-500 flex items-center gap-1">
-                <FiInfo size={11} />
-                <span>
-                  ₹{priceExGst.toFixed(2)} + {activeGstRate}% GST (₹{gstAmount.toFixed(2)})
-                  {' = '}
-                  <span className="font-medium text-gray-700">₹{activePrice.toFixed(2)} incl. GST</span>
-                </span>
-              </div>
+              {(!requireVariantSelect || selectedVariant) && (
+                <div className="text-xs text-gray-500 flex items-center gap-1">
+                  <FiInfo size={11} />
+                  <span>
+                    ₹{priceExGst.toFixed(2)} + {activeGstRate}% GST (₹{gstAmount.toFixed(2)})
+                    {' = '}
+                    <span className="font-medium text-gray-700">₹{activePrice.toFixed(2)} incl. GST</span>
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Seller info — Amazon-style banner */}
@@ -269,25 +310,44 @@ export default function ProductPage() {
             )}
 
             {/* Variant Selector */}
-            {product.variants?.length > 0 && (
+            {hasVariants && (
               <div className="mb-4">
-                <p className="text-sm font-semibold text-gray-700 mb-2">Options</p>
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-sm font-semibold text-gray-700">
+                    {requireVariantSelect ? 'Select Option' : 'Options'}
+                    {requireVariantSelect && <span className="text-red-500 ml-0.5">*</span>}
+                  </p>
+                  {requireVariantSelect && !selectedVariant && (
+                    <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full font-medium">
+                      Required — select to see price
+                    </span>
+                  )}
+                  {selectedVariant && (
+                    <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full font-medium">
+                      ✓ {variantLabel} — {formatINR(selectedVariant.price || activePrice)}
+                    </span>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {product.variants.map((v, i) => {
-                    const isSelected = selectedVariant?._id === v._id || (selectedVariant && !v._id && selectedVariant.label === v.label && selectedVariant.value === v.value);
-                    const outOfStock = v.stock === 0;
+                    const isSelected = selectedVariant?._id === v._id ||
+                      (selectedVariant && !v._id && selectedVariant.label === v.label && selectedVariant.value === v.value);
+                    const outOfStock = (v.stock != null && v.stock === 0);
                     const displayLabel = [v.label, v.value ? `${v.value}${v.unit || ''}` : null].filter(Boolean).join(' – ');
                     return (
                       <button
                         key={i}
-                        onClick={() => setSelectedVariant(isSelected ? null : v)}
+                        onClick={() => { if (!outOfStock) setSelectedVariant(v); }}
                         disabled={outOfStock}
                         className={`px-3 py-1.5 text-sm rounded-xl border-2 font-medium transition-all
-                          ${isSelected ? 'border-primary-500 bg-orange-50 text-primary-700' : 'border-gray-200 hover:border-gray-300 text-gray-700'}
+                          ${isSelected
+                            ? 'border-primary-500 bg-orange-50 text-primary-700 ring-2 ring-primary-200'
+                            : 'border-gray-200 hover:border-primary-400 text-gray-700'}
                           ${outOfStock ? 'opacity-40 cursor-not-allowed line-through' : 'cursor-pointer'}`}
                       >
                         {displayLabel}
                         {v.price ? <span className="ml-1 text-xs font-normal opacity-75">· {formatINR(v.price)}</span> : null}
+                        {outOfStock && <span className="ml-1 text-[10px] text-red-400">OOS</span>}
                       </button>
                     );
                   })}
@@ -319,10 +379,19 @@ export default function ProductPage() {
                 </button>
               </div>
 
-              <button onClick={handleAddToCart} disabled={activeStock === 0 || isUnavailable}
-                className={`btn-primary flex-1 flex items-center justify-center gap-2 min-w-[140px] ${isUnavailable ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              <button
+                onClick={handleAddToCart}
+                disabled={activeStock === 0 || isUnavailable}
+                className={`btn-primary flex-1 flex items-center justify-center gap-2 min-w-[140px]
+                  ${(isUnavailable || activeStock === 0) ? 'opacity-50 cursor-not-allowed' : ''}
+                  ${(requireVariantSelect && !selectedVariant) ? 'bg-gray-400 hover:bg-gray-500' : ''}`}
+              >
                 <FiShoppingCart size={16} />
-                {isUnavailable ? 'Not Available' : inCart ? 'Add More' : 'Add to Cart'}
+                {isUnavailable
+                  ? 'Not Available'
+                  : (requireVariantSelect && !selectedVariant)
+                    ? 'Select a Variant First'
+                    : inCart ? 'Add More' : 'Add to Cart'}
               </button>
 
               <button onClick={() => toggleWishlist(product)}
@@ -338,9 +407,14 @@ export default function ProductPage() {
               </button>
             </div>
 
-            <button onClick={handleBuyNow} disabled={activeStock === 0 || isUnavailable}
-              className={`btn-primary w-full mb-4 ${isUnavailable ? 'opacity-50 cursor-not-allowed' : ''}`}>
-              ⚡ Buy Now
+            <button
+              onClick={handleBuyNow}
+              disabled={activeStock === 0 || isUnavailable}
+              className={`btn-primary w-full mb-4
+                ${(isUnavailable || activeStock === 0) ? 'opacity-50 cursor-not-allowed' : ''}
+                ${(requireVariantSelect && !selectedVariant) ? 'bg-gray-400 hover:bg-gray-500' : ''}`}
+            >
+              {(requireVariantSelect && !selectedVariant) ? '⚡ Select Variant to Buy' : '⚡ Buy Now'}
             </button>
 
             {/* Delivery Estimate */}

@@ -3,7 +3,7 @@
 // ============================================
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { FiChevronDown, FiChevronUp, FiTruck, FiRefreshCw, FiMapPin, FiCheckCircle, FiXCircle, FiAlertTriangle, FiDownload, FiFileText, FiTag, FiPackage, FiImage, FiUploadCloud, FiDollarSign, FiExternalLink } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiTruck, FiRefreshCw, FiMapPin, FiCheckCircle, FiXCircle, FiAlertTriangle, FiDownload, FiFileText, FiTag, FiPackage, FiImage, FiUploadCloud, FiDollarSign, FiExternalLink, FiX } from 'react-icons/fi';
 import Loader from '../../components/common/Loader';
 import { formatINR, formatDate } from '../../utils/currency';
 import api from '../../utils/api';
@@ -969,14 +969,17 @@ function orderSellers(order) {
 // ── Main component ───────────────────────────────────────
 export default function AdminOrders() {
   const [orders,        setOrders]        = useState([]);
+  const [pendingPaymentOrders, setPendingPaymentOrders] = useState([]);
   const [sellers,       setSellers]       = useState([]);
   const [loading,       setLoading]       = useState(true);
+  const [pendingPaymentLoading, setPendingPaymentLoading] = useState(false);
   const [expanded,      setExpanded]      = useState(null);
   const [statusFilter,  setStatusFilter]  = useState('');
   const [sellerFilter,  setSellerFilter]  = useState('');
   const [page,          setPage]          = useState(1);
   const [totalPages,    setTotalPages]    = useState(1);
   const [total,         setTotal]         = useState(0);
+  const [activeTab,     setActiveTab]     = useState('all');
 
   // Load sellers list for filter dropdown
   useEffect(() => {
@@ -999,16 +1002,54 @@ export default function AdminOrders() {
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
+  const fetchPendingPaymentOrders = useCallback(async () => {
+    setPendingPaymentLoading(true);
+    try {
+      const { data } = await api.get(`/admin/orders/pending-payments?page=${page}&limit=15`);
+      setPendingPaymentOrders(data.orders || []);
+      setTotalPages(data.totalPages || 1);
+      setTotal(data.total || 0);
+    } catch (err) { console.error(err); }
+    finally { setPendingPaymentLoading(false); }
+  }, [page]);
+
+  useEffect(() => {
+    if (activeTab === 'pending-payments') {
+      fetchPendingPaymentOrders();
+    }
+  }, [activeTab, fetchPendingPaymentOrders]);
+
   const updateStatus = async (orderId, updates) => {
     try {
       await api.put(`/admin/orders/${orderId}/status`, updates);
       toast.success('Order updated');
-      fetchOrders();
+      if (activeTab === 'all') {
+        fetchOrders();
+      } else {
+        fetchPendingPaymentOrders();
+      }
     } catch { toast.error('Failed to update order'); }
+  };
+
+  const handleCancelOrder = async (orderId, orderNum) => {
+    if (!confirm(`Cancel order #${orderNum} and initiate refund?`)) return;
+    try {
+      await api.post(`/admin/orders/${orderId}/cancel-refund`);
+      toast.success('Order cancelled and refund initiated');
+      if (activeTab === 'pending-payments') {
+        setPendingPaymentOrders(prev => prev.filter(o => o._id !== orderId));
+      } else {
+        fetchOrders();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel order');
+    }
   };
 
   const resetFilters = () => { setStatusFilter(''); setSellerFilter(''); setPage(1); };
   const hasFilter    = statusFilter || sellerFilter;
+  const displayOrders = activeTab === 'all' ? orders : pendingPaymentOrders;
+  const displayLoading = activeTab === 'all' ? loading : pendingPaymentLoading;
 
   return (
     <>
@@ -1016,12 +1057,39 @@ export default function AdminOrders() {
 
       <div className="space-y-5">
 
-        {/* ── Header + Filters ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-gray-800">Orders</h1>
-            <p className="text-xs text-gray-400 mt-0.5">{total} total orders</p>
+        {/* ── Header ── */}
+        <div>
+          <h1 className="text-xl font-bold text-gray-800">Orders</h1>
+          <p className="text-xs text-gray-400 mt-0.5">{total} total orders</p>
+
+          {/* Tab bar */}
+          <div className="flex gap-2 border-b border-gray-200 mt-4">
+            <button
+              onClick={() => { setActiveTab('all'); setPage(1); }}
+              className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${
+                activeTab === 'all'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              All Orders
+            </button>
+            <button
+              onClick={() => { setActiveTab('pending-payments'); setPage(1); }}
+              className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${
+                activeTab === 'pending-payments'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Pending Payments {pendingPaymentOrders.length > 0 && `(${pendingPaymentOrders.length})`}
+            </button>
           </div>
+        </div>
+
+        {/* ── Filters ── */}
+        {activeTab === 'all' && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {/* Status filter */}
             <select value={statusFilter}
@@ -1055,9 +1123,10 @@ export default function AdminOrders() {
             </button>
           </div>
         </div>
+        )}
 
         {/* ── Active filter pills ── */}
-        {hasFilter && (
+        {activeTab === 'all' && hasFilter && (
           <div className="flex flex-wrap gap-2">
             {statusFilter && (
               <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full ${STATUS_CFG[statusFilter]?.pill || 'bg-gray-100 text-gray-600'}`}>
@@ -1075,14 +1144,14 @@ export default function AdminOrders() {
         )}
 
         {/* ── Order Cards ── */}
-        {loading ? <Loader fullPage={false} /> : (
+        {displayLoading ? <Loader fullPage={false} /> : (
           <div className="space-y-3">
-            {orders.map(order => {
+            {displayOrders.map(order => {
               const cfg      = STATUS_CFG[order.orderStatus] || STATUS_CFG.placed;
               const isOpen   = expanded === order._id;
-              const sellers_ = orderSellers(order);
-              const needsPkgReview = order.packaging?.status === 'pending_review';
-              const needsPickup    = order.sellerPickup?.addressId && !order.sellerPickup?.adminAcknowledged;
+              const sellers_ = activeTab === 'all' ? orderSellers(order) : [];
+              const needsPkgReview = activeTab === 'all' && order.packaging?.status === 'pending_review';
+              const needsPickup    = activeTab === 'all' && order.sellerPickup?.addressId && !order.sellerPickup?.adminAcknowledged;
 
               return (
                 <div key={order._id}
@@ -1133,6 +1202,11 @@ export default function AdminOrders() {
                           order.paymentStatus === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                           {order.paymentStatus} · {order.paymentMethod?.toUpperCase()}
                         </span>
+                        {activeTab === 'pending-payments' && (
+                          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">
+                            💳 Payment Pending
+                          </span>
+                        )}
                         {order.shiprocket?.awb && (
                           <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full flex items-center gap-1 font-mono">
                             <FiTruck size={10} /> {order.shiprocket.awb}
@@ -1312,9 +1386,19 @@ export default function AdminOrders() {
                           </p>
                         </div>
 
-                        {/* Cancel & refund */}
+                        {/* Cancel & refund / Pending Payment Cancel */}
                         <div className="flex justify-end">
-                          <CancelRefundButton order={order} onDone={fetchOrders} />
+                          {activeTab === 'pending-payments' ? (
+                            <button
+                              onClick={() => handleCancelOrder(order._id, order.orderId)}
+                              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-5 rounded-xl transition-all"
+                            >
+                              <FiX size={15} />
+                              Cancel Order & Refund
+                            </button>
+                          ) : (
+                            <CancelRefundButton order={order} onDone={fetchOrders} />
+                          )}
                         </div>
                       </div>
                     </div>
