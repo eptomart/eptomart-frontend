@@ -930,17 +930,6 @@ function InvoiceActionsPanel({ order }) {
           Admin Summary
         </button>
 
-        {/* Shipping Label */}
-        <button
-          onClick={() => dl('label', `/invoices/admin/order/${id}/shipping-label`, `shipping-label-${oid}.pdf`, 'Shipping Label')}
-          disabled={loading.label}
-          className="flex items-center gap-1.5 text-xs font-medium text-orange-700 bg-orange-50 border border-orange-200 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition-all disabled:opacity-60"
-        >
-          {loading.label
-            ? <span className="w-3 h-3 border-2 border-orange-400/40 border-t-orange-600 rounded-full animate-spin" />
-            : <FiTag size={12} />}
-          Shipping Label
-        </button>
       </div>
     </div>
   );

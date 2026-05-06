@@ -48,11 +48,11 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               {[
                 { label: 'Contact Us', href: '/contact' },
-                { label: 'FAQ',              href: '#' },
-                { label: 'Shipping Policy',  href: '#' },
-                { label: 'Return Policy',    href: '#' },
-                { label: 'Privacy Policy',   href: '#' },
-                { label: 'Terms of Service', href: '#' },
+                { label: 'FAQ',              href: '/faq' },
+                { label: 'Shipping Policy',  href: '/shipping-policy' },
+                { label: 'Return Policy',    href: '/return-policy' },
+                { label: 'Privacy Policy',   href: '/privacy-policy' },
+                { label: 'Terms of Service', href: '/terms-of-service' },
               ].map(item => (
                 <li key={item.label}>
                   <Link to={item.href} className="transition-colors hover:text-orange-400">{item.label}</Link>

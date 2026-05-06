@@ -22,6 +22,11 @@ const Wishlist       = lazy(() => import('./pages/Wishlist'));
 const Compare        = lazy(() => import('./pages/Compare'));
 const Contact        = lazy(() => import('./pages/Contact'));
 const About          = lazy(() => import('./pages/About'));
+const FAQ            = lazy(() => import('./pages/FAQ'));
+const ShippingPolicy = lazy(() => import('./pages/ShippingPolicy'));
+const ReturnPolicy   = lazy(() => import('./pages/ReturnPolicy'));
+const PrivacyPolicy  = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const ProductPreview = lazy(() => import('./pages/ProductPreview'));
 const InvoiceView    = lazy(() => import('./pages/invoice/InvoiceView'));
 
@@ -89,8 +94,13 @@ function AppRoutes() {
           <Route path="/cart"          element={<Cart />} />
           <Route path="/login"         element={<Login />} />
           <Route path="/compare"       element={<Compare />} />
-          <Route path="/contact"       element={<Contact />} />
-          <Route path="/about"         element={<About />} />
+          <Route path="/contact"         element={<Contact />} />
+          <Route path="/about"           element={<About />} />
+          <Route path="/faq"             element={<FAQ />} />
+          <Route path="/shipping-policy" element={<ShippingPolicy />} />
+          <Route path="/return-policy"   element={<ReturnPolicy />} />
+          <Route path="/privacy-policy"  element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service"element={<TermsOfService />} />
           {/* Product preview — requires seller/admin login */}
           <Route path="/preview/:id"   element={<ProtectedRoute><ProductPreview /></ProtectedRoute>} />
 

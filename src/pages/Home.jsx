@@ -102,27 +102,27 @@ function HeroCarousel() {
       <div className="absolute -right-20 -top-20 w-72 h-72 rounded-full opacity-20 bg-white" />
       <div className="absolute -left-10 -bottom-16 w-56 h-56 rounded-full opacity-10 bg-white" />
 
-      <div className="max-w-7xl mx-auto px-4 py-14 md:py-20 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:py-10 md:py-20 relative z-10">
         <div className="max-w-2xl">
-          <span className="inline-block bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
+          <span className="inline-block bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full mb-2 sm:mb-3">
             {slide.tag}
           </span>
-          <h1 className="text-3xl md:text-5xl font-extrabold mb-4 leading-tight whitespace-pre-line drop-shadow">
+          <h1 className="text-2xl sm:text-3xl md:text-5xl font-extrabold mb-2 sm:mb-4 leading-tight whitespace-pre-line drop-shadow">
             {slide.headline}
           </h1>
-          <p className="text-white/80 text-base md:text-lg mb-8 max-w-lg">
+          <p className="hidden sm:block text-white/80 text-base md:text-lg mb-6 max-w-lg">
             {slide.sub}
           </p>
-          <div className="flex gap-3 flex-wrap">
+          <div className="flex gap-2 sm:gap-3 flex-wrap">
             <Link
               to={slide.cta.to}
-              className="bg-white text-gray-900 font-bold py-3 px-8 rounded-xl hover:bg-orange-50 transition-all shadow-lg hover:shadow-xl inline-flex items-center gap-2 active:scale-95"
+              className="bg-white text-gray-900 font-bold py-2 px-5 sm:py-3 sm:px-8 rounded-xl hover:bg-orange-50 transition-all shadow-lg hover:shadow-xl inline-flex items-center gap-2 active:scale-95 text-sm sm:text-base"
             >
               {slide.cta.label} <FiArrowRight />
             </Link>
             <Link
               to={slide.cta2.to}
-              className="border-2 border-white/60 text-white font-semibold py-3 px-8 rounded-xl hover:bg-white/10 transition-all active:scale-95"
+              className="border-2 border-white/60 text-white font-semibold py-2 px-5 sm:py-3 sm:px-8 rounded-xl hover:bg-white/10 transition-all active:scale-95 text-sm sm:text-base"
             >
               {slide.cta2.label}
             </Link>

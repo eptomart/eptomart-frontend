@@ -277,9 +277,15 @@ export default function Orders() {
                     )}
 
                     {['placed', 'confirmed'].includes(order.orderStatus) && (
-                      <button onClick={() => cancelOrder(order._id)} className="mt-3 text-sm text-red-500 hover:underline">
-                        Cancel Order
-                      </button>
+                      order.paymentStatus === 'pending' ? (
+                        <p className="mt-3 text-xs text-gray-400 italic">
+                          Cancellation unavailable — payment not yet completed.
+                        </p>
+                      ) : (
+                        <button onClick={() => cancelOrder(order._id)} className="mt-3 text-sm text-red-500 hover:underline">
+                          Cancel Order
+                        </button>
+                      )
                     )}
                   </div>
                 )}
