@@ -22,6 +22,12 @@ export default function AdminProducts() {
   const [saving, setSaving] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+
+  // ── Filters ───────────────────────────────────────────────────────────────
+  const [filterStatus,   setFilterStatus]   = useState('');  // approvalStatus
+  const [filterSeller,   setFilterSeller]   = useState('');  // seller _id
+  const [filterActive,   setFilterActive]   = useState('');  // 'true' | 'false' | ''
 
   const [form, setForm] = useState({
     name: '', description: '', shortDescription: '', price: '',
@@ -46,16 +52,36 @@ export default function AdminProducts() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/products/admin/all?page=${page}&limit=15&${search ? `search=${search}` : ''}`);
+      const params = new URLSearchParams({ page, limit: 15 });
+      if (search)        params.set('search',         search);
+      if (filterStatus)  params.set('approvalStatus', filterStatus);
+      if (filterSeller)  params.set('seller',         filterSeller);
+      if (filterActive !== '') params.set('isActive', filterActive);
+      const { data } = await api.get(`/products/admin/all?${params.toString()}`);
       setProducts(data.products || []);
       setTotalPages(data.totalPages || 1);
+      setTotal(data.total || 0);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
 
   useEffect(() => {
+    setPage(1); // reset to page 1 when filters change
+  }, [search, filterStatus, filterSeller, filterActive]);
+
+  useEffect(() => {
     fetchProducts();
-  }, [page, search]);
+  }, [page, search, filterStatus, filterSeller, filterActive]);
+
+  const clearFilters = () => {
+    setSearch('');
+    setFilterStatus('');
+    setFilterSeller('');
+    setFilterActive('');
+    setPage(1);
+  };
+
+  const hasActiveFilters = search || filterStatus || filterSeller || filterActive !== '';
 
   useEffect(() => {
     api.get('/categories').then(res => setCategories(res.data.categories || []));
@@ -252,22 +278,86 @@ export default function AdminProducts() {
       <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-gray-800">Products ({products.length})</h1>
+          <h1 className="text-xl font-bold text-gray-800">
+            Products <span className="text-gray-400 font-normal text-base">({total})</span>
+          </h1>
           <button onClick={openAdd} className="btn-primary btn-sm flex items-center gap-2">
             <FiPlus /> Add Product
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-4">
-          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search products..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="input-field pl-10"
-          />
+        {/* Search + Filters */}
+        <div className="space-y-3 mb-4">
+          {/* Search bar */}
+          <div className="relative">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search products by name or brand..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input-field pl-10"
+            />
+          </div>
+
+          {/* Filter row */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Approval status */}
+            <select
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              className={`input-field !py-1.5 !text-sm max-w-[160px] ${filterStatus ? 'border-primary-400 bg-primary-50 font-semibold text-primary-700' : ''}`}
+            >
+              <option value="">All Statuses</option>
+              <option value="approved">✅ Approved</option>
+              <option value="pending">⏳ Pending</option>
+              <option value="draft">📝 Draft</option>
+              <option value="rejected">❌ Rejected</option>
+              <option value="correction_needed">⚠️ Correction Needed</option>
+            </select>
+
+            {/* Active / Inactive */}
+            <select
+              value={filterActive}
+              onChange={e => setFilterActive(e.target.value)}
+              className={`input-field !py-1.5 !text-sm max-w-[160px] ${filterActive !== '' ? 'border-primary-400 bg-primary-50 font-semibold text-primary-700' : ''}`}
+            >
+              <option value="">Active + Inactive</option>
+              <option value="true">🟢 Active only</option>
+              <option value="false">🔴 Inactive only</option>
+            </select>
+
+            {/* Seller */}
+            <select
+              value={filterSeller}
+              onChange={e => setFilterSeller(e.target.value)}
+              className={`input-field !py-1.5 !text-sm max-w-[200px] ${filterSeller ? 'border-primary-400 bg-primary-50 font-semibold text-primary-700' : ''}`}
+            >
+              <option value="">All Sellers</option>
+              {sellers.map(s => (
+                <option key={s._id} value={s._id}>
+                  {s.businessName}{s.phone ? ` · ${s.phone}` : ''}
+                </option>
+              ))}
+            </select>
+
+            {/* Clear filters */}
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <FiX size={13} /> Clear filters
+              </button>
+            )}
+
+            {/* Active filter summary */}
+            {hasActiveFilters && (
+              <span className="text-xs text-gray-500 ml-1">
+                Showing {total} result{total !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Bulk action bar — appears when products are selected */}
