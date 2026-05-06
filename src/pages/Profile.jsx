@@ -1,10 +1,10 @@
 // ============================================
 // PROFILE PAGE — with saved addresses
 // ============================================
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiUser, FiSave, FiMapPin, FiPlus, FiTrash2, FiCheck, FiPackage, FiHeart } from 'react-icons/fi';
+import { FiUser, FiSave, FiMapPin, FiPlus, FiTrash2, FiCheck, FiPackage, FiHeart, FiMessageSquare, FiSend, FiChevronLeft } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import { useAuth } from '../context/AuthContext';
@@ -12,10 +12,216 @@ import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { usePincodeAutofill } from '../hooks/usePincodeAutofill';
 
+// ── Messages tab component ────────────────────────────────────
+function MessagesTab() {
+  const [conversations, setConversations] = useState([]);
+  const [active,        setActive]        = useState(null); // selected conversation
+  const [loading,       setLoading]       = useState(true);
+  const [msgLoading,    setMsgLoading]    = useState(false);
+  const [reply,         setReply]         = useState('');
+  const [sending,       setSending]       = useState(false);
+  const [showNew,       setShowNew]       = useState(false);
+  const [newSubject,    setNewSubject]    = useState('');
+  const [newMsg,        setNewMsg]        = useState('');
+  const [starting,      setStarting]      = useState(false);
+  const bottomRef = useRef(null);
+  const pollRef   = useRef(null);
+
+  const loadList = async () => {
+    try {
+      const { data } = await api.get('/conversations/mine');
+      setConversations(data.conversations || []);
+    } catch (_) {}
+    finally { setLoading(false); }
+  };
+
+  const loadConv = async (id, silent = false) => {
+    if (!silent) setMsgLoading(true);
+    try {
+      const { data } = await api.get(`/conversations/${id}`);
+      setActive(data.conversation);
+      setConversations(prev => prev.map(c => c._id === id ? { ...c, unreadByParticipant: 0 } : c));
+    } catch (_) {}
+    finally { setMsgLoading(false); }
+  };
+
+  useEffect(() => { loadList(); }, []);
+
+  // Auto-poll active conversation every 5s
+  useEffect(() => {
+    clearInterval(pollRef.current);
+    if (active?._id) {
+      pollRef.current = setInterval(() => loadConv(active._id, true), 5000);
+    }
+    return () => clearInterval(pollRef.current);
+  }, [active?._id]);
+
+  // Scroll to bottom on new messages
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [active?.messages?.length]);
+
+  const sendReply = async () => {
+    if (!reply.trim() || !active) return;
+    setSending(true);
+    try {
+      const { data } = await api.post(`/conversations/${active._id}/reply`, { content: reply });
+      setActive(data.conversation);
+      setReply('');
+    } catch { toast.error('Failed to send'); }
+    finally { setSending(false); }
+  };
+
+  const startConversation = async (e) => {
+    e.preventDefault();
+    if (!newSubject.trim() || !newMsg.trim()) return toast.error('Fill in subject and message');
+    setStarting(true);
+    try {
+      const { data } = await api.post('/conversations', { subject: newSubject, content: newMsg });
+      setConversations(prev => [data.conversation, ...prev]);
+      setShowNew(false);
+      setNewSubject(''); setNewMsg('');
+      loadConv(data.conversation._id);
+      toast.success('Message sent to admin!');
+    } catch { toast.error('Failed to start conversation'); }
+    finally { setStarting(false); }
+  };
+
+  if (loading) return <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>;
+
+  // Detail view
+  if (active) return (
+    <div className="flex flex-col h-[520px]">
+      <div className="flex items-center gap-3 mb-4">
+        <button onClick={() => { setActive(null); clearInterval(pollRef.current); loadList(); }}
+          className="text-gray-400 hover:text-gray-600 p-1">
+          <FiChevronLeft size={20} />
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-gray-800 truncate">{active.subject}</p>
+          <p className="text-xs text-gray-400">{active.status === 'closed' ? '🔒 Closed' : '🟢 Open'}</p>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-1">
+        {msgLoading ? (
+          <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" /></div>
+        ) : active.messages.map((m, i) => (
+          <div key={i} className={`flex ${m.senderType === 'admin' ? 'justify-start' : 'justify-end'}`}>
+            <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+              m.senderType === 'admin'
+                ? 'bg-gray-100 text-gray-800 rounded-tl-sm'
+                : 'bg-primary-500 text-white rounded-tr-sm'
+            }`}>
+              <p className={`text-[10px] font-semibold mb-0.5 ${m.senderType === 'admin' ? 'text-gray-500' : 'text-white/70'}`}>
+                {m.senderType === 'admin' ? '🛡 Eptomart Support' : 'You'}
+              </p>
+              <p className="leading-relaxed whitespace-pre-wrap">{m.content}</p>
+              <p className={`text-[10px] mt-1 ${m.senderType === 'admin' ? 'text-gray-400' : 'text-white/60'}`}>
+                {new Date(m.createdAt).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+              </p>
+            </div>
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Reply box */}
+      {active.status === 'closed' ? (
+        <p className="text-center text-xs text-gray-400 py-2 bg-gray-50 rounded-xl">This conversation is closed by admin.</p>
+      ) : (
+        <div className="flex gap-2">
+          <textarea
+            value={reply}
+            onChange={e => setReply(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(); } }}
+            placeholder="Type a message… (Enter to send)"
+            rows={2}
+            className="input-field flex-1 resize-none text-sm"
+          />
+          <button onClick={sendReply} disabled={sending || !reply.trim()}
+            className="btn-primary px-4 self-end disabled:opacity-60">
+            <FiSend size={16} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  // List view
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-800">Support Messages</h3>
+        <button onClick={() => setShowNew(true)} className="flex items-center gap-1.5 text-sm btn-primary py-1.5 px-3">
+          <FiPlus size={14} /> New Message
+        </button>
+      </div>
+
+      {/* New conversation form */}
+      {showNew && (
+        <form onSubmit={startConversation} className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4 space-y-3">
+          <h4 className="text-sm font-semibold text-gray-700">New Message to Admin</h4>
+          <input
+            value={newSubject}
+            onChange={e => setNewSubject(e.target.value)}
+            placeholder="Subject"
+            className="input-field text-sm w-full"
+          />
+          <textarea
+            value={newMsg}
+            onChange={e => setNewMsg(e.target.value)}
+            placeholder="Write your message..."
+            rows={3}
+            className="input-field text-sm w-full resize-none"
+          />
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setShowNew(false)} className="btn-outline text-sm flex-1">Cancel</button>
+            <button type="submit" disabled={starting} className="btn-primary text-sm flex-1">
+              {starting ? 'Sending…' : 'Send Message'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {conversations.length === 0 ? (
+        <div className="text-center py-12 text-gray-400">
+          <FiMessageSquare size={36} className="mx-auto mb-3 opacity-40" />
+          <p className="text-sm">No messages yet. Start a conversation with our support team.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {conversations.map(c => (
+            <button key={c._id} onClick={() => loadConv(c._id)}
+              className="w-full text-left border border-gray-200 rounded-xl p-3 hover:border-primary-300 hover:bg-orange-50 transition-all">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm text-gray-800 truncate">{c.subject}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {new Date(c.lastMessageAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {c.unreadByParticipant > 0 && (
+                    <span className="bg-primary-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{c.unreadByParticipant}</span>
+                  )}
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${c.status === 'open' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {c.status}
+                  </span>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const BLANK_ADDR = { label: 'Home', fullName: '', phone: '', addressLine1: '', addressLine2: '', city: '', state: '', pincode: '', isDefault: false };
 
 export default function Profile() {
   const { user, updateProfile, loadUser } = useAuth();
+  const [tab,         setTab]         = useState('profile'); // 'profile' | 'messages'
   const [name,        setName]        = useState(user?.name || '');
   const [saving,      setSaving]      = useState(false);
   const [showAddAddr, setShowAddAddr] = useState(false);
@@ -77,8 +283,25 @@ export default function Profile() {
       <Navbar />
 
       <main className="max-w-2xl mx-auto px-4 py-8 min-h-screen">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">👤 My Profile</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-4">👤 My Profile</h1>
 
+        {/* Tab bar */}
+        <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6">
+          {[['profile', FiUser, 'Profile & Addresses'], ['messages', FiMessageSquare, 'Messages']].map(([key, Icon, label]) => (
+            <button key={key} onClick={() => setTab(key)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${tab === key ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+              <Icon size={14} /> {label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'messages' && (
+          <div className="card p-6 mb-6">
+            <MessagesTab />
+          </div>
+        )}
+
+        {tab === 'profile' && <>
         {/* Profile card */}
         <div className="card p-6 mb-6">
           <div className="flex items-center gap-4 mb-6">
@@ -245,6 +468,7 @@ export default function Profile() {
             </div>
           </Link>
         </div>
+        </> }
       </main>
       <Footer />
     </>

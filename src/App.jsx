@@ -50,14 +50,16 @@ const AdminSettings     = lazy(() => import('./pages/admin/Settings'));
 const AdminActivityLog  = lazy(() => import('./pages/admin/ActivityLog'));
 const AdminSellerOrders = lazy(() => import('./pages/admin/SellerOrders'));
 const AdminVisitors     = lazy(() => import('./pages/admin/Visitors'));
+const AdminMessages     = lazy(() => import('./pages/admin/Messages'));
 
 // ── Seller pages ─────────────────────────────
 const SellerLayout  = lazy(() => import('./pages/seller/SellerLayout'));
 const SellerDashboard = lazy(() => import('./pages/seller/Dashboard'));
 const SellerProducts  = lazy(() => import('./pages/seller/Products'));
 const SellerProductForm = lazy(() => import('./pages/seller/ProductForm'));
-const SellerOrders  = lazy(() => import('./pages/seller/Orders'));
-const SellerProfile = lazy(() => import('./pages/seller/Profile'));
+const SellerOrders    = lazy(() => import('./pages/seller/Orders'));
+const SellerProfile   = lazy(() => import('./pages/seller/Profile'));
+const SellerMessages  = lazy(() => import('./pages/seller/Messages'));
 
 // ── Route guards ─────────────────────────────
 const ProtectedRoute = ({ children }) => {
@@ -119,6 +121,7 @@ function AppRoutes() {
             <Route path="products/add"     element={<SellerProductForm />} />
             <Route path="products/:id"     element={<SellerProductForm />} />
             <Route path="orders"           element={<SellerOrders />} />
+            <Route path="messages"         element={<SellerMessages />} />
             <Route path="profile"          element={<SellerProfile />} />
           </Route>
 
@@ -142,6 +145,7 @@ function AppRoutes() {
             <Route path="activity-log"     element={<AdminActivityLog />} />
             <Route path="visitors"         element={<AdminVisitors />} />
             <Route path="settings"         element={<AdminSettings />} />
+            <Route path="messages"         element={<AdminMessages />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -41,6 +41,7 @@ const NAV_GROUPS = [
       { path: '/admin/settlements', label: 'Settlements', icon: FiCreditCard,   permission: 'settlements' },
       { path: '/admin/expenses',    label: 'Expenses',    icon: FiDollarSign,   permission: 'expenses'    },
       { path: '/admin/enquiries',   label: 'Enquiries',   icon: FiMessageSquare,permission: 'orders'      },
+      { path: '/admin/messages',    label: 'Messages',    icon: FiMessageSquare,permission: 'orders'      },
     ],
   },
   {
