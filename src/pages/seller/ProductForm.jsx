@@ -174,7 +174,13 @@ export default function ProductForm() {
         tags:           form.tags.split(',').map(t => t.trim()).filter(Boolean),
         variants:       cleanVariants,
         subCategory:    form.subCategory || undefined,
-        approvalStatus: submitForApproval ? 'pending' : (form.approvalStatus === 'approved' ? 'pending' : form.approvalStatus || 'draft'),
+        // Re-editing an approved product via the full form always requires re-approval
+        // (stock-only updates go through PATCH /stock and never reach here)
+        approvalStatus: submitForApproval
+          ? 'pending'
+          : form.approvalStatus === 'approved'
+            ? 'pending'
+            : form.approvalStatus || 'draft',
         submittedAt:    submitForApproval ? new Date().toISOString() : undefined,
       };
       Object.entries(payload).forEach(([k, v]) => {

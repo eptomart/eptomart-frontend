@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiEdit2, FiTrash2, FiAlertCircle, FiCheckCircle, FiClock, FiXCircle, FiEye, FiCopy, FiUpload, FiDownload, FiX, FiRefreshCw, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiAlertCircle, FiCheckCircle, FiClock, FiXCircle, FiEye, FiCopy, FiUpload, FiDownload, FiX, FiRefreshCw, FiChevronDown, FiChevronUp, FiPackage } from 'react-icons/fi';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
 import toast from 'react-hot-toast';
@@ -21,6 +21,37 @@ export default function SellerProducts() {
   const [loading,    setLoading]    = useState(true);
   const [csvModal,   setCsvModal]   = useState(false);
   const [csvLoading, setCsvLoading] = useState(false);
+
+  // Inline stock editing
+  const [editingStockId,  setEditingStockId]  = useState(null);  // product _id being edited
+  const [stockInputValue, setStockInputValue] = useState('');
+  const [savingStock,     setSavingStock]     = useState(false);
+  const stockInputRef = useRef(null);
+
+  const startEditStock = (p) => {
+    setEditingStockId(p._id);
+    setStockInputValue(String(p.stock ?? 0));
+    setTimeout(() => stockInputRef.current?.select(), 50);
+  };
+
+  const cancelEditStock = () => {
+    setEditingStockId(null);
+    setStockInputValue('');
+  };
+
+  const saveStock = async (productId) => {
+    const val = Number(stockInputValue);
+    if (isNaN(val) || val < 0) { toast.error('Enter a valid stock number'); return; }
+    setSavingStock(true);
+    try {
+      const { data } = await api.patch(`/products/${productId}/stock`, { stock: val });
+      setProducts(prev => prev.map(p => p._id === productId ? { ...p, stock: data.stock } : p));
+      toast.success('Stock updated ✓');
+      cancelEditStock();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update stock');
+    } finally { setSavingStock(false); }
+  };
 
   // Resubmit modal state
   const [resubmitModal, setResubmitModal] = useState(null); // { id, name } | null
@@ -390,9 +421,46 @@ EPT-002,,Product B (no SKU),0,100
                         <p className="text-xs text-gray-400">GST {p.gstRate}%</p>
                       </td>
                       <td className="p-4 hidden md:table-cell">
-                        <span className={`text-sm font-medium ${p.stock === 0 ? 'text-red-500' : p.stock <= 5 ? 'text-orange-500' : 'text-gray-700'}`}>
-                          {p.stock}
-                        </span>
+                        {editingStockId === p._id ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              ref={stockInputRef}
+                              type="number"
+                              min="0"
+                              value={stockInputValue}
+                              onChange={e => setStockInputValue(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') saveStock(p._id);
+                                if (e.key === 'Escape') cancelEditStock();
+                              }}
+                              className="w-16 border border-primary-400 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary-300"
+                            />
+                            <button
+                              onClick={() => saveStock(p._id)}
+                              disabled={savingStock}
+                              className="text-xs bg-primary-500 hover:bg-primary-600 text-white px-2 py-1 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                            >
+                              {savingStock ? '…' : '✓'}
+                            </button>
+                            <button
+                              onClick={cancelEditStock}
+                              className="text-xs text-gray-400 hover:text-red-500 px-1 py-1 rounded-lg"
+                            >
+                              <FiX size={12} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => startEditStock(p)}
+                            title="Click to update stock"
+                            className="group flex items-center gap-1.5 text-left hover:bg-orange-50 rounded-lg px-2 py-1 -ml-2 transition-colors"
+                          >
+                            <span className={`text-sm font-medium ${p.stock === 0 ? 'text-red-500' : p.stock <= 5 ? 'text-orange-500' : 'text-gray-700'}`}>
+                              {p.stock}
+                            </span>
+                            <FiPackage size={11} className="text-gray-300 group-hover:text-primary-400 transition-colors" />
+                          </button>
+                        )}
                       </td>
                       <td className="p-4">
                         <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${s.bg}`}>
