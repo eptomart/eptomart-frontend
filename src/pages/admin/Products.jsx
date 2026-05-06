@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiEdit2, FiTrash2, FiImage, FiSearch, FiInfo, FiEye, FiCopy, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiImage, FiSearch, FiInfo, FiEye, FiCopy, FiToggleLeft, FiToggleRight, FiUserCheck, FiX } from 'react-icons/fi';
 import Loader from '../../components/common/Loader';
 import { formatINR } from '../../utils/currency';
 import { extractBasePrice, GST_SLABS } from '../../utils/gst';
@@ -185,6 +185,49 @@ export default function AdminProducts() {
 
   const [togglingId, setTogglingId] = useState(null);
 
+  // ── Bulk selection & assign ───────────────────────────────────────────────
+  const [selectedIds,    setSelectedIds]    = useState(new Set());
+  const [assignModal,    setAssignModal]    = useState(false);
+  const [assignSellerId, setAssignSellerId] = useState('');
+  const [assigning,      setAssigning]      = useState(false);
+
+  const toggleSelect = (id) => setSelectedIds(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === products.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(products.map(p => p._id)));
+    }
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const handleBulkAssign = async () => {
+    if (!assignSellerId) return toast.error('Please select a seller');
+    if (selectedIds.size === 0) return toast.error('No products selected');
+    setAssigning(true);
+    try {
+      const { data } = await api.patch('/products/admin/bulk-assign', {
+        productIds: [...selectedIds],
+        sellerId:   assignSellerId,
+      });
+      toast.success(data.message);
+      setAssignModal(false);
+      setSelectedIds(new Set());
+      setAssignSellerId('');
+      fetchProducts();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Assignment failed');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
   const handleToggleActive = async (product) => {
     const { _id: id, isActive, name } = product;
     const action = isActive ? 'deactivate' : 'activate';
@@ -227,6 +270,22 @@ export default function AdminProducts() {
           />
         </div>
 
+        {/* Bulk action bar — appears when products are selected */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 mb-4 bg-primary-50 border border-primary-200 rounded-xl px-4 py-3">
+            <span className="text-sm font-semibold text-primary-700">{selectedIds.size} product{selectedIds.size > 1 ? 's' : ''} selected</span>
+            <button
+              onClick={() => setAssignModal(true)}
+              className="flex items-center gap-1.5 text-sm font-semibold bg-primary-500 hover:bg-primary-600 text-white px-4 py-1.5 rounded-lg transition-colors"
+            >
+              <FiUserCheck size={14} /> Assign to Seller
+            </button>
+            <button onClick={clearSelection} className="ml-auto text-gray-400 hover:text-gray-600">
+              <FiX size={16} />
+            </button>
+          </div>
+        )}
+
         {/* Table */}
         {loading ? <Loader fullPage={false} /> : (
           <div className="card overflow-hidden">
@@ -234,6 +293,15 @@ export default function AdminProducts() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
                   <tr>
+                    <th className="px-4 py-3 w-8">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.size === products.length && products.length > 0}
+                        onChange={toggleSelectAll}
+                        className="rounded cursor-pointer accent-primary-500 w-4 h-4"
+                        title="Select all on this page"
+                      />
+                    </th>
                     <th className="px-4 py-3 text-left">Product</th>
                     <th className="px-4 py-3 text-left">Seller</th>
                     <th className="px-4 py-3 text-left hidden md:table-cell">Category</th>
@@ -246,7 +314,15 @@ export default function AdminProducts() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {products.map(product => (
-                    <tr key={product._id} className="hover:bg-gray-50">
+                    <tr key={product._id} className={`hover:bg-gray-50 ${selectedIds.has(product._id) ? 'bg-primary-50' : ''}`}>
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(product._id)}
+                          onChange={() => toggleSelect(product._id)}
+                          className="rounded cursor-pointer accent-primary-500 w-4 h-4"
+                        />
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           {product.images?.[0]?.url ? (
@@ -357,6 +433,77 @@ export default function AdminProducts() {
           </div>
         )}
       </div>
+
+      {/* Bulk Assign Seller Modal */}
+      {assignModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h2 className="text-lg font-bold text-gray-800">Assign to Seller</h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {selectedIds.size} product{selectedIds.size > 1 ? 's' : ''} will be assigned and set to <span className="font-semibold text-green-600">approved + active</span>
+                </p>
+              </div>
+              <button onClick={() => { setAssignModal(false); setAssignSellerId(''); }} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Select Seller</label>
+                <select
+                  value={assignSellerId}
+                  onChange={e => setAssignSellerId(e.target.value)}
+                  className="input-field"
+                  autoFocus
+                >
+                  <option value="">— Choose a seller —</option>
+                  {sellers.map(s => (
+                    <option key={s._id} value={s._id}>
+                      {s.businessName}{s.phone ? ` · ${s.phone}` : ''}{s.sellerId ? ` (${s.sellerId})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {assignSellerId && (() => {
+                const sel = sellers.find(s => s._id === assignSellerId);
+                if (!sel) return null;
+                return (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800">
+                    <p className="font-semibold">{sel.businessName}</p>
+                    {sel.phone && <p className="text-xs text-blue-600 mt-0.5">📞 {sel.phone}</p>}
+                    {sel.email && <p className="text-xs text-blue-600">✉️ {sel.email}</p>}
+                  </div>
+                );
+              })()}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setAssignModal(false); setAssignSellerId(''); }}
+                  className="btn-outline flex-1"
+                  disabled={assigning}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkAssign}
+                  disabled={assigning || !assignSellerId}
+                  className="btn-primary flex-1 flex items-center justify-center gap-2"
+                >
+                  {assigning ? (
+                    <><span className="animate-spin">⟳</span> Assigning…</>
+                  ) : (
+                    <><FiUserCheck size={15} /> Assign {selectedIds.size} Product{selectedIds.size > 1 ? 's' : ''}</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       {showModal && (
