@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
-  FiArrowRight, FiTruck, FiShield, FiRefreshCw, FiHeadphones,
+  FiArrowRight, FiTruck, FiRefreshCw,
   FiChevronLeft, FiChevronRight, FiZap, FiStar, FiPackage,
 } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
@@ -15,12 +15,6 @@ import RecentlyViewed from '../components/product/RecentlyViewed';
 import CategoryIcon from '../components/common/CategoryIcon';
 import { ProductGridSkeleton } from '../components/common/Loader';
 import api from '../utils/api';
-
-// ── Trust badges strip ──────────────────────────────────────
-const TRUST = [
-  { icon: FiShield,     title: 'Secure Payment',  desc: 'Razorpay & COD',         color: 'text-green-500', bg: 'bg-green-50' },
-  { icon: FiHeadphones, title: '24/7 Support',    desc: 'Always here to help',     color: 'text-orange-500',bg: 'bg-orange-50' },
-];
 
 // ── Hero slides ──────────────────────────────────────────────
 const SLIDES = [
@@ -262,24 +256,6 @@ export default function Home() {
         {/* ── Hero Carousel ── */}
         <HeroCarousel />
 
-        {/* ── Trust Badges ── */}
-        <section className="bg-white border-b shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 py-5">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {TRUST.map(({ icon: Icon, title, desc, color, bg }) => (
-                <div key={title} className={`flex items-center gap-3 p-3 rounded-xl ${bg} transition-all hover:scale-105`}>
-                  <div className={`w-10 h-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm`}>
-                    <Icon className={color} size={20} />
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-gray-800">{title}</p>
-                    <p className="text-xs text-gray-500">{desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
 
         <div className="max-w-7xl mx-auto px-4 py-8 space-y-12">
 
