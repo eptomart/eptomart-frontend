@@ -177,8 +177,23 @@ export default function Cart() {
                 </>
               )}
 
-              <div className="mt-2 text-xs text-gray-400 space-y-0.5">
-                <p>📦 ≤500g → ₹{LIGHT_SHIPPING} &nbsp;|&nbsp; 📦 &gt;500g → ₹{HEAVY_SHIPPING} &nbsp;|&nbsp; 🎉 Orders above ₹{FREE_SHIPPING_THRESHOLD} → FREE</p>
+              {/* Shipping slabs */}
+              <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                <div className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 border ${shipping === LIGHT_SHIPPING ? 'bg-orange-50 border-orange-300 text-orange-700 font-semibold' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+                  <span className="text-base">📦</span>
+                  <span className="font-medium leading-tight text-center">≤ 500g</span>
+                  <span className="font-bold">₹{LIGHT_SHIPPING}</span>
+                </div>
+                <div className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 border ${shipping === HEAVY_SHIPPING ? 'bg-orange-50 border-orange-300 text-orange-700 font-semibold' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+                  <span className="text-base">📦</span>
+                  <span className="font-medium leading-tight text-center">&gt; 500g</span>
+                  <span className="font-bold">₹{HEAVY_SHIPPING}</span>
+                </div>
+                <div className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 border ${shipping === 0 ? 'bg-green-50 border-green-300 text-green-700 font-semibold' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+                  <span className="text-base">🎉</span>
+                  <span className="font-medium leading-tight text-center">Above ₹{FREE_SHIPPING_THRESHOLD}</span>
+                  <span className="font-bold">FREE</span>
+                </div>
               </div>
             </div>
           </div>
