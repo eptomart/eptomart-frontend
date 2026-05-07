@@ -77,7 +77,6 @@ export default function Cart() {
                   <div className="bg-orange-50 px-4 py-2.5 border-b border-orange-100">
                     <p className="text-sm font-semibold text-gray-700">
                       🏪 {group.seller.businessName || 'Seller'}
-                      {group.seller.city && <span className="font-normal text-gray-500 ml-1">· {group.seller.city}</span>}
                     </p>
                   </div>
                 )}
@@ -177,22 +176,67 @@ export default function Cart() {
                 </>
               )}
 
-              {/* Shipping slabs */}
-              <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                <div className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 border ${shipping === LIGHT_SHIPPING ? 'bg-orange-50 border-orange-300 text-orange-700 font-semibold' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
-                  <span className="text-base">📦</span>
-                  <span className="font-medium leading-tight text-center">≤ 500g</span>
-                  <span className="font-bold">₹{LIGHT_SHIPPING}</span>
+              {/* Shipping slabs — graphical bar */}
+              <div className="mt-4">
+                {/* Progress bar */}
+                <div className="relative h-2 rounded-full bg-gray-100 overflow-hidden mb-3">
+                  <div
+                    className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min((cartGrandExShipping / FREE_SHIPPING_THRESHOLD) * 100, 100)}%`,
+                      background: cartGrandExShipping >= FREE_SHIPPING_THRESHOLD
+                        ? 'linear-gradient(90deg,#22c55e,#16a34a)'
+                        : 'linear-gradient(90deg,#f97316,#fb923c)',
+                    }}
+                  />
+                  {/* Threshold markers */}
+                  <div className="absolute top-0 h-full w-px bg-orange-300" style={{ left: '33%' }} />
+                  <div className="absolute top-0 h-full w-px bg-orange-400" style={{ left: '66%' }} />
                 </div>
-                <div className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 border ${shipping === HEAVY_SHIPPING ? 'bg-orange-50 border-orange-300 text-orange-700 font-semibold' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
-                  <span className="text-base">📦</span>
-                  <span className="font-medium leading-tight text-center">&gt; 500g</span>
-                  <span className="font-bold">₹{HEAVY_SHIPPING}</span>
-                </div>
-                <div className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 border ${shipping === 0 ? 'bg-green-50 border-green-300 text-green-700 font-semibold' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
-                  <span className="text-base">🎉</span>
-                  <span className="font-medium leading-tight text-center">Above ₹{FREE_SHIPPING_THRESHOLD}</span>
-                  <span className="font-bold">FREE</span>
+
+                {/* Three slabs */}
+                <div className="grid grid-cols-3 gap-2">
+                  {/* Slab 1 */}
+                  <div className={`relative rounded-xl p-3 text-center border-2 transition-all ${
+                    shipping === LIGHT_SHIPPING
+                      ? 'border-orange-400 bg-orange-50 shadow-sm scale-[1.02]'
+                      : 'border-gray-100 bg-gray-50'
+                  }`}>
+                    {shipping === LIGHT_SHIPPING && (
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-orange-400 text-white text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">YOUR RATE</span>
+                    )}
+                    <div className="text-xl mb-1">🛵</div>
+                    <p className="text-[11px] font-semibold text-gray-600 leading-tight">≤ 500g</p>
+                    <p className="text-sm font-extrabold text-orange-500 mt-0.5">₹{LIGHT_SHIPPING}</p>
+                  </div>
+
+                  {/* Slab 2 */}
+                  <div className={`relative rounded-xl p-3 text-center border-2 transition-all ${
+                    shipping === HEAVY_SHIPPING
+                      ? 'border-orange-400 bg-orange-50 shadow-sm scale-[1.02]'
+                      : 'border-gray-100 bg-gray-50'
+                  }`}>
+                    {shipping === HEAVY_SHIPPING && (
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-orange-400 text-white text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">YOUR RATE</span>
+                    )}
+                    <div className="text-xl mb-1">🚚</div>
+                    <p className="text-[11px] font-semibold text-gray-600 leading-tight">&gt; 500g</p>
+                    <p className="text-sm font-extrabold text-orange-500 mt-0.5">₹{HEAVY_SHIPPING}</p>
+                  </div>
+
+                  {/* Slab 3 — Free */}
+                  <div className={`relative rounded-xl p-3 text-center border-2 transition-all ${
+                    shipping === 0
+                      ? 'border-green-400 bg-green-50 shadow-sm scale-[1.02]'
+                      : 'border-gray-100 bg-gray-50'
+                  }`}>
+                    {shipping === 0 && (
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">APPLIED ✓</span>
+                    )}
+                    <div className="text-xl mb-1">🎁</div>
+                    <p className="text-[11px] font-semibold text-gray-600 leading-tight">Above ₹{FREE_SHIPPING_THRESHOLD}</p>
+                    <p className="text-sm font-extrabold text-green-500 mt-0.5">FREE</p>
+                  </div>
                 </div>
               </div>
             </div>
