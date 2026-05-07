@@ -6,7 +6,7 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   FiShoppingCart, FiHeart, FiStar, FiTruck, FiShield,
-  FiMinus, FiPlus, FiRepeat, FiColumns, FiMapPin, FiInfo, FiArrowLeft, FiShare2,
+  FiMinus, FiPlus, FiRepeat, FiColumns, FiInfo, FiArrowLeft, FiShare2,
 } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
@@ -291,11 +291,6 @@ export default function ProductPage() {
                           {product.seller.sellerId}
                         </span>
                       )}
-                      {product.seller.address?.city && (
-                        <span className="text-xs text-gray-500 flex items-center gap-0.5">
-                          <FiMapPin size={10} /> {product.seller.address.city}
-                        </span>
-                      )}
                     </div>
                   </div>
                   <Link
@@ -487,7 +482,6 @@ export default function ProductPage() {
                     onClick={() => setSelectedSeller(isSelected ? null : listing)}>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-800 text-sm">{listing.seller?.businessName}</p>
-                      <p className="text-xs text-gray-500">{listing.seller?.city}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-primary-600">{formatINR(lPrice)}</p>
