@@ -44,7 +44,7 @@ const SLIDES = [
     headline: 'Support Local\nSellers Across India',
     sub:      'Thousands of verified local sellers. Fresh products, faster delivery.',
     cta:      { label: 'Explore Now', to: '/shop' },
-    cta2:     { label: 'Sell With Us', to: '/seller/register' },
+    cta2:     { label: 'Sell With Us', to: '/contact' },
     emoji:    '🌿',
     accent:   'bg-white/10',
   },

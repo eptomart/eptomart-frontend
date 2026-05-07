@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiTrash2, FiShoppingBag, FiTruck, FiMinus, FiLoader, FiEdit2 } from 'react-icons/fi';
+import { FiTrash2, FiShoppingBag, FiTruck, FiEdit2 } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import QuantityControl from '../components/cart/QuantityControl';
@@ -15,97 +15,30 @@ import { formatINR } from '../utils/currency';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 
+// Flat shipping thresholds (must match CartContext)
+const FREE_SHIPPING_THRESHOLD = 999; // ₹999+  → free
+const LIGHT_SHIPPING = 49;            // ≤500g  → ₹49
+const HEAVY_SHIPPING = 149;           // >500g  → ₹149
+
 export default function Cart() {
-  const { enrichedItems, sellerGroups, cartCount, subtotalExGst, gstTotal, shipping, total, updateQuantity, removeFromCart, updateItemVariant, isCodBlocked, codBlockedItems, setShippingRate } = useCart();
-  const { isLoggedIn, user } = useAuth();
+  const { enrichedItems, sellerGroups, cartCount, subtotalExGst, gstTotal, shipping, total, updateQuantity, removeFromCart, updateItemVariant, isCodBlocked, codBlockedItems } = useCart();
+  const { isLoggedIn } = useAuth();
   const navigate  = useNavigate();
   const [updating, setUpdating] = useState({});
-  const [pincodeInput, setPincodeInput] = useState('');
-  const [loadingShipping, setLoadingShipping] = useState(false);
   const [variantPickerItem, setVariantPickerItem] = useState(null);
-  const [lastPincode, setLastPincode] = useState('');
-  const [shippingPincode, setShippingPincode] = useState(''); // pincode currently used for calc
 
-  const FREE_SHIPPING_THRESHOLD = 1499;
-  const cartGrandExShipping = subtotalExGst + gstTotal;
+  const cartGrandExShipping = parseFloat((subtotalExGst + gstTotal).toFixed(2));
 
   const handleQtyChange = async (cartItemId, newQty) => {
-    // Just update quantity — the "Change" button already handles variant switching.
-    // Never intercept qty changes to open the variant picker.
     setUpdating(p => ({ ...p, [cartItemId]: true }));
     updateQuantity(cartItemId, newQty);
     setTimeout(() => setUpdating(p => ({ ...p, [cartItemId]: false })), 300);
   };
 
-  // Called when user picks a new variant from the modal — directly updates the cart item
   const handleVariantSelect = (variant, vLabel) => {
     if (!variantPickerItem) return;
     updateItemVariant(variantPickerItem.cartItemId, variant.price, vLabel, variant.stock);
     setVariantPickerItem(null);
-  };
-
-  // Total weight = 0.5kg per unit (default; products without explicit weight)
-  const totalWeight = Math.max(cartCount * 0.5, 0.5);
-
-  const fetchShipping = async (pincode, silent = false) => {
-    if (!pincode || pincode.length !== 6) return;
-
-    // Free shipping threshold — skip Shiprocket call entirely
-    if (cartGrandExShipping >= FREE_SHIPPING_THRESHOLD) {
-      setShippingRate(0);
-      setShippingPincode(pincode);
-      setLastPincode(pincode);
-      if (!silent) toast.success('🎉 Free shipping on orders above ₹1,499!');
-      return;
-    }
-
-    setLastPincode(pincode);
-    setLoadingShipping(true);
-    try {
-      const { data } = await api.get(
-        `/delivery/cod-check?delivery=${pincode}&weight=${totalWeight}`
-      );
-      const rate = data.minShippingRate != null ? data.minShippingRate
-                 : data.shippingRate    != null ? data.shippingRate
-                 : null;
-      setShippingRate(rate);
-      setShippingPincode(pincode);
-      if (!silent) {
-        if (rate === null) toast('Could not get rate — try again at checkout', { icon: 'ℹ️' });
-        else toast.success(`Shipping to ${pincode}: ${rate === 0 ? 'FREE' : formatINR(rate)}`);
-      }
-    } catch {
-      // Network failure — apply flat default so buyer isn't blocked
-      setShippingRate(80);
-      setShippingPincode(pincode);
-      if (!silent) toast('Using estimated shipping rate', { icon: 'ℹ️' });
-    } finally {
-      setLoadingShipping(false);
-    }
-  };
-
-  // Auto-fetch on mount if user has saved address — pre-fill pincode input too
-  useEffect(() => {
-    if (user?.addresses?.length > 0) {
-      const addr = user.addresses.find(a => a.isDefault) || user.addresses[0];
-      if (addr?.pincode) {
-        setPincodeInput(addr.pincode);
-        fetchShipping(addr.pincode);
-      }
-    }
-  }, [user]);
-
-  // Re-fetch silently when qty or cart total changes (weight & free-threshold both change)
-  useEffect(() => {
-    if (lastPincode.length === 6) fetchShipping(lastPincode, true);
-  }, [cartCount, cartGrandExShipping]);
-
-  const handleCalculateShipping = async () => {
-    if (!pincodeInput || pincodeInput.length !== 6) {
-      toast.error('Enter a valid 6-digit pincode');
-      return;
-    }
-    await fetchShipping(pincodeInput);
   };
 
   if (cartCount === 0) {
@@ -221,51 +154,32 @@ export default function Cart() {
               </div>
             )}
 
-            {/* Shipping calculator */}
+            {/* Shipping info — flat rate, no pincode needed */}
             <div className="card p-4">
               <h3 className="font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
                 <FiTruck size={14} /> Delivery Charges
               </h3>
 
-              {/* Free shipping banner */}
-              {cartGrandExShipping >= FREE_SHIPPING_THRESHOLD ? (
-                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-2 text-sm text-green-700 font-medium">
-                  🎉 You qualify for <strong>FREE shipping</strong> (orders above ₹1,499)
+              {cartGrandExShipping > FREE_SHIPPING_THRESHOLD ? (
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-700 font-semibold">
+                  🎉 FREE shipping — orders above ₹{FREE_SHIPPING_THRESHOLD}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 mb-2">
-                  Add items worth {formatINR(FREE_SHIPPING_THRESHOLD - cartGrandExShipping)} more for free shipping
-                </p>
+                <>
+                  <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-sm text-orange-700 mb-2">
+                    <FiTruck size={13} />
+                    <span>Shipping: <strong>{formatINR(shipping)}</strong></span>
+                    <span className="text-xs text-gray-500 ml-1">(based on order weight)</span>
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    Add items worth <strong>{formatINR(FREE_SHIPPING_THRESHOLD - cartGrandExShipping)}</strong> more to get free shipping
+                  </p>
+                </>
               )}
 
-              {/* Pincode input — always visible, pre-filled from address */}
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    maxLength="6"
-                    placeholder="Enter delivery pincode"
-                    value={pincodeInput}
-                    onChange={(e) => setPincodeInput(e.target.value.replace(/\D/g, ''))}
-                    className="input-field w-full text-sm"
-                  />
-                  {shippingPincode && pincodeInput === shippingPincode && (
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-green-600 font-medium">✓ calculated</span>
-                  )}
-                </div>
-                <button
-                  onClick={handleCalculateShipping}
-                  disabled={loadingShipping || pincodeInput.length !== 6}
-                  className="btn-primary text-sm px-4 disabled:opacity-60 whitespace-nowrap"
-                >
-                  {loadingShipping ? <FiLoader size={14} className="animate-spin" /> : 'Check'}
-                </button>
+              <div className="mt-2 text-xs text-gray-400 space-y-0.5">
+                <p>📦 ≤500g → ₹{LIGHT_SHIPPING} &nbsp;|&nbsp; 📦 &gt;500g → ₹{HEAVY_SHIPPING} &nbsp;|&nbsp; 🎉 Orders above ₹{FREE_SHIPPING_THRESHOLD} → FREE</p>
               </div>
-              {shippingPincode && (
-                <p className="text-xs text-gray-400 mt-1">
-                  Showing charges for <strong>{shippingPincode}</strong> · Change pincode above to recalculate
-                </p>
-              )}
             </div>
           </div>
 
@@ -285,8 +199,8 @@ export default function Cart() {
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Shipping</span>
-                  <span className={shipping === 0 ? 'text-green-600 font-medium' : shipping === null ? 'text-gray-400' : ''}>
-                    {shipping === null ? 'Enter pincode to calculate' : shipping === 0 ? 'FREE' : formatINR(shipping)}
+                  <span className={shipping === 0 ? 'text-green-600 font-semibold' : ''}>
+                    {shipping === 0 ? 'FREE 🎉' : formatINR(shipping)}
                   </span>
                 </div>
                 {shipping === 0 && (
@@ -294,23 +208,15 @@ export default function Cart() {
                     <FiTruck size={12} /> Free delivery applied
                   </div>
                 )}
-                {shipping !== null && (
-                  <div className="flex justify-between font-bold text-base text-gray-900 pt-2 border-t border-gray-100">
-                    <span>Grand Total</span>
-                    <span className="text-primary-600">{total !== null ? formatINR(total) : '—'}</span>
-                  </div>
-                )}
-                {shipping === null && (
-                  <div className="text-xs text-gray-400 text-center pt-2 border-t border-gray-100">
-                    Total will be calculated once shipping is set
-                  </div>
-                )}
+                <div className="flex justify-between font-bold text-base text-gray-900 pt-2 border-t border-gray-100">
+                  <span>Grand Total</span>
+                  <span className="text-primary-600">{formatINR(total)}</span>
+                </div>
               </div>
 
               <button
                 onClick={() => isLoggedIn ? navigate('/checkout') : navigate('/login', { state: { from: '/checkout' } })}
-                disabled={shipping === null}
-                className="btn-primary w-full mb-3 disabled:opacity-60"
+                className="btn-primary w-full mb-3"
               >
                 {isLoggedIn ? `Proceed to Checkout →` : 'Login to Checkout →'}
               </button>

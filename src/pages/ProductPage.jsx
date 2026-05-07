@@ -6,7 +6,7 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   FiShoppingCart, FiHeart, FiStar, FiTruck, FiShield,
-  FiMinus, FiPlus, FiRepeat, FiColumns, FiMapPin, FiInfo, FiArrowLeft,
+  FiMinus, FiPlus, FiRepeat, FiColumns, FiMapPin, FiInfo, FiArrowLeft, FiShare2,
 } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
@@ -136,6 +136,21 @@ export default function ProductPage() {
         }
       }
     });
+  };
+
+  const handleShare = async () => {
+    const url  = `${window.location.origin}/product/${slug}`;
+    const text = `Check out ${product.name} on Eptomart!`;
+    if (navigator.share) {
+      try { await navigator.share({ title: product.name, text, url }); } catch (_) {}
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success('Product link copied to clipboard! 🔗');
+      } catch {
+        toast.error('Could not copy link');
+      }
+    }
   };
 
   return (
@@ -396,7 +411,8 @@ export default function ProductPage() {
 
               <button onClick={() => toggleWishlist(product)}
                 className={`w-12 h-12 border-2 rounded-xl flex items-center justify-center transition-all
-                  ${inWishlist ? 'border-red-400 bg-red-50 text-red-400' : 'border-gray-200 hover:border-red-300 hover:text-red-400'}`}>
+                  ${inWishlist ? 'border-red-400 bg-red-50 text-red-400' : 'border-gray-200 hover:border-red-300 hover:text-red-400'}`}
+                title="Add to wishlist">
                 <FiHeart size={18} style={{ fill: inWishlist ? 'currentColor' : 'none' }} />
               </button>
 
@@ -404,6 +420,12 @@ export default function ProductPage() {
                 className="w-12 h-12 border-2 border-gray-200 rounded-xl flex items-center justify-center hover:border-blue-300 hover:text-blue-500 transition-all"
                 title="Add to compare">
                 <FiColumns size={16} />
+              </button>
+
+              <button onClick={handleShare}
+                className="w-12 h-12 border-2 border-gray-200 rounded-xl flex items-center justify-center hover:border-green-300 hover:text-green-600 transition-all"
+                title="Share this product">
+                <FiShare2 size={16} />
               </button>
             </div>
 
@@ -432,6 +454,19 @@ export default function ProductPage() {
                 </div>
               </div>
             </div>
+
+            {/* Instagram link — only shown if set by admin */}
+            {product.instagramLink && (
+              <a
+                href={product.instagramLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm font-semibold text-pink-600 hover:text-pink-700 bg-pink-50 hover:bg-pink-100 border border-pink-200 rounded-xl px-4 py-2.5 transition-all mt-3 w-fit"
+              >
+                <span className="text-base">📸</span>
+                View on Instagram
+              </a>
+            )}
           </div>
         </div>
 

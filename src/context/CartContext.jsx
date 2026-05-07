@@ -43,7 +43,6 @@ export const CartProvider = ({ children }) => {
   });
   const [isCartOpen,  setIsCartOpen]  = useState(false);
   const [isLoggedIn,  setIsLoggedIn]  = useState(!!localStorage.getItem('eptomart_token'));
-  const [shippingRate, setShippingRate] = useState(null);
 
   // Persist to localStorage
   useEffect(() => {
@@ -177,11 +176,24 @@ export const CartProvider = ({ children }) => {
     ...calcItemGst(item),
   }));
 
-  const subtotalExGst = enriched.reduce((s, i) => s + i.lineBase,      0);
-  const gstTotal      = enriched.reduce((s, i) => s + i.lineGst,       0);
-  // Use != null (loose) to catch both null and undefined from setShippingRate
-  const shipping      = shippingRate != null ? shippingRate : null;
-  const total         = shipping != null ? parseFloat((subtotalExGst + gstTotal + shipping).toFixed(2)) : null;
+  const subtotalExGst = enriched.reduce((s, i) => s + i.lineBase, 0);
+  const gstTotal      = enriched.reduce((s, i) => s + i.lineGst,  0);
+
+  // ── Flat shipping rule (no Shiprocket needed) ──────────────
+  // Cart total > ₹999 → FREE
+  // Weight ≤ 500g (1 item default) → ₹49
+  // Weight > 500g → ₹149
+  const cartTotal      = parseFloat((subtotalExGst + gstTotal).toFixed(2));
+  const totalWeightKg  = Math.max(cartCount * 0.5, 0.5); // 500g per item default
+  const shipping = cartCount === 0
+    ? 0
+    : cartTotal > 999
+      ? 0
+      : totalWeightKg <= 0.5
+        ? 49
+        : 149;
+
+  const total = parseFloat((cartTotal + shipping).toFixed(2));
 
   // Group by seller for display
   const sellerGroups = enriched.reduce((acc, item) => {
@@ -206,8 +218,6 @@ export const CartProvider = ({ children }) => {
       shipping,
       tax:           parseFloat(gstTotal.toFixed(2)),
       total,
-      shippingRate,
-      setShippingRate,
       sellerGroups,
       codBlockedItems,
       isCodBlocked,

@@ -37,33 +37,33 @@ export default function Checkout() {
   const buyNow = location.state?.buyNow || null;
   const checkoutItems = buyNow ? [buyNow] : cartItems;
 
-  // COD + Shiprocket serviceability state — declared early so derived values below can use it
+  // COD serviceability — only for availability + EDD, NOT for shipping rate
   const [codCheck, setCodCheck] = useState({
     available: null,   // null = unchecked, true/false = result
     edd: null,
     eddDays: null,
     courierName: null,
-    shippingRate: null,   // actual courier rate in ₹ from Shiprocket
     loading: false,
     checked: false,
   });
 
   // Buy Now pricing — computed independently (cart totals are always from cartItems)
-  const bnPrice    = buyNow?.price    || 0;
-  const bnQty      = buyNow?.quantity || 1;
-  const bnGstRate  = buyNow?.gstRate  || 18;
-  const bnExGst    = buyNow ? extractBasePrice(bnPrice, bnGstRate) * bnQty : 0;
-  const bnGst      = buyNow ? parseFloat((bnExGst * bnGstRate / 100).toFixed(2)) : 0;
-  // Buy Now shipping will be determined after cod-check
-  const bnShipping = buyNow && codCheck.shippingRate !== null ? codCheck.shippingRate : (buyNow ? null : 0);
-  const bnTotal    = buyNow && bnShipping !== null ? parseFloat((bnExGst + bnGst + bnShipping).toFixed(2)) : null;
+  const bnPrice   = buyNow?.price    || 0;
+  const bnQty     = buyNow?.quantity || 1;
+  const bnGstRate = buyNow?.gstRate  || 18;
+  const bnExGst   = buyNow ? extractBasePrice(bnPrice, bnGstRate) * bnQty : 0;
+  const bnGst     = buyNow ? parseFloat((bnExGst * bnGstRate / 100).toFixed(2)) : 0;
 
-  // Use correct totals based on flow — use real shipping from codCheck if available
+  // Flat shipping for Buy Now — same rule as CartContext
+  const bnCartTotal   = parseFloat((bnExGst + bnGst).toFixed(2));
+  const bnWeightKg    = Math.max(bnQty * 0.5, 0.5);
+  const bnFlatShipping = bnCartTotal > 999 ? 0 : bnWeightKg <= 0.5 ? 49 : 149;
+
+  // Use correct totals based on flow — always use flat shipping (no Shiprocket rate)
   const displaySubtotal = buyNow ? parseFloat(bnExGst.toFixed(2)) : subtotalExGst;
-  const displayGst      = buyNow ? bnGst      : gstTotal;
-  // For both cart and buy now, prefer real shipping from codCheck.shippingRate
-  const displayShipping = codCheck.shippingRate !== null ? codCheck.shippingRate : (buyNow ? bnShipping : shipping);
-  const displayTotal    = displayShipping !== null ? parseFloat((displaySubtotal + displayGst + displayShipping).toFixed(2)) : null;
+  const displayGst      = buyNow ? bnGst : gstTotal;
+  const displayShipping = buyNow ? bnFlatShipping : shipping;
+  const displayTotal    = parseFloat((displaySubtotal + displayGst + displayShipping).toFixed(2));
 
   const [address, setAddress] = useState({
     fullName: '', phone: '', addressLine1: '', addressLine2: '',
@@ -110,13 +110,12 @@ export default function Checkout() {
       const totalWeight = Math.max((checkoutItems.reduce((s, i) => s + i.quantity, 0)) * 0.5, 0.5);
       const { data } = await api.get(`/delivery/cod-check?delivery=${pincode}&weight=${totalWeight}`);
       setCodCheck({
-        available:    data.codAvailable,
-        edd:          data.edd,
-        eddDays:      data.eddDays,
-        courierName:  data.courierName,
-        shippingRate: data.shippingRate || null,
-        loading:      false,
-        checked:      true,
+        available:   data.codAvailable,
+        edd:         data.edd,
+        eddDays:     data.eddDays,
+        courierName: data.courierName,
+        loading:     false,
+        checked:     true,
       });
     } catch {
       // Fallback — show COD optimistically
@@ -165,7 +164,7 @@ export default function Checkout() {
       lookupPincode(value);
       if (value.length !== 6) {
         codCheckRef.current = '';
-        setCodCheck({ available: null, edd: null, eddDays: null, courierName: null, loading: false, checked: false });
+        setCodCheck({ available: null, edd: null, eddDays: null, courierName: null, shippingRate: null, loading: false, checked: false });
       }
     }
   };
@@ -289,7 +288,7 @@ export default function Checkout() {
         })),
         shippingAddress: address,
         paymentMethod,
-        shipping: displayShipping ?? 0,  // always send actual Shiprocket-calculated rate
+        shipping: displayShipping,  // flat rate shipping
       });
 
       const order = data.order;
@@ -674,11 +673,9 @@ export default function Checkout() {
                   <span>{formatINR(displayGst)}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
-                  <span>Shipping{codCheck.courierName ? <span className="text-xs text-gray-400 ml-1">via {codCheck.courierName}</span> : null}</span>
-                  <span className={displayShipping === 0 ? 'text-green-500' : ''}>
-                    {codCheck.shippingRate != null
-                      ? formatINR(codCheck.shippingRate)
-                      : displayShipping === 0 ? 'FREE' : formatINR(displayShipping)}
+                  <span>Shipping</span>
+                  <span className={displayShipping === 0 ? 'text-green-600 font-semibold' : ''}>
+                    {displayShipping === 0 ? 'FREE 🎉' : formatINR(displayShipping)}
                   </span>
                 </div>
                 <div className="flex justify-between font-bold text-base pt-2 border-t">
@@ -689,16 +686,14 @@ export default function Checkout() {
 
               <button
                 onClick={handlePlaceOrder}
-                disabled={loading || checkoutItems.length === 0 || (displayTotal === null && displaySubtotal + displayGst < 1499)}
+                disabled={loading || checkoutItems.length === 0}
                 className="btn-primary w-full disabled:opacity-60"
               >
                 {loading
                   ? 'Processing...'
-                  : displayTotal === null
-                    ? 'Enter pincode for shipping...'
-                    : paymentMethod === 'razorpay'
-                      ? `Pay ${formatINR(displayTotal)}`
-                      : `Place COD Order — ${formatINR(displayTotal)}`}
+                  : paymentMethod === 'razorpay'
+                    ? `Pay ${formatINR(displayTotal)}`
+                    : `Place COD Order — ${formatINR(displayTotal)}`}
               </button>
 
               <div className="flex items-center justify-center gap-1.5 mt-3">
