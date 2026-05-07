@@ -248,6 +248,33 @@ export default function Home() {
       <Helmet>
         <title>Eptomart — Shop Everything Online | India's Best Online Store</title>
         <meta name="description" content="Shop electronics, fashion, groceries and more at the best prices. Fast delivery across India." />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://www.eptomart.com/" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "Eptomart",
+          "url": "https://www.eptomart.com",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://www.eptomart.com/shop?search={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        })}</script>
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Eptomart",
+          "url": "https://www.eptomart.com",
+          "logo": "https://www.eptomart.com/logo-v3.png",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+91-9514519518",
+            "contactType": "customer service",
+            "areaServed": "IN",
+            "availableLanguage": ["English", "Tamil"]
+          }
+        })}</script>
       </Helmet>
 
       <Navbar />

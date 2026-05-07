@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /checkout
+Disallow: /cart
+Disallow: /profile
+Disallow: /orders
+Disallow: /seller/*
+Disallow: /api/
+
+Sitemap: https://www.eptomart.com/api/sitemap/sitemap.xml

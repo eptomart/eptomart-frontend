@@ -158,10 +158,48 @@ export default function ProductPage() {
       <Helmet>
         <title>{product.name} — Eptomart</title>
         <meta name="description" content={product.shortDescription || product.description?.slice(0, 160)} />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href={`https://www.eptomart.com/product/${slug}`} />
+        {/* Open Graph */}
+        <meta property="og:type" content="product" />
         <meta property="og:title" content={`${product.name} — Eptomart`} />
         <meta property="og:description" content={product.shortDescription || product.description?.slice(0, 155)} />
         <meta property="og:image" content={product.images?.[0]?.url} />
-        <meta property="og:url" content={`https://eptomart.com/product/${slug}`} />
+        <meta property="og:url" content={`https://www.eptomart.com/product/${slug}`} />
+        <meta property="og:site_name" content="Eptomart" />
+        <meta property="product:price:amount" content={activePrice} />
+        <meta property="product:price:currency" content="INR" />
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`${product.name} — Eptomart`} />
+        <meta name="twitter:description" content={product.shortDescription || product.description?.slice(0, 155)} />
+        <meta name="twitter:image" content={product.images?.[0]?.url} />
+        {/* JSON-LD structured data — Google Shopping + rich results */}
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org/",
+          "@type": "Product",
+          "name": product.name,
+          "image": product.images?.map(i => i.url) || [],
+          "description": product.shortDescription || product.description?.slice(0, 300),
+          "sku": product._id,
+          "brand": { "@type": "Brand", "name": product.brand || "Eptomart" },
+          "offers": {
+            "@type": "Offer",
+            "url": `https://www.eptomart.com/product/${slug}`,
+            "priceCurrency": "INR",
+            "price": activePrice,
+            "itemCondition": "https://schema.org/NewCondition",
+            "availability": activeStock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+            "seller": { "@type": "Organization", "name": "Eptomart" }
+          },
+          ...(product.ratings?.count > 0 ? {
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": product.ratings.average,
+              "reviewCount": product.ratings.count
+            }
+          } : {})
+        })}</script>
       </Helmet>
       <Navbar />
 
