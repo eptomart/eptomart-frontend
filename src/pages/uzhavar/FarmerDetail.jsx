@@ -181,6 +181,14 @@ export default function FarmerDetail() {
                   <p className="font-semibold text-gray-800 text-sm">{prod.name}</p>
                   {prod.nameTa && <p className="text-xs text-gray-400">{prod.nameTa}</p>}
                   <p className="text-xs text-gray-400 capitalize">{prod.category} · {prod.deliveryType}</p>
+                  {prod.harvestFrom && (
+                    <p className="text-xs text-green-600 font-medium">
+                      🗓 {new Date(prod.harvestFrom).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      {prod.harvestTo && prod.harvestTo !== prod.harvestFrom && (
+                        <> → {new Date(prod.harvestTo).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</>
+                      )}
+                    </p>
+                  )}
                   <p className="font-bold text-green-600 text-sm mt-0.5">
                     ₹{prod.pricePerUnit}/{prod.unit}
                     <span className="font-normal text-gray-400 text-xs ml-2">

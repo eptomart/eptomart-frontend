@@ -23,7 +23,7 @@ const ORDER_STATUS_COLOR = {
   auto_cancelled: 'bg-red-100 text-red-600',
 };
 
-const emptyProduct = { name: '', nameTa: '', category: 'vegetable', unit: 'kg', pricePerUnit: '', availableQuantity: '', harvestDate: '', deliveryType: 'both' };
+const emptyProduct = { name: '', nameTa: '', category: 'vegetable', unit: 'kg', pricePerUnit: '', availableQuantity: '', harvestFrom: '', harvestTo: '', deliveryType: 'both' };
 
 export default function FarmerDashboard() {
   const navigate   = useNavigate();
@@ -83,8 +83,12 @@ export default function FarmerDashboard() {
   };
 
   const handleSaveProduct = async () => {
-    if (!form.name || !form.pricePerUnit || !form.availableQuantity || !form.harvestDate) {
-      toast.error('Fill all required fields');
+    if (!form.name || !form.pricePerUnit || !form.availableQuantity || !form.harvestFrom || !form.harvestTo) {
+      toast.error('Fill all required fields including harvest dates');
+      return;
+    }
+    if (new Date(form.harvestTo) < new Date(form.harvestFrom)) {
+      toast.error('"Available To" must be after "Available From"');
       return;
     }
     setSaving(true);
@@ -238,10 +242,14 @@ export default function FarmerDashboard() {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-800 text-sm">{prod.name}</p>
                       <p className="text-xs text-gray-500">₹{prod.pricePerUnit}/{prod.unit} · {prod.availableQuantity} {prod.unit} left</p>
-                      <p className="text-xs text-gray-400">Harvest: {new Date(prod.harvestDate).toLocaleDateString('en-IN')}</p>
+                      <p className="text-xs text-gray-400">
+                        🗓 {new Date(prod.harvestFrom).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        {' → '}
+                        {new Date(prod.harvestTo).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      </p>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => { setForm({ ...prod, harvestDate: prod.harvestDate?.split('T')[0] }); setEditId(prod._id); setShowForm(true); }}
+                      <button onClick={() => { setForm({ ...prod, harvestFrom: prod.harvestFrom?.split('T')[0], harvestTo: prod.harvestTo?.split('T')[0] }); setEditId(prod._id); setShowForm(true); }}
                         className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100">
                         <FiEdit2 size={13} />
                       </button>
@@ -347,11 +355,33 @@ export default function FarmerDashboard() {
                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mt-1 focus:outline-none focus:border-green-400" />
                 </div>
               </div>
-              <div>
-                <label className="text-xs font-medium text-gray-600">Harvest Date *</label>
-                <input type="date" min={today} max={maxDate.toISOString().split('T')[0]} value={form.harvestDate}
-                  onChange={e => setForm(f => ({ ...f, harvestDate: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mt-1 focus:outline-none focus:border-green-400" />
+              <div className="bg-green-50 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-semibold text-green-700">🗓 Harvest Availability Window *</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Available From</label>
+                    <input type="date" min={today} max={maxDate.toISOString().split('T')[0]}
+                      value={form.harvestFrom}
+                      onChange={e => {
+                        const from = e.target.value;
+                        setForm(f => ({
+                          ...f,
+                          harvestFrom: from,
+                          // auto-set To = From + 7 days if not set
+                          harvestTo: f.harvestTo && f.harvestTo >= from ? f.harvestTo : (() => { const d = new Date(from); d.setDate(d.getDate() + 7); return d.toISOString().split('T')[0]; })(),
+                        }));
+                      }}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mt-1 focus:outline-none focus:border-green-400 bg-white" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Available To</label>
+                    <input type="date" min={form.harvestFrom || today} max={maxDate.toISOString().split('T')[0]}
+                      value={form.harvestTo}
+                      onChange={e => setForm(f => ({ ...f, harvestTo: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mt-1 focus:outline-none focus:border-green-400 bg-white" />
+                  </div>
+                </div>
+                <p className="text-[10px] text-green-600">Buyers can order during this window. Product expires 3 days after end date.</p>
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-600">Delivery Type</label>
