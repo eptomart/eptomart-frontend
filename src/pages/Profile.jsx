@@ -2,9 +2,9 @@
 // PROFILE PAGE — with saved addresses
 // ============================================
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiUser, FiSave, FiMapPin, FiPlus, FiTrash2, FiCheck, FiPackage, FiHeart, FiMessageSquare, FiSend, FiChevronLeft } from 'react-icons/fi';
+import { FiUser, FiSave, FiMapPin, FiPlus, FiTrash2, FiCheck, FiPackage, FiHeart, FiMessageSquare, FiSend, FiChevronLeft, FiToggleLeft, FiToggleRight, FiExternalLink } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import { useAuth } from '../context/AuthContext';
@@ -217,11 +217,158 @@ function MessagesTab() {
   );
 }
 
+// ── Farmer tab component ──────────────────────────────────────
+function FarmerTab() {
+  const navigate = useNavigate();
+  const [farmer,   setFarmer]   = useState(undefined); // undefined = loading
+  const [toggling, setToggling] = useState(false);
+
+  useEffect(() => {
+    api.get('/uzhavar/farmer/me')
+      .then(r => setFarmer(r.data.farmer || null))
+      .catch(() => setFarmer(null));
+  }, []);
+
+  const toggleAvailability = async () => {
+    setToggling(true);
+    try {
+      const res = await api.patch('/uzhavar/farmer/toggle-availability');
+      setFarmer(f => ({ ...f, availableNow: res.data.availableNow }));
+      toast.success(res.data.availableNow ? '🟢 You are now Live!' : '⏸ Set to Offline');
+    } catch { toast.error('Failed to update availability'); }
+    finally { setToggling(false); }
+  };
+
+  // Loading
+  if (farmer === undefined) return (
+    <div className="flex justify-center py-10">
+      <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  // Not a farmer yet
+  if (!farmer) return (
+    <div className="text-center py-10 px-4">
+      <div className="text-5xl mb-4">🌾</div>
+      <h3 className="font-bold text-gray-800 text-lg mb-1">You're not registered as a farmer</h3>
+      <p className="text-sm text-gray-500 mb-1">Sell your harvest directly to nearby buyers</p>
+      <p className="text-xs text-gray-400 mb-6">உழவர் சந்தை · நேரடியாக விற்கவும்</p>
+      <button onClick={() => navigate('/uzhavar/farmer/register')}
+        className="bg-green-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-green-700 transition-colors">
+        🧑‍🌾 Register as Farmer
+      </button>
+    </div>
+  );
+
+  // Registered farmer
+  const statusColor = {
+    approved:  'bg-green-100 text-green-700',
+    pending:   'bg-yellow-100 text-yellow-700',
+    rejected:  'bg-red-100 text-red-600',
+    suspended: 'bg-orange-100 text-orange-700',
+  }[farmer.verificationStatus] || 'bg-gray-100 text-gray-600';
+
+  return (
+    <div className="space-y-4">
+      {/* Farmer identity card */}
+      <div className="bg-gradient-to-r from-green-700 to-lime-600 rounded-2xl p-5 text-white">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs text-green-200 font-semibold uppercase tracking-wider mb-1">Uzhavar Fresh</p>
+            <h3 className="font-black text-lg leading-tight">{farmer.name}</h3>
+            <p className="text-green-100 text-sm">{farmer.address?.village ? `${farmer.address.village}, ` : ''}{farmer.address?.district}</p>
+            <p className="text-green-200 text-xs mt-0.5">📍 {farmer.deliveryRadius}km delivery radius</p>
+          </div>
+          <span className={`text-xs font-bold px-2.5 py-1 rounded-full capitalize ${statusColor}`}>
+            {farmer.verificationStatus}
+          </span>
+        </div>
+
+        {/* Live / Offline toggle — only for approved farmers */}
+        {farmer.verificationStatus === 'approved' && (
+          <div className="mt-4 flex items-center justify-between bg-white/10 rounded-xl px-4 py-3">
+            <div>
+              <p className="text-white font-semibold text-sm">
+                {farmer.availableNow ? '🟢 Currently Live' : '⏸ Currently Offline'}
+              </p>
+              <p className="text-green-200 text-xs">
+                {farmer.availableNow ? 'Buyers can see and order from you' : 'You are hidden from buyers'}
+              </p>
+            </div>
+            <button onClick={toggleAvailability} disabled={toggling}
+              className="text-white disabled:opacity-50 transition-colors">
+              {farmer.availableNow
+                ? <FiToggleRight size={34} className="text-lime-300" />
+                : <FiToggleLeft size={34} className="text-white/60" />}
+            </button>
+          </div>
+        )}
+
+        {/* Pending message */}
+        {farmer.verificationStatus === 'pending' && (
+          <div className="mt-3 bg-yellow-400/20 rounded-xl px-3 py-2 text-xs text-yellow-100">
+            ⏳ Your registration is under review. We'll approve within 24–48 hours.
+          </div>
+        )}
+
+        {/* Rejected message */}
+        {farmer.verificationStatus === 'rejected' && farmer.rejectionReason && (
+          <div className="mt-3 bg-red-400/20 rounded-xl px-3 py-2 text-xs text-red-100">
+            ❌ Rejected: {farmer.rejectionReason}
+          </div>
+        )}
+      </div>
+
+      {/* Stats row */}
+      {farmer.verificationStatus === 'approved' && (
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Total Orders', value: farmer.totalOrders || 0, icon: '📦' },
+            { label: 'Rating',       value: farmer.ratings?.average ? `${farmer.ratings.average.toFixed(1)}★` : '—', icon: '⭐' },
+            { label: 'Acceptance',   value: `${farmer.acceptanceRate || 100}%`, icon: '✅' },
+          ].map(s => (
+            <div key={s.label} className="bg-white border border-gray-100 rounded-xl p-3 text-center shadow-sm">
+              <p className="text-xl mb-0.5">{s.icon}</p>
+              <p className="font-black text-gray-800 text-lg leading-tight">{s.value}</p>
+              <p className="text-[10px] text-gray-400">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div className="space-y-2">
+        <button onClick={() => navigate('/uzhavar/farmer')}
+          className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3 hover:border-green-300 hover:bg-green-50 transition-all">
+          <span className="flex items-center gap-3 text-sm font-semibold text-gray-700">
+            <span className="text-lg">🌾</span> Farmer Dashboard
+          </span>
+          <FiExternalLink size={15} className="text-gray-400" />
+        </button>
+        <button onClick={() => navigate('/uzhavar/my-orders')}
+          className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3 hover:border-green-300 hover:bg-green-50 transition-all">
+          <span className="flex items-center gap-3 text-sm font-semibold text-gray-700">
+            <span className="text-lg">📦</span> My Uzhavar Orders
+          </span>
+          <FiExternalLink size={15} className="text-gray-400" />
+        </button>
+        <button onClick={() => navigate('/uzhavar/subscribe')}
+          className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3 hover:border-green-300 hover:bg-green-50 transition-all">
+          <span className="flex items-center gap-3 text-sm font-semibold text-gray-700">
+            <span className="text-lg">💳</span> Subscription Plans
+          </span>
+          <FiExternalLink size={15} className="text-gray-400" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const BLANK_ADDR = { label: 'Home', fullName: '', phone: '', addressLine1: '', addressLine2: '', city: '', state: '', pincode: '', isDefault: false };
 
 export default function Profile() {
   const { user, updateProfile, loadUser } = useAuth();
-  const [tab,         setTab]         = useState('profile'); // 'profile' | 'messages'
+  const [tab,         setTab]         = useState('profile'); // 'profile' | 'farmer' | 'messages'
   const [name,        setName]        = useState(user?.name || '');
   const [saving,      setSaving]      = useState(false);
   const [showAddAddr, setShowAddAddr] = useState(false);
@@ -287,13 +434,23 @@ export default function Profile() {
 
         {/* Tab bar */}
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6">
-          {[['profile', FiUser, 'Profile & Addresses'], ['messages', FiMessageSquare, 'Messages']].map(([key, Icon, label]) => (
+          {[
+            ['profile',  FiUser,          'Profile'],
+            ['farmer',   null,            '🌾 Farmer'],
+            ['messages', FiMessageSquare, 'Messages'],
+          ].map(([key, Icon, label]) => (
             <button key={key} onClick={() => setTab(key)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${tab === key ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-              <Icon size={14} /> {label}
+              {Icon ? <Icon size={14} /> : null} {label}
             </button>
           ))}
         </div>
+
+        {tab === 'farmer' && (
+          <div className="card p-6 mb-6">
+            <FarmerTab />
+          </div>
+        )}
 
         {tab === 'messages' && (
           <div className="card p-6 mb-6">
