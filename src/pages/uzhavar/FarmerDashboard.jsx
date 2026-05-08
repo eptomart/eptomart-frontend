@@ -379,6 +379,4 @@ export default function FarmerDashboard() {
       )}
     </>
   );
-
-  var maxDate = new Date(); maxDate.setDate(maxDate.getDate() + 10);
 }
