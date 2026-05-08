@@ -57,6 +57,7 @@ const AdminUzhavar      = lazy(() => import('./pages/admin/UzhavarAdmin'));
 const UzhavarHome       = lazy(() => import('./pages/uzhavar/UzhavarHome'));
 const FarmerDetail      = lazy(() => import('./pages/uzhavar/FarmerDetail'));
 const FarmerDashboard   = lazy(() => import('./pages/uzhavar/FarmerDashboard'));
+const FarmerRegister    = lazy(() => import('./pages/uzhavar/FarmerRegister'));
 const MyUzhavarOrders   = lazy(() => import('./pages/uzhavar/MyUzhavarOrders'));
 const UzhavarSubscribe  = lazy(() => import('./pages/uzhavar/UzhavarSubscribe'));
 
@@ -158,11 +159,12 @@ function AppRoutes() {
           </Route>
 
           {/* ── Uzhavar Fresh ───────────────────── */}
-          <Route path="/uzhavar"              element={<UzhavarHome />} />
-          <Route path="/uzhavar/farmer/:farmerId" element={<FarmerDetail />} />
-          <Route path="/uzhavar/farmer"       element={<FarmerDashboard />} />
-          <Route path="/uzhavar/my-orders"    element={<MyUzhavarOrders />} />
-          <Route path="/uzhavar/subscribe"    element={<UzhavarSubscribe />} />
+          <Route path="/uzhavar"                    element={<UzhavarHome />} />
+          <Route path="/uzhavar/farmer/register"    element={<ProtectedRoute><FarmerRegister /></ProtectedRoute>} />
+          <Route path="/uzhavar/farmer/:farmerId"   element={<FarmerDetail />} />
+          <Route path="/uzhavar/farmer"             element={<ProtectedRoute><FarmerDashboard /></ProtectedRoute>} />
+          <Route path="/uzhavar/my-orders"          element={<ProtectedRoute><MyUzhavarOrders /></ProtectedRoute>} />
+          <Route path="/uzhavar/subscribe"          element={<UzhavarSubscribe />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

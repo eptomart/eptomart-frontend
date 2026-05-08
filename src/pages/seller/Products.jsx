@@ -489,9 +489,12 @@ EPT-002,,Product B (no SKU),0,100
                           <button onClick={() => cloneProduct(p._id)} title="Clone" className="text-blue-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-blue-50">
                             <FiCopy size={14} />
                           </button>
-                          <button onClick={() => deleteProduct(p._id)} title="Delete" className="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50">
-                            <FiTrash2 size={14} />
-                          </button>
+                          {/* Delete — only allowed for drafts, rejected, correction_needed */}
+                          {['draft', 'rejected', 'correction_needed'].includes(p.approvalStatus) && (
+                            <button onClick={() => deleteProduct(p._id)} title="Delete" className="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50">
+                              <FiTrash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
