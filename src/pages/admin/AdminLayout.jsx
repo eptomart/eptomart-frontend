@@ -58,6 +58,7 @@ const NAV_GROUPS = [
     items: [
       { path: '/admin/analytics',    label: 'Analytics',     icon: FiBarChart2, permission: 'analytics' },
       { path: '/admin/visitors',     label: 'Visitors',      icon: FiGlobe,     permission: 'analytics' },
+      { path: '/admin/uzhavar',      label: 'Uzhavar Fresh', icon: FiPackage,   permission: null        },
       { path: '/admin/notifications',label: 'Notifications', icon: FiBell,      permission: null        },
       { path: '/admin/activity-log', label: 'Activity Log',  icon: FiActivity,  permission: null        },
       { path: '/admin/admins',       label: 'Admin Accounts',icon: FiShield,    permission: 'admins'    },

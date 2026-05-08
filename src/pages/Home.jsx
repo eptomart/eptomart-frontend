@@ -10,6 +10,7 @@ import {
 } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
+import UzhavarPopup from '../components/uzhavar/UzhavarPopup';
 import ProductCard from '../components/product/ProductCard';
 import RecentlyViewed from '../components/product/RecentlyViewed';
 import CategoryIcon from '../components/common/CategoryIcon';
@@ -278,6 +279,7 @@ export default function Home() {
       </Helmet>
 
       <Navbar />
+      <UzhavarPopup />
 
       <main className="min-h-screen bg-gray-50">
         {/* ── Hero Carousel ── */}

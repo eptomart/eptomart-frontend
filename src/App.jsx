@@ -51,6 +51,14 @@ const AdminActivityLog  = lazy(() => import('./pages/admin/ActivityLog'));
 const AdminSellerOrders = lazy(() => import('./pages/admin/SellerOrders'));
 const AdminVisitors     = lazy(() => import('./pages/admin/Visitors'));
 const AdminMessages     = lazy(() => import('./pages/admin/Messages'));
+const AdminUzhavar      = lazy(() => import('./pages/admin/UzhavarAdmin'));
+
+// ── Uzhavar Fresh pages ───────────────────────
+const UzhavarHome       = lazy(() => import('./pages/uzhavar/UzhavarHome'));
+const FarmerDetail      = lazy(() => import('./pages/uzhavar/FarmerDetail'));
+const FarmerDashboard   = lazy(() => import('./pages/uzhavar/FarmerDashboard'));
+const MyUzhavarOrders   = lazy(() => import('./pages/uzhavar/MyUzhavarOrders'));
+const UzhavarSubscribe  = lazy(() => import('./pages/uzhavar/UzhavarSubscribe'));
 
 // ── Seller pages ─────────────────────────────
 const SellerLayout  = lazy(() => import('./pages/seller/SellerLayout'));
@@ -146,7 +154,15 @@ function AppRoutes() {
             <Route path="visitors"         element={<AdminVisitors />} />
             <Route path="settings"         element={<AdminSettings />} />
             <Route path="messages"         element={<AdminMessages />} />
+            <Route path="uzhavar"          element={<AdminUzhavar />} />
           </Route>
+
+          {/* ── Uzhavar Fresh ───────────────────── */}
+          <Route path="/uzhavar"              element={<UzhavarHome />} />
+          <Route path="/uzhavar/farmer/:farmerId" element={<FarmerDetail />} />
+          <Route path="/uzhavar/farmer"       element={<FarmerDashboard />} />
+          <Route path="/uzhavar/my-orders"    element={<MyUzhavarOrders />} />
+          <Route path="/uzhavar/subscribe"    element={<UzhavarSubscribe />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
