@@ -249,6 +249,21 @@ export default function UzhavarHome() {
             </div>
           </div>
         )}
+
+        {/* ── Are you a farmer? ──────────────────────── */}
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="bg-gradient-to-r from-green-700 to-lime-600 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-center sm:text-left">
+              <p className="text-white font-black text-base">🌾 Are you a farmer?</p>
+              <p className="text-green-100 text-xs mt-0.5">List your harvest and sell directly to buyers near you — no middlemen</p>
+              <p className="text-green-200 text-[10px]">நீங்கள் உழவரா? இப்போதே பதிவு செய்யுங்கள்</p>
+            </div>
+            <button onClick={() => navigate('/uzhavar/farmer')}
+              className="flex-shrink-0 bg-white text-green-700 font-black text-sm px-5 py-2.5 rounded-xl hover:bg-green-50 transition-colors">
+              Register as Farmer →
+            </button>
+          </div>
+        </div>
       </main>
       <Footer />
     </>

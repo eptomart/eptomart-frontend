@@ -3,11 +3,194 @@
 // ============================================
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { FiUsers, FiPackage, FiCreditCard, FiBarChart2, FiCheck, FiX, FiEye } from 'react-icons/fi';
+import { FiUsers, FiPackage, FiCreditCard, FiBarChart2, FiCheck, FiX, FiPlus, FiMapPin } from 'react-icons/fi';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
-const TABS = ['stats', 'farmers', 'orders', 'subscriptions'];
+const TN_DISTRICTS = [
+  'Ariyalur','Chengalpattu','Chennai','Coimbatore','Cuddalore','Dharmapuri','Dindigul',
+  'Erode','Kallakurichi','Kancheepuram','Kanyakumari','Karur','Krishnagiri','Madurai',
+  'Mayiladuthurai','Nagapattinam','Namakkal','Nilgiris','Perambalur','Pudukkottai',
+  'Ramanathapuram','Ranipet','Salem','Sivaganga','Tenkasi','Thanjavur','Theni',
+  'Thoothukudi','Tiruchirappalli','Tirunelveli','Tirupathur','Tiruppur','Tiruvallur',
+  'Tiruvannamalai','Tiruvarur','Vellore','Viluppuram','Virudhunagar',
+];
+
+const EMPTY_FORM = {
+  name: '', phone: '', languagePreference: 'tamil',
+  village: '', taluk: '', district: '', pincode: '',
+  lat: '', lng: '',
+  deliveryRadius: '5',
+  bankName: '', accountHolderName: '', accountNumber: '', ifsc: '',
+  notes: '',
+};
+
+// ── Add Farmer Modal ──────────────────────────────────────────
+function AddFarmerModal({ onClose, onAdded }) {
+  const [form, setForm]     = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const detectGPS = () => {
+    if (!navigator.geolocation) return toast.error('GPS not supported');
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      pos => { set('lat', pos.coords.latitude.toFixed(6)); set('lng', pos.coords.longitude.toFixed(6)); setGpsLoading(false); },
+      ()  => { toast.error('Could not get location'); setGpsLoading(false); }
+    );
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.name || !form.phone || !form.district || !form.pincode) {
+      return toast.error('Name, phone, district and pincode are required');
+    }
+    setSaving(true);
+    try {
+      await api.post('/uzhavar/admin/farmers', form);
+      toast.success('Farmer added & approved!');
+      onAdded();
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to add farmer');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inp = 'w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400';
+  const lbl = 'block text-xs font-semibold text-gray-600 mb-1';
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="font-black text-gray-800 flex items-center gap-2">🧑‍🌾 Add Farmer</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><FiX size={18} /></button>
+        </div>
+
+        <form onSubmit={submit} className="p-5 space-y-4">
+          {/* Basic Info */}
+          <div className="bg-green-50 rounded-xl p-4 space-y-3">
+            <p className="text-xs font-black text-green-700 uppercase tracking-wider">Basic Info</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>Full Name *</label>
+                <input className={inp} value={form.name} onChange={e => set('name', e.target.value)} placeholder="Farmer name" required />
+              </div>
+              <div>
+                <label className={lbl}>Phone *</label>
+                <input className={inp} value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="10-digit mobile" maxLength={10} required />
+              </div>
+            </div>
+            <div>
+              <label className={lbl}>Language</label>
+              <select className={inp} value={form.languagePreference} onChange={e => set('languagePreference', e.target.value)}>
+                <option value="tamil">Tamil</option>
+                <option value="english">English</option>
+                <option value="telugu">Telugu</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Location */}
+          <div className="bg-blue-50 rounded-xl p-4 space-y-3">
+            <p className="text-xs font-black text-blue-700 uppercase tracking-wider">Location</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>Village / Area</label>
+                <input className={inp} value={form.village} onChange={e => set('village', e.target.value)} placeholder="Village name" />
+              </div>
+              <div>
+                <label className={lbl}>Taluk</label>
+                <input className={inp} value={form.taluk} onChange={e => set('taluk', e.target.value)} placeholder="Taluk" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>District *</label>
+                <select className={inp} value={form.district} onChange={e => set('district', e.target.value)} required>
+                  <option value="">Select district</option>
+                  {TN_DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={lbl}>Pincode *</label>
+                <input className={inp} value={form.pincode} onChange={e => set('pincode', e.target.value)} placeholder="6-digit" maxLength={6} required />
+              </div>
+            </div>
+            {/* GPS */}
+            <div>
+              <label className={lbl}>GPS Coordinates (optional)</label>
+              <div className="flex gap-2">
+                <input className={inp} value={form.lat} onChange={e => set('lat', e.target.value)} placeholder="Latitude" />
+                <input className={inp} value={form.lng} onChange={e => set('lng', e.target.value)} placeholder="Longitude" />
+                <button type="button" onClick={detectGPS} disabled={gpsLoading}
+                  className="flex-shrink-0 flex items-center gap-1 bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50">
+                  <FiMapPin size={12} /> {gpsLoading ? '...' : 'GPS'}
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">Used for nearby search. Enter manually or use GPS button.</p>
+            </div>
+            <div>
+              <label className={lbl}>Delivery Radius</label>
+              <select className={inp} value={form.deliveryRadius} onChange={e => set('deliveryRadius', e.target.value)}>
+                <option value="3">3 km</option>
+                <option value="5">5 km</option>
+                <option value="10">10 km</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Bank Details */}
+          <div className="bg-yellow-50 rounded-xl p-4 space-y-3">
+            <p className="text-xs font-black text-yellow-700 uppercase tracking-wider">Bank Details (optional)</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>Bank Name</label>
+                <input className={inp} value={form.bankName} onChange={e => set('bankName', e.target.value)} placeholder="e.g. Indian Bank" />
+              </div>
+              <div>
+                <label className={lbl}>Account Holder</label>
+                <input className={inp} value={form.accountHolderName} onChange={e => set('accountHolderName', e.target.value)} placeholder="Name on account" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>Account Number</label>
+                <input className={inp} value={form.accountNumber} onChange={e => set('accountNumber', e.target.value)} placeholder="Account number" />
+              </div>
+              <div>
+                <label className={lbl}>IFSC Code</label>
+                <input className={inp} value={form.ifsc} onChange={e => set('ifsc', e.target.value.toUpperCase())} placeholder="IFSC" maxLength={11} />
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className={lbl}>Admin Notes (internal)</label>
+            <textarea className={`${inp} resize-none`} rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Any internal notes..." />
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose} className="flex-1 border border-gray-200 text-gray-600 font-semibold py-2.5 rounded-xl hover:bg-gray-50 text-sm">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving}
+              className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-50 text-sm flex items-center justify-center gap-2">
+              {saving ? <span className="animate-spin">⏳</span> : <FiCheck size={14} />}
+              {saving ? 'Adding...' : 'Add & Approve Farmer'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 export default function UzhavarAdmin() {
   const [tab, setTab]               = useState('stats');
@@ -18,6 +201,7 @@ export default function UzhavarAdmin() {
   const [farmerFilter, setFarmerFilter]   = useState('pending');
   const [orderFilter, setOrderFilter]     = useState('');
   const [loading, setLoading]       = useState(false);
+  const [showAddModal, setShowAddModal]   = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,6 +241,12 @@ export default function UzhavarAdmin() {
   return (
     <>
       <Helmet><title>Uzhavar Admin</title></Helmet>
+      {showAddModal && (
+        <AddFarmerModal
+          onClose={() => setShowAddModal(false)}
+          onAdded={() => { load(); setFarmerFilter('approved'); }}
+        />
+      )}
       <div className="p-4 max-w-6xl mx-auto">
         <h1 className="text-xl font-black text-gray-800 mb-5 flex items-center gap-2">
           🌾 Uzhavar Fresh — Admin
@@ -105,13 +295,17 @@ export default function UzhavarAdmin() {
             {/* ── Farmers ──────────────────────────────── */}
             {tab === 'farmers' && (
               <>
-                <div className="flex gap-2 mb-4">
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
                   {['', 'pending', 'approved', 'rejected', 'suspended'].map(s => (
                     <button key={s} onClick={() => setFarmerFilter(s)}
                       className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors capitalize ${farmerFilter === s ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
                       {s || 'All'}
                     </button>
                   ))}
+                  <button onClick={() => setShowAddModal(true)}
+                    className="ml-auto flex items-center gap-1.5 bg-green-600 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-green-700 transition-colors">
+                    <FiPlus size={13} /> Add Farmer
+                  </button>
                 </div>
                 <div className="space-y-3">
                   {farmers.length === 0 && <div className="text-center py-8 text-gray-400">No farmers found</div>}

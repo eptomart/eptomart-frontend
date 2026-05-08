@@ -47,29 +47,27 @@ export default function FarmerDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [fRes, pRes, oRes] = await Promise.all([
-        api.get('/uzhavar/farmer/me'),
-        api.get('/uzhavar/farmer/products').catch(() => ({ data: { products: [] } })),
-        api.get('/uzhavar/farmer/orders'),
-      ]);
-      setFarmer(fRes.data.farmer);
-      setProducts(pRes.data.products || []);
-      setOrders(oRes.data.orders || []);
+      const fRes = await api.get('/uzhavar/farmer/me');
+      const farmerData = fRes.data.farmer;
+      setFarmer(farmerData);
+
+      // Only load products & orders if farmer profile exists
+      if (farmerData) {
+        const [pRes, oRes] = await Promise.all([
+          api.get(`/uzhavar/farmers/${farmerData._id}/products`).catch(() => ({ data: { products: [] } })),
+          api.get('/uzhavar/farmer/orders').catch(() => ({ data: { orders: [] } })),
+        ]);
+        setProducts(pRes.data.products || []);
+        setOrders(oRes.data.orders || []);
+      }
     } catch {
-      toast.error('Failed to load dashboard');
+      // farmer/me failed — user is not logged in or network error
+      setFarmer(null);
     } finally {
       setLoading(false);
     }
   };
 
-  // Farmer get own products (quick workaround using farmerId)
-  useEffect(() => {
-    if (farmer?._id) {
-      api.get(`/uzhavar/farmers/${farmer._id}/products`)
-        .then(r => setProducts(r.data.products || []))
-        .catch(() => {});
-    }
-  }, [farmer]);
 
   const toggleAvailability = async () => {
     setToggling(true);
