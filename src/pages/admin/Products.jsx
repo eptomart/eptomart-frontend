@@ -48,6 +48,7 @@ export default function AdminProducts() {
   const [imageFiles,    setImageFiles]    = useState([]);
   const [existingImages,setExistingImages]= useState([]);
   const [deletingImgId, setDeletingImgId] = useState(null);
+  const [settingDefaultId, setSettingDefaultId] = useState(null);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -127,6 +128,19 @@ export default function AdminProducts() {
     });
     setImageFiles([]);
     setShowModal(true);
+  };
+
+  const handleSetDefaultImage = async (imageId) => {
+    setSettingDefaultId(imageId);
+    try {
+      const { data } = await api.patch(`/products/${editProduct._id}/image/${imageId}/set-default`);
+      setExistingImages(data.images || []);
+      toast.success('Main image updated');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update main image');
+    } finally {
+      setSettingDefaultId(null);
+    }
   };
 
   const handleRemoveExistingImage = async (imageId) => {
@@ -729,8 +743,22 @@ export default function AdminProducts() {
                       {existingImages.map((img, idx) => (
                         <div key={img._id || idx} className="relative group w-16 h-16">
                           <img src={img.url} alt="" className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                          {/* Main badge */}
                           {img.isDefault && (
                             <span className="absolute bottom-0 left-0 right-0 text-center text-[8px] bg-primary-500 text-white rounded-b-lg">Main</span>
+                          )}
+                          {/* Set as main — hover, non-default only */}
+                          {editProduct && !img.isDefault && (
+                            <button
+                              type="button"
+                              onClick={() => handleSetDefaultImage(img._id)}
+                              disabled={settingDefaultId === img._id}
+                              title="Set as main image"
+                              className="absolute inset-x-0 bottom-0 text-center text-[8px] bg-green-600 text-white rounded-b-lg
+                                         opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                            >
+                              {settingDefaultId === img._id ? '…' : '★ Main'}
+                            </button>
                           )}
                           {editProduct && (
                             <button

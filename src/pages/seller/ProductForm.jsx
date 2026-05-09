@@ -30,6 +30,7 @@ export default function ProductForm() {
   const [images,        setImages]        = useState([]);
   const [existingImages,setExistingImages]= useState([]);
   const [deletingImgId, setDeletingImgId] = useState(null);
+  const [settingDefaultId, setSettingDefaultId] = useState(null);
   const [categories,    setCategories]    = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [saving,        setSaving]        = useState(false);
@@ -109,6 +110,19 @@ export default function ProductForm() {
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files).slice(0, 5);
     setImages(files);
+  };
+
+  const handleSetDefaultImage = async (imageId) => {
+    setSettingDefaultId(imageId);
+    try {
+      const { data } = await api.patch(`/products/${id}/image/${imageId}/set-default`);
+      setExistingImages(data.images || []);
+      toast.success('Main image updated');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update main image');
+    } finally {
+      setSettingDefaultId(null);
+    }
   };
 
   const handleRemoveExistingImage = async (imageId) => {
@@ -704,10 +718,24 @@ export default function ProductForm() {
                       alt={`Product ${idx + 1}`}
                       className="w-20 h-20 object-cover rounded-xl border border-gray-200"
                     />
+                    {/* Main badge (always visible on default image) */}
                     {img.isDefault && (
                       <span className="absolute bottom-0 left-0 right-0 text-center text-[9px] bg-primary-500 text-white rounded-b-xl py-0.5">
                         Main
                       </span>
+                    )}
+                    {/* "Set as Main" overlay — visible on hover for non-default images */}
+                    {isEdit && !img.isDefault && (
+                      <button
+                        type="button"
+                        onClick={() => handleSetDefaultImage(img._id)}
+                        disabled={settingDefaultId === img._id}
+                        title="Set as main image"
+                        className="absolute inset-x-0 bottom-0 text-center text-[9px] bg-green-600 text-white rounded-b-xl py-0.5
+                                   opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                      >
+                        {settingDefaultId === img._id ? '…' : '★ Set Main'}
+                      </button>
                     )}
                     {/* Delete button — visible on hover */}
                     {isEdit && (

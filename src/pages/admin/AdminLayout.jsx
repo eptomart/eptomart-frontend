@@ -1,7 +1,7 @@
 // ============================================
 // ADMIN LAYOUT — Grouped collapsible sidebar
 // ============================================
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import NotificationBell from '../../components/common/NotificationBell';
 import {
@@ -13,6 +13,7 @@ import {
 } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import EptomartLogo from '../../components/common/EptomartLogo';
+import api from '../../utils/api';
 
 // ── Navigation groups ──────────────────────────────────────────────────────
 const NAV_GROUPS = [
@@ -73,8 +74,22 @@ const ALL_NAV = NAV_GROUPS.flatMap(g => g.items);
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen]   = useState(false);
   const [collapsed, setCollapsed]       = useState(new Set()); // collapsed group names
+  const [badges, setBadges]             = useState({ unreadMessages: 0, pendingApprovals: 0 });
   const { logout, user, isSuperAdmin }  = useAuth();
   const location                        = useLocation();
+  const badgeTimer = useRef(null);
+
+  useEffect(() => {
+    const fetchBadges = async () => {
+      try {
+        const { data } = await api.get('/conversations/admin/badge-counts');
+        if (data.success) setBadges({ unreadMessages: data.unreadMessages, pendingApprovals: data.pendingApprovals });
+      } catch { /* silent */ }
+    };
+    fetchBadges();
+    badgeTimer.current = setInterval(fetchBadges, 30000);
+    return () => clearInterval(badgeTimer.current);
+  }, []);
 
   const userPerms = user?.permissions || [];
   const canAccess = (item) => {
@@ -182,20 +197,30 @@ export default function AdminLayout() {
                 {/* Group items */}
                 {!isCollapsed && (
                   <div className="ml-1 mt-0.5 space-y-0.5">
-                    {items.map(({ path, label, icon: Icon, end }) => (
-                      <Link
-                        key={path}
-                        to={path}
-                        onClick={() => setSidebarOpen(false)}
-                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                          ${isActive(path, end)
-                            ? 'bg-primary-500 text-white'
-                            : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-                      >
-                        <Icon size={15} />
-                        {label}
-                      </Link>
-                    ))}
+                    {items.map(({ path, label, icon: Icon, end }) => {
+                      const badgeCount =
+                        path === '/admin/messages'  ? badges.unreadMessages  :
+                        path === '/admin/approvals' ? badges.pendingApprovals : 0;
+                      return (
+                        <Link
+                          key={path}
+                          to={path}
+                          onClick={() => setSidebarOpen(false)}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                            ${isActive(path, end)
+                              ? 'bg-primary-500 text-white'
+                              : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
+                        >
+                          <Icon size={15} />
+                          <span className="flex-1">{label}</span>
+                          {badgeCount > 0 && (
+                            <span className="ml-auto min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 leading-none">
+                              {badgeCount > 99 ? '99+' : badgeCount}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>
