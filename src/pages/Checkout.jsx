@@ -2,7 +2,7 @@
 // CHECKOUT PAGE — Address + Razorpay / COD Payment
 // ============================================
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { FiCheckCircle, FiShield, FiTruck, FiLoader, FiEdit2, FiMinus, FiPlus } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
@@ -602,69 +602,60 @@ export default function Checkout() {
           <div className="lg:col-span-1">
             <div className="card p-6 sticky top-20">
               <h2 className="text-lg font-bold mb-4">Order Summary</h2>
-              <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
-                {checkoutItems.map(item => (
-                  <div key={item.cartItemId || item._id || item.product} className="flex gap-3 text-sm pb-3 border-b border-gray-100 last:border-0">
-                    <img
-                      src={item.image || item.images?.[0]?.url}
-                      alt={item.name}
-                      className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-gray-800 line-clamp-1 font-medium">{item.name}</p>
 
-                      {/* Variant label + change button */}
-                      {item.variantLabel && (
-                        <div className="flex items-center gap-1 mt-0.5 mb-1">
-                          <span className="text-[11px] bg-orange-100 text-orange-700 font-medium px-1.5 py-0.5 rounded-full">
-                            {item.variantLabel}
-                          </span>
-                          {/* Only show Change button for cart flow (not Buy Now) */}
-                          {!buyNow && (
-                            <button
-                              onClick={() => setVariantPickerItem(item)}
-                              className="flex items-center gap-0.5 text-[11px] text-primary-500 hover:text-primary-700 transition-colors"
-                            >
-                              <FiEdit2 size={9} /> Change
-                            </button>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Price + quantity controls */}
-                      <div className="flex items-center justify-between mt-1 gap-2">
-                        {/* Qty stepper — only for cart flow */}
-                        {!buyNow ? (
-                          <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-1 py-0.5">
-                            <button
-                              onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
-                              disabled={item.quantity <= 1}
-                              className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-primary-600 disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                              <FiMinus size={10} />
-                            </button>
-                            <span className="text-xs font-semibold w-5 text-center">{item.quantity}</span>
-                            <button
-                              onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
-                              disabled={item.quantity >= (item.stock || 99)}
-                              className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-primary-600 disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                              <FiPlus size={10} />
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-400">Qty: {item.quantity}</span>
+              {/* ── Items grouped by seller (Fix 1) ── */}
+              <div className="space-y-4 mb-4 max-h-80 overflow-y-auto">
+                {buyNow ? (
+                  /* Buy Now — single item, show seller if available */
+                  <div>
+                    {buyNow.seller && (
+                      <div className="flex items-center gap-2 mb-2 pb-1 border-b border-gray-100">
+                        <span className="text-xs text-gray-400">🏪 Sold by</span>
+                        <span className="text-xs font-semibold text-gray-700">{buyNow.seller.businessName || 'Eptomart Seller'}</span>
+                        {buyNow.seller._id && (
+                          <Link to={`/store/${buyNow.seller._id}`}
+                            className="text-[10px] text-primary-500 hover:text-primary-700 font-semibold hover:underline ml-auto">
+                            Visit Store ↗
+                          </Link>
                         )}
-                        <span className="font-semibold text-gray-800 text-sm">
-                          {formatINR(item.price * item.quantity)}
-                        </span>
                       </div>
-                      <p className="text-[10px] text-gray-400 mt-0.5">
-                        {formatINR(item.price)} × {item.quantity}
-                      </p>
-                    </div>
+                    )}
+                    <BuyNowItem item={buyNow} />
                   </div>
-                ))}
+                ) : (
+                  /* Cart — group by seller */
+                  Object.entries(sellerGroups || {}).map(([key, group]) => (
+                    <div key={key}>
+                      {/* Seller header */}
+                      <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-gray-100">
+                        <span className="text-xs text-gray-400">🏪</span>
+                        <span className="text-xs font-bold text-gray-700">
+                          {group.seller?.businessName || 'Eptomart'}
+                        </span>
+                        {group.seller?._id && (
+                          <Link
+                            to={`/store/${group.seller._id}`}
+                            className="text-[10px] text-primary-500 hover:text-primary-700 font-semibold hover:underline ml-auto"
+                          >
+                            Visit Store ↗
+                          </Link>
+                        )}
+                      </div>
+                      {/* Items under this seller */}
+                      <div className="space-y-3">
+                        {group.items.map(item => (
+                          <CartSummaryItem
+                            key={item.cartItemId || item._id}
+                            item={item}
+                            onVariantChange={() => setVariantPickerItem(item)}
+                            onQtyChange={(qty) => updateQuantity(item.cartItemId, qty)}
+                            formatINR={formatINR}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
 
               {/* Per-seller minimum order warnings */}
@@ -760,5 +751,86 @@ export default function Checkout() {
         />
       )}
     </>
+  );
+}
+
+// ── Helper: single cart item row (used inside seller groups) ──
+function CartSummaryItem({ item, onVariantChange, onQtyChange, formatINR }) {
+  return (
+    <div className="flex gap-3 text-sm pb-3 border-b border-gray-50 last:border-0">
+      <img
+        src={item.image || item.images?.[0]?.url}
+        alt={item.name}
+        className="w-12 h-12 object-cover rounded-lg flex-shrink-0 bg-gray-100"
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-gray-800 line-clamp-1 font-medium">{item.name}</p>
+        {item.variantLabel && (
+          <div className="flex items-center gap-1 mt-0.5 mb-1">
+            <span className="text-[11px] bg-orange-100 text-orange-700 font-medium px-1.5 py-0.5 rounded-full">
+              {item.variantLabel}
+            </span>
+            <button
+              onClick={onVariantChange}
+              className="flex items-center gap-0.5 text-[11px] text-primary-500 hover:text-primary-700 transition-colors"
+            >
+              <FiEdit2 size={9} /> Change
+            </button>
+          </div>
+        )}
+        <div className="flex items-center justify-between mt-1 gap-2">
+          <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-1 py-0.5">
+            <button
+              onClick={() => onQtyChange(item.quantity - 1)}
+              disabled={item.quantity <= 1}
+              className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-primary-600 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <FiMinus size={10} />
+            </button>
+            <span className="text-xs font-semibold w-5 text-center">{item.quantity}</span>
+            <button
+              onClick={() => onQtyChange(item.quantity + 1)}
+              disabled={item.quantity >= (item.stock || 99)}
+              className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-primary-600 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <FiPlus size={10} />
+            </button>
+          </div>
+          <span className="font-semibold text-gray-800 text-sm">
+            {formatINR(item.price * item.quantity)}
+          </span>
+        </div>
+        <p className="text-[10px] text-gray-400 mt-0.5">
+          {formatINR(item.price)} × {item.quantity}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Helper: Buy Now single item display ──
+function BuyNowItem({ item }) {
+  return (
+    <div className="flex gap-3 text-sm">
+      <img
+        src={item.image || item.images?.[0]?.url}
+        alt={item.name}
+        className="w-12 h-12 object-cover rounded-lg flex-shrink-0 bg-gray-100"
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-gray-800 line-clamp-1 font-medium">{item.name}</p>
+        {item.variantLabel && (
+          <span className="text-[11px] bg-orange-100 text-orange-700 font-medium px-1.5 py-0.5 rounded-full inline-block mt-0.5">
+            {item.variantLabel}
+          </span>
+        )}
+        <div className="flex items-center justify-between mt-1">
+          <span className="text-xs text-gray-400">Qty: {item.quantity}</span>
+          <span className="font-semibold text-gray-800 text-sm">
+            ₹{(item.price * item.quantity).toLocaleString('en-IN')}
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }

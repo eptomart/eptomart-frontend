@@ -1,16 +1,21 @@
 // ============================================
 // UZHAVAR FRESH — Farmer Detail + Booking
+// Fixes: availability display, harvest date picker, conflict validation
 // ============================================
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiStar, FiArrowLeft, FiShoppingCart, FiPlus, FiMinus, FiMapPin, FiPhone } from 'react-icons/fi';
+import { FiStar, FiArrowLeft, FiShoppingCart, FiPlus, FiMinus, FiMapPin, FiAlertCircle } from 'react-icons/fi';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import Loader from '../../components/common/Loader';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
+
+// ── Helpers ─────────────────────────────────
+const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+const toYMD   = (d) => new Date(d).toISOString().split('T')[0];
 
 export default function FarmerDetail() {
   const { farmerId } = useParams();
@@ -52,11 +57,15 @@ export default function FarmerDetail() {
     });
   };
 
-  const cartItems = Object.entries(cart).map(([id, qty]) => {
-    const prod = products.find(p => p._id === id);
-    return prod ? { ...prod, qty } : null;
-  }).filter(Boolean);
+  const cartItems = useMemo(() =>
+    Object.entries(cart).map(([id, qty]) => {
+      const prod = products.find(p => p._id === id);
+      return prod ? { ...prod, qty } : null;
+    }).filter(Boolean),
+    [cart, products]
+  );
 
+  // ── Totals ───────────────────────────────────────────────────
   const subtotal        = cartItems.reduce((s, i) => s + i.pricePerUnit * i.qty, 0);
   const bookingFeeTotal = parseFloat((21 * 1.18).toFixed(2));
   const grandTotal      = parseFloat((subtotal + bookingFeeTotal).toFixed(2));
@@ -68,12 +77,59 @@ export default function FarmerDetail() {
   const belowMinimum   = hasKgItems && totalKgInCart < UZHAVAR_MIN_KG;
   const kgNeeded       = Math.max(0, UZHAVAR_MIN_KG - totalKgInCart);
 
+  // ── FIX 3: Compute allowed date range from cart items' harvest windows ──
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const harvestBounds = useMemo(() => {
+    const itemsWithDates = cartItems.filter(i => i.harvestFrom && i.harvestTo);
+    if (itemsWithDates.length === 0) {
+      // No items or no harvest dates — default window: today to +10 days
+      const max = new Date(today); max.setDate(max.getDate() + 10);
+      return { min: toYMD(today), max: toYMD(max), hasConflict: false };
+    }
+    // Intersection: latest harvestFrom among all items, earliest harvestTo
+    const latestFrom = new Date(Math.max(...itemsWithDates.map(i => new Date(i.harvestFrom))));
+    const earliestTo = new Date(Math.min(...itemsWithDates.map(i => new Date(i.harvestTo))));
+    // min is max(today, latestFrom); max is earliestTo
+    const minDate = latestFrom > today ? latestFrom : today;
+    const hasConflict = minDate > earliestTo;
+    return {
+      min: toYMD(minDate),
+      max: toYMD(earliestTo),
+      hasConflict, // no date satisfies all products
+    };
+  }, [cartItems]);
+
+  // ── FIX 4: Which cart products are NOT available on selected date? ──
+  const unavailableItems = useMemo(() => {
+    if (bookingType !== 'scheduled' || !scheduledDate) return [];
+    const selDate = new Date(scheduledDate); selDate.setHours(12, 0, 0, 0);
+    return cartItems.filter(i => {
+      if (!i.harvestFrom || !i.harvestTo) return false;
+      const from = new Date(i.harvestFrom); from.setHours(0, 0, 0, 0);
+      const to   = new Date(i.harvestTo);   to.setHours(23, 59, 59, 999);
+      return selDate < from || selDate > to;
+    });
+  }, [cartItems, scheduledDate, bookingType]);
+
+  const unavailableIds = useMemo(() => new Set(unavailableItems.map(i => i._id)), [unavailableItems]);
+
+  // ── Booking handler ──────────────────────────────────────────
   const handleBook = async () => {
     if (!isLoggedIn) { navigate('/login', { state: { from: `/uzhavar/farmer/${farmerId}` } }); return; }
     if (cartItems.length === 0) { toast.error('Add items first'); return; }
     if (bookingType === 'scheduled' && !scheduledDate) { toast.error('Pick delivery date'); return; }
     if (belowMinimum) {
       toast.error(`Minimum order quantity for Uzhavar Fresh is ${UZHAVAR_MIN_KG} kg. Add ${kgNeeded.toFixed(1)} kg more.`);
+      return;
+    }
+    // FIX 4: Block if any product is out of harvest window
+    if (bookingType === 'scheduled' && unavailableItems.length > 0) {
+      toast.error(`${unavailableItems.map(i => i.name).join(', ')} not available on ${fmtDate(scheduledDate)}. Remove or change date.`, { duration: 5000 });
+      return;
+    }
+    // FIX 3: Block if no valid date exists for cart combination
+    if (bookingType === 'scheduled' && harvestBounds.hasConflict) {
+      toast.error('Products in your cart have non-overlapping harvest dates. Remove conflicting items or book separately.');
       return;
     }
 
@@ -94,9 +150,9 @@ export default function FarmerDetail() {
       const { rzpOrderId, amount, currency } = payRes.data;
 
       const options = {
-        key:      import.meta.env.VITE_RAZORPAY_KEY_ID,
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount, currency,
-        name:     'Uzhavar Fresh',
+        name: 'Uzhavar Fresh',
         description: 'Farm booking fee',
         order_id: rzpOrderId,
         handler: async (response) => {
@@ -123,10 +179,8 @@ export default function FarmerDetail() {
 
   if (loading) return <><Navbar /><Loader /></>;
 
-  const today = new Date().toISOString().split('T')[0];
-  const maxDate = new Date();
-  maxDate.setDate(maxDate.getDate() + 10);
-  const maxDateStr = maxDate.toISOString().split('T')[0];
+  const maxDateStr = harvestBounds.max;
+  const minDateStr = harvestBounds.min;
 
   return (
     <>
@@ -194,53 +248,77 @@ export default function FarmerDetail() {
               </div>
             ) : (
               <div className="space-y-3 mb-6">
-                {products.map(prod => (
-                  <div key={prod._id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3 shadow-sm">
-                    {prod.image
-                      ? <img src={prod.image} alt={prod.name} className="w-16 h-16 rounded-xl object-cover bg-gray-100" />
-                      : <div className="w-16 h-16 rounded-xl bg-green-50 flex items-center justify-center text-2xl">🥬</div>
-                    }
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-800 text-sm">{prod.name}</p>
-                      {prod.nameTa && <p className="text-xs text-gray-400">{prod.nameTa}</p>}
-                      <p className="text-xs text-gray-400 capitalize">{prod.category} · {prod.deliveryType}</p>
-                      {prod.harvestFrom && (
-                        <p className="text-xs text-green-600 font-medium">
-                          🗓 {new Date(prod.harvestFrom).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                          {prod.harvestTo && prod.harvestTo !== prod.harvestFrom && (
-                            <> → {new Date(prod.harvestTo).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</>
-                          )}
+                {products.map(prod => {
+                  const isUnavail = unavailableIds.has(prod._id);
+                  // FIX 2: Build availability string
+                  const availKg = prod.availableQuantity;
+                  const fromStr = prod.harvestFrom ? fmtDate(prod.harvestFrom) : null;
+                  const toStr   = prod.harvestTo   ? fmtDate(prod.harvestTo)   : null;
+                  const availLabel = fromStr && toStr
+                    ? `${availKg} ${prod.unit} · ${fromStr} – ${toStr}`
+                    : `${availKg} ${prod.unit} available`;
+
+                  return (
+                    <div key={prod._id}
+                      className={`bg-white rounded-2xl border p-4 flex items-center gap-3 shadow-sm transition-all ${
+                        isUnavail ? 'border-red-300 bg-red-50' : 'border-gray-100'
+                      }`}>
+                      {prod.image
+                        ? <img src={prod.image} alt={prod.name} className="w-16 h-16 rounded-xl object-cover bg-gray-100 flex-shrink-0" />
+                        : <div className="w-16 h-16 rounded-xl bg-green-50 flex items-center justify-center text-2xl flex-shrink-0">🥬</div>
+                      }
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-800 text-sm">{prod.name}</p>
+                        {prod.nameTa && <p className="text-xs text-gray-400">{prod.nameTa}</p>}
+                        <p className="text-xs text-gray-400 capitalize">{prod.category} · {prod.deliveryType}</p>
+
+                        {/* FIX 2: Availability display */}
+                        <p className="text-xs text-green-600 font-medium mt-0.5">
+                          📦 Available: {availLabel}
                         </p>
-                      )}
-                      <p className="font-bold text-green-600 text-sm mt-0.5">
-                        ₹{prod.pricePerUnit}/{prod.unit}
-                        <span className="font-normal text-gray-400 text-xs ml-2">
-                          {prod.availableQuantity} {prod.unit} left
-                        </span>
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {cart[prod._id] ? (
-                        <>
-                          <button onClick={() => updateCart(prod._id, -0.5)}
-                            className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:border-green-400">
-                            <FiMinus size={12} />
-                          </button>
-                          <span className="w-8 text-center text-sm font-bold">{cart[prod._id]}</span>
+
+                        <p className="font-bold text-green-600 text-sm mt-0.5">
+                          ₹{prod.pricePerUnit}/{prod.unit}
+                        </p>
+
+                        {/* FIX 4: Unavailability warning per product */}
+                        {isUnavail && (
+                          <div className="flex items-start gap-1 mt-1.5">
+                            <FiAlertCircle size={11} className="text-red-500 flex-shrink-0 mt-0.5" />
+                            <p className="text-[10px] text-red-600 font-medium leading-tight">
+                              Not available on {fmtDate(scheduledDate)}
+                              {prod.harvestFrom && prod.harvestTo && (
+                                <> · Harvest: {fmtDate(prod.harvestFrom)} – {fmtDate(prod.harvestTo)}</>
+                              )}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Qty control */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {cart[prod._id] ? (
+                          <>
+                            <button onClick={() => updateCart(prod._id, -0.5)}
+                              className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:border-green-400">
+                              <FiMinus size={12} />
+                            </button>
+                            <span className="w-8 text-center text-sm font-bold">{cart[prod._id]}</span>
+                            <button onClick={() => updateCart(prod._id, 0.5)}
+                              className="w-7 h-7 rounded-full bg-green-600 text-white flex items-center justify-center hover:bg-green-700">
+                              <FiPlus size={12} />
+                            </button>
+                          </>
+                        ) : (
                           <button onClick={() => updateCart(prod._id, 0.5)}
-                            className="w-7 h-7 rounded-full bg-green-600 text-white flex items-center justify-center hover:bg-green-700">
-                            <FiPlus size={12} />
+                            className="flex items-center gap-1 bg-green-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors">
+                            <FiPlus size={12} /> Add
                           </button>
-                        </>
-                      ) : (
-                        <button onClick={() => updateCart(prod._id, 0.5)}
-                          className="flex items-center gap-1 bg-green-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors">
-                          <FiPlus size={12} /> Add
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -256,14 +334,48 @@ export default function FarmerDetail() {
                     </button>
                   ))}
                 </div>
+
                 {bookingType === 'scheduled' && (
                   <div className="space-y-2">
+
+                    {/* FIX 3 / FIX 4: conflict warning when no valid date exists */}
+                    {harvestBounds.hasConflict && cartItems.length > 1 && (
+                      <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                        <FiAlertCircle size={13} className="text-red-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-bold text-red-700">Harvest date conflict</p>
+                          <p className="text-xs text-red-600">
+                            Products in your cart have non-overlapping harvest windows.
+                            Remove items or book each product separately.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     <div>
-                      <label className="text-xs font-medium text-gray-600 block mb-1">Delivery date</label>
-                      <input type="date" min={today} max={maxDateStr} value={scheduledDate}
+                      <label className="text-xs font-medium text-gray-600 block mb-1">
+                        Delivery date
+                        {cartItems.some(i => i.harvestFrom) && !harvestBounds.hasConflict && (
+                          <span className="ml-1 text-green-600">
+                            (harvest: {fmtDate(harvestBounds.min)} – {fmtDate(harvestBounds.max)})
+                          </span>
+                        )}
+                      </label>
+                      {/* FIX 3: min/max from harvest bounds */}
+                      <input
+                        type="date"
+                        min={minDateStr}
+                        max={maxDateStr}
+                        value={scheduledDate}
+                        disabled={harvestBounds.hasConflict}
                         onChange={e => setScheduledDate(e.target.value)}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400" />
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 disabled:opacity-50 disabled:bg-gray-100"
+                      />
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        Only dates within the product harvest window are selectable.
+                      </p>
                     </div>
+
                     <div>
                       <label className="text-xs font-medium text-gray-600 block mb-1">Time slot</label>
                       <select value={scheduledSlot} onChange={e => setScheduledSlot(e.target.value)}
@@ -273,6 +385,22 @@ export default function FarmerDetail() {
                         <option value="evening">Evening (5pm – 8pm)</option>
                       </select>
                     </div>
+
+                    {/* FIX 4: Unavailable items summary */}
+                    {unavailableItems.length > 0 && scheduledDate && (
+                      <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                        <FiAlertCircle size={13} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-bold text-amber-800">
+                            This harvest is not available for the selected day.
+                          </p>
+                          <p className="text-xs text-amber-700 mt-0.5">
+                            {unavailableItems.map(i => i.name).join(', ')} cannot be delivered on {fmtDate(scheduledDate)}.
+                            Please choose another date or remove the unavailable item.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -283,8 +411,6 @@ export default function FarmerDetail() {
         {/* ── PROFILE TAB ── */}
         {tab === 'profile' && (
           <div className="space-y-4">
-
-            {/* About */}
             <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
               <h3 className="font-bold text-gray-800 text-sm mb-3">🧑‍🌾 About this Farmer</h3>
               <div className="space-y-2.5">
@@ -302,23 +428,14 @@ export default function FarmerDetail() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-green-600 text-sm flex-shrink-0">📦</span>
+                  <span className="text-green-600 text-sm">📦</span>
                   <div>
                     <p className="text-xs text-gray-500">Delivery radius</p>
                     <p className="text-sm font-semibold text-gray-800">{farmer?.deliveryRadius} km from farm</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-green-600 text-sm flex-shrink-0">🌿</span>
-                  <div>
-                    <p className="text-xs text-gray-500">Language</p>
-                    <p className="text-sm font-semibold text-gray-800 capitalize">
-                      {farmer?.language === 'ta' ? 'Tamil' : farmer?.language === 'en' ? 'English' : 'Tamil & English'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-green-600 text-sm flex-shrink-0">✅</span>
+                  <span className="text-green-600 text-sm">✅</span>
                   <div>
                     <p className="text-xs text-gray-500">Verified status</p>
                     <p className="text-sm font-semibold text-green-700">Government-ID Verified</p>
@@ -327,23 +444,19 @@ export default function FarmerDetail() {
               </div>
             </div>
 
-            {/* Stats */}
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white rounded-2xl border border-gray-100 p-3 text-center shadow-sm">
-                <p className="font-black text-green-600 text-xl">{products.length}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Products</p>
-              </div>
-              <div className="bg-white rounded-2xl border border-gray-100 p-3 text-center shadow-sm">
-                <p className="font-black text-green-600 text-xl">{farmer?.totalOrders || 0}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Orders</p>
-              </div>
-              <div className="bg-white rounded-2xl border border-gray-100 p-3 text-center shadow-sm">
-                <p className="font-black text-green-600 text-xl">{farmer?.acceptanceRate || 100}%</p>
-                <p className="text-xs text-gray-500 mt-0.5">Acceptance</p>
-              </div>
+              {[
+                { label: 'Products', value: products.length },
+                { label: 'Orders',   value: farmer?.totalOrders || 0 },
+                { label: 'Acceptance', value: `${farmer?.acceptanceRate || 100}%` },
+              ].map(s => (
+                <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-3 text-center shadow-sm">
+                  <p className="font-black text-green-600 text-xl">{s.value}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+                </div>
+              ))}
             </div>
 
-            {/* Ratings breakdown */}
             {farmer?.ratings?.count > 0 && (
               <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
                 <h3 className="font-bold text-gray-800 text-sm mb-3">
@@ -381,7 +494,6 @@ export default function FarmerDetail() {
               </div>
             )}
 
-            {/* Delivery slots */}
             {farmer?.deliverySlots?.length > 0 && (
               <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
                 <h3 className="font-bold text-gray-800 text-sm mb-3">🕐 Delivery Slots</h3>
@@ -394,7 +506,6 @@ export default function FarmerDetail() {
                 </div>
               </div>
             )}
-
           </div>
         )}
       </main>
@@ -403,6 +514,7 @@ export default function FarmerDetail() {
       {cartCount > 0 && tab === 'shop' && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-xl px-4 py-4 z-30">
           <div className="max-w-2xl mx-auto">
+            {/* Minimum order warning */}
             {belowMinimum && (
               <div className="mb-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
                 <span className="text-amber-500 mt-0.5 flex-shrink-0">⚠️</span>
@@ -412,6 +524,17 @@ export default function FarmerDetail() {
                 </div>
               </div>
             )}
+
+            {/* FIX 4: Conflict warning in footer */}
+            {unavailableItems.length > 0 && scheduledDate && bookingType === 'scheduled' && (
+              <div className="mb-3 flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                <FiAlertCircle size={13} className="text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs font-bold text-red-700">
+                  Remove unavailable items or change date to proceed.
+                </p>
+              </div>
+            )}
+
             <div className="flex items-center justify-between mb-2 text-sm">
               <span className="text-gray-600">{cartCount} items · ₹{subtotal.toFixed(0)}</span>
               <span className="text-xs text-gray-400">+ ₹{bookingFeeTotal} booking fee (incl. GST)</span>
@@ -420,11 +543,27 @@ export default function FarmerDetail() {
               <span className="font-bold text-gray-900">Total</span>
               <span className="font-black text-green-600 text-lg">₹{grandTotal}</span>
             </div>
-            <button onClick={handleBook} disabled={placing || belowMinimum}
-              className={`w-full text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60 ${belowMinimum ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>
-              <FiShoppingCart size={16} />
-              {placing ? 'Processing...' : belowMinimum ? `Add ${kgNeeded.toFixed(1)} kg more` : 'Freeze Booking & Pay'}
-            </button>
+
+            {/* Disable conditions: below minimum, or unavailable items, or conflict */}
+            {(() => {
+              const blocked = belowMinimum
+                || (bookingType === 'scheduled' && unavailableItems.length > 0)
+                || (bookingType === 'scheduled' && harvestBounds.hasConflict);
+              const label = belowMinimum
+                ? `Add ${kgNeeded.toFixed(1)} kg more`
+                : unavailableItems.length > 0
+                  ? 'Remove unavailable items'
+                  : harvestBounds.hasConflict
+                    ? 'Harvest conflict — see above'
+                    : placing ? 'Processing...' : 'Freeze Booking & Pay';
+              return (
+                <button onClick={handleBook} disabled={placing || blocked}
+                  className={`w-full text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60 ${blocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>
+                  <FiShoppingCart size={16} />
+                  {label}
+                </button>
+              );
+            })()}
           </div>
         </div>
       )}
