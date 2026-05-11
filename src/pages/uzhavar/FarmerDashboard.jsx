@@ -12,6 +12,37 @@ import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
 const CATEGORIES = ['vegetable', 'fruit', 'grain', 'herb', 'other'];
+
+// Document preview helper
+function DocPreview({ url, label }) {
+  const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url);
+  const isPdf   = /\.pdf(\?|$)/i.test(url);
+  return (
+    <div className="border border-gray-200 rounded-xl overflow-hidden">
+      {isImage ? (
+        <a href={url} target="_blank" rel="noopener noreferrer">
+          <img src={url} alt={label} className="w-full max-h-48 object-cover bg-gray-100 hover:opacity-90 transition-opacity" />
+          <div className="px-3 py-1.5 bg-gray-50 text-xs text-gray-500 flex justify-between items-center">
+            <span>{label}</span>
+            <span className="text-green-600 font-semibold">View full ↗</span>
+          </div>
+        </a>
+      ) : (
+        <a href={url} target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-3 px-3 py-3 hover:bg-gray-50 transition-colors">
+          <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center text-lg flex-shrink-0">
+            {isPdf ? '📕' : '📎'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-gray-700 truncate">{label}</p>
+            <p className="text-xs text-gray-400">{isPdf ? 'PDF Document' : 'Document'} · Tap to view</p>
+          </div>
+          <span className="text-green-600 text-xs font-bold flex-shrink-0">Open ↗</span>
+        </a>
+      )}
+    </div>
+  );
+}
 const UNITS      = ['kg', 'gram', 'bunch', 'piece', 'litre'];
 
 const ORDER_STATUS_COLOR = {
@@ -213,6 +244,7 @@ export default function FarmerDashboard() {
           {[
             { key: 'products', label: `🥬 Products (${products.length})` },
             { key: 'orders',   label: `📦 Orders (${orders.length})` },
+            { key: 'profile',  label: `👤 My Profile` },
           ].map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-colors ${tab === t.key ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
@@ -306,6 +338,135 @@ export default function FarmerDashboard() {
             ))}
           </div>
         )}
+        {/* Profile tab */}
+        {tab === 'profile' && (
+          <div className="space-y-4">
+
+            {/* Verification status */}
+            <div className={`rounded-2xl p-4 border ${
+              farmer.verificationStatus === 'approved' ? 'bg-green-50 border-green-200' :
+              farmer.verificationStatus === 'pending'  ? 'bg-yellow-50 border-yellow-200' :
+              'bg-red-50 border-red-200'
+            }`}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg">
+                  {farmer.verificationStatus === 'approved' ? '✅' : farmer.verificationStatus === 'pending' ? '⏳' : '❌'}
+                </span>
+                <p className="font-bold text-sm capitalize text-gray-800">
+                  Verification: {farmer.verificationStatus}
+                </p>
+              </div>
+              {farmer.verificationStatus === 'pending' && (
+                <p className="text-xs text-yellow-700">Your documents are under review. You'll be activated once approved by admin.</p>
+              )}
+              {farmer.verificationStatus === 'rejected' && farmer.rejectionReason && (
+                <p className="text-xs text-red-700">Reason: {farmer.rejectionReason}</p>
+              )}
+              {farmer.verificationStatus === 'approved' && (
+                <p className="text-xs text-green-700">Your account is verified and active. Buyers can find you.</p>
+              )}
+            </div>
+
+            {/* Basic info */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+              <h3 className="font-bold text-gray-800 text-sm mb-3">📋 Basic Information</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-gray-500">Name</span><span className="font-semibold text-gray-800">{farmer.name}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Phone</span><span className="font-semibold text-gray-800">{farmer.phone}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Language</span><span className="font-semibold text-gray-800 capitalize">{farmer.language === 'ta' ? 'Tamil' : farmer.language === 'en' ? 'English' : 'Tamil & English'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Delivery radius</span><span className="font-semibold text-gray-800">{farmer.deliveryRadius} km</span></div>
+              </div>
+            </div>
+
+            {/* Address */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+              <h3 className="font-bold text-gray-800 text-sm mb-3">📍 Location</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-gray-500">Village</span><span className="font-semibold text-gray-800">{farmer.address?.village || '—'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Taluk</span><span className="font-semibold text-gray-800">{farmer.address?.taluk || '—'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">District</span><span className="font-semibold text-gray-800">{farmer.address?.district || '—'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">State</span><span className="font-semibold text-gray-800">{farmer.address?.state || 'Tamil Nadu'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Pincode</span><span className="font-semibold text-gray-800">{farmer.address?.pincode || '—'}</span></div>
+                {farmer.gpsLocation?.coordinates && farmer.gpsLocation.coordinates[0] !== 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">GPS</span>
+                    <span className="font-mono text-xs text-green-700">{farmer.gpsLocation.coordinates[1].toFixed(5)}, {farmer.gpsLocation.coordinates[0].toFixed(5)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Bank details */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+              <h3 className="font-bold text-gray-800 text-sm mb-3">🏦 Bank Details</h3>
+              {farmer.bankAccount?.bankName ? (
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-500">Bank</span><span className="font-semibold text-gray-800">{farmer.bankAccount.bankName}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Account No.</span><span className="font-semibold text-gray-800">••••••{farmer.bankAccount.lastFour || '****'}</span></div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Verified</span>
+                    <span className={`font-semibold text-xs px-2 py-0.5 rounded-full ${farmer.bankAccount.verified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {farmer.bankAccount.verified ? '✅ Verified' : '⏳ Pending'}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">No bank details on record</p>
+              )}
+            </div>
+
+            {/* Uploaded Documents */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+              <h3 className="font-bold text-gray-800 text-sm mb-3">📄 Uploaded Documents</h3>
+              <div className="space-y-3">
+
+                {/* Aadhaar */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 mb-1.5">Aadhaar Card</p>
+                  {farmer.aadhaarDoc ? (
+                    <DocPreview url={farmer.aadhaarDoc} label="Aadhaar" />
+                  ) : (
+                    <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">Not uploaded</p>
+                  )}
+                </div>
+
+                {/* Farm proof */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 mb-1.5">Farm Proof</p>
+                  {farmer.farmProofDoc ? (
+                    <DocPreview url={farmer.farmProofDoc} label="Farm Proof" />
+                  ) : (
+                    <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">Not uploaded</p>
+                  )}
+                </div>
+
+              </div>
+              <p className="text-[10px] text-gray-400 mt-3">Documents are used for verification only. They are not shown to buyers.</p>
+            </div>
+
+            {/* Ratings */}
+            {farmer.ratings?.count > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+                <h3 className="font-bold text-gray-800 text-sm mb-3">⭐ My Ratings</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {['freshness', 'quality', 'delivery', 'behaviour'].map(k => {
+                    const r = farmer.ratings[k];
+                    const avg = r?.count > 0 ? (r.total / r.count).toFixed(1) : '—';
+                    return (
+                      <div key={k} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2">
+                        <span className="capitalize text-gray-500 text-xs">{k}</span>
+                        <span className="font-bold text-gray-800 text-sm">{avg} ⭐</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-center text-xs text-gray-500 mt-2">{farmer.ratings.count} total ratings · Avg {farmer.ratings.average?.toFixed(1)}</p>
+              </div>
+            )}
+
+          </div>
+        )}
+
       </main>
       <Footer />
 
