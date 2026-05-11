@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import robotImg from '../assets/robot.png';
@@ -15,6 +15,27 @@ const CATEGORIES = [
   { emoji: '🌾', label: 'Spices & Masalas',   query: 'Show me spices and masalas' },
 ];
 
+const POS_KEY = 'eptomart_ai_pos';
+
+const defaultPos = () => ({
+  x: typeof window !== 'undefined' ? window.innerWidth  - 170 : 200,
+  y: typeof window !== 'undefined' ? window.innerHeight - 80  : 500,
+});
+
+const loadPos = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(POS_KEY));
+    if (saved && typeof saved.x === 'number' && typeof saved.y === 'number') {
+      // Clamp to current viewport (in case screen size changed)
+      return {
+        x: Math.max(0, Math.min(saved.x, window.innerWidth  - 60)),
+        y: Math.max(0, Math.min(saved.y, window.innerHeight - 60)),
+      };
+    }
+  } catch {}
+  return defaultPos();
+};
+
 const TypingDots = () => (
   <div className="flex items-center gap-1 py-1 px-1">
     {[0,1,2].map(i => (
@@ -24,7 +45,7 @@ const TypingDots = () => (
   </div>
 );
 
-const BotFace = ({ size = 24, animated = false }) => (
+const BotFace = ({ size = 24 }) => (
   <img
     src={robotImg}
     alt="Epto AI"
@@ -40,10 +61,16 @@ export default function AIAssistant() {
   const [input,    setInput]    = useState('');
   const [loading,  setLoading]  = useState(false);
   const [messages, setMessages] = useState([]);
+
+  // ── Drag state ─────────────────────────────────────────────
+  const [pos, setPos]   = useState(loadPos);     // { x, y } = top-left of button
+  const drag            = useRef(null);           // { startMouseX, startMouseY, startPosX, startPosY }
+  const isDragging      = useRef(false);
+
   const bottomRef  = useRef(null);
   const inputRef   = useRef(null);
+  const btnRef     = useRef(null);
 
-  // Show welcome + category menu when chat opens for the first time
   const isWelcome = messages.length === 0;
 
   useEffect(() => {
@@ -54,6 +81,54 @@ export default function AIAssistant() {
     if (open) setTimeout(() => inputRef.current?.focus(), 100);
   }, [open]);
 
+  // ── Pointer-based drag ──────────────────────────────────────
+  const onPointerDown = useCallback((e) => {
+    // Only trigger on primary button (left click / touch)
+    if (e.button !== undefined && e.button !== 0) return;
+    isDragging.current = false;
+    drag.current = {
+      startMouseX: e.clientX,
+      startMouseY: e.clientY,
+      startPosX:   pos.x,
+      startPosY:   pos.y,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, [pos]);
+
+  const onPointerMove = useCallback((e) => {
+    if (!drag.current) return;
+    const dx = e.clientX - drag.current.startMouseX;
+    const dy = e.clientY - drag.current.startMouseY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+      isDragging.current = true;
+    }
+    if (!isDragging.current) return;
+
+    const newX = Math.max(0, Math.min(drag.current.startPosX + dx, window.innerWidth  - 60));
+    const newY = Math.max(0, Math.min(drag.current.startPosY + dy, window.innerHeight - 60));
+    setPos({ x: newX, y: newY });
+  }, []);
+
+  const onPointerUp = useCallback((e) => {
+    if (!drag.current) return;
+    drag.current = null;
+    if (isDragging.current) {
+      // Save final position
+      setPos(prev => {
+        localStorage.setItem(POS_KEY, JSON.stringify(prev));
+        return prev;
+      });
+      isDragging.current = false;
+    }
+  }, []);
+
+  // Click only fires if no significant drag occurred
+  const handleBtnClick = useCallback(() => {
+    if (isDragging.current) return;
+    setOpen(o => !o);
+  }, []);
+
+  // ── AI send ─────────────────────────────────────────────────
   const send = async (text) => {
     const msg = (text || input).trim();
     if (!msg || loading) return;
@@ -80,6 +155,23 @@ export default function AIAssistant() {
     }
   };
 
+  // ── Chat window positioning — open above/beside button ──────
+  // Figure out which quadrant the button is in and place chat accordingly
+  const CHAT_W = 384;   // sm:w-96
+  const CHAT_H = Math.min(window.innerHeight * 0.75, 600);
+  const BTN_W  = open ? 52 : 160;
+  const BTN_H  = 52;
+  const PAD    = 10;
+
+  // Horizontal: prefer to left of button, but clamp
+  let chatLeft = pos.x + BTN_W - CHAT_W;
+  chatLeft = Math.max(PAD, Math.min(chatLeft, window.innerWidth - CHAT_W - PAD));
+
+  // Vertical: prefer above button, fall back to below
+  let chatTop = pos.y - CHAT_H - PAD;
+  if (chatTop < PAD) chatTop = pos.y + BTN_H + PAD;
+  chatTop = Math.max(PAD, Math.min(chatTop, window.innerHeight - CHAT_H - PAD));
+
   return (
     <>
       <style>{`
@@ -88,91 +180,115 @@ export default function AIAssistant() {
           40%{transform:translateY(-5px)}
         }
         @keyframes ai-slide-up {
-          from{opacity:0;transform:translateY(20px) scale(.97)}
+          from{opacity:0;transform:translateY(10px) scale(.97)}
           to{opacity:1;transform:translateY(0) scale(1)}
         }
-        .ai-chat-window { animation: ai-slide-up .25s ease-out both }
+        .ai-chat-window { animation: ai-slide-up .2s ease-out both }
         .ai-cat-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(249,115,22,0.18); }
         .ai-cat-btn { transition: transform .15s, box-shadow .15s; }
+        .ai-drag-btn { touch-action: none; user-select: none; }
       `}</style>
 
-      {/* Floating button — pill with robot + "EPTO AI" text */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        aria-label="AI Shopping Assistant"
-        className="fixed bottom-6 right-6 z-50 flex items-center shadow-2xl transition-transform hover:scale-105 active:scale-95 overflow-hidden"
+      {/* ── Floating draggable button ── */}
+      <div
+        ref={btnRef}
+        className="ai-drag-btn"
         style={{
-          background: 'linear-gradient(135deg,#0a1628,#0f2040)',
-          borderRadius: open ? '50%' : '999px',
-          width: open ? '52px' : 'auto',
-          height: '52px',
-          padding: open ? '0' : '0 16px 0 4px',
-          border: '2px solid #22c55e',
-          boxShadow: '0 0 18px rgba(34,197,94,0.3), 0 4px 20px rgba(0,0,0,0.4)',
+          position: 'fixed',
+          left:     pos.x,
+          top:      pos.y,
+          zIndex:   9999,
+          cursor:   isDragging.current ? 'grabbing' : 'grab',
         }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
       >
-        {open ? (
-          <div className="w-full h-full flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </div>
-        ) : (
-          <>
-            {/* Robot icon */}
-            <div className="w-14 h-14 flex items-center justify-center flex-shrink-0">
-              <BotFace size={56} animated={true} />
+        <button
+          onClick={handleBtnClick}
+          aria-label="AI Shopping Assistant"
+          className="flex items-center shadow-2xl transition-transform hover:scale-105 active:scale-95 overflow-hidden"
+          style={{
+            background:   'linear-gradient(135deg,#0a1628,#0f2040)',
+            borderRadius: open ? '50%' : '999px',
+            width:        open ? '52px' : 'auto',
+            height:       '52px',
+            padding:      open ? '0' : '0 16px 0 4px',
+            border:       '2px solid #22c55e',
+            boxShadow:    '0 0 18px rgba(34,197,94,0.3), 0 4px 20px rgba(0,0,0,0.4)',
+          }}
+        >
+          {open ? (
+            <div className="w-full h-full flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </div>
-            {/* EPTO AI text */}
-            <div className="flex flex-col items-start ml-1 mr-1">
-              <div className="flex items-baseline gap-1 leading-none">
-                <span className="text-sm font-black tracking-tight" style={{ color: '#22c55e' }}>EPTO</span>
-                <span className="text-sm font-black tracking-tight" style={{ color: '#f97316' }}>AI</span>
+          ) : (
+            <>
+              <div className="w-14 h-14 flex items-center justify-center flex-shrink-0">
+                <BotFace size={56} />
               </div>
-              <span className="text-[9px] font-semibold tracking-widest mt-0.5" style={{ color: '#94a3b8' }}>ASSISTANT</span>
-            </div>
-            {/* Pulse dot */}
-            <span className="w-2 h-2 rounded-full bg-green-400 ml-1 flex-shrink-0"
-              style={{ boxShadow: '0 0 6px #22c55e' }}>
-            </span>
-          </>
-        )}
-        {!open && (
-          <span className="absolute inset-0 rounded-full animate-ping opacity-10"
-            style={{ background: '#22c55e' }} />
-        )}
-      </button>
+              <div className="flex flex-col items-start ml-1 mr-1">
+                <div className="flex items-baseline gap-1 leading-none">
+                  <span className="text-sm font-black tracking-tight" style={{ color: '#22c55e' }}>EPTO</span>
+                  <span className="text-sm font-black tracking-tight" style={{ color: '#f97316' }}>AI</span>
+                </div>
+                <span className="text-[9px] font-semibold tracking-widest mt-0.5" style={{ color: '#94a3b8' }}>ASSISTANT</span>
+              </div>
+              <span className="w-2 h-2 rounded-full bg-green-400 ml-1 flex-shrink-0"
+                style={{ boxShadow: '0 0 6px #22c55e' }} />
+            </>
+          )}
+          {!open && (
+            <span className="absolute inset-0 rounded-full animate-ping opacity-10"
+              style={{ background: '#22c55e' }} />
+          )}
+        </button>
 
-      {/* Chat window */}
+        {/* Drag hint tooltip — shown briefly on mount */}
+        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 whitespace-nowrap pointer-events-none opacity-60">
+          ⠿ drag to move
+        </div>
+      </div>
+
+      {/* ── Chat window ── */}
       {open && (
-        <div className="ai-chat-window fixed bottom-24 right-6 z-50 w-80 sm:w-96 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-          style={{ maxHeight: '75vh', background: '#fff', border: '1px solid #fde8d0' }}>
-
+        <div
+          className="ai-chat-window"
+          style={{
+            position:  'fixed',
+            left:      chatLeft,
+            top:       chatTop,
+            width:     Math.min(CHAT_W, window.innerWidth - 2 * PAD),
+            maxHeight: CHAT_H,
+            zIndex:    9998,
+            background: '#fff',
+            border:    '1px solid #fde8d0',
+            borderRadius: 16,
+            boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
+            display:   'flex',
+            flexDirection: 'column',
+            overflow:  'hidden',
+          }}
+        >
           {/* Header */}
           <div className="px-4 pt-4 pb-3 flex items-center gap-3"
-            style={{ background: 'linear-gradient(135deg,#0a1628,#0f2040)' }}>
-            {/* Robot avatar */}
+            style={{ background: 'linear-gradient(135deg,#0a1628,#0f2040)', flexShrink: 0 }}>
             <div className="w-20 h-20 flex items-center justify-center flex-shrink-0">
-              <BotFace size={80} animated={true} />
+              <BotFace size={80} />
             </div>
-
-            {/* Title block */}
             <div className="flex-1 min-w-0">
-              {/* EPTO AI row */}
               <div className="flex items-baseline gap-1 leading-none">
                 <span className="text-xl font-black tracking-tight" style={{ color: '#22c55e' }}>EPTO</span>
                 <span className="text-xl font-black tracking-tight" style={{ color: '#f97316' }}>AI</span>
               </div>
-              {/* ASSISTANT */}
               <div className="text-sm font-extrabold tracking-widest mt-0.5" style={{ color: '#f97316', letterSpacing: '0.15em' }}>
                 ASSISTANT
               </div>
-              {/* Green separator */}
               <div className="mt-1.5 mb-1.5 rounded-full" style={{ height: '2px', background: 'linear-gradient(90deg,#22c55e,#16a34a,transparent)', width: '90%' }}/>
-              {/* Powered by Claude pill */}
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full"
                 style={{ background: 'white', border: '1px solid #e5e7eb' }}>
-                {/* Anthropic asterisk */}
                 <svg width="11" height="11" viewBox="0 0 20 20" fill="none">
                   <path d="M10 1v18M1 10h18M3.22 3.22l13.56 13.56M16.78 3.22L3.22 16.78" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round"/>
                 </svg>
@@ -180,8 +296,6 @@ export default function AIAssistant() {
                 <span className="text-[10px] font-extrabold tracking-wide" style={{ color: '#f97316' }}>CLAUDE</span>
               </div>
             </div>
-
-            {/* Online badge */}
             <div className="flex flex-col items-center gap-1 self-start pt-1">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"/>
               <span className="text-[9px] font-semibold text-green-400">LIVE</span>
@@ -190,11 +304,8 @@ export default function AIAssistant() {
 
           {/* Body */}
           <div className="flex-1 overflow-y-auto" style={{ background: '#fafafa' }}>
-
-            {/* ── Welcome screen with category picker ── */}
             {isWelcome && !loading && (
               <div className="p-4">
-                {/* Greeting card */}
                 <div className="rounded-2xl p-4 mb-4 text-center"
                   style={{ background: 'linear-gradient(135deg,#fff7ed,#ffedd5)', border: '1px solid #fed7aa' }}>
                   <div className="text-2xl mb-1">👋</div>
@@ -204,8 +315,6 @@ export default function AIAssistant() {
                   <p className="text-xs text-gray-500 mt-0.5">Your personal Eptomart Shopping Assistant</p>
                   <p className="text-xs text-orange-600 font-medium mt-2">✨ What are you shopping for today?</p>
                 </div>
-
-                {/* Category grid */}
                 <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">Browse by category</p>
                 <div className="grid grid-cols-2 gap-2">
                   {CATEGORIES.map(cat => (
@@ -219,14 +328,10 @@ export default function AIAssistant() {
                     </button>
                   ))}
                 </div>
-
-                <p className="text-center text-[11px] text-gray-400 mt-3">
-                  — or type your question below —
-                </p>
+                <p className="text-center text-[11px] text-gray-400 mt-3">— or type your question below —</p>
               </div>
             )}
 
-            {/* ── Conversation messages ── */}
             {!isWelcome && (
               <div className="p-4 space-y-3">
                 {messages.map((m, i) => (
@@ -248,7 +353,6 @@ export default function AIAssistant() {
                   </div>
                 ))}
 
-                {/* Quick-pick chips after AI reply — back to menu or common follow-ups */}
                 {!loading && messages.length > 0 && messages[messages.length - 1].role === 'assistant' && (
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     <button
@@ -266,11 +370,10 @@ export default function AIAssistant() {
                   </div>
                 )}
 
-                {/* Typing indicator */}
                 {loading && (
                   <div className="flex justify-start">
                     <div className="w-9 h-9 flex items-center justify-center mr-2 flex-shrink-0">
-                      <BotFace size={36} animated={true} />
+                      <BotFace size={36} />
                     </div>
                     <div className="px-3 py-2 rounded-2xl rounded-bl-sm"
                       style={{ background: '#fff', border: '1px solid #ffe4cc' }}>
@@ -284,7 +387,7 @@ export default function AIAssistant() {
           </div>
 
           {/* Input bar */}
-          <div className="p-3 border-t border-orange-100 flex items-center gap-2 bg-white">
+          <div className="p-3 border-t border-orange-100 flex items-center gap-2 bg-white" style={{ flexShrink: 0 }}>
             <input
               ref={inputRef}
               value={input}
@@ -307,7 +410,7 @@ export default function AIAssistant() {
             </button>
           </div>
 
-          <div className="text-center pb-2 pt-1">
+          <div className="text-center pb-2 pt-1" style={{ flexShrink: 0 }}>
             <span className="text-[9px] font-medium" style={{ color: '#9ca3af' }}>Eptomart Smart Shopping · AI Powered</span>
           </div>
         </div>

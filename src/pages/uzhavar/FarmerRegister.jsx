@@ -65,17 +65,25 @@ export default function FarmerRegister() {
 
   // ── GPS detect ──────────────────────────────
   const detectGPS = () => {
-    if (!navigator.geolocation) { toast.error('GPS not supported'); return; }
+    if (!navigator.geolocation) { toast.error('GPS not supported on this device'); return; }
     setLocLoading(true);
+    toast.loading('Getting your location…', { id: 'gps-toast' });
     navigator.geolocation.getCurrentPosition(
       pos => {
         set('gpsLat', pos.coords.latitude.toFixed(6));
         set('gpsLng', pos.coords.longitude.toFixed(6));
         setLocLoading(false);
-        toast.success('Location captured!');
+        toast.success('Location captured! ✓', { id: 'gps-toast' });
       },
-      () => { setLocLoading(false); toast.error('Could not get GPS'); },
-      { timeout: 10000 }
+      (err) => {
+        setLocLoading(false);
+        const msg =
+          err.code === 1 ? 'Location permission denied. Please allow access in browser settings.' :
+          err.code === 2 ? 'Position unavailable. Please enter coordinates manually.' :
+          'GPS timed out. Enter coordinates manually below.';
+        toast.error(msg, { id: 'gps-toast', duration: 5000 });
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   };
 
@@ -308,8 +316,36 @@ export default function FarmerRegister() {
               <button onClick={detectGPS} disabled={locLoading}
                 className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-green-300 text-green-700 font-semibold py-3 rounded-xl text-sm hover:bg-green-50 transition-colors disabled:opacity-60">
                 <FiMapPin size={15} />
-                {locLoading ? 'Getting location...' : form.gpsLat ? `📍 GPS captured (${form.gpsLat}, ${form.gpsLng})` : 'Capture GPS Location (Recommended)'}
+                {locLoading
+                  ? '📡 Getting location...'
+                  : form.gpsLat
+                    ? `✅ GPS captured (${form.gpsLat}, ${form.gpsLng}) — tap to refresh`
+                    : '📍 Capture GPS Location (Recommended)'}
               </button>
+
+              {/* Manual lat/lng fallback — always visible */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">
+                  GPS coordinates <span className="font-normal text-gray-400">(auto-filled above, or enter manually)</span>
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    value={form.gpsLat}
+                    onChange={e => set('gpsLat', e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-green-400"
+                    placeholder="Latitude (e.g. 11.0168)"
+                  />
+                  <input
+                    value={form.gpsLng}
+                    onChange={e => set('gpsLng', e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-green-400"
+                    placeholder="Longitude (e.g. 76.9558)"
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Open Google Maps → long-press your farm location → copy the numbers shown.
+                </p>
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

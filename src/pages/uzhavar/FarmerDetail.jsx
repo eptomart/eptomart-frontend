@@ -30,7 +30,7 @@ export default function FarmerDetail() {
     const load = async () => {
       try {
         const [fRes, pRes] = await Promise.all([
-          api.get(`/uzhavar/farmers/nearby?lat=0&lng=0&radius=99999`), // hack: get all, filter below
+          api.get(`/uzhavar/farmers/all`),
           api.get(`/uzhavar/farmers/${farmerId}/products`),
         ]);
         const f = (fRes.data.farmers || []).find(x => x._id === farmerId);
@@ -63,10 +63,21 @@ export default function FarmerDetail() {
   const grandTotal = parseFloat((subtotal + bookingFeeTotal).toFixed(2));
   const cartCount  = Object.values(cart).reduce((s, v) => s + v, 0);
 
+  // 5 kg minimum rule for Uzhavar Fresh
+  const UZHAVAR_MIN_KG = 5;
+  const totalKgInCart  = cartItems.filter(i => i.unit === 'kg').reduce((s, i) => s + i.qty, 0);
+  const hasKgItems     = cartItems.some(i => i.unit === 'kg');
+  const belowMinimum   = hasKgItems && totalKgInCart < UZHAVAR_MIN_KG;
+  const kgNeeded       = Math.max(0, UZHAVAR_MIN_KG - totalKgInCart);
+
   const handleBook = async () => {
     if (!isLoggedIn) { navigate('/login', { state: { from: `/uzhavar/farmer/${farmerId}` } }); return; }
     if (cartItems.length === 0) { toast.error('Add items first'); return; }
     if (bookingType === 'scheduled' && !scheduledDate) { toast.error('Pick delivery date'); return; }
+    if (belowMinimum) {
+      toast.error(`Minimum order quantity for Uzhavar Fresh is ${UZHAVAR_MIN_KG} kg. Add ${kgNeeded.toFixed(1)} kg more.`);
+      return;
+    }
 
     setPlacing(true);
     try {
@@ -281,6 +292,16 @@ export default function FarmerDetail() {
       {cartCount > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-xl px-4 py-4 z-30">
           <div className="max-w-2xl mx-auto">
+            {/* Minimum order warning */}
+            {belowMinimum && (
+              <div className="mb-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                <span className="text-amber-500 mt-0.5 flex-shrink-0">⚠️</span>
+                <div>
+                  <p className="text-xs font-bold text-amber-800">Minimum order quantity for Uzhavar Fresh is 5 kg.</p>
+                  <p className="text-xs text-amber-600">Add {kgNeeded.toFixed(1)} kg more to place the order.</p>
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between mb-2 text-sm">
               <span className="text-gray-600">{cartCount} items · ₹{subtotal.toFixed(0)}</span>
               <span className="text-xs text-gray-400">+ ₹{bookingFeeTotal} booking fee (incl. GST)</span>
@@ -289,10 +310,10 @@ export default function FarmerDetail() {
               <span className="font-bold text-gray-900">Total</span>
               <span className="font-black text-green-600 text-lg">₹{grandTotal}</span>
             </div>
-            <button onClick={handleBook} disabled={placing}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60">
+            <button onClick={handleBook} disabled={placing || belowMinimum}
+              className={`w-full text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60 ${belowMinimum ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>
               <FiShoppingCart size={16} />
-              {placing ? 'Processing...' : 'Freeze Booking & Pay'}
+              {placing ? 'Processing...' : belowMinimum ? `Add ${kgNeeded.toFixed(1)} kg more` : 'Freeze Booking & Pay'}
             </button>
           </div>
         </div>

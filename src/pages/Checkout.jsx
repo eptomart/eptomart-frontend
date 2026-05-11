@@ -243,6 +243,19 @@ export default function Checkout() {
     });
   };
 
+  // ── Per-seller minimum ₹299 validation ─────────────────────
+  const SELLER_MIN = 299;
+  const sellerMinErrors = Object.entries(sellerGroups || {})
+    .filter(([, g]) => g.seller) // only named seller groups
+    .map(([, g]) => {
+      const sellerTotal = g.items.reduce((s, i) => s + i.lineGrandTotal, 0);
+      if (sellerTotal < SELLER_MIN) {
+        const deficit = (SELLER_MIN - sellerTotal).toFixed(0);
+        return { name: g.seller?.businessName || 'this seller', deficit };
+      }
+      return null;
+    }).filter(Boolean);
+
   const handlePlaceOrder = async () => {
     if (!validateAddress()) return;
     // Prevent COD if blocked by product or serviceability
@@ -252,6 +265,12 @@ export default function Checkout() {
     }
     if (paymentMethod === 'cod' && codCheck.checked && codCheck.available === false) {
       toast.error('COD is not available for your pincode. Please pay online.');
+      return;
+    }
+    // Per-seller minimum order value
+    if (!buyNow && sellerMinErrors.length > 0) {
+      const e = sellerMinErrors[0];
+      toast.error(`Add ₹${e.deficit} more from ${e.name} to place the order.`, { duration: 5000 });
       return;
     }
     setLoading(true);
@@ -647,6 +666,33 @@ export default function Checkout() {
                   </div>
                 ))}
               </div>
+
+              {/* Per-seller minimum order warnings */}
+              {!buyNow && sellerMinErrors.length > 0 && (
+                <div className="mb-3 space-y-2">
+                  {sellerMinErrors.map((e, i) => (
+                    <div key={i} className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs">
+                      <span className="text-amber-500 mt-0.5 flex-shrink-0">⚠️</span>
+                      <div>
+                        <p className="font-bold text-amber-800">
+                          To support fair delivery costs and ensure each seller gets meaningful orders, minimum order value from each seller is ₹{SELLER_MIN}.
+                        </p>
+                        <p className="text-amber-700 mt-0.5">Add ₹{e.deficit} more from <span className="font-semibold">{e.name}</span> to place the order.</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Multi-seller shipment notice */}
+              {!buyNow && Object.keys(sellerGroups || {}).filter(k => (sellerGroups[k].seller)).length > 1 && (
+                <div className="mb-3 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-xs">
+                  <span className="text-blue-500 mt-0.5 flex-shrink-0">🚚</span>
+                  <p className="text-blue-700 font-medium">
+                    Your order may arrive in separate shipments from different sellers. Each shipment will be tracked individually.
+                  </p>
+                </div>
+              )}
 
               {/* Delivery estimates per seller */}
               {Object.entries(sellerGroups || {}).map(([key, group]) => (

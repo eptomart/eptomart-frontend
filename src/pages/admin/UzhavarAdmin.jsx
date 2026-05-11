@@ -311,8 +311,9 @@ export default function UzhavarAdmin() {
                   {farmers.length === 0 && <div className="text-center py-8 text-gray-400">No farmers found</div>}
                   {farmers.map(farmer => (
                     <div key={farmer._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
+                      {/* Header row */}
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-bold text-gray-800">{farmer.name}</p>
                             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${
@@ -321,14 +322,17 @@ export default function UzhavarAdmin() {
                               : 'bg-red-100 text-red-600'
                             }`}>{farmer.verificationStatus}</span>
                           </div>
-                          <p className="text-sm text-gray-500">{farmer.address?.village}, {farmer.address?.district}</p>
-                          <p className="text-xs text-gray-400">📞 {farmer.phone} · 📍 {farmer.deliveryRadius}km</p>
-                          {farmer.aadhaarDoc && (
-                            <a href={farmer.aadhaarDoc} target="_blank" rel="noopener noreferrer"
-                              className="text-xs text-blue-600 underline">View Aadhaar Doc</a>
+                          <p className="text-sm text-gray-500">{farmer.address?.village}, {farmer.address?.district}, {farmer.address?.pincode}</p>
+                          <p className="text-xs text-gray-400">📞 {farmer.phone} · 📍 {farmer.deliveryRadius} km radius · 🗣 {farmer.language}</p>
+                          {farmer.gpsLocation?.coordinates?.some(c => c !== 0) && (
+                            <p className="text-xs text-green-600">🛰 GPS: {farmer.gpsLocation.coordinates[1]?.toFixed(4)}, {farmer.gpsLocation.coordinates[0]?.toFixed(4)}</p>
+                          )}
+                          {farmer.rejectionReason && (
+                            <p className="text-xs text-red-500 mt-1">❌ Reason: {farmer.rejectionReason}</p>
                           )}
                         </div>
-                        <div className="flex flex-col gap-1.5">
+                        {/* Action buttons */}
+                        <div className="flex flex-col gap-1.5 flex-shrink-0">
                           {farmer.verificationStatus === 'pending' && (
                             <>
                               <button onClick={() => farmerAction(farmer._id, 'approve')}
@@ -336,7 +340,7 @@ export default function UzhavarAdmin() {
                                 <FiCheck size={11} /> Approve
                               </button>
                               <button onClick={() => {
-                                const r = prompt('Rejection reason:');
+                                const r = prompt('Rejection reason (shown to farmer):');
                                 if (r !== null) farmerAction(farmer._id, 'reject', r);
                               }}
                                 className="flex items-center gap-1 bg-red-50 text-red-600 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-red-100 border border-red-200">
@@ -358,6 +362,60 @@ export default function UzhavarAdmin() {
                           )}
                         </div>
                       </div>
+
+                      {/* Documents section */}
+                      {(farmer.aadhaarDoc || farmer.farmProofDoc) && (
+                        <div className="border-t border-gray-100 pt-3">
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2">📄 Submitted Documents</p>
+                          <div className="flex flex-wrap gap-2">
+                            {farmer.aadhaarDoc && (
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[10px] font-semibold text-gray-500 uppercase">Aadhaar Card</span>
+                                <div className="flex gap-1.5">
+                                  {farmer.aadhaarDoc.match(/\.(jpg|jpeg|png|webp)$/i) ? (
+                                    <a href={farmer.aadhaarDoc} target="_blank" rel="noopener noreferrer">
+                                      <img src={farmer.aadhaarDoc} alt="Aadhaar" className="h-16 w-24 object-cover rounded-lg border border-gray-200 hover:opacity-90" />
+                                    </a>
+                                  ) : (
+                                    <a href={farmer.aadhaarDoc} target="_blank" rel="noopener noreferrer"
+                                      className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold px-3 py-2 rounded-lg hover:bg-blue-100">
+                                      📄 View / Download Aadhaar
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            {farmer.farmProofDoc && (
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[10px] font-semibold text-gray-500 uppercase">Farm Proof</span>
+                                <div className="flex gap-1.5">
+                                  {farmer.farmProofDoc.match(/\.(jpg|jpeg|png|webp)$/i) ? (
+                                    <a href={farmer.farmProofDoc} target="_blank" rel="noopener noreferrer">
+                                      <img src={farmer.farmProofDoc} alt="Farm Proof" className="h-16 w-24 object-cover rounded-lg border border-gray-200 hover:opacity-90" />
+                                    </a>
+                                  ) : (
+                                    <a href={farmer.farmProofDoc} target="_blank" rel="noopener noreferrer"
+                                      className="flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-3 py-2 rounded-lg hover:bg-green-100">
+                                      🌾 View / Download Farm Proof
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            {!farmer.aadhaarDoc && !farmer.farmProofDoc && (
+                              <p className="text-xs text-gray-400 italic">No documents uploaded</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Bank details summary */}
+                      {farmer.bankAccount?.bankName && (
+                        <div className="border-t border-gray-100 pt-2 mt-2">
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">🏦 Bank</p>
+                          <p className="text-xs text-gray-600">{farmer.bankAccount.bankName} · {farmer.bankAccount.accountName}</p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
