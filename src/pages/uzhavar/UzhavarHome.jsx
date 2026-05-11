@@ -13,6 +13,16 @@ import toast from 'react-hot-toast';
 
 const CATEGORIES = ['All', 'vegetable', 'fruit', 'grain', 'herb', 'other'];
 
+const DISTRICTS_TN = [
+  'Chennai','Coimbatore','Madurai','Tiruchirappalli','Salem','Tirunelveli',
+  'Tiruppur','Vellore','Erode','Thoothukudi','Dindigul','Thanjavur',
+  'Ranipet','Sivaganga','Virudhunagar','Nagapattinam','Kanyakumari',
+  'Krishnagiri','Dharmapuri','Perambalur','Ariyalur','Cuddalore',
+  'Villupuram','Kallakurichi','Karur','Namakkal','Nilgiris','Pudukkottai',
+  'Ramanathapuram','Tenkasi','Tirupattur','Tiruvannamalai',
+  'Chengalpattu','Kancheepuram','Tiruvallur','Mayiladuthurai',
+].sort();
+
 export default function UzhavarHome() {
   const navigate = useNavigate();
   const [farmers,    setFarmers]    = useState([]);
@@ -21,7 +31,9 @@ export default function UzhavarHome() {
   const [category,   setCategory]   = useState('All');
   const [tab,        setTab]        = useState('farmers');
   const [pincode,    setPincode]    = useState('');
+  const [district,   setDistrict]   = useState('');
   const [locationLabel, setLocationLabel] = useState('All Farmers');
+  const [matchType,  setMatchType]  = useState('all');
   const [gpsActive,  setGpsActive]  = useState(false);
   const [locLoading, setLocLoading] = useState(false);
   const pincodeRef = useRef(null);
@@ -68,13 +80,50 @@ export default function UzhavarHome() {
         api.get('/uzhavar/farmers/nearby', { params }),
         api.get('/uzhavar/products/search', { params: catParam }),
       ]);
+      const mt = fRes.data.matchType || 'all';
       setFarmers(fRes.data.farmers || []);
       setProducts(pRes.data.products || []);
+      setMatchType(mt);
       setGpsActive(true);
-      setLocationLabel('Near you');
-      if (!silent) toast.success('Showing farmers near you');
+      if (mt === 'gps_exact') {
+        setLocationLabel('Near you');
+        if (!silent) toast.success('Showing farmers near you');
+      } else if (mt === 'gps_expanded') {
+        setLocationLabel('Nearest farmers');
+        if (!silent) toast.success('Showing nearest available farmers');
+      } else {
+        setLocationLabel('All Farmers');
+        if (!silent) toast('Showing all farmers — none found nearby', { icon: 'ℹ️' });
+      }
     } catch {
       if (!silent) toast.error('Could not get nearby farmers');
+    } finally {
+      setLocLoading(false);
+    }
+  };
+
+  const handleDistrict = async (d) => {
+    if (!d) { clearLocation(); return; }
+    setDistrict(d);
+    setLocLoading(true);
+    try {
+      const params = { district: d };
+      const catParam = category !== 'All' ? { ...params, category } : params;
+      const [fRes, pRes] = await Promise.all([
+        api.get('/uzhavar/farmers/nearby', { params }),
+        api.get('/uzhavar/products/search', { params: catParam }),
+      ]);
+      setFarmers(fRes.data.farmers || []);
+      setProducts(pRes.data.products || []);
+      setMatchType(fRes.data.matchType || 'district');
+      setGpsActive(true);
+      setLocationLabel(d);
+      setPincode('');
+      const count = fRes.data.farmers?.length || 0;
+      if (count > 0) toast.success(`${count} farmer${count > 1 ? 's' : ''} found in ${d}`);
+      else toast('No farmers in this district yet', { icon: 'ℹ️' });
+    } catch {
+      toast.error('Search failed');
     } finally {
       setLocLoading(false);
     }
@@ -100,10 +149,15 @@ export default function UzhavarHome() {
         api.get('/uzhavar/farmers/nearby', { params }),
         api.get('/uzhavar/products/search', { params: catParam }),
       ]);
+      const mt = fRes.data.matchType || 'all';
       setFarmers(fRes.data.farmers || []);
       setProducts(pRes.data.products || []);
+      setMatchType(mt);
       setGpsActive(true);
-      setLocationLabel(`Pincode: ${pincode}`);
+      setDistrict('');
+      if (mt === 'pincode_exact') setLocationLabel(`Pincode: ${pincode}`);
+      else if (mt === 'pincode_zone') setLocationLabel(`Zone: ${pincode.slice(0, 3)}xxx`);
+      else setLocationLabel('All Farmers');
     } catch {
       toast.error('Search failed');
     } finally {
@@ -115,6 +169,8 @@ export default function UzhavarHome() {
     setGpsActive(false);
     setLocationLabel('All Farmers');
     setPincode('');
+    setDistrict('');
+    setMatchType('all');
     loadAll();
   };
 
@@ -140,42 +196,67 @@ export default function UzhavarHome() {
 
         {/* Location filter bar — overlaps hero */}
         <div className="max-w-2xl mx-auto px-4 -mt-6 relative z-10 mb-4">
-          <div className="bg-white rounded-2xl shadow-lg p-3 flex items-center gap-2">
-            {/* Current location label */}
-            <div className="flex items-center gap-1.5 flex-1 min-w-0">
-              <FiMapPin size={14} className={gpsActive ? 'text-green-600' : 'text-gray-400'} />
-              <span className="text-xs font-semibold text-gray-700 truncate">{locationLabel}</span>
-              {gpsActive && (
-                <button onClick={clearLocation} className="ml-1 text-gray-400 hover:text-red-400 flex-shrink-0">
-                  <FiX size={12} />
-                </button>
-              )}
-            </div>
+          {/* Row 1: district dropdown + GPS */}
+          <div className="bg-white rounded-2xl shadow-lg p-3 flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              {/* District dropdown — most reliable filter */}
+              <div className="flex-1 min-w-0">
+                <select
+                  value={district}
+                  onChange={e => handleDistrict(e.target.value)}
+                  disabled={locLoading}
+                  className="w-full border border-gray-200 rounded-xl px-2.5 py-2 text-xs font-semibold text-gray-700 focus:outline-none focus:border-green-400 bg-white disabled:opacity-50 appearance-none"
+                >
+                  <option value="">📍 Select District</option>
+                  {DISTRICTS_TN.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Pincode input */}
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <input
-                ref={pincodeRef}
-                value={pincode}
-                onChange={e => setPincode(e.target.value.replace(/\D/g,'').slice(0,6))}
-                onKeyDown={e => e.key === 'Enter' && handlePincode()}
-                placeholder="Pincode"
-                className="w-24 border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-green-400"
-              />
-              <button onClick={handlePincode} disabled={locLoading}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg px-2.5 py-1.5 text-xs font-semibold disabled:opacity-50 transition-colors">
-                Go
+              {/* GPS button */}
+              <button onClick={handleGPS} disabled={locLoading}
+                className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white rounded-xl px-3 py-2 text-xs font-bold flex-shrink-0 disabled:opacity-60 transition-colors">
+                {locLoading
+                  ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : <FiMapPin size={12} />}
+                {locLoading ? '' : 'Near Me'}
               </button>
             </div>
 
-            {/* GPS button */}
-            <button onClick={handleGPS} disabled={locLoading}
-              className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white rounded-lg px-3 py-1.5 text-xs font-bold flex-shrink-0 disabled:opacity-60 transition-colors">
-              {locLoading
-                ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                : <FiMapPin size={12} />}
-              {locLoading ? '' : 'Near Me'}
-            </button>
+            {/* Row 2: pincode + active label */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <input
+                  ref={pincodeRef}
+                  value={pincode}
+                  onChange={e => setPincode(e.target.value.replace(/\D/g,'').slice(0,6))}
+                  onKeyDown={e => e.key === 'Enter' && handlePincode()}
+                  placeholder="Or enter pincode"
+                  className="w-32 border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:border-green-400"
+                />
+                <button onClick={handlePincode} disabled={locLoading}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl px-2.5 py-1.5 text-xs font-semibold disabled:opacity-50 transition-colors">
+                  Go
+                </button>
+              </div>
+
+              {/* Active location label */}
+              <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
+                {gpsActive && (
+                  <>
+                    <FiMapPin size={11} className="text-green-600 flex-shrink-0" />
+                    <span className="text-xs font-semibold text-green-700 truncate">{locationLabel}</span>
+                    <button onClick={clearLocation} className="text-gray-400 hover:text-red-400 flex-shrink-0 ml-1">
+                      <FiX size={12} />
+                    </button>
+                  </>
+                )}
+                {!gpsActive && (
+                  <span className="text-xs text-gray-400">All Tamil Nadu</span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
