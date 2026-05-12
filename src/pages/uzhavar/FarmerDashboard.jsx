@@ -321,6 +321,15 @@ export default function FarmerDashboard() {
                     <p key={i} className="text-sm text-gray-700">{item.name} × {item.quantity} {item.unit} — ₹{item.lineTotal}</p>
                   ))}
                   <p className="text-xs text-gray-400 mt-1">{order.bookingType === 'scheduled' ? `📅 Scheduled: ${order.scheduledSlot}` : '⚡ Instant delivery'}</p>
+                  {/* Payment split for farmer */}
+                  {order.balancePayableToFarmer > 0 && (
+                    <div className={`mt-2 rounded-xl px-3 py-2 flex justify-between items-center text-xs font-bold ${
+                      order.status === 'delivered' ? 'bg-green-100 text-green-800' : 'bg-amber-50 text-amber-800 border border-amber-200'
+                    }`}>
+                      <span>{order.status === 'delivered' ? '✅ Collected from buyer' : '💰 Collect from buyer at delivery'}</span>
+                      <span>₹{order.balancePayableToFarmer?.toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
                 {order.status === 'pending_farmer' && (
                   <div className="px-4 pb-4 flex gap-2">

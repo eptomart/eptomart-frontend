@@ -162,7 +162,10 @@ export default function FarmerDetail() {
             razorpayPaymentId: response.razorpay_payment_id,
             razorpaySignature: response.razorpay_signature,
           });
-          toast.success('Booking confirmed! Waiting for farmer.');
+          toast.success(
+            `✅ Booking fee ₹${bookingFeeTotal.toFixed(2)} paid! Waiting for farmer. Pay ₹${subtotal.toFixed(2)} to farmer at delivery.`,
+            { duration: 6000 }
+          );
           navigate('/uzhavar/my-orders');
         },
         prefill: {},
@@ -296,24 +299,52 @@ export default function FarmerDetail() {
                       </div>
 
                       {/* Qty control */}
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                         {cart[prod._id] ? (
                           <>
-                            <button onClick={() => updateCart(prod._id, -0.5)}
-                              className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:border-green-400">
-                              <FiMinus size={12} />
-                            </button>
-                            <span className="w-8 text-center text-sm font-bold">{cart[prod._id]}</span>
-                            <button onClick={() => updateCart(prod._id, 0.5)}
-                              className="w-7 h-7 rounded-full bg-green-600 text-white flex items-center justify-center hover:bg-green-700">
-                              <FiPlus size={12} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => updateCart(prod._id, prod.unit === 'kg' ? -0.5 : -1)}
+                                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:border-green-400">
+                                <FiMinus size={12} />
+                              </button>
+                              <span className="w-10 text-center text-sm font-bold">{cart[prod._id]} {prod.unit}</span>
+                              <button onClick={() => updateCart(prod._id, prod.unit === 'kg' ? 0.5 : 1)}
+                                className="w-7 h-7 rounded-full bg-green-600 text-white flex items-center justify-center hover:bg-green-700">
+                                <FiPlus size={12} />
+                              </button>
+                            </div>
+                            {/* Package quick-select for kg items */}
+                            {prod.unit === 'kg' && (
+                              <div className="flex gap-1">
+                                {[5, 10, 20].map(pkg => (
+                                  <button key={pkg}
+                                    onClick={() => setCart(prev => ({ ...prev, [prod._id]: pkg }))}
+                                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors ${cart[prod._id] === pkg ? 'bg-green-600 text-white' : 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'}`}>
+                                    {pkg}kg
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </>
                         ) : (
-                          <button onClick={() => updateCart(prod._id, 0.5)}
-                            className="flex items-center gap-1 bg-green-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors">
-                            <FiPlus size={12} /> Add
-                          </button>
+                          <div className="flex flex-col items-end gap-1">
+                            <button onClick={() => updateCart(prod._id, prod.unit === 'kg' ? 0.5 : 1)}
+                              className="flex items-center gap-1 bg-green-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors">
+                              <FiPlus size={12} /> Add
+                            </button>
+                            {/* One-tap package shortcuts */}
+                            {prod.unit === 'kg' && (
+                              <div className="flex gap-1">
+                                {[5, 10, 20].map(pkg => (
+                                  <button key={pkg}
+                                    onClick={() => setCart(prev => ({ ...prev, [prod._id]: pkg }))}
+                                    className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors">
+                                    {pkg}kg
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -535,13 +566,26 @@ export default function FarmerDetail() {
               </div>
             )}
 
-            <div className="flex items-center justify-between mb-2 text-sm">
-              <span className="text-gray-600">{cartCount} items · ₹{subtotal.toFixed(0)}</span>
-              <span className="text-xs text-gray-400">+ ₹{bookingFeeTotal} booking fee (incl. GST)</span>
-            </div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="font-bold text-gray-900">Total</span>
-              <span className="font-black text-green-600 text-lg">₹{grandTotal}</span>
+            {/* Payment split info */}
+            <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2 mb-3 text-xs">
+              <div className="flex justify-between mb-1">
+                <span className="text-gray-600">{cartCount} item{cartCount > 1 ? 's' : ''} · product value</span>
+                <span className="font-semibold text-gray-800">₹{subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between mb-1">
+                <span className="text-gray-500">Booking fee (₹21 + 18% GST)</span>
+                <span className="font-semibold text-gray-800">₹{bookingFeeTotal.toFixed(2)}</span>
+              </div>
+              <div className="border-t border-green-200 pt-1 mt-1 space-y-0.5">
+                <div className="flex justify-between font-bold">
+                  <span className="text-green-800">💳 Pay now (Razorpay)</span>
+                  <span className="text-green-700">₹{bookingFeeTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-gray-500">
+                  <span>🤝 Pay farmer at delivery</span>
+                  <span>₹{subtotal.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
 
             {/* Disable conditions: below minimum, or unavailable items, or conflict */}
@@ -555,7 +599,7 @@ export default function FarmerDetail() {
                   ? 'Remove unavailable items'
                   : harvestBounds.hasConflict
                     ? 'Harvest conflict — see above'
-                    : placing ? 'Processing...' : 'Freeze Booking & Pay';
+                    : placing ? 'Processing...' : `Confirm Booking · Pay ₹${bookingFeeTotal.toFixed(2)} Now`;
               return (
                 <button onClick={handleBook} disabled={placing || blocked}
                   className={`w-full text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60 ${blocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>

@@ -112,9 +112,20 @@ export default function MyUzhavarOrders() {
                       <span className="text-gray-800 font-medium">₹{item.lineTotal}</span>
                     </div>
                   ))}
-                  <div className="mt-2 pt-2 border-t border-gray-50 flex justify-between text-sm font-bold">
-                    <span className="text-gray-700">Total (incl. booking fee)</span>
-                    <span className="text-green-600">₹{order.grandTotal}</span>
+                  {/* Payment split breakdown */}
+                  <div className="mt-2 pt-2 border-t border-gray-100 space-y-1">
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>💳 Booking fee (paid online)</span>
+                      <span className="font-semibold text-gray-700">₹{order.bookingFee?.total?.toFixed(2) ?? '24.78'}</span>
+                    </div>
+                    {order.balancePayableToFarmer > 0 && (
+                      <div className={`flex justify-between text-xs font-semibold rounded-lg px-2 py-1.5 ${
+                        order.status === 'delivered' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+                      }`}>
+                        <span>🤝 {order.status === 'delivered' ? 'Paid to farmer at delivery' : 'Pay farmer at delivery'}</span>
+                        <span>₹{order.balancePayableToFarmer?.toFixed(2)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

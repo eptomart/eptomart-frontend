@@ -440,7 +440,8 @@ export default function UzhavarAdmin() {
                         <th className="pb-2 font-semibold">Order #</th>
                         <th className="pb-2 font-semibold">Buyer</th>
                         <th className="pb-2 font-semibold">Farmer</th>
-                        <th className="pb-2 font-semibold">Amount</th>
+                        <th className="pb-2 font-semibold">Booking Fee</th>
+                        <th className="pb-2 font-semibold">Balance to Farmer</th>
                         <th className="pb-2 font-semibold">Type</th>
                         <th className="pb-2 font-semibold">Status</th>
                         <th className="pb-2 font-semibold">Date</th>
@@ -448,14 +449,27 @@ export default function UzhavarAdmin() {
                     </thead>
                     <tbody>
                       {orders.length === 0 && (
-                        <tr><td colSpan={7} className="text-center py-8 text-gray-400">No orders</td></tr>
+                        <tr><td colSpan={8} className="text-center py-8 text-gray-400">No orders</td></tr>
                       )}
                       {orders.map(order => (
                         <tr key={order._id} className="border-b border-gray-50 hover:bg-gray-50">
                           <td className="py-2.5 font-mono text-xs">{order.orderNumber}</td>
                           <td className="py-2.5">{order.buyer?.name}</td>
                           <td className="py-2.5">{order.farmer?.name}</td>
-                          <td className="py-2.5 font-semibold text-green-600">₹{order.grandTotal}</td>
+                          <td className="py-2.5">
+                            <span className={`text-xs font-semibold ${order.paymentStatus === 'paid' ? 'text-green-600' : 'text-gray-400'}`}>
+                              ₹{order.bookingFee?.total?.toFixed(2) ?? '24.78'}
+                              {order.paymentStatus === 'paid' && <span className="ml-1 text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">PAID</span>}
+                            </span>
+                          </td>
+                          <td className="py-2.5">
+                            <span className={`text-xs font-semibold ${order.status === 'delivered' ? 'text-green-600' : 'text-amber-600'}`}>
+                              ₹{order.balancePayableToFarmer?.toFixed(2) || order.subtotal?.toFixed(2) || '—'}
+                              <span className={`ml-1 text-[10px] px-1.5 py-0.5 rounded-full ${order.status === 'delivered' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                {order.status === 'delivered' ? 'SETTLED' : 'PENDING'}
+                              </span>
+                            </span>
+                          </td>
                           <td className="py-2.5 capitalize text-xs">{order.bookingType}</td>
                           <td className="py-2.5">
                             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
