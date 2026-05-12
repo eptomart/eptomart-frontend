@@ -3,9 +3,235 @@
 // ============================================
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { FiUsers, FiPackage, FiCreditCard, FiBarChart2, FiCheck, FiX, FiPlus, FiMapPin } from 'react-icons/fi';
+import { FiUsers, FiPackage, FiCreditCard, FiBarChart2, FiCheck, FiX, FiPlus, FiMapPin, FiEye } from 'react-icons/fi';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
+
+// ── Farmer Profile Modal ──────────────────────────────────────
+function FarmerProfileModal({ farmerId, onClose }) {
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get(`/uzhavar/admin/farmers/${farmerId}`)
+      .then(r => setData(r.data))
+      .catch(() => toast.error('Failed to load farmer profile'))
+      .finally(() => setLoading(false));
+  }, [farmerId]);
+
+  const farmer   = data?.farmer;
+  const products = data?.products || [];
+  const stats    = data?.stats || {};
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}>
+
+        <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-2xl">
+          <h2 className="font-black text-gray-800 flex items-center gap-2">
+            🧑‍🌾 {loading ? 'Loading...' : farmer?.name}
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><FiX size={18} /></button>
+        </div>
+
+        {loading ? (
+          <div className="py-16 text-center text-gray-400 animate-pulse">Loading profile...</div>
+        ) : !farmer ? (
+          <div className="py-16 text-center text-red-400">Farmer not found</div>
+        ) : (
+          <div className="p-5 space-y-4">
+
+            {/* Status badge */}
+            <div className="flex items-center gap-3">
+              <span className={`text-sm font-bold px-3 py-1 rounded-full capitalize ${
+                farmer.verificationStatus === 'approved' ? 'bg-green-100 text-green-700'
+                : farmer.verificationStatus === 'pending'  ? 'bg-yellow-100 text-yellow-700'
+                : 'bg-red-100 text-red-600'
+              }`}>{farmer.verificationStatus}</span>
+              {farmer.isActive && <span className="text-xs bg-green-50 text-green-600 font-semibold px-2.5 py-1 rounded-full">● Active</span>}
+              {farmer.rejectionReason && <span className="text-xs text-red-500 bg-red-50 px-2.5 py-1 rounded-full">❌ {farmer.rejectionReason}</span>}
+            </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'Total Orders',   value: stats.totalOrders   || 0, icon: '📦' },
+                { label: 'Pending Orders', value: stats.pendingOrders  || 0, icon: '⏳' },
+                { label: 'Total Revenue',  value: `₹${(stats.totalRevenue || 0).toLocaleString('en-IN')}`, icon: '💰' },
+              ].map(s => (
+                <div key={s.label} className="bg-gray-50 rounded-xl p-3 text-center">
+                  <div className="text-lg mb-0.5">{s.icon}</div>
+                  <p className="font-black text-gray-800 text-base">{s.value}</p>
+                  <p className="text-[10px] text-gray-500">{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Basic info */}
+            <div className="bg-white border border-gray-100 rounded-xl p-4">
+              <p className="text-xs font-black text-gray-500 uppercase tracking-wider mb-3">📋 Basic Info</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                {[
+                  ['Name',     farmer.name],
+                  ['Phone',    farmer.phone],
+                  ['Language', farmer.language === 'ta' ? 'Tamil' : farmer.language === 'en' ? 'English' : 'Both'],
+                  ['Delivery radius', `${farmer.deliveryRadius} km`],
+                  ['Ratings', farmer.ratings?.average > 0 ? `${farmer.ratings.average.toFixed(1)} ⭐ (${farmer.ratings.count})` : 'No ratings yet'],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex flex-col">
+                    <span className="text-[10px] text-gray-400 uppercase font-semibold">{k}</span>
+                    <span className="text-gray-800 font-medium">{v || '—'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Location */}
+            <div className="bg-white border border-gray-100 rounded-xl p-4">
+              <p className="text-xs font-black text-gray-500 uppercase tracking-wider mb-3">📍 Location</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                {[
+                  ['Village',  farmer.address?.village],
+                  ['Taluk',    farmer.address?.taluk],
+                  ['District', farmer.address?.district],
+                  ['Pincode',  farmer.address?.pincode],
+                  ['State',    farmer.address?.state || 'Tamil Nadu'],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex flex-col">
+                    <span className="text-[10px] text-gray-400 uppercase font-semibold">{k}</span>
+                    <span className="text-gray-800 font-medium">{v || '—'}</span>
+                  </div>
+                ))}
+              </div>
+              {farmer.gpsLocation?.coordinates?.some(c => c !== 0) && (
+                <div className="mt-2 text-xs text-green-600 font-mono bg-green-50 rounded-lg px-3 py-1.5">
+                  🛰 GPS: {farmer.gpsLocation.coordinates[1]?.toFixed(5)}, {farmer.gpsLocation.coordinates[0]?.toFixed(5)}
+                  <a href={`https://maps.google.com/?q=${farmer.gpsLocation.coordinates[1]},${farmer.gpsLocation.coordinates[0]}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="ml-2 underline hover:text-green-700">View on map ↗</a>
+                </div>
+              )}
+            </div>
+
+            {/* Bank details */}
+            <div className="bg-white border border-gray-100 rounded-xl p-4">
+              <p className="text-xs font-black text-gray-500 uppercase tracking-wider mb-3">🏦 Bank Details</p>
+              {farmer.bankAccount?.bankName ? (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  {[
+                    ['Bank name',    farmer.bankAccount.bankName],
+                    ['Account name', farmer.bankAccount.accountName],
+                    ['Account No.',  farmer.bankAccount.accountNumberMasked || '—'],
+                    ['IFSC',         farmer.bankAccount.ifsc || '—'],
+                    ['Verified',     farmer.bankAccount.verified ? '✅ Yes' : '⏳ Pending'],
+                  ].map(([k, v]) => (
+                    <div key={k} className="flex flex-col">
+                      <span className="text-[10px] text-gray-400 uppercase font-semibold">{k}</span>
+                      <span className="text-gray-800 font-medium">{v || '—'}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 italic">No bank details on record</p>
+              )}
+              {/* Bank document */}
+              {farmer.bankAccount?.bankDoc && (
+                <div className="mt-3">
+                  <p className="text-[10px] text-gray-400 uppercase font-semibold mb-1.5">Bank Document</p>
+                  {/\.(jpg|jpeg|png|webp)/i.test(farmer.bankAccount.bankDoc) ? (
+                    <a href={farmer.bankAccount.bankDoc} target="_blank" rel="noopener noreferrer">
+                      <img src={farmer.bankAccount.bankDoc} alt="Bank Doc"
+                        className="h-20 w-32 object-cover rounded-lg border border-gray-200 hover:opacity-90" />
+                    </a>
+                  ) : (
+                    <a href={farmer.bankAccount.bankDoc} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-2 rounded-lg hover:bg-blue-100 border border-blue-200">
+                      📄 View / Download Bank Doc
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Documents */}
+            {(farmer.aadhaarDoc || farmer.farmProofDoc || farmer.aadhaarNumberMasked) && (
+              <div className="bg-white border border-gray-100 rounded-xl p-4">
+                <p className="text-xs font-black text-gray-500 uppercase tracking-wider mb-3">📄 KYC Documents</p>
+                {farmer.aadhaarNumberMasked && (
+                  <p className="text-sm text-gray-700 mb-2">Aadhaar: <span className="font-mono font-bold">{farmer.aadhaarNumberMasked}</span></p>
+                )}
+                <div className="flex flex-wrap gap-3">
+                  {farmer.aadhaarDoc && (
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase font-semibold mb-1">Aadhaar Card</p>
+                      {/\.(jpg|jpeg|png|webp)/i.test(farmer.aadhaarDoc) ? (
+                        <a href={farmer.aadhaarDoc} target="_blank" rel="noopener noreferrer">
+                          <img src={farmer.aadhaarDoc} alt="Aadhaar"
+                            className="h-20 w-32 object-cover rounded-lg border hover:opacity-90" />
+                        </a>
+                      ) : (
+                        <a href={farmer.aadhaarDoc} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 hover:bg-blue-100">
+                          📄 View Aadhaar
+                        </a>
+                      )}
+                    </div>
+                  )}
+                  {farmer.farmProofDoc && (
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase font-semibold mb-1">Farm Proof</p>
+                      {/\.(jpg|jpeg|png|webp)/i.test(farmer.farmProofDoc) ? (
+                        <a href={farmer.farmProofDoc} target="_blank" rel="noopener noreferrer">
+                          <img src={farmer.farmProofDoc} alt="Farm Proof"
+                            className="h-20 w-32 object-cover rounded-lg border hover:opacity-90" />
+                        </a>
+                      ) : (
+                        <a href={farmer.farmProofDoc} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-600 bg-green-50 px-3 py-2 rounded-lg border border-green-200 hover:bg-green-100">
+                          🌾 View Farm Proof
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Listed products */}
+            <div className="bg-white border border-gray-100 rounded-xl p-4">
+              <p className="text-xs font-black text-gray-500 uppercase tracking-wider mb-3">
+                🥬 Products ({products.length})
+              </p>
+              {products.length === 0 ? (
+                <p className="text-sm text-gray-400 italic">No products listed</p>
+              ) : (
+                <div className="space-y-2">
+                  {products.map(prod => (
+                    <div key={prod._id} className={`flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0 ${!prod.isActive ? 'opacity-50' : ''}`}>
+                      <div>
+                        <span className="font-medium text-gray-800">{prod.name}</span>
+                        {prod.nameTa && <span className="text-gray-400 text-xs ml-1">({prod.nameTa})</span>}
+                        <span className={`ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${prod.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {prod.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <div className="text-right text-xs text-gray-500">
+                        <p className="font-semibold text-gray-800">₹{prod.pricePerUnit}/{prod.unit}</p>
+                        <p>{prod.availableQuantity} {prod.unit} · {prod.category}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const TN_DISTRICTS = [
   'Ariyalur','Chengalpattu','Chennai','Coimbatore','Cuddalore','Dharmapuri','Dindigul',
@@ -202,6 +428,7 @@ export default function UzhavarAdmin() {
   const [orderFilter, setOrderFilter]     = useState('');
   const [loading, setLoading]       = useState(false);
   const [showAddModal, setShowAddModal]   = useState(false);
+  const [selectedFarmer, setSelectedFarmer] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -245,6 +472,12 @@ export default function UzhavarAdmin() {
         <AddFarmerModal
           onClose={() => setShowAddModal(false)}
           onAdded={() => { load(); setFarmerFilter('approved'); }}
+        />
+      )}
+      {selectedFarmer && (
+        <FarmerProfileModal
+          farmerId={selectedFarmer}
+          onClose={() => setSelectedFarmer(null)}
         />
       )}
       <div className="p-4 max-w-6xl mx-auto">
@@ -333,6 +566,10 @@ export default function UzhavarAdmin() {
                         </div>
                         {/* Action buttons */}
                         <div className="flex flex-col gap-1.5 flex-shrink-0">
+                          <button onClick={() => setSelectedFarmer(farmer._id)}
+                            className="flex items-center gap-1 bg-blue-50 text-blue-600 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-blue-100 border border-blue-200">
+                            <FiEye size={11} /> View Profile
+                          </button>
                           {farmer.verificationStatus === 'pending' && (
                             <>
                               <button onClick={() => farmerAction(farmer._id, 'approve')}

@@ -47,6 +47,7 @@ const empty = {
   farmProofDoc: null, farmProofDocUrl: '',
   // Step 4
   bankName: '', accountName: '', accountNumber: '', ifsc: '',
+  bankDoc: null, bankDocUrl: '',
 };
 
 export default function FarmerRegister() {
@@ -56,7 +57,7 @@ export default function FarmerRegister() {
   const [step, setStep]       = useState(1);
   const [form, setForm]       = useState(empty);
   const [errors, setErrors]   = useState({});
-  const [uploading, setUploading] = useState({ aadhaar: false, farm: false });
+  const [uploading, setUploading] = useState({ aadhaar: false, farm: false, bankDoc: false });
   const [locLoading, setLocLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone]       = useState(false);
@@ -90,7 +91,18 @@ export default function FarmerRegister() {
   // ── Document upload ──────────────────────────
   const uploadDoc = async (file, type) => {
     if (!file) return;
-    const key = type === 'aadhaar' ? 'aadhaar' : 'farm';
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Only JPG, PNG, WebP or PDF files allowed');
+      return;
+    }
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File too large. Maximum size is 5MB');
+      return;
+    }
+    const key = type === 'aadhaar' ? 'aadhaar' : type === 'farm' ? 'farm' : 'bankDoc';
     setUploading(u => ({ ...u, [key]: true }));
     try {
       const fd = new FormData();
@@ -101,9 +113,12 @@ export default function FarmerRegister() {
       if (type === 'aadhaar') {
         set('aadhaarDoc', file);
         set('aadhaarDocUrl', data.url);
-      } else {
+      } else if (type === 'farm') {
         set('farmProofDoc', file);
         set('farmProofDocUrl', data.url);
+      } else {
+        set('bankDoc', file);
+        set('bankDocUrl', data.url);
       }
       toast.success('Document uploaded ✓');
     } catch {
@@ -136,6 +151,7 @@ export default function FarmerRegister() {
       if (!form.accountName.trim())   e.accountName   = 'Account holder name required';
       if (!form.accountNumber.trim()) e.accountNumber = 'Account number required';
       if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(form.ifsc.toUpperCase())) e.ifsc = 'Valid IFSC required (e.g. SBIN0001234)';
+      if (!form.bankDocUrl)           e.bankDocUrl    = 'Bank passbook or cancelled cheque required';
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -171,6 +187,7 @@ export default function FarmerRegister() {
           accountName:   form.accountName,
           accountNumber: form.accountNumber,
           ifsc:          form.ifsc.toUpperCase(),
+          bankDoc:       form.bankDocUrl,
         },
         user: user?._id || null,
       });
@@ -199,7 +216,7 @@ export default function FarmerRegister() {
               <p className="text-sm font-semibold text-green-700 mb-2">What happens next?</p>
               <div className="space-y-1.5 text-xs text-green-600">
                 <p>✅ Admin verifies Aadhaar + farm proof</p>
-                <p>✅ Bank account verified for payouts</p>
+                <p>✅ Bank passbook / cheque verified for payouts</p>
                 <p>✅ Account activated — start listing harvest</p>
                 <p>✅ Buyers near you start seeing your products</p>
               </div>
@@ -465,6 +482,21 @@ export default function FarmerRegister() {
                 </div>
               ))}
 
+              {/* Bank document upload — mandatory */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <label className="block text-xs font-semibold text-gray-600">Bank Passbook / Cancelled Cheque *</label>
+                </div>
+                <DocUpload
+                  label=""
+                  hint="First page of passbook OR a cancelled cheque · JPG, PNG or PDF · Max 5MB"
+                  uploading={uploading.bankDoc}
+                  uploaded={!!form.bankDocUrl}
+                  error={errors.bankDocUrl}
+                  onChange={f => uploadDoc(f, 'bankDoc')}
+                />
+              </div>
+
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-xs text-yellow-700">
                 ⚠️ Ensure account details are correct. Payouts will be sent directly to this account.
               </div>
@@ -500,6 +532,7 @@ export default function FarmerRegister() {
                   ['Bank', form.bankName],
                   ['Account', `XXXX${form.accountNumber.slice(-4)}`],
                   ['IFSC', form.ifsc],
+                  ['Bank Doc', form.bankDocUrl ? '✅ Uploaded' : '❌ Missing'],
                 ]},
               ].map(section => (
                 <div key={section.title} className="bg-gray-50 rounded-xl p-4">

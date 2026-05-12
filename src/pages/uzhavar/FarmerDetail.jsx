@@ -20,7 +20,7 @@ const toYMD   = (d) => new Date(d).toISOString().split('T')[0];
 export default function FarmerDetail() {
   const { farmerId } = useParams();
   const navigate     = useNavigate();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
 
   const [farmer, setFarmer]     = useState(null);
   const [products, setProducts] = useState([]);
@@ -30,7 +30,20 @@ export default function FarmerDetail() {
   const [bookingType, setBookingType] = useState('instant');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledSlot, setScheduledSlot] = useState('morning');
-  const [placing, setPlacing]   = useState(false);
+  const [placing, setPlacing]       = useState(false);
+  const [showPackageModal, setShowPackageModal] = useState(false);
+  const [deliveryAddr, setDeliveryAddr] = useState({ name: '', phone: '', addressLine: '', city: '', pincode: '' });
+  const [addrErrors, setAddrErrors] = useState({});
+
+  // ── Razorpay SDK loader ──────────────────────────────────────
+  const loadRazorpay = () => new Promise(resolve => {
+    if (window.Razorpay) return resolve(true);
+    const s = document.createElement('script');
+    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    s.onload  = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.body.appendChild(s);
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -46,6 +59,17 @@ export default function FarmerDetail() {
     };
     load();
   }, [farmerId]);
+
+  // Pre-fill delivery address from logged-in user
+  useEffect(() => {
+    if (user) {
+      setDeliveryAddr(prev => ({
+        ...prev,
+        name:  prev.name  || user.name  || '',
+        phone: prev.phone || (user.phone || '').replace(/^\+?91/, '') || '',
+      }));
+    }
+  }, [user]);
 
   const updateCart = (productId, delta) => {
     setCart(prev => {
@@ -113,35 +137,67 @@ export default function FarmerDetail() {
 
   const unavailableIds = useMemo(() => new Set(unavailableItems.map(i => i._id)), [unavailableItems]);
 
-  // ── Booking handler ──────────────────────────────────────────
-  const handleBook = async () => {
-    if (!isLoggedIn) { navigate('/login', { state: { from: `/uzhavar/farmer/${farmerId}` } }); return; }
-    if (cartItems.length === 0) { toast.error('Add items first'); return; }
-    if (bookingType === 'scheduled' && !scheduledDate) { toast.error('Pick delivery date'); return; }
-    if (belowMinimum) {
-      toast.error(`Minimum order quantity for Uzhavar Fresh is ${UZHAVAR_MIN_KG} kg. Add ${kgNeeded.toFixed(1)} kg more.`);
-      return;
-    }
-    // FIX 4: Block if any product is out of harvest window
-    if (bookingType === 'scheduled' && unavailableItems.length > 0) {
-      toast.error(`${unavailableItems.map(i => i.name).join(', ')} not available on ${fmtDate(scheduledDate)}. Remove or change date.`, { duration: 5000 });
-      return;
-    }
-    // FIX 3: Block if no valid date exists for cart combination
-    if (bookingType === 'scheduled' && harvestBounds.hasConflict) {
-      toast.error('Products in your cart have non-overlapping harvest dates. Remove conflicting items or book separately.');
-      return;
-    }
+  // ── Address validation ───────────────────────────────────────
+  const validateAddress = () => {
+    const e = {};
+    if (!deliveryAddr.name.trim())        e.name        = 'Name required';
+    if (!/^[6-9]\d{9}$/.test(deliveryAddr.phone)) e.phone = 'Valid 10-digit mobile required';
+    if (!deliveryAddr.addressLine.trim()) e.addressLine = 'Address required';
+    if (!deliveryAddr.city.trim())        e.city        = 'City/Town required';
+    if (!/^\d{6}$/.test(deliveryAddr.pincode)) e.pincode = 'Valid 6-digit pincode required';
+    setAddrErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
+  // ── Booking: validate + open package upsell modal ───────────
+  const handleBook = () => {
+    if (!isLoggedIn) { navigate('/login', { state: { from: `/uzhavar/farmer/${farmerId}` } }); return; }
+    if (cartItems.length === 0) { toast.error('Add items to cart first'); return; }
+    if (bookingType === 'scheduled' && !scheduledDate) { toast.error('Pick a delivery date'); return; }
+    if (belowMinimum) {
+      toast.error(`Minimum order is ${UZHAVAR_MIN_KG} kg. Add ${kgNeeded.toFixed(1)} kg more.`);
+      return;
+    }
+    if (bookingType === 'scheduled' && unavailableItems.length > 0) {
+      toast.error(`${unavailableItems.map(i => i.name).join(', ')} not available on ${fmtDate(scheduledDate)}.`, { duration: 5000 });
+      return;
+    }
+    if (bookingType === 'scheduled' && harvestBounds.hasConflict) {
+      toast.error('Products in your cart have non-overlapping harvest dates. Book separately.');
+      return;
+    }
+    if (!validateAddress()) {
+      toast.error('Please fill in your delivery address below');
+      return;
+    }
+    setShowPackageModal(true);
+  };
+
+  // ── Actual order creation + Razorpay (called from package modal) ──
+  const proceedWithBooking = async () => {
+    setShowPackageModal(false);
     setPlacing(true);
     try {
+      const sdkLoaded = await loadRazorpay();
+      if (!sdkLoaded) {
+        toast.error('Payment gateway failed to load. Check your internet and try again.');
+        setPlacing(false);
+        return;
+      }
+
       const orderRes = await api.post('/uzhavar/orders', {
         farmerId,
         items: cartItems.map(i => ({ productId: i._id, quantity: i.qty })),
         bookingType,
         scheduledDate: bookingType === 'scheduled' ? scheduledDate : null,
         scheduledSlot: bookingType === 'scheduled' ? scheduledSlot : null,
-        deliveryAddress: { name: 'Delivery address required' },
+        deliveryAddress: {
+          name:        deliveryAddr.name,
+          phone:       deliveryAddr.phone,
+          addressLine: deliveryAddr.addressLine,
+          city:        deliveryAddr.city,
+          pincode:     deliveryAddr.pincode,
+        },
         paymentMethod: 'razorpay',
       });
       const order = orderRes.data.order;
@@ -153,29 +209,32 @@ export default function FarmerDetail() {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount, currency,
         name: 'Uzhavar Fresh',
-        description: 'Farm booking fee',
+        description: `Booking fee · ${cartCount} item${cartCount > 1 ? 's' : ''}`,
         order_id: rzpOrderId,
+        prefill: { name: deliveryAddr.name, contact: `+91${deliveryAddr.phone}` },
         handler: async (response) => {
-          await api.post('/uzhavar/orders/verify-payment', {
-            uzhavarOrderId: order._id,
-            razorpayOrderId: response.razorpay_order_id,
-            razorpayPaymentId: response.razorpay_payment_id,
-            razorpaySignature: response.razorpay_signature,
-          });
-          toast.success(
-            `✅ Booking fee ₹${bookingFeeTotal.toFixed(2)} paid! Waiting for farmer. Pay ₹${subtotal.toFixed(2)} to farmer at delivery.`,
-            { duration: 6000 }
-          );
-          navigate('/uzhavar/my-orders');
+          try {
+            await api.post('/uzhavar/orders/verify-payment', {
+              uzhavarOrderId:    order._id,
+              razorpayOrderId:   response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+            toast.success(
+              `✅ Booking confirmed! Paid ₹${bookingFeeTotal.toFixed(2)}. Pay ₹${subtotal.toFixed(2)} to farmer at delivery.`,
+              { duration: 7000 }
+            );
+            navigate('/uzhavar/my-orders');
+          } catch {
+            toast.error('Payment received but verification failed. Contact support with order ID.');
+          }
         },
-        prefill: {},
+        modal: { ondismiss: () => setPlacing(false) },
         theme: { color: '#16a34a' },
       };
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+      new window.Razorpay(options).open();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Booking failed');
-    } finally {
+      toast.error(err?.response?.data?.message || 'Booking failed. Please try again.');
       setPlacing(false);
     }
   };
@@ -350,6 +409,66 @@ export default function FarmerDetail() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* ── Delivery address ── */}
+            {cartCount > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4 shadow-sm">
+                <h3 className="font-semibold text-gray-800 text-sm mb-3">📍 Delivery Address</h3>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <input
+                        value={deliveryAddr.name}
+                        onChange={e => { setDeliveryAddr(p => ({ ...p, name: e.target.value })); setAddrErrors(p => ({ ...p, name: '' })); }}
+                        placeholder="Full name *"
+                        className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 ${addrErrors.name ? 'border-red-400' : 'border-gray-200'}`}
+                      />
+                      {addrErrors.name && <p className="text-red-500 text-[10px] mt-0.5">{addrErrors.name}</p>}
+                    </div>
+                    <div>
+                      <input
+                        value={deliveryAddr.phone}
+                        onChange={e => { setDeliveryAddr(p => ({ ...p, phone: e.target.value.replace(/\D/g,'').slice(0,10) })); setAddrErrors(p => ({ ...p, phone: '' })); }}
+                        placeholder="Mobile number *"
+                        maxLength={10}
+                        className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 ${addrErrors.phone ? 'border-red-400' : 'border-gray-200'}`}
+                      />
+                      {addrErrors.phone && <p className="text-red-500 text-[10px] mt-0.5">{addrErrors.phone}</p>}
+                    </div>
+                  </div>
+                  <div>
+                    <input
+                      value={deliveryAddr.addressLine}
+                      onChange={e => { setDeliveryAddr(p => ({ ...p, addressLine: e.target.value })); setAddrErrors(p => ({ ...p, addressLine: '' })); }}
+                      placeholder="House / Flat, Street, Area *"
+                      className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 ${addrErrors.addressLine ? 'border-red-400' : 'border-gray-200'}`}
+                    />
+                    {addrErrors.addressLine && <p className="text-red-500 text-[10px] mt-0.5">{addrErrors.addressLine}</p>}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <input
+                        value={deliveryAddr.city}
+                        onChange={e => { setDeliveryAddr(p => ({ ...p, city: e.target.value })); setAddrErrors(p => ({ ...p, city: '' })); }}
+                        placeholder="City / Town *"
+                        className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 ${addrErrors.city ? 'border-red-400' : 'border-gray-200'}`}
+                      />
+                      {addrErrors.city && <p className="text-red-500 text-[10px] mt-0.5">{addrErrors.city}</p>}
+                    </div>
+                    <div>
+                      <input
+                        value={deliveryAddr.pincode}
+                        onChange={e => { setDeliveryAddr(p => ({ ...p, pincode: e.target.value.replace(/\D/g,'').slice(0,6) })); setAddrErrors(p => ({ ...p, pincode: '' })); }}
+                        placeholder="Pincode *"
+                        maxLength={6}
+                        className={`w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 ${addrErrors.pincode ? 'border-red-400' : 'border-gray-200'}`}
+                      />
+                      {addrErrors.pincode && <p className="text-red-500 text-[10px] mt-0.5">{addrErrors.pincode}</p>}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -542,6 +661,52 @@ export default function FarmerDetail() {
       </main>
 
       {/* Sticky cart footer */}
+      {/* Package upsell modal */}
+      {showPackageModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center">
+          <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 pb-10 animate-in slide-in-from-bottom">
+            <div className="text-center mb-5">
+              <div className="text-3xl mb-1">🌿</div>
+              <h3 className="font-black text-gray-800 text-lg">Save with Monthly Packages!</h3>
+              <p className="text-sm text-gray-500 mt-0.5">No booking fee per order. Unlimited orders.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              {/* Monthly */}
+              <div className="border border-green-200 rounded-2xl p-3 text-center">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Monthly</p>
+                <p className="font-black text-green-600 text-2xl">₹352</p>
+                <p className="text-[10px] text-gray-400 mb-2">incl. GST · 1 month</p>
+                <ul className="text-xs text-gray-500 space-y-0.5 text-left">
+                  <li>✓ Unlimited orders</li>
+                  <li>✓ No ₹24.78 booking fee</li>
+                  <li>✓ Priority farmer</li>
+                </ul>
+              </div>
+              {/* Quarterly */}
+              <div className="border-2 border-green-500 rounded-2xl p-3 text-center relative">
+                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap">⭐ Best Value</span>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Quarterly</p>
+                <p className="font-black text-green-600 text-2xl">₹589</p>
+                <p className="text-[10px] text-gray-400 mb-2">incl. GST · 3 months</p>
+                <ul className="text-xs text-gray-500 space-y-0.5 text-left">
+                  <li>✓ All monthly perks</li>
+                  <li>✓ Save ₹358 vs monthly</li>
+                  <li>✓ Exclusive deals</li>
+                </ul>
+              </div>
+            </div>
+            <button onClick={() => { setShowPackageModal(false); navigate('/uzhavar/subscribe'); }}
+              className="w-full bg-green-600 text-white font-bold py-3 rounded-xl text-sm mb-2.5 hover:bg-green-700 transition-colors">
+              🌱 View Packages
+            </button>
+            <button onClick={proceedWithBooking}
+              className="w-full bg-gray-100 text-gray-700 font-semibold py-3 rounded-xl text-sm hover:bg-gray-200 transition-colors">
+              Continue One-Time Booking (Pay ₹{bookingFeeTotal.toFixed(2)} now)
+            </button>
+          </div>
+        </div>
+      )}
+
       {cartCount > 0 && tab === 'shop' && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-xl px-4 py-4 z-30">
           <div className="max-w-2xl mx-auto">
