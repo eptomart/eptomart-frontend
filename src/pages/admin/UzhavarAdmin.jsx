@@ -122,7 +122,7 @@ function FarmerProfileModal({ farmerId, onClose }) {
                   {[
                     ['Bank name',    farmer.bankAccount.bankName],
                     ['Account name', farmer.bankAccount.accountName],
-                    ['Account No.',  farmer.bankAccount.accountNumberMasked || '—'],
+                    ['Account No.',  farmer.bankAccount.accountNumber || '—'],
                     ['IFSC',         farmer.bankAccount.ifsc || '—'],
                     ['Verified',     farmer.bankAccount.verified ? '✅ Yes' : '⏳ Pending'],
                   ].map(([k, v]) => (
@@ -155,11 +155,11 @@ function FarmerProfileModal({ farmerId, onClose }) {
             </div>
 
             {/* Documents */}
-            {(farmer.aadhaarDoc || farmer.farmProofDoc || farmer.aadhaarNumberMasked) && (
+            {(farmer.aadhaarDoc || farmer.farmProofDoc || farmer.aadhaarNumber) && (
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <p className="text-xs font-black text-gray-500 uppercase tracking-wider mb-3">📄 KYC Documents</p>
-                {farmer.aadhaarNumberMasked && (
-                  <p className="text-sm text-gray-700 mb-2">Aadhaar: <span className="font-mono font-bold">{farmer.aadhaarNumberMasked}</span></p>
+                {farmer.aadhaarNumber && (
+                  <p className="text-sm text-gray-700 mb-2">Aadhaar: <span className="font-mono font-bold">{farmer.aadhaarNumber}</span></p>
                 )}
                 <div className="flex flex-wrap gap-3">
                   {farmer.aadhaarDoc && (
