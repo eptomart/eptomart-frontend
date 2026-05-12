@@ -648,9 +648,14 @@ export default function UzhavarAdmin() {
 
                       {/* Bank details summary */}
                       {farmer.bankAccount?.bankName && (
-                        <div className="border-t border-gray-100 pt-2 mt-2">
-                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">🏦 Bank</p>
-                          <p className="text-xs text-gray-600">{farmer.bankAccount.bankName} · {farmer.bankAccount.accountName}</p>
+                        <div className="border-t border-gray-100 pt-2 mt-2 flex items-center gap-3">
+                          <div>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-0.5">🏦 Bank</p>
+                            <p className="text-xs text-gray-600">{farmer.bankAccount.bankName} · {farmer.bankAccount.accountName}</p>
+                          </div>
+                          <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${farmer.bankAccount.bankDoc ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500'}`}>
+                            {farmer.bankAccount.bankDoc ? '📄 Doc ✓' : '📄 No Doc'}
+                          </span>
                         </div>
                       )}
                     </div>

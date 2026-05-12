@@ -54,7 +54,7 @@ const ORDER_STATUS_COLOR = {
   auto_cancelled: 'bg-red-100 text-red-600',
 };
 
-const emptyProduct = { name: '', nameTa: '', category: 'vegetable', unit: 'kg', pricePerUnit: '', availableQuantity: '', harvestFrom: '', harvestTo: '', deliveryType: 'both' };
+const emptyProduct = { name: '', nameTa: '', category: 'vegetable', unit: 'kg', pricePerUnit: '', availableQuantity: '', harvestFrom: '', harvestTo: '', deliveryType: 'both', productType: 'fresh', canShip: false };
 
 export default function FarmerDashboard() {
   const navigate   = useNavigate();
@@ -561,6 +561,41 @@ export default function FarmerDashboard() {
                   <option value="instant">Instant Only</option>
                   <option value="scheduled">Scheduled Only</option>
                 </select>
+              </div>
+
+              {/* Product type + shipping */}
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-3">
+                <p className="text-xs font-bold text-blue-700">📦 Product Type & Shipping</p>
+                <div>
+                  <label className="text-xs font-medium text-gray-600">Product Type *</label>
+                  <div className="flex gap-2 mt-1">
+                    {[{ val: 'fresh', label: '🥬 Fresh Produce', hint: 'Vegetables, fruits, greens' },
+                      { val: 'dry',   label: '🌾 Dry Product',   hint: 'Millets, grains, pulses' }].map(o => (
+                      <button key={o.val} type="button"
+                        onClick={() => setForm(f => ({ ...f, productType: o.val, canShip: o.val === 'fresh' ? false : f.canShip }))}
+                        className={`flex-1 py-2 px-2 rounded-xl text-xs font-semibold border transition-colors text-left ${form.productType === o.val ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                        {o.label}
+                        <p className={`text-[10px] font-normal mt-0.5 ${form.productType === o.val ? 'text-blue-100' : 'text-gray-400'}`}>{o.hint}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {form.productType === 'dry' && (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-gray-700">Can ship to buyer?</p>
+                      <p className="text-[10px] text-gray-400">Allow delivery beyond local area</p>
+                    </div>
+                    <button type="button"
+                      onClick={() => setForm(f => ({ ...f, canShip: !f.canShip }))}
+                      className={`w-11 h-6 rounded-full transition-colors relative ${form.canShip ? 'bg-green-500' : 'bg-gray-300'}`}>
+                      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.canShip ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                  </div>
+                )}
+                {form.productType === 'fresh' && (
+                  <p className="text-[10px] text-blue-500">⚠️ Fresh produce can only be delivered locally (within 10 km from your farm).</p>
+                )}
               </div>
             </div>
 

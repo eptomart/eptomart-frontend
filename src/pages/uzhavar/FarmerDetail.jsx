@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiStar, FiArrowLeft, FiShoppingCart, FiPlus, FiMinus, FiMapPin, FiAlertCircle } from 'react-icons/fi';
+import { FiStar, FiArrowLeft, FiShoppingCart, FiPlus, FiMinus, FiMapPin, FiAlertCircle, FiPhone } from 'react-icons/fi';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import Loader from '../../components/common/Loader';
@@ -16,6 +16,14 @@ import toast from 'react-hot-toast';
 // ── Helpers ─────────────────────────────────
 const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 const toYMD   = (d) => new Date(d).toISOString().split('T')[0];
+
+// Haversine distance in km
+const haversineKm = (lat1, lng1, lat2, lng2) => {
+  const R = 6371, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+};
 
 export default function FarmerDetail() {
   const { farmerId } = useParams();
@@ -59,6 +67,13 @@ export default function FarmerDetail() {
     };
     load();
   }, [farmerId]);
+
+  // Auto-switch to scheduled if farmer is not available for instant delivery
+  useEffect(() => {
+    if (farmer && !farmer.availableNow) {
+      setBookingType('scheduled');
+    }
+  }, [farmer]);
 
   // Pre-fill delivery address from logged-in user
   useEffect(() => {
@@ -150,9 +165,16 @@ export default function FarmerDetail() {
   };
 
   // ── Booking: validate + open package upsell modal ───────────
-  const handleBook = () => {
+  const handleBook = async () => {
     if (!isLoggedIn) { navigate('/login', { state: { from: `/uzhavar/farmer/${farmerId}` } }); return; }
     if (cartItems.length === 0) { toast.error('Add items to cart first'); return; }
+
+    // Availability check: instant not allowed if farmer unavailable
+    if (bookingType === 'instant' && !farmer?.availableNow) {
+      toast.error('Farmer is not available now. Please choose a scheduled delivery date.');
+      return;
+    }
+
     if (bookingType === 'scheduled' && !scheduledDate) { toast.error('Pick a delivery date'); return; }
     if (belowMinimum) {
       toast.error(`Minimum order is ${UZHAVAR_MIN_KG} kg. Add ${kgNeeded.toFixed(1)} kg more.`);
@@ -170,6 +192,33 @@ export default function FarmerDetail() {
       toast.error('Please fill in your delivery address below');
       return;
     }
+
+    // Distance check for fresh produce items
+    const hasFreshItems = cartItems.some(i => !i.productType || i.productType === 'fresh');
+    if (hasFreshItems && farmer?.gpsLocation?.coordinates) {
+      const [flng, flat] = farmer.gpsLocation.coordinates;
+      if (flat !== 0 || flng !== 0) {
+        try {
+          const pos = await new Promise((resolve, reject) =>
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 60000 })
+          );
+          const dist = haversineKm(flat, flng, pos.coords.latitude, pos.coords.longitude);
+          if (dist > 10) {
+            toast.error('Farmer is not closer to you. This fresh item cannot be shipped.', { duration: 7000 });
+            return;
+          }
+        } catch {
+          // GPS denied — fall back to pincode prefix check
+          const fp = farmer.address?.pincode?.slice(0, 3);
+          const bp = deliveryAddr.pincode?.slice(0, 3);
+          if (fp && bp && fp !== bp) {
+            toast.error('Farmer is not closer to you. This fresh item cannot be shipped.', { duration: 7000 });
+            return;
+          }
+        }
+      }
+    }
+
     setShowPackageModal(true);
   };
 
@@ -185,9 +234,19 @@ export default function FarmerDetail() {
         return;
       }
 
+      // Try to get buyer GPS for server-side distance validation
+      let buyerLat, buyerLng;
+      try {
+        const gpos = await new Promise((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3000, maximumAge: 60000 })
+        );
+        buyerLat = gpos.coords.latitude;
+        buyerLng = gpos.coords.longitude;
+      } catch { /* GPS unavailable — backend will skip distance check */ }
+
       const orderRes = await api.post('/uzhavar/orders', {
         farmerId,
-        items: cartItems.map(i => ({ productId: i._id, quantity: i.qty })),
+        items: cartItems.map(i => ({ productId: i._id, quantity: i.qty, productType: i.productType })),
         bookingType,
         scheduledDate: bookingType === 'scheduled' ? scheduledDate : null,
         scheduledSlot: bookingType === 'scheduled' ? scheduledSlot : null,
@@ -199,6 +258,8 @@ export default function FarmerDetail() {
           pincode:     deliveryAddr.pincode,
         },
         paymentMethod: 'razorpay',
+        buyerLat,
+        buyerLng,
       });
       const order = orderRes.data.order;
 
@@ -280,10 +341,24 @@ export default function FarmerDetail() {
               {farmer?.availableNow ? '● Live' : '○ Scheduled'}
             </span>
           </div>
-          <div className="flex gap-3 mt-3 text-xs text-green-100 flex-wrap">
-            <span>📍 {farmer?.deliveryRadius}km delivery</span>
-            {farmer?.address?.taluk && <span>🌱 {farmer.address.taluk}</span>}
-            <span>🛒 {products.length} products</span>
+          <div className="flex items-center justify-between mt-3">
+            <div className="flex gap-3 text-xs text-green-100 flex-wrap">
+              <span>📍 {farmer?.deliveryRadius}km delivery</span>
+              {farmer?.address?.taluk && <span>🌱 {farmer.address.taluk}</span>}
+              <span>🛒 {products.length} products</span>
+            </div>
+            {/* WhatsApp contact button */}
+            {farmer?.phone && (
+              <a
+                href={`https://wa.me/91${farmer.phone.replace(/\D/g,'')}?text=${encodeURIComponent(`Hi ${farmer.name}, I found you on Uzhavar Fresh and I'm interested in your products! 🌱`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors flex-shrink-0"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                Chat
+              </a>
+            )}
           </div>
         </div>
 
@@ -332,7 +407,14 @@ export default function FarmerDetail() {
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-800 text-sm">{prod.name}</p>
                         {prod.nameTa && <p className="text-xs text-gray-400">{prod.nameTa}</p>}
-                        <p className="text-xs text-gray-400 capitalize">{prod.category} · {prod.deliveryType}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs text-gray-400 capitalize">{prod.category} · {prod.deliveryType}</p>
+                          {prod.productType === 'dry' ? (
+                            <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">🌾 Dry{prod.canShip ? ' · Ships' : ''}</span>
+                          ) : (
+                            <span className="text-[10px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">🥬 Fresh · Local</span>
+                          )}
+                        </div>
 
                         {/* FIX 2: Availability display */}
                         <p className="text-xs text-green-600 font-medium mt-0.5">
@@ -476,13 +558,23 @@ export default function FarmerDetail() {
             {cartCount > 0 && (
               <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4 shadow-sm">
                 <h3 className="font-semibold text-gray-800 text-sm mb-3">Delivery Type</h3>
+                {!farmer?.availableNow && (
+                  <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-3">
+                    <FiAlertCircle size={13} className="text-amber-600 flex-shrink-0" />
+                    <p className="text-xs text-amber-700 font-medium">Farmer is not available for instant delivery. Choose a scheduled date below.</p>
+                  </div>
+                )}
                 <div className="flex gap-2 mb-3">
-                  {['instant', 'scheduled'].map(t => (
-                    <button key={t} onClick={() => setBookingType(t)}
-                      className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors capitalize ${bookingType === t ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                  {['instant', 'scheduled'].map(t => {
+                    const isInstantDisabled = t === 'instant' && !farmer?.availableNow;
+                    return (
+                    <button key={t}
+                      onClick={() => !isInstantDisabled && setBookingType(t)}
+                      disabled={isInstantDisabled}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors capitalize ${bookingType === t ? 'bg-green-600 text-white' : isInstantDisabled ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-gray-100 text-gray-600'}`}>
                       {t === 'instant' ? '⚡ Instant' : '📅 Scheduled'}
                     </button>
-                  ))}
+                  );})}
                 </div>
 
                 {bookingType === 'scheduled' && (
@@ -756,6 +848,7 @@ export default function FarmerDetail() {
             {/* Disable conditions: below minimum, or unavailable items, or conflict */}
             {(() => {
               const blocked = belowMinimum
+                || (bookingType === 'instant' && !farmer?.availableNow)
                 || (bookingType === 'scheduled' && unavailableItems.length > 0)
                 || (bookingType === 'scheduled' && harvestBounds.hasConflict);
               const label = belowMinimum
