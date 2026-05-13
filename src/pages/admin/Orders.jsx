@@ -1258,29 +1258,33 @@ export default function AdminOrders() {
                                     )}
                                     {item.variant && <span className="text-xs text-gray-400">{item.variant}</span>}
                                   </div>
-                                  {/* Per-item status */}
-                                  {item._id && (
-                                    <div className="flex items-center gap-2 mt-1.5">
-                                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ITEM_STATUS_COLORS[item.itemStatus] || 'bg-gray-100 text-gray-500'}`}>
-                                        {(item.itemStatus || 'pending').toUpperCase()}
-                                      </span>
-                                      <select
-                                        value={item.itemStatus || 'pending'}
-                                        onChange={async (e) => {
-                                          try {
-                                            await api.patch(`/admin/orders/${order._id}/items/${item._id}/status`, { status: e.target.value });
-                                            toast.success(`${item.name} → ${e.target.value}`);
-                                            fetchOrders();
-                                          } catch (err) {
-                                            toast.error(err.response?.data?.message || 'Failed to update item status');
-                                          }
-                                        }}
-                                        className="text-[11px] border border-gray-200 rounded-lg px-2 py-0.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-                                      >
-                                        {ITEM_STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-                                      </select>
-                                    </div>
-                                  )}
+                                  {/* Per-item status — works for both old (no _id) and new orders */}
+                                  {(() => {
+                                    const itemId = item._id || item.product?._id || item.product;
+                                    if (!itemId) return null;
+                                    return (
+                                      <div className="flex items-center gap-2 mt-1.5">
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ITEM_STATUS_COLORS[item.itemStatus] || 'bg-gray-100 text-gray-500'}`}>
+                                          {(item.itemStatus || 'pending').toUpperCase()}
+                                        </span>
+                                        <select
+                                          value={item.itemStatus || 'pending'}
+                                          onChange={async (e) => {
+                                            try {
+                                              await api.patch(`/admin/orders/${order._id}/items/${itemId}/status`, { status: e.target.value });
+                                              toast.success(`${item.name} → ${e.target.value}`);
+                                              fetchOrders();
+                                            } catch (err) {
+                                              toast.error(err.response?.data?.message || 'Failed to update item status');
+                                            }
+                                          }}
+                                          className="text-[11px] border border-gray-200 rounded-lg px-2 py-0.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                        >
+                                          {ITEM_STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                                        </select>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                                 <div className="text-right shrink-0">
                                   <p className="font-semibold text-gray-800">{formatINR(item.price * item.quantity)}</p>
