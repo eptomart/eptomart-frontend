@@ -9,8 +9,17 @@ import { formatINR, formatDate } from '../../utils/currency';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
-const ORDER_STATUSES   = ['placed', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
-const PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'refunded'];
+const ORDER_STATUSES   = ['placed', 'confirmed', 'processing', 'shipped', 'partially_delivered', 'delivered', 'cancelled', 'returned'];
+const PAYMENT_STATUSES = ['pending', 'paid', 'partially_paid', 'failed', 'refunded'];
+const ITEM_STATUSES    = ['pending', 'packed', 'shipped', 'delivered', 'cancelled'];
+
+const ITEM_STATUS_COLORS = {
+  pending:   'bg-gray-100 text-gray-600',
+  packed:    'bg-blue-100 text-blue-700',
+  shipped:   'bg-purple-100 text-purple-700',
+  delivered: 'bg-green-100 text-green-700',
+  cancelled: 'bg-red-100 text-red-700',
+};
 
 // ── Seller Pickup Acknowledgment panel ──────────────────
 function PickupAcknowledgePanel({ order, onDone }) {
@@ -1230,11 +1239,11 @@ export default function AdminOrders() {
                             const sellerId_  = item.product?.seller?.sellerId;
                             const productCode= item.product?.productCode;
                             return (
-                              <div key={i}
-                                className={`flex items-center gap-3 px-4 py-3 text-sm ${i > 0 ? 'border-t border-gray-50' : ''}`}>
+                              <div key={item._id || i}
+                                className={`flex items-start gap-3 px-4 py-3 text-sm ${i > 0 ? 'border-t border-gray-50' : ''}`}>
                                 <img src={item.image || item.product?.images?.[0]?.url}
                                   alt={item.name}
-                                  className="w-11 h-11 object-cover rounded-lg flex-shrink-0 bg-gray-100" />
+                                  className="w-11 h-11 object-cover rounded-lg flex-shrink-0 bg-gray-100 mt-0.5" />
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium text-gray-800 truncate">{item.name}</p>
                                   <div className="flex flex-wrap items-center gap-2 mt-0.5">
@@ -1249,6 +1258,29 @@ export default function AdminOrders() {
                                     )}
                                     {item.variant && <span className="text-xs text-gray-400">{item.variant}</span>}
                                   </div>
+                                  {/* Per-item status */}
+                                  {item._id && (
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ITEM_STATUS_COLORS[item.itemStatus] || 'bg-gray-100 text-gray-500'}`}>
+                                        {(item.itemStatus || 'pending').toUpperCase()}
+                                      </span>
+                                      <select
+                                        value={item.itemStatus || 'pending'}
+                                        onChange={async (e) => {
+                                          try {
+                                            await api.patch(`/admin/orders/${order._id}/items/${item._id}/status`, { status: e.target.value });
+                                            toast.success(`${item.name} → ${e.target.value}`);
+                                            fetchOrders();
+                                          } catch (err) {
+                                            toast.error(err.response?.data?.message || 'Failed to update item status');
+                                          }
+                                        }}
+                                        className="text-[11px] border border-gray-200 rounded-lg px-2 py-0.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                      >
+                                        {ITEM_STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                                      </select>
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="text-right shrink-0">
                                   <p className="font-semibold text-gray-800">{formatINR(item.price * item.quantity)}</p>
@@ -1364,14 +1396,17 @@ export default function AdminOrders() {
                         {/* Documents */}
                         <InvoiceActionsPanel order={order} />
 
-                        {/* Delivery address */}
+                        {/* Delivery address — full */}
                         <div className="bg-white border border-gray-100 rounded-xl p-4 text-sm">
                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">📍 Delivery Address</p>
-                          <p className="font-medium text-gray-800">{order.shippingAddress?.fullName}</p>
-                          <p className="text-gray-500 text-xs mt-0.5">
-                            {order.shippingAddress?.phone && <span>{order.shippingAddress.phone} · </span>}
-                            {order.shippingAddress?.addressLine1}, {order.shippingAddress?.city},{' '}
-                            {order.shippingAddress?.state} — {order.shippingAddress?.pincode}
+                          <p className="font-semibold text-gray-800">{order.shippingAddress?.fullName}</p>
+                          {order.shippingAddress?.phone && (
+                            <p className="text-gray-500 text-xs mt-0.5">📞 {order.shippingAddress.phone}</p>
+                          )}
+                          <p className="text-gray-700 text-xs mt-1 leading-relaxed">
+                            {order.shippingAddress?.addressLine1}
+                            {order.shippingAddress?.addressLine2 && <>, {order.shippingAddress.addressLine2}</>}
+                            <br />{order.shippingAddress?.city}, {order.shippingAddress?.state} — {order.shippingAddress?.pincode}
                           </p>
                         </div>
 

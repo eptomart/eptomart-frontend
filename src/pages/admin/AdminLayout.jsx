@@ -1,7 +1,7 @@
 // ============================================
 // ADMIN LAYOUT — Grouped collapsible sidebar
 // ============================================
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import NotificationBell from '../../components/common/NotificationBell';
 import {
@@ -73,12 +73,16 @@ const ALL_NAV = NAV_GROUPS.flatMap(g => g.items);
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen]   = useState(false);
-  const [collapsed, setCollapsed]       = useState(new Set()); // collapsed group names
+  const [collapsed, setCollapsed]       = useState(new Set());
   const [badges, setBadges]             = useState({ unreadMessages: 0, pendingApprovals: 0 });
+  const [newOrderBadge, setNewOrderBadge] = useState(0);
   const { logout, user, isSuperAdmin }  = useAuth();
   const location                        = useLocation();
-  const badgeTimer = useRef(null);
+  const badgeTimer   = useRef(null);
+  const orderTimer   = useRef(null);
+  const lastSeenRef  = useRef(localStorage.getItem('admin_last_order_seen') || new Date().toISOString());
 
+  // ── Existing badge polling (messages + approvals) ──────────
   useEffect(() => {
     const fetchBadges = async () => {
       try {
@@ -90,6 +94,46 @@ export default function AdminLayout() {
     badgeTimer.current = setInterval(fetchBadges, 30000);
     return () => clearInterval(badgeTimer.current);
   }, []);
+
+  // ── New order polling — every 20s ──────────────────────────
+  const playOrderSound = useCallback(() => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+    } catch { /* AudioContext blocked — silent fallback */ }
+  }, []);
+
+  useEffect(() => {
+    const pollNewOrders = async () => {
+      try {
+        const { data } = await api.get(`/admin/orders/new-count?since=${lastSeenRef.current}`);
+        if (data.success && data.count > 0) {
+          setNewOrderBadge(prev => prev + data.count);
+          playOrderSound();
+          const o = data.latest;
+          const buyerName = o?.user?.name || 'Customer';
+          const total = o?.pricing?.total ? `₹${Number(o.pricing.total).toLocaleString('en-IN')}` : '';
+          const items = o?.items?.length || 0;
+          toast(`🛒 New Order #${o?.orderId || ''}\n${buyerName} · ${items} item(s) · ${total}`, {
+            duration: 6000,
+            style: { background: '#1d4ed8', color: '#fff', fontWeight: '600', borderRadius: '12px' },
+            icon: '📦',
+          });
+          lastSeenRef.current = new Date().toISOString();
+          localStorage.setItem('admin_last_order_seen', lastSeenRef.current);
+        }
+      } catch { /* silent */ }
+    };
+    orderTimer.current = setInterval(pollNewOrders, 20000);
+    return () => clearInterval(orderTimer.current);
+  }, [playOrderSound]);
 
   const userPerms = user?.permissions || [];
   const canAccess = (item) => {
@@ -108,6 +152,16 @@ export default function AdminLayout() {
   if (!isSuperAdmin && !isOnAllowedPath && NAV_ITEMS.length > 0) {
     return <Navigate to={NAV_ITEMS[0].path} replace />;
   }
+
+  // Clear new-order badge when admin visits the Orders page
+  useEffect(() => {
+    if (location.pathname.startsWith('/admin/orders')) {
+      setNewOrderBadge(0);
+      const now = new Date().toISOString();
+      lastSeenRef.current = now;
+      localStorage.setItem('admin_last_order_seen', now);
+    }
+  }, [location.pathname]);
 
   const isActive = (path, end) =>
     end ? location.pathname === path : location.pathname.startsWith(path);
@@ -200,7 +254,8 @@ export default function AdminLayout() {
                     {items.map(({ path, label, icon: Icon, end }) => {
                       const badgeCount =
                         path === '/admin/messages'  ? badges.unreadMessages  :
-                        path === '/admin/approvals' ? badges.pendingApprovals : 0;
+                        path === '/admin/approvals' ? badges.pendingApprovals :
+                        path === '/admin/orders'    ? newOrderBadge : 0;
                       return (
                         <Link
                           key={path}
