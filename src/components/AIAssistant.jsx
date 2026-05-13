@@ -19,7 +19,7 @@ const POS_KEY = 'eptomart_ai_pos';
 
 const defaultPos = () => ({
   x: typeof window !== 'undefined' ? window.innerWidth  - 170 : 200,
-  y: typeof window !== 'undefined' ? window.innerHeight - 80  : 500,
+  y: typeof window !== 'undefined' ? window.innerHeight - 168 : 420, // sits above WhatsApp float
 });
 
 const loadPos = () => {
