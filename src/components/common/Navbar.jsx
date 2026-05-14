@@ -195,6 +195,31 @@ export default function Navbar() {
           </div>
         </div>
 
+        {/* Sub-module nav strip */}
+        <div className="flex items-center gap-1 pb-2 border-t border-white/10 pt-2 -mx-4 px-4 overflow-x-auto scrollbar-hide">
+          <Link to="/koyambedu"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl text-white whitespace-nowrap transition-all"
+            style={{background:'rgba(16,185,129,0.25)'}}
+            onMouseEnter={e => e.currentTarget.style.background='rgba(16,185,129,0.45)'}
+            onMouseLeave={e => e.currentTarget.style.background='rgba(16,185,129,0.25)'}
+          >
+            🥬 Koyambedu Daily
+          </Link>
+          <Link to="/uzhavar"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl text-white whitespace-nowrap transition-all"
+            style={{background:'rgba(132,204,22,0.2)'}}
+            onMouseEnter={e => e.currentTarget.style.background='rgba(132,204,22,0.35)'}
+            onMouseLeave={e => e.currentTarget.style.background='rgba(132,204,22,0.2)'}
+          >
+            🌾 Uzhavar Fresh
+          </Link>
+          <div className="h-4 w-px bg-white/20 mx-1" />
+          <Link to="/shop" className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1.5 whitespace-nowrap transition-colors">All Products</Link>
+          <Link to="/shop?featured=true" className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1.5 whitespace-nowrap transition-colors">Featured</Link>
+          <Link to="/shop?sort=-createdAt" className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1.5 whitespace-nowrap transition-colors">New Arrivals</Link>
+          <Link to="/shop?sort=-discount" className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1.5 whitespace-nowrap transition-colors">Flash Deals</Link>
+        </div>
+
         {/* Mobile Search Bar */}
         {showSearch && (
           <form onSubmit={handleSearch} className="pb-3 md:hidden">

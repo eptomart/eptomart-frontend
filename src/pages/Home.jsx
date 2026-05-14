@@ -285,32 +285,51 @@ export default function Home() {
         {/* ── Hero Carousel ── */}
         <HeroCarousel />
 
-        {/* ── Uzhavar Fresh Banner ── */}
-        <div className="max-w-7xl mx-auto px-4 pt-4">
+        {/* ── Sub-App Banners ── */}
+        <div className="max-w-7xl mx-auto px-4 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+          {/* Uzhavar Fresh */}
           <Link to="/uzhavar"
             className="relative flex items-center justify-between bg-gradient-to-r from-green-800 via-green-700 to-lime-500 rounded-2xl px-5 py-4 overflow-hidden group hover:shadow-xl transition-all">
-            {/* Decorative circles */}
             <div className="absolute -top-6 -left-6 w-24 h-24 rounded-full bg-white/10 group-hover:scale-110 transition-transform" />
             <div className="absolute -bottom-4 right-32 w-16 h-16 rounded-full bg-white/10" />
-
-            {/* Left: text */}
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-0.5">
                 <span className="text-xl">🌾</span>
                 <span className="text-white font-black text-base tracking-tight">UZHAVAR FRESH</span>
-                <span className="bg-lime-400 text-green-900 text-[10px] font-black px-2 py-0.5 rounded-full">NEW</span>
+                <span className="bg-lime-400 text-green-900 text-[10px] font-black px-2 py-0.5 rounded-full">FARM</span>
               </div>
               <p className="text-green-100 text-xs">Buy from farmers @ your doorstep · Farm fresh daily</p>
               <p className="text-green-200 text-[10px] mt-0.5">உழவர் சந்தை · Direct from farm · No middlemen</p>
             </div>
-
-            {/* Right: CTA */}
             <div className="relative z-10 flex-shrink-0 ml-3">
               <span className="flex items-center gap-1.5 bg-white text-green-700 font-black text-xs px-4 py-2.5 rounded-xl shadow group-hover:shadow-md transition-all whitespace-nowrap">
-                Check Farmers Near Me <FiArrowRight size={13} />
+                Explore <FiArrowRight size={13} />
               </span>
             </div>
           </Link>
+
+          {/* Koyambedu Daily */}
+          <Link to="/koyambedu"
+            className="relative flex items-center justify-between bg-gradient-to-r from-green-900 via-emerald-700 to-teal-500 rounded-2xl px-5 py-4 overflow-hidden group hover:shadow-xl transition-all">
+            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10 group-hover:scale-110 transition-transform" />
+            <div className="absolute -bottom-4 left-32 w-16 h-16 rounded-full bg-white/10" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-xl">🥬</span>
+                <span className="text-white font-black text-base tracking-tight">KOYAMBEDU DAILY</span>
+                <span className="bg-yellow-400 text-green-900 text-[10px] font-black px-2 py-0.5 rounded-full">NEW</span>
+              </div>
+              <p className="text-green-100 text-xs">Wholesale market-direct veggies, fruits & flowers</p>
+              <p className="text-green-200 text-[10px] mt-0.5">கோயம்பேடு · Chennai's freshest market · Order by 10 AM</p>
+            </div>
+            <div className="relative z-10 flex-shrink-0 ml-3">
+              <span className="flex items-center gap-1.5 bg-white text-emerald-700 font-black text-xs px-4 py-2.5 rounded-xl shadow group-hover:shadow-md transition-all whitespace-nowrap">
+                Order Now <FiArrowRight size={13} />
+              </span>
+            </div>
+          </Link>
+
         </div>
 
         <div className="max-w-7xl mx-auto px-4 py-8 space-y-12">
