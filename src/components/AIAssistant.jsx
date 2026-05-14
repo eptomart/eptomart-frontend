@@ -18,16 +18,18 @@ const CATEGORIES = [
 const POS_KEY = 'eptomart_ai_pos';
 
 const defaultPos = () => ({
-  x: typeof window !== 'undefined' ? window.innerWidth  - 170 : 200,
-  y: typeof window !== 'undefined' ? window.innerHeight - 168 : 420, // sits above WhatsApp float
+  x: 16,  // bottom-left — keeps right side free for WhatsApp float
+  y: typeof window !== 'undefined' ? window.innerHeight - 168 : 420,
 });
 
 const loadPos = () => {
   try {
     const saved = JSON.parse(localStorage.getItem(POS_KEY));
     if (saved && typeof saved.x === 'number' && typeof saved.y === 'number') {
-      // Clamp to current viewport (in case screen size changed)
-      // Bottom clamp leaves 160px from bottom so AI never overlaps the WhatsApp float (h-14 + bottom-6 = ~80px)
+      // If saved position is on the right half (old default), reset to new bottom-left default
+      // so existing users don't keep the old stacked-with-WhatsApp position.
+      if (saved.x > window.innerWidth / 2) return defaultPos();
+      // Bottom clamp: keep 160px clearance so AI never overlaps the WhatsApp float
       return {
         x: Math.max(0, Math.min(saved.x, window.innerWidth  - 60)),
         y: Math.max(0, Math.min(saved.y, window.innerHeight - 160)),
