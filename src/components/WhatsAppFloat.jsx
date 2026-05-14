@@ -6,7 +6,7 @@ const WA_POS_KEY = 'eptomart_wa_pos';
 
 const defaultWaPos = () => ({
   x: typeof window !== 'undefined' ? window.innerWidth  - 88 : 300,  // right side
-  y: typeof window !== 'undefined' ? window.innerHeight - 88 : 500,  // near bottom
+  y: typeof window !== 'undefined' ? window.innerHeight - 80 : 500,  // same bottom line as AI widget
 });
 
 const loadWaPos = () => {
