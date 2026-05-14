@@ -119,7 +119,8 @@ export default function Login() {
     } catch { return null; }
   });
   const [otp,           setOtp]          = useState('');
-  const [name,          setName]         = useState('');
+  const [firstName,     setFirstName]    = useState('');
+  const [lastName,      setLastName]     = useState('');
   const [loading,       setLoading]      = useState(false);
   const [address,       setAddress]      = useState({ addressLine1: '', city: '', state: '', pincode: '', phone: '' });
   const [accountExists, setAccountExists] = useState(null); // null = unknown, true = existing, false = new
@@ -198,16 +199,14 @@ export default function Login() {
           localStorage.setItem('eptomart_token', data.token);
           await loadUser();
           toast.success(data.message || 'Login successful!');
-          // Only ask for profile details if brand-new plain customer with no name yet
-          const needsProfile = data.isNewUser && data.user?.role === 'user' && !data.user?.name;
-          if (needsProfile) { setStep(STEPS.PROFILE); return; }
+          // Show profile step for new users OR existing users without firstName
+          if (data.needsProfile && data.user?.role === 'user') { setStep(STEPS.PROFILE); return; }
           navigate(from, { replace: true });
         }
       } else {
         const res = await verifyOtp(contact, otp, 'email');
         if (res.success) {
-          const needsProfile = res.isNewUser && res.user?.role === 'user' && !res.user?.name;
-          if (needsProfile) { setStep(STEPS.PROFILE); return; }
+          if (res.needsProfile && res.user?.role === 'user') { setStep(STEPS.PROFILE); return; }
           navigate(from, { replace: true });
         }
       }
@@ -231,10 +230,11 @@ export default function Login() {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    if (!name.trim()) return toast.error('Please enter your name');
+    if (!firstName.trim()) return toast.error('First name is required');
+    if (!lastName.trim())  return toast.error('Last name is required');
     setLoading(true);
     try {
-      await api.put('/auth/update-profile', { name: name.trim(), address });
+      await api.put('/auth/update-profile', { firstName: firstName.trim(), lastName: lastName.trim(), address });
       await loadUser();
       toast.success('Welcome to Eptomart! 🎉');
       navigate(from, { replace: true });
@@ -440,7 +440,7 @@ export default function Login() {
               </>
             )}
 
-            {/* STEP 3 — Profile (new users only) */}
+            {/* STEP 3 — Profile (new users + existing users without firstName) */}
             {step === STEPS.PROFILE && (
               <>
                 <div style={{ marginBottom:24 }}>
@@ -448,23 +448,37 @@ export default function Login() {
                     Complete Your Profile 🏠
                   </h2>
                   <p style={{ color:C.textMuted, fontSize:13, marginTop:4 }}>
-                    Help us deliver to you faster — add your details below.
+                    Your name is required to place orders on Eptomart.
                   </p>
                 </div>
 
                 <form onSubmit={handleSaveProfile} style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                  <div>
-                    <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
-                      Full Name *
-                    </label>
-                    <DarkInput
-                      type="text"
-                      placeholder="Your full name"
-                      value={name}
-                      onChange={e => setName(e.target.value)}
-                      autoFocus
-                      required
-                    />
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                    <div>
+                      <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
+                        First Name *
+                      </label>
+                      <DarkInput
+                        type="text"
+                        placeholder="First name"
+                        value={firstName}
+                        onChange={e => setFirstName(e.target.value)}
+                        autoFocus
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
+                        Last Name *
+                      </label>
+                      <DarkInput
+                        type="text"
+                        placeholder="Last name"
+                        value={lastName}
+                        onChange={e => setLastName(e.target.value)}
+                        required
+                      />
+                    </div>
                   </div>
 
                   <div>

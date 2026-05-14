@@ -257,6 +257,12 @@ export default function Checkout() {
     }).filter(Boolean);
 
   const handlePlaceOrder = async () => {
+    // Gate: first name required to place order
+    if (!user?.firstName && (!user?.name || user?.name === 'New User')) {
+      toast.error('Please complete your profile with your first and last name before placing an order.');
+      navigate('/login', { state: { from: location.pathname } });
+      return;
+    }
     if (!validateAddress()) return;
     // Prevent COD if blocked by product or serviceability
     if (paymentMethod === 'cod' && isCodBlocked) {
