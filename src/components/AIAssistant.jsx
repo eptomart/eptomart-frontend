@@ -27,9 +27,10 @@ const loadPos = () => {
     const saved = JSON.parse(localStorage.getItem(POS_KEY));
     if (saved && typeof saved.x === 'number' && typeof saved.y === 'number') {
       // Clamp to current viewport (in case screen size changed)
+      // Bottom clamp leaves 160px from bottom so AI never overlaps the WhatsApp float (h-14 + bottom-6 = ~80px)
       return {
         x: Math.max(0, Math.min(saved.x, window.innerWidth  - 60)),
-        y: Math.max(0, Math.min(saved.y, window.innerHeight - 60)),
+        y: Math.max(0, Math.min(saved.y, window.innerHeight - 160)),
       };
     }
   } catch {}
@@ -105,7 +106,8 @@ export default function AIAssistant() {
     if (!isDragging.current) return;
 
     const newX = Math.max(0, Math.min(drag.current.startPosX + dx, window.innerWidth  - 60));
-    const newY = Math.max(0, Math.min(drag.current.startPosY + dy, window.innerHeight - 60));
+    // Bottom clamp: keep 160px clearance so AI never overlaps WhatsApp float (56px button + 24px bottom-6 + buffer)
+    const newY = Math.max(0, Math.min(drag.current.startPosY + dy, window.innerHeight - 160));
     setPos({ x: newX, y: newY });
   }, []);
 

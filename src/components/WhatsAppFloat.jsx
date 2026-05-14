@@ -21,7 +21,7 @@ const WhatsAppFloat = ({ message = 'Hi Eptomart! I need help with my order.' }) 
 
   return (
     <div
-      className="fixed bottom-6 right-6 z-[9997] flex flex-col items-end gap-2"
+      className="fixed bottom-6 right-6 z-[10000] flex flex-col items-end gap-2"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
