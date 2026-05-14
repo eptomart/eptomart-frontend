@@ -1258,10 +1258,8 @@ export default function AdminOrders() {
                                     )}
                                     {item.variant && <span className="text-xs text-gray-400">{item.variant}</span>}
                                   </div>
-                                  {/* Per-item status — works for both old (no _id) and new orders */}
+                                  {/* Per-item status — uses array index (works for old + new orders) */}
                                   {(() => {
-                                    const itemId = item._id || item.product?._id || item.product;
-                                    if (!itemId) return null;
                                     return (
                                       <div className="flex items-center gap-2 mt-1.5">
                                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ITEM_STATUS_COLORS[item.itemStatus] || 'bg-gray-100 text-gray-500'}`}>
@@ -1271,7 +1269,7 @@ export default function AdminOrders() {
                                           value={item.itemStatus || 'pending'}
                                           onChange={async (e) => {
                                             try {
-                                              await api.patch(`/admin/orders/${order._id}/items/${itemId}/status`, { status: e.target.value });
+                                              await api.patch(`/admin/orders/${order._id}/items/${i}/status`, { status: e.target.value });
                                               toast.success(`${item.name} → ${e.target.value}`);
                                               fetchOrders();
                                             } catch (err) {
