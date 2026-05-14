@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { CompareProvider } from './context/CompareContext';
+import { KoyambeduCartProvider } from './context/KoyambeduCartContext';
 import Loader from './components/common/Loader';
 import CompareBar from './components/product/CompareBar';
 import AIAssistant from './components/AIAssistant';
@@ -53,6 +54,18 @@ const AdminSellerOrders = lazy(() => import('./pages/admin/SellerOrders'));
 const AdminVisitors     = lazy(() => import('./pages/admin/Visitors'));
 const AdminMessages     = lazy(() => import('./pages/admin/Messages'));
 const AdminUzhavar      = lazy(() => import('./pages/admin/UzhavarAdmin'));
+const AdminKoyambedu    = lazy(() => import('./pages/admin/KoyambeduAdmin'));
+
+// ── Koyambedu Daily pages ─────────────────────
+const KoyambeduHome         = lazy(() => import('./pages/koyambedu/KoyambeduHome'));
+const KoyambeduShop         = lazy(() => import('./pages/koyambedu/KoyambeduShop'));
+const KoyambeduProductDetail= lazy(() => import('./pages/koyambedu/KoyambeduProductDetail'));
+const KoyambeduCart         = lazy(() => import('./pages/koyambedu/KoyambeduCart'));
+const KoyambeduCheckout     = lazy(() => import('./pages/koyambedu/KoyambeduCheckout'));
+const KoyambeduOrders       = lazy(() => import('./pages/koyambedu/KoyambeduOrders'));
+const KoyambeduSellerRegister  = lazy(() => import('./pages/koyambedu/seller/KoyambeduSellerRegister'));
+const KoyambeduSellerDashboard = lazy(() => import('./pages/koyambedu/seller/KoyambeduSellerDashboard'));
+const KoyambeduSellerProducts  = lazy(() => import('./pages/koyambedu/seller/KoyambeduSellerProducts'));
 
 // ── Uzhavar Fresh pages ───────────────────────
 const UzhavarHome       = lazy(() => import('./pages/uzhavar/UzhavarHome'));
@@ -157,7 +170,19 @@ function AppRoutes() {
             <Route path="settings"         element={<AdminSettings />} />
             <Route path="messages"         element={<AdminMessages />} />
             <Route path="uzhavar"          element={<AdminUzhavar />} />
+            <Route path="koyambedu"        element={<AdminKoyambedu />} />
           </Route>
+
+          {/* ── Koyambedu Daily ─────────────────── */}
+          <Route path="/koyambedu"                           element={<KoyambeduHome />} />
+          <Route path="/koyambedu/shop"                      element={<KoyambeduShop />} />
+          <Route path="/koyambedu/product/:productId"        element={<KoyambeduProductDetail />} />
+          <Route path="/koyambedu/cart"                      element={<ProtectedRoute><KoyambeduCart /></ProtectedRoute>} />
+          <Route path="/koyambedu/checkout"                  element={<ProtectedRoute><KoyambeduCheckout /></ProtectedRoute>} />
+          <Route path="/koyambedu/orders"                    element={<ProtectedRoute><KoyambeduOrders /></ProtectedRoute>} />
+          <Route path="/koyambedu/seller"                    element={<ProtectedRoute><KoyambeduSellerDashboard /></ProtectedRoute>} />
+          <Route path="/koyambedu/seller/register"           element={<ProtectedRoute><KoyambeduSellerRegister /></ProtectedRoute>} />
+          <Route path="/koyambedu/seller/products"           element={<ProtectedRoute><KoyambeduSellerProducts /></ProtectedRoute>} />
 
           {/* ── Uzhavar Fresh ───────────────────── */}
           <Route path="/uzhavar"                    element={<UzhavarHome />} />
@@ -184,7 +209,9 @@ export default function App() {
       <CartProvider>
         <WishlistProvider>
           <CompareProvider>
-            <AppRoutes />
+            <KoyambeduCartProvider>
+              <AppRoutes />
+            </KoyambeduCartProvider>
           </CompareProvider>
         </WishlistProvider>
       </CartProvider>
