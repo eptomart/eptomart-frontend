@@ -95,7 +95,7 @@ const STATUS_COLOR = {
 
 export default function AdminSellers() {
   const navigate = useNavigate();
-  const { isSuperAdmin } = useAuth();
+  useAuth(); // keep context connected
   const [sellers,       setSellers]       = useState([]);
   const [deletedSellers,setDeletedSellers] = useState([]);
   const [loading,       setLoading]       = useState(true);
@@ -474,25 +474,18 @@ export default function AdminSellers() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                   <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
                     className="input-field" placeholder="seller@email.com"
-                    disabled={modal === 'edit' && !isSuperAdmin}
                   />
-                  {modal === 'edit' && !isSuperAdmin && (
-                    <p className="text-xs text-gray-400 mt-1">Contact email can only be changed by SuperAdmin</p>
-                  )}
-                  {modal === 'edit' && isSuperAdmin && (
-                    <p className="text-xs text-blue-500 mt-1">⚡ SuperAdmin — changes will sync to seller's login account</p>
+                  {modal === 'edit' && (
+                    <p className="text-xs text-blue-500 mt-1">Changes will sync to the seller's login account</p>
                   )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                   <input value={form.phone} onChange={e => set('phone', e.target.value)}
                     className="input-field" placeholder="9876543210"
-                    disabled={modal === 'edit' && !isSuperAdmin}
                   />
                 </div>
               </div>
