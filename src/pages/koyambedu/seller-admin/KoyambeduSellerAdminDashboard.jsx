@@ -28,10 +28,6 @@ export default function KoyambeduSellerAdminDashboard() {
   // Seller create modal
   const [showCreate, setShowCreate] = useState(false);
   const [sellerForm, setSellerForm] = useState(EMPTY_SELLER);
-  const [userQuery,  setUserQuery]  = useState('');
-  const [userResults,setUserResults]= useState([]);
-  const [selectedUser,setSelectedUser]= useState(null);
-  const [searching,  setSearching]  = useState(false);
 
   // Product edit modal
   const [products,    setProducts]    = useState([]);
@@ -74,29 +70,9 @@ export default function KoyambeduSellerAdminDashboard() {
     } catch { toast.error('Failed to load products'); }
   };
 
-  const searchUsers = async (q) => {
-    setUserQuery(q);
-    setSelectedUser(null);
-    setSellerForm(f => ({ ...f, userId: '' }));
-    if (q.trim().length < 3) { setUserResults([]); return; }
-    setSearching(true);
-    try {
-      const { data } = await api.get(`/koyambedu/admin/user-search?q=${encodeURIComponent(q.trim())}`);
-      setUserResults(data.users || []);
-    } catch { setUserResults([]); }
-    finally { setSearching(false); }
-  };
-
-  const selectUser = (u) => {
-    setSelectedUser(u);
-    setUserResults([]);
-    setUserQuery(u.email || u.phone || '');
-    setSellerForm(f => ({ ...f, userId: u._id, contactPhone: f.contactPhone || u.phone || '', contactEmail: f.contactEmail || u.email || '' }));
-  };
-
   const createSeller = async () => {
-    if (!sellerForm.userId || !sellerForm.ownerName || !sellerForm.businessName) {
-      toast.error('User, owner name and business name required'); return;
+    if (!sellerForm.ownerName || !sellerForm.businessName || !sellerForm.contactPhone) {
+      toast.error('Owner name, business name and phone are required'); return;
     }
     setSaving(true);
     try {
@@ -104,7 +80,6 @@ export default function KoyambeduSellerAdminDashboard() {
       toast.success('Seller created — pending SuperAdmin approval');
       setShowCreate(false);
       setSellerForm(EMPTY_SELLER);
-      setSelectedUser(null); setUserQuery(''); setUserResults([]);
       loadSellers();
     } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
     finally { setSaving(false); }
@@ -299,40 +274,7 @@ export default function KoyambeduSellerAdminDashboard() {
               <h3 className="font-bold text-gray-800">Add New Seller</h3>
               <button onClick={() => setShowCreate(false)} className="text-gray-400 text-xl">✕</button>
             </div>
-            <p className="text-xs text-gray-500">The seller must already have an Eptomart account.</p>
-
-            {/* User search */}
-            <div>
-              <label className="text-xs text-gray-500 font-medium">Search Eptomart User * (email or phone)</label>
-              <div className="relative mt-1">
-                <input type="text" value={userQuery} onChange={e => searchUsers(e.target.value)}
-                  placeholder="Type email or phone..."
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-                {searching && <div className="absolute right-3 top-3"><div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" /></div>}
-              </div>
-              {userResults.length > 0 && (
-                <div className="mt-1 border border-gray-200 rounded-xl overflow-hidden shadow-lg">
-                  {userResults.map(u => (
-                    <button key={u._id} onClick={() => selectUser(u)}
-                      className="w-full text-left px-3 py-2.5 hover:bg-green-50 border-b border-gray-100 last:border-0">
-                      <p className="text-sm font-semibold text-gray-800">{u.name}</p>
-                      <p className="text-xs text-gray-400">{u.email || '—'} · {u.phone || '—'}</p>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {selectedUser && (
-                <div className="mt-2 flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
-                  <span className="text-green-500">✓</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-green-800 truncate">{selectedUser.name}</p>
-                    <p className="text-xs text-green-600 truncate">{selectedUser.email || selectedUser.phone}</p>
-                  </div>
-                  <button onClick={() => { setSelectedUser(null); setUserQuery(''); setSellerForm(f => ({ ...f, userId: '' })); }}
-                    className="text-gray-400 hover:text-red-500 font-bold">✕</button>
-                </div>
-              )}
-            </div>
+            <p className="text-xs text-gray-500">Fill in the seller's details below. No prior Eptomart account needed.</p>
 
             {/* Seller details */}
             {[
@@ -352,7 +294,7 @@ export default function KoyambeduSellerAdminDashboard() {
 
             <div className="flex gap-3 pt-1">
               <button onClick={() => setShowCreate(false)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
-              <button onClick={createSeller} disabled={saving || !sellerForm.userId}
+              <button onClick={createSeller} disabled={saving || !sellerForm.ownerName || !sellerForm.businessName || !sellerForm.contactPhone}
                 className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
                 {saving ? 'Creating...' : 'Create Seller'}
               </button>
