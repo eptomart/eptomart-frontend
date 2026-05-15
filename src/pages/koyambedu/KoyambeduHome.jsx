@@ -118,19 +118,14 @@ export default function KoyambeduHome() {
     <div className="min-h-screen bg-green-50 pb-32">
       {/* ── Header ─────────────────────────── */}
       <div style={{ background: 'linear-gradient(135deg,#14532d,#16a34a)' }} className="px-4 pt-10 pb-6 text-white">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-2xl">🛒</span>
-              <div>
-                <h1 className="text-xl font-black tracking-tight leading-none">KOYAMBEDU DAILY</h1>
-                <p className="text-green-200 text-[11px] font-medium tracking-widest uppercase">Wholesale Market · Direct</p>
-              </div>
-            </div>
-            <p className="text-green-100 text-xs mt-2 leading-relaxed">
-              Fresh fruits, vegetables & flowers from Koyambedu — delivered to your Chennai doorstep 🌿
-            </p>
-          </div>
+        {/* Top row: home back + cart */}
+        <div className="flex items-center justify-between mb-3">
+          <Link to="/" className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 transition px-3 py-1.5 rounded-full">
+            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7m-9 2v8m4-8v8m5 0H4"/>
+            </svg>
+            <span className="text-white text-[11px] font-semibold">Home</span>
+          </Link>
           <Link to="/koyambedu/cart" className="relative">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
               <span className="text-lg">🛍️</span>
@@ -141,9 +136,21 @@ export default function KoyambeduHome() {
           </Link>
         </div>
 
+        {/* Title */}
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-2xl">🛒</span>
+          <div>
+            <h1 className="text-xl font-black tracking-tight leading-none">KOYAMBEDU DAILY</h1>
+            <p className="text-green-200 text-[11px] font-medium tracking-widest uppercase">Wholesale Market · Direct</p>
+          </div>
+        </div>
+        <p className="text-green-100 text-xs mt-1 mb-3 leading-relaxed">
+          Fresh fruits, vegetables & flowers from Koyambedu — delivered to your Chennai doorstep 🌿
+        </p>
+
         {/* Search bar */}
         <button onClick={() => navigate('/koyambedu/shop')}
-          className="mt-4 w-full bg-white/15 backdrop-blur border border-white/30 rounded-xl px-4 py-2.5 flex items-center gap-2 text-white/70 text-sm">
+          className="w-full bg-white/15 backdrop-blur border border-white/30 rounded-xl px-4 py-2.5 flex items-center gap-2 text-white/70 text-sm">
           <span>🔍</span> Search vegetables, fruits, flowers...
         </button>
 
