@@ -7,8 +7,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   FiArrowRight, FiSearch,
-  FiZap, FiChevronRight, FiMic,
+  FiZap, FiChevronRight, FiMic, FiX,
 } from 'react-icons/fi';
+import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
 import ProductCard from '../components/product/ProductCard';
@@ -41,6 +43,77 @@ const SkeletonCard = () => (
   </div>
 );
 
+// ── Auto-scrolling product strip ──────────────────────────────
+function AutoScrollStrip({ title, emoji, products, link, loading, accent = 'orange' }) {
+  const trackRef = useRef(null);
+  const timerRef = useRef(null);
+  const CARD_W   = 148; // px per card + gap
+
+  useEffect(() => {
+    if (!products?.length) return;
+    timerRef.current = setInterval(() => {
+      const el = trackRef.current;
+      if (!el) return;
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (el.scrollLeft >= maxScroll - 10) {
+        el.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        el.scrollBy({ left: CARD_W, behavior: 'smooth' });
+      }
+    }, 3200);
+    return () => clearInterval(timerRef.current);
+  }, [products]);
+
+  const colors = {
+    orange: { dot: 'bg-orange-500', label: 'text-orange-500', badge: 'bg-orange-500' },
+    red:    { dot: 'bg-red-500',    label: 'text-red-500',    badge: 'bg-red-500'    },
+  };
+  const c = colors[accent] || colors.orange;
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-2 px-4">
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${c.dot}`} />
+          <span className="text-lg">{emoji}</span>
+          <h2 className="text-sm font-extrabold text-gray-900 tracking-tight">{title}</h2>
+        </div>
+        <Link to={link} className={`text-xs font-bold ${c.label} flex items-center gap-0.5`}>
+          See all <FiChevronRight size={12} />
+        </Link>
+      </div>
+      <div ref={trackRef} className="flex gap-3 px-4 overflow-x-auto scrollbar-hide pb-1 touch-pan-x"
+        onMouseEnter={() => clearInterval(timerRef.current)}
+        onMouseLeave={() => {
+          timerRef.current = setInterval(() => {
+            const el = trackRef.current;
+            if (!el) return;
+            const maxScroll = el.scrollWidth - el.clientWidth;
+            if (el.scrollLeft >= maxScroll - 10) el.scrollTo({ left: 0, behavior: 'smooth' });
+            else el.scrollBy({ left: CARD_W, behavior: 'smooth' });
+          }, 3200);
+        }}>
+        {loading
+          ? [...Array(5)].map((_, i) => (
+              <div key={i} className="flex-shrink-0 w-36 bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse">
+                <div className="aspect-square bg-gray-100" />
+                <div className="p-3 space-y-2">
+                  <div className="h-3 bg-gray-100 rounded w-3/4" />
+                  <div className="h-4 bg-gray-100 rounded w-1/2" />
+                </div>
+              </div>
+            ))
+          : products.map(p => (
+              <div key={p._id} className="flex-shrink-0 w-36">
+                <ProductCard product={p} />
+              </div>
+            ))
+        }
+      </div>
+    </section>
+  );
+}
+
 // ── Horizontal product shelf ──────────────────────────────────
 function ProductShelf({ title, emoji, products, link, loading }) {
   return (
@@ -69,10 +142,25 @@ function ProductShelf({ title, emoji, products, link, loading }) {
   );
 }
 
-// ── Flash banner ──────────────────────────────────────────────
+// ── Flash deals bar — auto-scrolling ─────────────────────────
 function FlashBar({ products }) {
   const { h, m, s } = useCountdown(4);
-  const deals = (products || []).filter(p => p.discountPrice && p.discountPrice < p.price).slice(0, 6);
+  const trackRef = useRef(null);
+  const timerRef = useRef(null);
+  const deals = (products || []).filter(p => p.discountPrice && p.discountPrice < p.price).slice(0, 8);
+
+  useEffect(() => {
+    if (!deals.length) return;
+    timerRef.current = setInterval(() => {
+      const el = trackRef.current;
+      if (!el) return;
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (el.scrollLeft >= maxScroll - 10) el.scrollTo({ left: 0, behavior: 'smooth' });
+      else el.scrollBy({ left: 140, behavior: 'smooth' });
+    }, 2800);
+    return () => clearInterval(timerRef.current);
+  }, [deals.length]);
+
   if (!deals.length) return null;
   return (
     <section className="px-4">
@@ -89,11 +177,22 @@ function FlashBar({ products }) {
             <span className="bg-gray-900 text-white px-1.5 py-0.5 rounded-md">{s}</span>
           </div>
         </div>
-        <Link to="/shop?sort=-discount" className="text-xs font-bold text-orange-500 flex items-center gap-0.5">
+        <Link to="/shop?sort=-discount" className="text-xs font-bold text-red-500 flex items-center gap-0.5">
           All <FiChevronRight size={12} />
         </Link>
       </div>
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+      <div ref={trackRef}
+        className="flex gap-3 overflow-x-auto scrollbar-hide pb-1"
+        onMouseEnter={() => clearInterval(timerRef.current)}
+        onMouseLeave={() => {
+          timerRef.current = setInterval(() => {
+            const el = trackRef.current;
+            if (!el) return;
+            const maxScroll = el.scrollWidth - el.clientWidth;
+            if (el.scrollLeft >= maxScroll - 10) el.scrollTo({ left: 0, behavior: 'smooth' });
+            else el.scrollBy({ left: 140, behavior: 'smooth' });
+          }, 2800);
+        }}>
         {deals.map(p => (
           <Link key={p._id} to={`/product/${p.slug}`}
             className="flex-shrink-0 w-32 bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-all active:scale-95 group">
@@ -257,38 +356,76 @@ function PromoBanner() {
   );
 }
 
-// ── Mobile search bar with real input + mic ───────────────────
+// ── Mobile search bar — live suggest + not-found inquiry ─────
 function MobileSearchBar() {
-  const navigate = useNavigate();
-  const [query, setQuery]       = useState('');
-  const [listening, setListening] = useState(false);
-  const inputRef = useRef(null);
+  const navigate   = useNavigate();
+  const { user }   = useAuth();
+  const [query,       setQuery]       = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [open,        setOpen]        = useState(false);
+  const [loading,     setLoading]     = useState(false);
+  const [listening,   setListening]   = useState(false);
+  const inputRef  = useRef(null);
+  const wrapRef   = useRef(null);
+  const debounce  = useRef(null);
 
-  const submit = (q) => {
+  // Live suggestions
+  useEffect(() => {
+    clearTimeout(debounce.current);
+    if (!query.trim() || query.length < 2) { setSuggestions([]); setOpen(false); return; }
+    debounce.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const { data } = await api.get(`/products/search?q=${encodeURIComponent(query)}&limit=7`);
+        setSuggestions(data.products || []);
+        setOpen(true);
+      } catch { setSuggestions([]); }
+      finally { setLoading(false); }
+    }, 280);
+  }, [query]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const submit = async (q) => {
     const v = (q || query).trim();
-    if (v) navigate(`/shop?search=${encodeURIComponent(v)}`);
+    if (!v) return;
+    setOpen(false);
+    navigate(`/shop?search=${encodeURIComponent(v)}`);
+    // If no results found, log inquiry silently
+    if (suggestions.length === 0 && v.length >= 3) {
+      try {
+        await api.post('/settings/product-inquiry', {
+          query: v,
+          name:  user?.name  || '',
+          email: user?.email || '',
+          phone: user?.phone || '',
+        });
+        toast.success(`We've noted your search for "${v}" and will get back to you soon! 🙌`, { duration: 4500, icon: '📬' });
+      } catch {}
+    }
   };
 
   const startVoice = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { alert('Voice search not supported in this browser'); return; }
+    if (!SR) { toast.error('Voice search not supported on this browser'); return; }
     const rec = new SR();
     rec.lang = 'en-IN';
     rec.interimResults = false;
     rec.onstart  = () => setListening(true);
     rec.onend    = () => setListening(false);
     rec.onerror  = () => setListening(false);
-    rec.onresult = (e) => {
-      const t = e.results[0][0].transcript;
-      setQuery(t);
-      submit(t);
-    };
+    rec.onresult = (e) => { const t = e.results[0][0].transcript; setQuery(t); submit(t); };
     rec.start();
   };
 
   return (
-    <div className="md:hidden sticky top-0 z-40 px-4 pt-3 pb-2"
-      style={{ background: 'rgba(245,245,247,0.85)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+    <div ref={wrapRef} className="md:hidden sticky top-0 z-40 px-4 pt-3 pb-2 relative"
+      style={{ background: 'rgba(245,245,247,0.88)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
       <form onSubmit={e => { e.preventDefault(); submit(); }}
         className="flex items-center gap-2 bg-white rounded-2xl px-4 py-2.5 shadow-sm border border-gray-200/80">
         <FiSearch className="text-gray-400 flex-shrink-0" size={16} />
@@ -297,12 +434,15 @@ function MobileSearchBar() {
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
+          onFocus={() => suggestions.length > 0 && setOpen(true)}
           placeholder="Search products, brands…"
           className="flex-1 text-sm text-gray-700 placeholder-gray-400 bg-transparent outline-none font-medium"
         />
         {query ? (
-          <button type="button" onClick={() => setQuery('')}
-            className="text-gray-300 hover:text-gray-500 text-lg leading-none flex-shrink-0">×</button>
+          <button type="button" onClick={() => { setQuery(''); setSuggestions([]); setOpen(false); }}
+            className="flex-shrink-0 text-gray-300 hover:text-gray-500 transition-colors">
+            <FiX size={16} />
+          </button>
         ) : (
           <button type="button" onClick={startVoice}
             className={`flex-shrink-0 p-1 rounded-lg transition-all ${listening ? 'text-red-500 animate-pulse' : 'text-orange-400 hover:text-orange-600'}`}>
@@ -310,6 +450,50 @@ function MobileSearchBar() {
           </button>
         )}
       </form>
+
+      {/* Suggestions dropdown */}
+      {open && (
+        <div className="absolute left-4 right-4 top-full mt-1 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50">
+          {loading ? (
+            <div className="px-4 py-3 text-xs text-gray-400 flex items-center gap-2">
+              <span className="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+              Searching…
+            </div>
+          ) : suggestions.length > 0 ? (
+            <>
+              {suggestions.map(p => (
+                <button key={p._id}
+                  onClick={() => { setOpen(false); navigate(`/product/${p.slug || p._id}`); }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 transition-colors text-left group">
+                  <div className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                    {p.images?.[0]?.url
+                      ? <img src={p.images[0].url} alt="" className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-lg">📦</div>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-gray-800 line-clamp-1 group-hover:text-orange-600">{p.name}</p>
+                    <p className="text-[10px] text-gray-400">{p.category?.name || ''}</p>
+                  </div>
+                  <span className="text-xs font-bold text-orange-500 flex-shrink-0">₹{(p.discountPrice || p.price)?.toLocaleString('en-IN')}</span>
+                </button>
+              ))}
+              <button onClick={() => submit(query)}
+                className="w-full px-4 py-2.5 text-xs font-bold text-orange-500 border-t border-gray-100 hover:bg-orange-50 transition-colors text-left flex items-center gap-2">
+                <FiSearch size={12} /> See all results for "{query}"
+              </button>
+            </>
+          ) : query.length >= 3 ? (
+            <div className="px-4 py-4 text-center">
+              <p className="text-sm font-semibold text-gray-700 mb-0.5">No results for "{query}"</p>
+              <p className="text-xs text-gray-400 mb-3">We don't have it yet — but we can source it!</p>
+              <button onClick={() => submit(query)}
+                className="bg-orange-500 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-orange-600 transition-colors active:scale-95">
+                📬 Notify Team & Search
+              </button>
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
@@ -395,10 +579,6 @@ export default function Home() {
   const [allProducts, setAllProducts] = useState([]);   // featured + recent combined
   const [loading,     setLoading]     = useState(true);
 
-  // Lazy-loaded tabs
-  const [tabData,     setTabData]     = useState({});   // { new: [], top: [] }
-  const [tabLoading,  setTabLoading]  = useState({});
-  const [activeTab,   setActiveTab]   = useState('shelves'); // shelves | new | top
 
   // ── Mount: only 2 API calls ───────────────────────────────
   useEffect(() => {
@@ -415,19 +595,6 @@ export default function Home() {
     })();
   }, []);
 
-  // ── Lazy-load tab data ────────────────────────────────────
-  const switchTab = async (tabId) => {
-    setActiveTab(tabId);
-    if (tabId === 'shelves' || tabData[tabId]) return;
-    setTabLoading(prev => ({ ...prev, [tabId]: true }));
-    try {
-      const sort = tabId === 'new' ? '-createdAt' : '-ratings.average';
-      const { data } = await api.get(`/products?limit=12&sort=${sort}`);
-      setTabData(prev => ({ ...prev, [tabId]: data.products || [] }));
-    } catch {}
-    finally { setTabLoading(prev => ({ ...prev, [tabId]: false })); }
-  };
-
   // ── Group products by category ───────────────────────────
   const catShelves = categories.slice(0, 8).map(cat => {
     const prods = allProducts.filter(p =>
@@ -436,18 +603,8 @@ export default function Home() {
     return { cat, products: prods };
   }).filter(s => s.products.length > 0);
 
-  // Featured = products with discountPrice or high rating
-  const featuredProducts = allProducts.filter(p => p.discountPrice || p.featured).slice(0, 8);
-  const currentTabProducts = activeTab === 'new'
-    ? (tabData.new || [])
-    : (tabData.top || []);
-  const isTabLoading = tabLoading[activeTab];
-
-  const TABS = [
-    { id: 'shelves', label: '🏷️ By Category' },
-    { id: 'new',     label: '🆕 New' },
-    { id: 'top',     label: '🏆 Top Rated' },
-  ];
+  // Featured = products with discountPrice or featured flag
+  const featuredProducts = allProducts.filter(p => p.discountPrice || p.featured).slice(0, 12);
 
   return (
     <>
@@ -516,7 +673,23 @@ export default function Home() {
         )}
 
         {/* ══════════════════════════════════════
-            FLASH DEALS
+            FEATURED AUTO-SCROLL STRIP
+        ══════════════════════════════════════ */}
+        {(featuredProducts.length > 0 || loading) && (
+          <div className="pb-5">
+            <AutoScrollStrip
+              title="Featured Products"
+              emoji="⭐"
+              products={featuredProducts}
+              link="/shop?featured=true"
+              loading={loading}
+              accent="orange"
+            />
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════
+            FLASH DEALS — auto-scroll
         ══════════════════════════════════════ */}
         <div className="pb-5">
           <FlashBar products={featuredProducts} />
@@ -525,104 +698,57 @@ export default function Home() {
         <Divider />
 
         {/* ══════════════════════════════════════
-            BROWSE TABS
+            CATEGORY SHELVES (no tabs)
         ══════════════════════════════════════ */}
         <>
-          {/* Sticky tab bar */}
-          <div className="sticky top-[60px] z-30 bg-[#f5f5f7] px-4 pt-3 pb-2"
-            style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-              {TABS.map(tab => (
-                <button key={tab.id}
-                  onClick={() => switchTab(tab.id)}
-                  className={`flex-shrink-0 text-xs font-bold px-4 py-2 rounded-xl transition-all active:scale-95 border
-                    ${activeTab === tab.id
-                      ? 'bg-gray-900 text-white border-gray-900 shadow-md'
-                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                    }`}>
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── By Category shelves ── */}
-          {activeTab === 'shelves' && (
-            <div className="pt-2 pb-6 space-y-6">
-              {loading ? (
-                // Skeleton shelves
-                [0,1,2].map(i => (
-                  <div key={i} className="px-4 space-y-2 animate-pulse">
-                    <div className="h-4 w-32 bg-gray-200 rounded-lg" />
-                    <div className="flex gap-3">
-                      {[0,1,2].map(j => (
-                        <div key={j} className="flex-shrink-0 w-36 bg-white rounded-2xl overflow-hidden border border-gray-100">
-                          <div className="aspect-square bg-gray-100" />
-                          <div className="p-3 space-y-2">
-                            <div className="h-3 bg-gray-100 rounded w-3/4" />
-                            <div className="h-4 bg-gray-100 rounded w-1/2" />
-                          </div>
+          <div className="pt-3 pb-6 space-y-6">
+            {loading ? (
+              [0,1,2].map(i => (
+                <div key={i} className="px-4 space-y-2 animate-pulse">
+                  <div className="h-4 w-32 bg-gray-200 rounded-lg" />
+                  <div className="flex gap-3">
+                    {[0,1,2,3].map(j => (
+                      <div key={j} className="flex-shrink-0 w-36 bg-white rounded-2xl overflow-hidden border border-gray-100">
+                        <div className="aspect-square bg-gray-100" />
+                        <div className="p-3 space-y-2">
+                          <div className="h-3 bg-gray-100 rounded w-3/4" />
+                          <div className="h-4 bg-gray-100 rounded w-1/2" />
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              ) : catShelves.length > 0 ? (
-                catShelves.map(({ cat, products }) => (
-                  <CategoryShelf key={cat._id} cat={cat} products={products} />
-                ))
-              ) : (
-                // Fallback: show all products in a grid if no category grouping
-                <div className="px-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-sm font-extrabold text-gray-800">All Products</h2>
-                    <Link to="/shop" className="text-xs font-bold text-orange-500">See all</Link>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {allProducts.slice(0, 12).map(p => <ProductCard key={p._id} product={p} />)}
+                      </div>
+                    ))}
                   </div>
                 </div>
-              )}
-
-              {/* See all categories CTA */}
-              {!loading && (
-                <div className="px-4 text-center">
-                  <Link to="/shop"
-                    className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 font-bold text-sm px-6 py-2.5 rounded-xl hover:border-orange-300 hover:text-orange-600 transition-all">
-                    Browse all products <FiArrowRight size={14} />
-                  </Link>
+              ))
+            ) : catShelves.length > 0 ? (
+              catShelves.map(({ cat, products }) => (
+                <CategoryShelf key={cat._id} cat={cat} products={products} />
+              ))
+            ) : allProducts.length > 0 ? (
+              <div className="px-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-extrabold text-gray-800">All Products</h2>
+                  <Link to="/shop" className="text-xs font-bold text-orange-500">See all</Link>
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* ── New / Top Rated tab ── */}
-          {activeTab !== 'shelves' && (
-            <div className="px-4 pt-3 pb-6">
-              {isTabLoading ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {[...Array(8)].map((_, i) => <SkeletonCard key={i} />)}
+                  {allProducts.slice(0, 12).map(p => <ProductCard key={p._id} product={p} />)}
                 </div>
-              ) : currentTabProducts.length ? (
-                <>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {currentTabProducts.map(p => <ProductCard key={p._id} product={p} />)}
-                  </div>
-                  <div className="mt-4 text-center">
-                    <Link to={activeTab === 'new' ? '/shop?sort=-createdAt' : '/shop?sort=-ratings.average'}
-                      className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 font-bold text-sm px-6 py-2.5 rounded-xl hover:border-orange-300 hover:text-orange-600 transition-all">
-                      See all <FiArrowRight size={14} />
-                    </Link>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-16">
-                  <p className="text-5xl mb-3">📦</p>
-                  <p className="text-gray-400">No products yet — check back soon!</p>
-                </div>
-              )}
-            </div>
-          )}
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <p className="text-5xl mb-3">📦</p>
+                <p className="text-gray-400">Products coming soon — check back!</p>
+              </div>
+            )}
+
+            {!loading && (
+              <div className="px-4 text-center">
+                <Link to="/shop"
+                  className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 font-bold text-sm px-6 py-2.5 rounded-xl hover:border-orange-300 hover:text-orange-600 transition-all">
+                  Browse all products <FiArrowRight size={14} />
+                </Link>
+              </div>
+            )}
+          </div>
 
           <Divider />
 

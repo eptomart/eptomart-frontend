@@ -30,7 +30,6 @@ export default function UzhavarHome() {
   const [products,   setProducts]   = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [category,   setCategory]   = useState('All');
-  const [tab,        setTab]        = useState('farmers');
   const [pincode,    setPincode]    = useState('');
   const [district,   setDistrict]   = useState('');
   const [locationLabel, setLocationLabel] = useState('All Farmers');
@@ -261,79 +260,87 @@ export default function UzhavarHome() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="max-w-5xl mx-auto px-4 mb-3">
-          <div className="flex gap-2">
-            <button onClick={() => setTab('farmers')}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${tab === 'farmers' ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
-              🧑‍🌾 Farmers {!loading && `(${farmers.length})`}
-            </button>
-            <button onClick={() => setTab('products')}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${tab === 'products' ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
-              🥬 Products {!loading && `(${products.length})`}
-            </button>
+        {/* ── Farmers section ─────────────────── */}
+        <div className="max-w-5xl mx-auto px-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-extrabold text-gray-800 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500" />
+              🧑‍🌾 Farmers near you
+              {!loading && farmers.length > 0 && (
+                <span className="text-xs font-semibold text-gray-400">({farmers.length})</span>
+              )}
+            </h2>
           </div>
-        </div>
-
-        {/* Category filter (products tab) */}
-        {tab === 'products' && (
-          <div className="max-w-5xl mx-auto px-4 mb-4">
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              {CATEGORIES.map(c => (
-                <button key={c} onClick={() => setCategory(c)}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors capitalize ${category === c ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
-                  {c}
-                </button>
+          {loading ? (
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+              {[0,1,2].map(i => (
+                <div key={i} className="flex-shrink-0 w-52 bg-white rounded-2xl border border-gray-100 p-4 animate-pulse">
+                  <div className="w-12 h-12 bg-gray-100 rounded-xl mb-3" />
+                  <div className="h-3 bg-gray-100 rounded w-3/4 mb-2" />
+                  <div className="h-3 bg-gray-100 rounded w-1/2" />
+                </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Content */}
-        <div className="max-w-5xl mx-auto px-4 pb-12">
-          {loading ? (
-            <div className="text-center py-16 text-gray-400">
-              <div className="text-4xl mb-3 animate-bounce">🌱</div>
-              <p>Loading farmers...</p>
+          ) : farmers.length === 0 ? (
+            <div className="text-center py-10 text-gray-400 bg-white rounded-2xl shadow-sm border border-gray-100">
+              <div className="text-3xl mb-2">🌾</div>
+              <p className="font-semibold text-sm">No farmers registered yet</p>
+              <p className="text-xs mt-0.5">Check back soon — farmers are joining!</p>
             </div>
           ) : (
-            <>
-              {/* Farmers grid */}
-              {tab === 'farmers' && (
-                farmers.length === 0 ? (
-                  <div className="text-center py-16 text-gray-400 bg-white rounded-2xl shadow-sm">
-                    <div className="text-4xl mb-3">🌾</div>
-                    <p className="font-semibold">No farmers registered yet</p>
-                    <p className="text-xs mt-1">Check back soon — farmers are joining!</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {farmers.map(farmer => (
-                      <FarmerCard key={farmer._id} farmer={farmer}
-                        onClick={() => navigate(`/uzhavar/farmer/${farmer._id}`)} />
-                    ))}
-                  </div>
-                )
-              )}
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+              {farmers.map(farmer => (
+                <div key={farmer._id} className="flex-shrink-0 w-52">
+                  <FarmerCard farmer={farmer} onClick={() => navigate(`/uzhavar/farmer/${farmer._id}`)} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-              {/* Products grid */}
-              {tab === 'products' && (
-                filteredProducts.length === 0 ? (
-                  <div className="text-center py-16 text-gray-400 bg-white rounded-2xl shadow-sm">
-                    <div className="text-4xl mb-3">🥕</div>
-                    <p className="font-semibold">No products listed yet</p>
-                    <p className="text-xs mt-1">Farmers will add harvest soon!</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {filteredProducts.map(prod => (
-                      <ProductCard key={prod._id} product={prod}
-                        onClick={() => navigate(`/uzhavar/farmer/${prod.farmer?._id}`)} />
-                    ))}
-                  </div>
-                )
+        {/* ── Products section ─────────────────── */}
+        <div className="max-w-5xl mx-auto px-4 pb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-extrabold text-gray-800 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-lime-500" />
+              🥬 Fresh Harvest
+              {!loading && products.length > 0 && (
+                <span className="text-xs font-semibold text-gray-400">({products.length})</span>
               )}
-            </>
+            </h2>
+          </div>
+          {/* Category filter chips */}
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mb-3">
+            {CATEGORIES.map(c => (
+              <button key={c} onClick={() => setCategory(c)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors capitalize ${category === c ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-green-300'}`}>
+                {c}
+              </button>
+            ))}
+          </div>
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {[0,1,2,3].map(i => (
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 p-3 animate-pulse">
+                  <div className="w-full h-24 bg-gray-100 rounded-xl mb-2" />
+                  <div className="h-3 bg-gray-100 rounded w-3/4 mb-1" />
+                  <div className="h-4 bg-gray-100 rounded w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="text-center py-10 text-gray-400 bg-white rounded-2xl shadow-sm border border-gray-100">
+              <div className="text-3xl mb-2">🥕</div>
+              <p className="font-semibold text-sm">No products listed yet</p>
+              <p className="text-xs mt-0.5">Farmers will add harvest soon!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {filteredProducts.map(prod => (
+                <ProductCard key={prod._id} product={prod}
+                  onClick={() => navigate(`/uzhavar/farmer/${prod.farmer?._id}`)} />
+              ))}
+            </div>
           )}
         </div>
 
