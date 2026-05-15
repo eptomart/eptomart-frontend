@@ -23,49 +23,59 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-[9980] md:hidden safe-bottom">
+      {/* Ultra-thin top edge line */}
+      <div className="h-px"
+        style={{ background: 'linear-gradient(90deg, transparent, rgba(0,0,0,0.06) 20%, rgba(0,0,0,0.06) 80%, transparent)' }} />
       <div
-        className="border-t border-gray-200/50 px-1 pt-2 pb-2"
+        className="px-2 pt-1.5 pb-2"
         style={{
-          background: 'rgba(255,255,255,0.88)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-          boxShadow: '0 -8px 32px rgba(0,0,0,0.10)',
+          background: 'rgba(255,255,255,0.70)',
+          backdropFilter: 'saturate(200%) blur(36px)',
+          WebkitBackdropFilter: 'saturate(200%) blur(36px)',
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.06)',
         }}
       >
-        <div className="flex items-center justify-around">
+        <div className="flex items-end justify-around">
           {tabs.map(tab => {
             const active = isActive(tab.path);
             return (
               <button
                 key={tab.id}
                 onClick={() => navigate(tab.path)}
-                className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all active:scale-90 relative min-w-[56px]"
+                className="flex flex-col items-center gap-0.5 px-4 py-1 rounded-2xl transition-all duration-200 active:scale-90 relative"
               >
-                {/* Active indicator */}
+                {/* Soft active pill */}
                 {active && (
-                  <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-orange-500" />
+                  <span className="absolute inset-0 rounded-2xl"
+                    style={{ background: 'rgba(249,115,22,0.09)' }} />
                 )}
 
-                {/* Icon area */}
-                <div className={`w-11 h-9 flex items-center justify-center rounded-xl transition-all
-                  ${active ? 'bg-orange-50' : ''}`}>
+                {/* Icon */}
+                <div className={`relative flex items-center justify-center w-10 h-8 transition-all duration-200
+                  ${active ? 'scale-110' : 'scale-100'}`}>
                   {tab.emoji ? (
-                    <span className={`text-[22px] transition-all ${active ? 'scale-110' : 'opacity-55 grayscale'}`}
-                      style={{ filter: active ? 'none' : 'grayscale(0.6)' }}>
+                    <span
+                      className={`text-[22px] transition-all duration-200 ${active ? '' : 'opacity-45'}`}
+                      style={{ filter: active ? 'none' : 'grayscale(1) brightness(1.1)' }}
+                    >
                       {tab.emoji}
                     </span>
                   ) : (
                     <tab.Icon
-                      size={21}
-                      className={`transition-all ${active ? 'text-orange-500' : 'text-gray-400'}`}
-                      strokeWidth={active ? 2.5 : 1.8}
+                      size={20}
+                      className={`transition-all duration-200 ${active ? 'text-orange-500' : 'text-gray-400'}`}
+                      strokeWidth={active ? 2.4 : 1.7}
                     />
+                  )}
+                  {/* Active indicator dot */}
+                  {active && (
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-orange-500" />
                   )}
                 </div>
 
                 {/* Label */}
-                <span className={`text-[10px] font-bold transition-all leading-none
-                  ${active ? 'text-orange-500' : 'text-gray-400'}`}>
+                <span className={`text-[9.5px] font-bold tracking-tight leading-none transition-all duration-200
+                  ${active ? 'text-orange-500' : 'text-gray-400/75'}`}>
                   {tab.label}
                 </span>
               </button>

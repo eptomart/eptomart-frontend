@@ -112,10 +112,6 @@ export default function Navbar() {
           </form>
 
           <div className="flex items-center gap-1 ml-auto">
-            {/* Mobile Search Toggle */}
-            <button onClick={() => setShowSearch(!showSearch)} className="md:hidden p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
-              <FiSearch size={22} />
-            </button>
 
             {/* Wishlist */}
             {isLoggedIn && (

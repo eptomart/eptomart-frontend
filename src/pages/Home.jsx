@@ -2,12 +2,12 @@
 // HOME PAGE — Premium Blinkit/Zepto-style
 // Fixed glass bottom nav · Products first · Scroll only products
 // ============================================
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   FiArrowRight, FiSearch,
-  FiZap, FiChevronRight,
+  FiZap, FiChevronRight, FiMic,
 } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
@@ -116,28 +116,26 @@ function FlashBar({ products }) {
   );
 }
 
-// ── Categories strip ──────────────────────────────────────────
-function CategoriesStrip({ categories, active, onChange }) {
-  const all = [{ _id: '', name: 'All', icon: '🛒', slug: '' }, ...categories.slice(0, 12)];
+// ── Categories strip (DB categories — navigates to shop page) ──
+function CategoriesStrip({ categories }) {
+  const navigate = useNavigate();
+  const icons = ['🥗','🥛','🏠','👕','📱','⚽','🎨','💊','🛠️','🐾','📚','🍜'];
   return (
     <div className="px-4">
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-        {all.map((cat, i) => {
-          const isActive = active === cat._id;
-          const icons = ['🥗','🥛','🏠','👕','📱','⚽','🎨','💊','🛠️','🐾','📚','🍜'];
-          const icon = cat.icon || cat.image?.url ? (
-            cat.image?.url
-              ? <img src={cat.image.url} alt="" className="w-5 h-5 object-cover rounded-full" />
-              : <span>{icons[i % icons.length]}</span>
-          ) : <span>{icons[i % icons.length]}</span>;
+        <button onClick={() => navigate('/shop')}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 whitespace-nowrap border bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-100">
+          🛒 All
+        </button>
+        {categories.slice(0, 14).map((cat, i) => {
+          const imgEl = cat.image?.url
+            ? <img src={cat.image.url} alt="" className="w-4 h-4 object-cover rounded-full flex-shrink-0" />
+            : <span className="flex-shrink-0">{icons[i % icons.length]}</span>;
           return (
-            <button key={cat._id || 'all'} onClick={() => onChange(cat._id, cat.slug)}
-              className={`flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 whitespace-nowrap border
-                ${isActive
-                  ? 'bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-200'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-orange-200 hover:text-orange-600'
-                }`}>
-              {typeof icon === 'string' ? <span>{icon}</span> : icon}
+            <button key={cat._id}
+              onClick={() => navigate(`/shop?category=${cat._id}`)}
+              className="flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 whitespace-nowrap border bg-white text-gray-600 border-gray-200 hover:border-orange-300 hover:text-orange-600">
+              {imgEl}
               {cat.name}
             </button>
           );
@@ -259,6 +257,103 @@ function PromoBanner() {
   );
 }
 
+// ── Mobile search bar with real input + mic ───────────────────
+function MobileSearchBar() {
+  const navigate = useNavigate();
+  const [query, setQuery]       = useState('');
+  const [listening, setListening] = useState(false);
+  const inputRef = useRef(null);
+
+  const submit = (q) => {
+    const v = (q || query).trim();
+    if (v) navigate(`/shop?search=${encodeURIComponent(v)}`);
+  };
+
+  const startVoice = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert('Voice search not supported in this browser'); return; }
+    const rec = new SR();
+    rec.lang = 'en-IN';
+    rec.interimResults = false;
+    rec.onstart  = () => setListening(true);
+    rec.onend    = () => setListening(false);
+    rec.onerror  = () => setListening(false);
+    rec.onresult = (e) => {
+      const t = e.results[0][0].transcript;
+      setQuery(t);
+      submit(t);
+    };
+    rec.start();
+  };
+
+  return (
+    <div className="md:hidden sticky top-0 z-40 px-4 pt-3 pb-2"
+      style={{ background: 'rgba(245,245,247,0.85)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+      <form onSubmit={e => { e.preventDefault(); submit(); }}
+        className="flex items-center gap-2 bg-white rounded-2xl px-4 py-2.5 shadow-sm border border-gray-200/80">
+        <FiSearch className="text-gray-400 flex-shrink-0" size={16} />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search products, brands…"
+          className="flex-1 text-sm text-gray-700 placeholder-gray-400 bg-transparent outline-none font-medium"
+        />
+        {query ? (
+          <button type="button" onClick={() => setQuery('')}
+            className="text-gray-300 hover:text-gray-500 text-lg leading-none flex-shrink-0">×</button>
+        ) : (
+          <button type="button" onClick={startVoice}
+            className={`flex-shrink-0 p-1 rounded-lg transition-all ${listening ? 'text-red-500 animate-pulse' : 'text-orange-400 hover:text-orange-600'}`}>
+            <FiMic size={17} />
+          </button>
+        )}
+      </form>
+    </div>
+  );
+}
+
+// ── Static non-perishable category grid ──────────────────────
+const STATIC_CATS = [
+  { emoji: '📱', label: 'Electronics',     slug: 'electronics' },
+  { emoji: '👕', label: 'Fashion',          slug: 'fashion' },
+  { emoji: '🏠', label: 'Home & Kitchen',   slug: 'home-kitchen' },
+  { emoji: '💄', label: 'Beauty',           slug: 'beauty' },
+  { emoji: '⚽', label: 'Sports',           slug: 'sports' },
+  { emoji: '📚', label: 'Books',            slug: 'books' },
+  { emoji: '🧸', label: 'Toys & Kids',      slug: 'toys-kids' },
+  { emoji: '🐾', label: 'Pet Supplies',     slug: 'pet-supplies' },
+  { emoji: '🔧', label: 'Tools & DIY',      slug: 'tools-diy' },
+  { emoji: '🎨', label: 'Art & Craft',      slug: 'art-craft' },
+  { emoji: '🌿', label: 'Health & Wellness',slug: 'health-wellness' },
+  { emoji: '🧴', label: 'Personal Care',    slug: 'personal-care' },
+];
+
+function StaticCategoriesGrid() {
+  const navigate = useNavigate();
+  return (
+    <section className="px-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-extrabold text-gray-800 tracking-tight">Shop by Category</h2>
+        <Link to="/shop" className="text-xs font-bold text-orange-500 flex items-center gap-0.5">
+          All <FiChevronRight size={12} />
+        </Link>
+      </div>
+      <div className="grid grid-cols-4 gap-2.5">
+        {STATIC_CATS.map(cat => (
+          <button key={cat.slug}
+            onClick={() => navigate(`/shop?category=${cat.slug}`)}
+            className="flex flex-col items-center gap-1.5 bg-white rounded-2xl py-3 px-1 border border-gray-100 shadow-sm active:scale-95 transition-all hover:border-orange-200 hover:shadow-md group">
+            <span className="text-2xl group-hover:scale-110 transition-transform">{cat.emoji}</span>
+            <span className="text-[10px] font-bold text-gray-600 text-center leading-tight">{cat.label}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ── Main Home ─────────────────────────────────────────────────
 export default function Home() {
   const navigate = useNavigate();
@@ -268,10 +363,6 @@ export default function Home() {
   const [newArrivals,      setNewArrivals]      = useState([]);
   const [topRated,         setTopRated]         = useState([]);
   const [loading,          setLoading]          = useState(true);
-
-  const [activeCategory,   setActiveCategory]   = useState('');
-  const [catProducts,      setCatProducts]      = useState([]);
-  const [catLoading,       setCatLoading]       = useState(false);
 
   // Section tabs: featured | new | top
   const [activeTab, setActiveTab] = useState('featured');
@@ -294,30 +385,17 @@ export default function Home() {
     })();
   }, []);
 
-  const handleCategoryChange = useCallback(async (id, slug) => {
-    setActiveCategory(id);
-    if (!id) { setCatProducts([]); return; }
-    setCatLoading(true);
-    try {
-      const { data } = await api.get(`/products?category=${id}&limit=12`);
-      setCatProducts(data.products || []);
-    } catch {}
-    finally { setCatLoading(false); }
-  }, []);
-
   const TABS = [
     { id: 'featured', label: '⭐ Featured' },
     { id: 'new',      label: '🆕 New' },
     { id: 'top',      label: '🏆 Top Rated' },
   ];
 
-  const currentProducts = activeCategory
-    ? catProducts
-    : activeTab === 'featured' ? featuredProducts
-    : activeTab === 'new'      ? newArrivals
+  const currentProducts = activeTab === 'featured' ? featuredProducts
+    : activeTab === 'new' ? newArrivals
     : topRated;
 
-  const isCurrentLoading = activeCategory ? catLoading : loading;
+  const isCurrentLoading = loading;
 
   return (
     <>
@@ -338,15 +416,7 @@ export default function Home() {
         {/* ══════════════════════════════════════
             MOBILE SEARCH BAR (below navbar)
         ══════════════════════════════════════ */}
-        <div className="md:hidden sticky top-0 z-40 bg-[#f5f5f7] px-4 pt-3 pb-2"
-          style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-          <button onClick={() => navigate('/shop')}
-            className="w-full flex items-center gap-3 bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-200/80 active:scale-[0.98] transition-transform">
-            <FiSearch className="text-gray-400 flex-shrink-0" size={16} />
-            <span className="text-sm text-gray-400 font-medium">Search for products, brands…</span>
-            <span className="ml-auto text-xs font-bold text-orange-500 flex-shrink-0">🎤</span>
-          </button>
-        </div>
+        <MobileSearchBar />
 
         {/* ══════════════════════════════════════
             PROMO BANNER CAROUSEL
@@ -370,104 +440,81 @@ export default function Home() {
         </div>
 
         {/* ══════════════════════════════════════
-            CATEGORY FILTER PILLS
+            STATIC CATEGORIES GRID
         ══════════════════════════════════════ */}
-        <div className="pb-3">
-          <div className="flex items-center justify-between px-4 mb-2">
-            <h2 className="text-sm font-extrabold text-gray-800">Browse</h2>
-            <Link to="/shop" className="text-xs font-bold text-orange-500 flex items-center gap-0.5">
-              All Categories <FiChevronRight size={12} />
-            </Link>
-          </div>
-          <CategoriesStrip categories={categories} active={activeCategory} onChange={handleCategoryChange} />
+        <div className="pb-4">
+          <StaticCategoriesGrid />
         </div>
 
+        <Divider />
+
         {/* ══════════════════════════════════════
-            CATEGORY PRODUCTS (if filtered)
+            DB CATEGORY PILLS (scroll → navigate)
         ══════════════════════════════════════ */}
-        {activeCategory && (
-          <section className="pb-6">
-            <div className="flex items-center justify-between px-4 mb-3">
-              <h2 className="text-base font-extrabold text-gray-900">
-                {categories.find(c => c._id === activeCategory)?.name || 'Products'}
-              </h2>
-              <button onClick={() => handleCategoryChange('', '')}
-                className="text-xs text-gray-400 font-semibold border border-gray-200 px-2.5 py-1 rounded-lg">
-                ✕ Clear
-              </button>
+        {categories.length > 0 && (
+          <div className="py-3">
+            <div className="flex items-center justify-between px-4 mb-2">
+              <h2 className="text-sm font-extrabold text-gray-800">Our Departments</h2>
+              <Link to="/shop" className="text-xs font-bold text-orange-500 flex items-center gap-0.5">
+                See all <FiChevronRight size={12} />
+              </Link>
             </div>
-            <div className="px-4">
-              {catLoading ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
-                </div>
-              ) : catProducts.length ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {catProducts.map(p => <ProductCard key={p._id} product={p} />)}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-4xl mb-2">🛒</p>
-                  <p className="text-gray-400 text-sm">No products in this category yet</p>
-                </div>
-              )}
-            </div>
-          </section>
+            <CategoriesStrip categories={categories} />
+          </div>
         )}
 
         {/* ══════════════════════════════════════
             PRODUCT SECTION TABS
         ══════════════════════════════════════ */}
-        {!activeCategory && (
-          <>
-            {/* Flash deals */}
-            <div className="pb-5">
-              <FlashBar products={featuredProducts} />
-            </div>
+        <>
+          {/* Flash deals */}
+          <div className="pb-5">
+            <FlashBar products={featuredProducts} />
+          </div>
 
-            <Divider />
+          <Divider />
 
-            {/* Tab selector */}
-            <div className="px-4 pt-4 pb-3 flex gap-2">
-              {TABS.map(tab => (
-                <button key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`text-xs font-bold px-4 py-2 rounded-xl transition-all active:scale-95 border
-                    ${activeTab === tab.id
-                      ? 'bg-gray-900 text-white border-gray-900 shadow-md'
-                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                    }`}>
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+          {/* Tab selector */}
+          <div className="px-4 pt-4 pb-3 flex gap-2">
+            {TABS.map(tab => (
+              <button key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`text-xs font-bold px-4 py-2 rounded-xl transition-all active:scale-95 border
+                  ${activeTab === tab.id
+                    ? 'bg-gray-900 text-white border-gray-900 shadow-md'
+                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                  }`}>
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-            {/* Product grid */}
-            <div className="px-4 pb-6">
-              {isCurrentLoading ? (
+          {/* Product grid */}
+          <div className="px-4 pb-6">
+            {isCurrentLoading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {[...Array(8)].map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : currentProducts.length ? (
+              <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {[...Array(8)].map((_, i) => <SkeletonCard key={i} />)}
+                  {currentProducts.map(p => <ProductCard key={p._id} product={p} />)}
                 </div>
-              ) : currentProducts.length ? (
-                <>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {currentProducts.map(p => <ProductCard key={p._id} product={p} />)}
-                  </div>
-                  <div className="mt-4 text-center">
-                    <Link to="/shop" className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 font-bold text-sm px-6 py-2.5 rounded-xl hover:border-orange-300 hover:text-orange-600 transition-all">
-                      See all products <FiArrowRight size={14} />
-                    </Link>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-16">
-                  <p className="text-5xl mb-3">📦</p>
-                  <p className="text-gray-400">No products yet — check back soon!</p>
+                <div className="mt-4 text-center">
+                  <Link to="/shop" className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 font-bold text-sm px-6 py-2.5 rounded-xl hover:border-orange-300 hover:text-orange-600 transition-all">
+                    See all products <FiArrowRight size={14} />
+                  </Link>
                 </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <div className="text-center py-16">
+                <p className="text-5xl mb-3">📦</p>
+                <p className="text-gray-400">No products yet — check back soon!</p>
+              </div>
+            )}
+          </div>
 
-            <Divider />
+          <Divider />
 
             {/* ── Desktop: full sections below ── */}
             <div className="hidden md:block max-w-7xl mx-auto px-4 mt-8 space-y-12">
@@ -536,8 +583,7 @@ export default function Home() {
                 </div>
               </section>
             </div>
-          </>
-        )}
+        </>
       </main>
 
       {/* ══════════════════════════════════════
