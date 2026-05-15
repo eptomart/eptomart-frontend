@@ -12,9 +12,15 @@ export default function KoyambeduCart() {
 
   useEffect(() => { fetchCart(); }, []);
 
-  const deliveryCharge = subtotal >= 499 ? 0 : 40;
-  const serviceFee = 10;
-  const total = subtotal + deliveryCharge + serviceFee;
+  // Weight-based delivery charge (computed from cart items)
+  const totalWeightKg = (cart.items || []).reduce((sum, item) => {
+    const wpu = item.product?.weightKg != null ? item.product.weightKg
+      : (item.unit === 'g' ? 0.001 : 1);
+    return sum + wpu * (item.quantity || 0);
+  }, 0);
+  const deliveryCharge = totalWeightKg >= 20 ? 249 : 149;
+  const serviceFee     = 10;
+  const total          = subtotal + deliveryCharge + serviceFee;
 
   if (!cart.items?.length) return (
     <div className="min-h-screen bg-green-50 flex flex-col items-center justify-center gap-4 p-8">
@@ -96,12 +102,17 @@ export default function KoyambeduCart() {
           </div>
           <div className="flex justify-between text-gray-600">
             <span>Delivery charge</span>
-            <span className={deliveryCharge === 0 ? 'text-green-600 font-semibold' : ''}>
-              {deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}
-            </span>
+            <span>₹{deliveryCharge}</span>
           </div>
-          {subtotal < 499 && (
-            <p className="text-xs text-green-600">Add ₹{(499 - subtotal).toFixed(0)} more for FREE delivery</p>
+          <p className="text-xs text-gray-400">
+            {totalWeightKg < 20
+              ? `~${totalWeightKg.toFixed(1)} kg order · ₹149 for orders under 20 kg`
+              : `~${totalWeightKg.toFixed(1)} kg order · ₹249 for orders 20–90 kg`}
+          </p>
+          {totalWeightKg > 90 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2 text-xs text-orange-700 font-medium">
+              ⚠️ Orders above 90 kg require special handling. Please contact us before checkout.
+            </div>
           )}
           <div className="flex justify-between text-gray-600">
             <span>Service fee</span>

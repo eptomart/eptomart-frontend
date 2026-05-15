@@ -9,6 +9,7 @@ const BADGES = ['fresh_arrival','low_stock','best_seller','seasonal','organic','
 const EMPTY_FORM = {
   name:'', nameTamil:'', description:'', categoryId:'',
   unit:'kg', unitLabel:'kg', minQty:0.5, maxQty:50, qtyStep:0.5,
+  weightKg:1,
   marketPriceMin:0, marketPriceMax:0, currentPrice:'', stockQty:0,
   freshArrivalTime:'', isSameDay:true, isNextDay:true, sameDayCutoff:'10:00',
   badges:[], tags:'', isBulkAvailable:false, bulkMinQty:'', bulkPricePerUnit:'',
@@ -227,6 +228,13 @@ export default function KoyambeduSellerProducts() {
                   <label className="text-xs text-gray-500 font-medium">Market Max (₹)</label>
                   <input type="number" value={form.marketPriceMax} onChange={e => set('marketPriceMax', e.target.value)}
                     className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium">Weight per unit (kg)</label>
+                  <input type="number" step="0.001" value={form.weightKg} onChange={e => set('weightKg', e.target.value)}
+                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+                    placeholder="e.g. 1 for 1kg, 0.5 for 500g" />
+                  <p className="text-[10px] text-gray-400 mt-0.5">Used to calculate delivery charge (₹149 / ₹249 / 90kg limit)</p>
                 </div>
               </div>
 
