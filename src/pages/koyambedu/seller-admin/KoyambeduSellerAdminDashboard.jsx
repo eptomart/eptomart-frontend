@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
 
-const TABS = ['sellers', 'products'];
+const TABS = ['sellers', 'products', 'categories'];
 
 const UNITS   = ['kg','g','piece','bunch','dozen','litre','pack','leaf'];
 const BADGES  = ['fresh_arrival','low_stock','best_seller','seasonal','organic','festival_special','bulk_deal'];
@@ -43,6 +43,12 @@ export default function KoyambeduSellerAdminDashboard() {
   const [showCreate,  setShowCreate]  = useState(false);
   const [sellerForm,  setSellerForm]  = useState(EMPTY_SELLER);
 
+  // Categories tab
+  const [catList,       setCatList]       = useState([]);
+  const [showCatForm,   setShowCatForm]   = useState(false);
+  const [catForm,       setCatForm]       = useState({ name:'', nameTamil:'', icon:'🌿', description:'' });
+  const [catSaving,     setCatSaving]     = useState(false);
+
   // Product create modal
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [addProdSellerId, setAddProdSellerId] = useState('');
@@ -57,8 +63,9 @@ export default function KoyambeduSellerAdminDashboard() {
 
   useEffect(() => { loadProfile(); }, []);
   useEffect(() => {
-    if (tab === 'sellers') loadSellers();
+    if (tab === 'sellers')    loadSellers();
     if (tab === 'products' && sellerFilter) loadProducts(sellerFilter);
+    if (tab === 'categories') loadCatList();
   }, [tab]);
 
   const loadProfile = async () => {
@@ -93,6 +100,29 @@ export default function KoyambeduSellerAdminDashboard() {
       const { data } = await api.get('/koyambedu/categories');
       setCategories(data.categories || []);
     } catch {}
+  };
+
+  const loadCatList = async () => {
+    try {
+      // Fetch all categories (including pending) visible to this SA
+      const { data } = await api.get('/koyambedu/seller-admin/categories');
+      setCatList(data.categories || []);
+    } catch { toast.error('Failed to load categories'); }
+  };
+
+  const submitCategory = async () => {
+    if (!catForm.name.trim()) { toast.error('Category name is required'); return; }
+    setCatSaving(true);
+    try {
+      await api.post('/koyambedu/seller-admin/categories', catForm);
+      toast.success('Category submitted for admin approval');
+      setShowCatForm(false);
+      setCatForm({ name:'', nameTamil:'', icon:'🌿', description:'' });
+      loadCatList();
+      // Also refresh the categories dropdown used in product form
+      setCategories([]);
+    } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
+    finally { setCatSaving(false); }
   };
 
   // ── Create Seller ─────────────────────────────────────
@@ -202,7 +232,7 @@ export default function KoyambeduSellerAdminDashboard() {
           {TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-xs font-bold px-4 py-1.5 rounded-xl transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white'}`}>
-              {t === 'sellers' ? '🏪 Sellers' : '📦 Products'}
+              {t === 'sellers' ? '🏪 Sellers' : t === 'products' ? '📦 Products' : '🏷️ Categories'}
             </button>
           ))}
         </div>
@@ -329,7 +359,99 @@ export default function KoyambeduSellerAdminDashboard() {
             </div>
           </div>
         )}
+        {/* ── CATEGORIES TAB ── */}
+        {tab === 'categories' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-bold text-gray-700">{catList.length} categor{catList.length !== 1 ? 'ies' : 'y'}</p>
+              <button onClick={() => setShowCatForm(true)}
+                className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-green-700">
+                + Request Category
+              </button>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-100 rounded-xl px-3 py-2 mb-4 text-xs text-yellow-700">
+              ℹ️ New categories need admin approval before they appear in product forms. Approved categories are shown below.
+            </div>
+
+            <div className="space-y-2">
+              {catList.map(c => (
+                <div key={c._id} className="bg-white rounded-2xl border border-green-100 p-3 flex items-center gap-3">
+                  <span className="text-2xl">{c.icon || '🌿'}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-800 text-sm">{c.name}</p>
+                    {c.nameTamil && <p className="text-xs text-gray-400">{c.nameTamil}</p>}
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                    c.status === 'approved' ? 'bg-green-100 text-green-700' :
+                    c.status === 'pending'  ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {c.status}
+                  </span>
+                </div>
+              ))}
+              {catList.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-4xl mb-2">🏷️</p>
+                  <p className="text-gray-500 text-sm">No categories yet</p>
+                  <button onClick={() => setShowCatForm(true)} className="mt-3 bg-green-600 text-white font-bold px-5 py-2 rounded-xl text-sm">
+                    + Request First Category
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
+
+      {/* ══════════════════════════════════════════
+          REQUEST CATEGORY MODAL
+      ══════════════════════════════════════════ */}
+      {showCatForm && (
+        <div className="fixed inset-0 bg-black/50 z-[9995] flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-800">Request New Category</h3>
+              <button onClick={() => setShowCatForm(false)} className="text-gray-400 text-xl">✕</button>
+            </div>
+            <p className="text-xs text-gray-500">The admin will review and approve before it goes live.</p>
+
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Category Name *</label>
+              <input value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Leafy Greens"
+                className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Tamil Name</label>
+              <input value={catForm.nameTamil} onChange={e => setCatForm(f => ({ ...f, nameTamil: e.target.value }))}
+                placeholder="e.g. கீரை வகைகள்"
+                className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Icon (emoji)</label>
+              <input value={catForm.icon} onChange={e => setCatForm(f => ({ ...f, icon: e.target.value }))}
+                placeholder="🌿"
+                className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Description</label>
+              <textarea value={catForm.description} onChange={e => setCatForm(f => ({ ...f, description: e.target.value }))} rows={2}
+                className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none resize-none" />
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setShowCatForm(false)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
+              <button onClick={submitCategory} disabled={catSaving || !catForm.name.trim()}
+                className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
+                {catSaving ? 'Submitting...' : 'Submit for Approval'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════
           CREATE SELLER MODAL
