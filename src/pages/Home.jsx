@@ -354,48 +354,100 @@ function StaticCategoriesGrid() {
   );
 }
 
+// ── Horizontal category shelf ─────────────────────────────────
+function CategoryShelf({ cat, products }) {
+  const navigate = useNavigate();
+  return (
+    <section>
+      <div className="flex items-center justify-between px-4 mb-2">
+        <button
+          onClick={() => navigate(`/shop?category=${cat._id}`)}
+          className="flex items-center gap-2 group active:scale-95 transition-transform">
+          {cat.image?.url
+            ? <img src={cat.image.url} alt="" className="w-6 h-6 rounded-full object-cover" />
+            : <span className="text-lg">{cat.emoji || '🛍️'}</span>}
+          <span className="text-sm font-extrabold text-gray-900 group-hover:text-orange-500 transition-colors">
+            {cat.name}
+          </span>
+          <FiChevronRight size={13} className="text-gray-400 group-hover:text-orange-400" />
+        </button>
+        <button onClick={() => navigate(`/shop?category=${cat._id}`)}
+          className="text-[11px] font-bold text-orange-500 border border-orange-200 px-2.5 py-1 rounded-lg active:scale-95 transition-all">
+          See all
+        </button>
+      </div>
+      <div className="flex gap-3 px-4 overflow-x-auto scrollbar-hide pb-1">
+        {products.map(p => (
+          <div key={p._id} className="flex-shrink-0 w-36">
+            <ProductCard product={p} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ── Main Home ─────────────────────────────────────────────────
 export default function Home() {
   const navigate = useNavigate();
 
-  const [categories,       setCategories]       = useState([]);
-  const [featuredProducts, setFeaturedProducts] = useState([]);
-  const [newArrivals,      setNewArrivals]      = useState([]);
-  const [topRated,         setTopRated]         = useState([]);
-  const [loading,          setLoading]          = useState(true);
+  const [categories,  setCategories]  = useState([]);
+  const [allProducts, setAllProducts] = useState([]);   // featured + recent combined
+  const [loading,     setLoading]     = useState(true);
 
-  // Section tabs: featured | new | top
-  const [activeTab, setActiveTab] = useState('featured');
+  // Lazy-loaded tabs
+  const [tabData,     setTabData]     = useState({});   // { new: [], top: [] }
+  const [tabLoading,  setTabLoading]  = useState({});
+  const [activeTab,   setActiveTab]   = useState('shelves'); // shelves | new | top
 
+  // ── Mount: only 2 API calls ───────────────────────────────
   useEffect(() => {
     (async () => {
       try {
-        const [catRes, featRes, newRes, topRes] = await Promise.all([
-          api.get('/categories'),
-          api.get('/products?featured=true&limit=8'),
-          api.get('/products?limit=8&sort=-createdAt'),
-          api.get('/products?limit=6&sort=-ratings.average'),
+        const [catRes, prodRes] = await Promise.all([
+          api.get('/categories?limit=20'),
+          api.get('/products?limit=24&sort=-createdAt'),
         ]);
         setCategories(catRes.data.categories || []);
-        setFeaturedProducts(featRes.data.products || []);
-        setNewArrivals(newRes.data.products || []);
-        setTopRated(topRes.data.products || []);
+        setAllProducts(prodRes.data.products || []);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     })();
   }, []);
 
+  // ── Lazy-load tab data ────────────────────────────────────
+  const switchTab = async (tabId) => {
+    setActiveTab(tabId);
+    if (tabId === 'shelves' || tabData[tabId]) return;
+    setTabLoading(prev => ({ ...prev, [tabId]: true }));
+    try {
+      const sort = tabId === 'new' ? '-createdAt' : '-ratings.average';
+      const { data } = await api.get(`/products?limit=12&sort=${sort}`);
+      setTabData(prev => ({ ...prev, [tabId]: data.products || [] }));
+    } catch {}
+    finally { setTabLoading(prev => ({ ...prev, [tabId]: false })); }
+  };
+
+  // ── Group products by category ───────────────────────────
+  const catShelves = categories.slice(0, 8).map(cat => {
+    const prods = allProducts.filter(p =>
+      p.category?._id === cat._id || p.category === cat._id
+    );
+    return { cat, products: prods };
+  }).filter(s => s.products.length > 0);
+
+  // Featured = products with discountPrice or high rating
+  const featuredProducts = allProducts.filter(p => p.discountPrice || p.featured).slice(0, 8);
+  const currentTabProducts = activeTab === 'new'
+    ? (tabData.new || [])
+    : (tabData.top || []);
+  const isTabLoading = tabLoading[activeTab];
+
   const TABS = [
-    { id: 'featured', label: '⭐ Featured' },
-    { id: 'new',      label: '🆕 New' },
-    { id: 'top',      label: '🏆 Top Rated' },
+    { id: 'shelves', label: '🏷️ By Category' },
+    { id: 'new',     label: '🆕 New' },
+    { id: 'top',     label: '🏆 Top Rated' },
   ];
-
-  const currentProducts = activeTab === 'featured' ? featuredProducts
-    : activeTab === 'new' ? newArrivals
-    : topRated;
-
-  const isCurrentLoading = loading;
 
   return (
     <>
@@ -464,55 +516,113 @@ export default function Home() {
         )}
 
         {/* ══════════════════════════════════════
-            PRODUCT SECTION TABS
+            FLASH DEALS
+        ══════════════════════════════════════ */}
+        <div className="pb-5">
+          <FlashBar products={featuredProducts} />
+        </div>
+
+        <Divider />
+
+        {/* ══════════════════════════════════════
+            BROWSE TABS
         ══════════════════════════════════════ */}
         <>
-          {/* Flash deals */}
-          <div className="pb-5">
-            <FlashBar products={featuredProducts} />
+          {/* Sticky tab bar */}
+          <div className="sticky top-[60px] z-30 bg-[#f5f5f7] px-4 pt-3 pb-2"
+            style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+              {TABS.map(tab => (
+                <button key={tab.id}
+                  onClick={() => switchTab(tab.id)}
+                  className={`flex-shrink-0 text-xs font-bold px-4 py-2 rounded-xl transition-all active:scale-95 border
+                    ${activeTab === tab.id
+                      ? 'bg-gray-900 text-white border-gray-900 shadow-md'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                    }`}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <Divider />
-
-          {/* Tab selector */}
-          <div className="px-4 pt-4 pb-3 flex gap-2">
-            {TABS.map(tab => (
-              <button key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`text-xs font-bold px-4 py-2 rounded-xl transition-all active:scale-95 border
-                  ${activeTab === tab.id
-                    ? 'bg-gray-900 text-white border-gray-900 shadow-md'
-                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                  }`}>
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Product grid */}
-          <div className="px-4 pb-6">
-            {isCurrentLoading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {[...Array(8)].map((_, i) => <SkeletonCard key={i} />)}
-              </div>
-            ) : currentProducts.length ? (
-              <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {currentProducts.map(p => <ProductCard key={p._id} product={p} />)}
+          {/* ── By Category shelves ── */}
+          {activeTab === 'shelves' && (
+            <div className="pt-2 pb-6 space-y-6">
+              {loading ? (
+                // Skeleton shelves
+                [0,1,2].map(i => (
+                  <div key={i} className="px-4 space-y-2 animate-pulse">
+                    <div className="h-4 w-32 bg-gray-200 rounded-lg" />
+                    <div className="flex gap-3">
+                      {[0,1,2].map(j => (
+                        <div key={j} className="flex-shrink-0 w-36 bg-white rounded-2xl overflow-hidden border border-gray-100">
+                          <div className="aspect-square bg-gray-100" />
+                          <div className="p-3 space-y-2">
+                            <div className="h-3 bg-gray-100 rounded w-3/4" />
+                            <div className="h-4 bg-gray-100 rounded w-1/2" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : catShelves.length > 0 ? (
+                catShelves.map(({ cat, products }) => (
+                  <CategoryShelf key={cat._id} cat={cat} products={products} />
+                ))
+              ) : (
+                // Fallback: show all products in a grid if no category grouping
+                <div className="px-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-extrabold text-gray-800">All Products</h2>
+                    <Link to="/shop" className="text-xs font-bold text-orange-500">See all</Link>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {allProducts.slice(0, 12).map(p => <ProductCard key={p._id} product={p} />)}
+                  </div>
                 </div>
-                <div className="mt-4 text-center">
-                  <Link to="/shop" className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 font-bold text-sm px-6 py-2.5 rounded-xl hover:border-orange-300 hover:text-orange-600 transition-all">
-                    See all products <FiArrowRight size={14} />
+              )}
+
+              {/* See all categories CTA */}
+              {!loading && (
+                <div className="px-4 text-center">
+                  <Link to="/shop"
+                    className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 font-bold text-sm px-6 py-2.5 rounded-xl hover:border-orange-300 hover:text-orange-600 transition-all">
+                    Browse all products <FiArrowRight size={14} />
                   </Link>
                 </div>
-              </>
-            ) : (
-              <div className="text-center py-16">
-                <p className="text-5xl mb-3">📦</p>
-                <p className="text-gray-400">No products yet — check back soon!</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
+
+          {/* ── New / Top Rated tab ── */}
+          {activeTab !== 'shelves' && (
+            <div className="px-4 pt-3 pb-6">
+              {isTabLoading ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {[...Array(8)].map((_, i) => <SkeletonCard key={i} />)}
+                </div>
+              ) : currentTabProducts.length ? (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {currentTabProducts.map(p => <ProductCard key={p._id} product={p} />)}
+                  </div>
+                  <div className="mt-4 text-center">
+                    <Link to={activeTab === 'new' ? '/shop?sort=-createdAt' : '/shop?sort=-ratings.average'}
+                      className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 font-bold text-sm px-6 py-2.5 rounded-xl hover:border-orange-300 hover:text-orange-600 transition-all">
+                      See all <FiArrowRight size={14} />
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-16">
+                  <p className="text-5xl mb-3">📦</p>
+                  <p className="text-gray-400">No products yet — check back soon!</p>
+                </div>
+              )}
+            </div>
+          )}
 
           <Divider />
 
