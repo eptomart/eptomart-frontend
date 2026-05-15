@@ -215,10 +215,9 @@ function FlashBar({ products }) {
   );
 }
 
-// ── Categories strip (DB categories — navigates to shop page) ──
+// ── Categories pill strip — navigates to /shop/:slug ──────────
 function CategoriesStrip({ categories }) {
   const navigate = useNavigate();
-  const icons = ['🥗','🥛','🏠','👕','📱','⚽','🎨','💊','🛠️','🐾','📚','🍜'];
   return (
     <div className="px-4">
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
@@ -226,19 +225,16 @@ function CategoriesStrip({ categories }) {
           className="flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 whitespace-nowrap border bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-100">
           🛒 All
         </button>
-        {categories.slice(0, 14).map((cat, i) => {
-          const imgEl = cat.image?.url
-            ? <img src={cat.image.url} alt="" className="w-4 h-4 object-cover rounded-full flex-shrink-0" />
-            : <span className="flex-shrink-0">{icons[i % icons.length]}</span>;
-          return (
-            <button key={cat._id}
-              onClick={() => navigate(`/shop?category=${cat._id}`)}
-              className="flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 whitespace-nowrap border bg-white text-gray-600 border-gray-200 hover:border-orange-300 hover:text-orange-600">
-              {imgEl}
-              {cat.name}
-            </button>
-          );
-        })}
+        {categories.slice(0, 16).map(cat => (
+          <button key={cat._id}
+            onClick={() => navigate(`/shop/${cat.slug}`)}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 whitespace-nowrap border bg-white text-gray-600 border-gray-200 hover:border-orange-300 hover:text-orange-600">
+            {cat.image?.url
+              ? <img src={cat.image.url} alt="" className="w-4 h-4 object-cover rounded-full flex-shrink-0" />
+              : null}
+            {cat.name}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -498,24 +494,27 @@ function MobileSearchBar() {
   );
 }
 
-// ── Static non-perishable category grid ──────────────────────
-const STATIC_CATS = [
-  { emoji: '📱', label: 'Electronics',     slug: 'electronics' },
-  { emoji: '👕', label: 'Fashion',          slug: 'fashion' },
-  { emoji: '🏠', label: 'Home & Kitchen',   slug: 'home-kitchen' },
-  { emoji: '💄', label: 'Beauty',           slug: 'beauty' },
-  { emoji: '⚽', label: 'Sports',           slug: 'sports' },
-  { emoji: '📚', label: 'Books',            slug: 'books' },
-  { emoji: '🧸', label: 'Toys & Kids',      slug: 'toys-kids' },
-  { emoji: '🐾', label: 'Pet Supplies',     slug: 'pet-supplies' },
-  { emoji: '🔧', label: 'Tools & DIY',      slug: 'tools-diy' },
-  { emoji: '🎨', label: 'Art & Craft',      slug: 'art-craft' },
-  { emoji: '🌿', label: 'Health & Wellness',slug: 'health-wellness' },
-  { emoji: '🧴', label: 'Personal Care',    slug: 'personal-care' },
-];
+// ── DB Categories grid — shows real admin-managed categories ─
+const CAT_FALLBACK_EMOJIS = ['🛍️','📦','🎁','🧩','🖼️','🪴','🧺','🔑','💡','🪞','🧲','🎯','🪀','🖊️','🗂️','🧳'];
 
-function StaticCategoriesGrid() {
+function DBCategoriesGrid({ categories, loading }) {
   const navigate = useNavigate();
+  if (loading) {
+    return (
+      <section className="px-4">
+        <div className="h-5 w-40 bg-gray-200 rounded-lg mb-3 animate-pulse" />
+        <div className="grid grid-cols-4 gap-2.5">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl py-4 border border-gray-100 animate-pulse">
+              <div className="w-8 h-8 bg-gray-100 rounded-xl mx-auto mb-2" />
+              <div className="h-2.5 bg-gray-100 rounded w-3/4 mx-auto" />
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+  if (!categories.length) return null;
   return (
     <section className="px-4">
       <div className="flex items-center justify-between mb-3">
@@ -525,12 +524,18 @@ function StaticCategoriesGrid() {
         </Link>
       </div>
       <div className="grid grid-cols-4 gap-2.5">
-        {STATIC_CATS.map(cat => (
-          <button key={cat.slug}
-            onClick={() => navigate(`/shop?category=${cat.slug}`)}
+        {categories.slice(0, 12).map((cat, i) => (
+          <button key={cat._id}
+            onClick={() => navigate(`/shop/${cat.slug}`)}
             className="flex flex-col items-center gap-1.5 bg-white rounded-2xl py-3 px-1 border border-gray-100 shadow-sm active:scale-95 transition-all hover:border-orange-200 hover:shadow-md group">
-            <span className="text-2xl group-hover:scale-110 transition-transform">{cat.emoji}</span>
-            <span className="text-[10px] font-bold text-gray-600 text-center leading-tight">{cat.label}</span>
+            {cat.image?.url
+              ? <img src={cat.image.url} alt={cat.name}
+                  className="w-9 h-9 rounded-xl object-cover group-hover:scale-110 transition-transform" />
+              : <span className="text-2xl group-hover:scale-110 transition-transform">
+                  {CAT_FALLBACK_EMOJIS[i % CAT_FALLBACK_EMOJIS.length]}
+                </span>
+            }
+            <span className="text-[10px] font-bold text-gray-600 text-center leading-tight line-clamp-2 px-1">{cat.name}</span>
           </button>
         ))}
       </div>
@@ -541,21 +546,22 @@ function StaticCategoriesGrid() {
 // ── Horizontal category shelf ─────────────────────────────────
 function CategoryShelf({ cat, products }) {
   const navigate = useNavigate();
+  const catPath = `/shop/${cat.slug}`;
   return (
     <section>
       <div className="flex items-center justify-between px-4 mb-2">
         <button
-          onClick={() => navigate(`/shop?category=${cat._id}`)}
+          onClick={() => navigate(catPath)}
           className="flex items-center gap-2 group active:scale-95 transition-transform">
           {cat.image?.url
             ? <img src={cat.image.url} alt="" className="w-6 h-6 rounded-full object-cover" />
-            : <span className="text-lg">{cat.emoji || '🛍️'}</span>}
+            : <span className="text-lg">🛍️</span>}
           <span className="text-sm font-extrabold text-gray-900 group-hover:text-orange-500 transition-colors">
             {cat.name}
           </span>
           <FiChevronRight size={13} className="text-gray-400 group-hover:text-orange-400" />
         </button>
-        <button onClick={() => navigate(`/shop?category=${cat._id}`)}
+        <button onClick={() => navigate(catPath)}
           className="text-[11px] font-bold text-orange-500 border border-orange-200 px-2.5 py-1 rounded-lg active:scale-95 transition-all">
           See all
         </button>
@@ -649,25 +655,17 @@ export default function Home() {
         </div>
 
         {/* ══════════════════════════════════════
-            STATIC CATEGORIES GRID
+            DB CATEGORIES GRID (admin-managed)
         ══════════════════════════════════════ */}
-        <div className="pb-4">
-          <StaticCategoriesGrid />
+        <div className="pb-3">
+          <DBCategoriesGrid categories={categories} loading={loading} />
         </div>
 
-        <Divider />
-
         {/* ══════════════════════════════════════
-            DB CATEGORY PILLS (scroll → navigate)
+            CATEGORY PILL STRIP (horizontal scroll)
         ══════════════════════════════════════ */}
         {categories.length > 0 && (
-          <div className="py-3">
-            <div className="flex items-center justify-between px-4 mb-2">
-              <h2 className="text-sm font-extrabold text-gray-800">Our Departments</h2>
-              <Link to="/shop" className="text-xs font-bold text-orange-500 flex items-center gap-0.5">
-                See all <FiChevronRight size={12} />
-              </Link>
-            </div>
+          <div className="pb-3">
             <CategoriesStrip categories={categories} />
           </div>
         )}
