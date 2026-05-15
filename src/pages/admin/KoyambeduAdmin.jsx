@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
@@ -24,6 +25,7 @@ const SELLER_STATUS_COLOR = {
 
 export default function KoyambeduAdmin() {
   const navigate = useNavigate();
+  const { isSuperAdmin } = useAuth();
   const [tab,     setTab]     = useState('dashboard');
   const [stats,   setStats]   = useState(null);
   const [orders,  setOrders]  = useState([]);
@@ -347,7 +349,8 @@ export default function KoyambeduAdmin() {
             </div>
 
             <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 mb-4 text-xs text-blue-700 leading-relaxed">
-              🔒 SellerAdmins can create sellers and update product details. They cannot approve sellers (SuperAdmin only) and cannot see buyer address or phone.
+              🔒 SellerAdmins can create sellers and update product prices/stock. They cannot approve sellers and cannot see buyer info.
+              {!isSuperAdmin && <span className="block mt-1 text-orange-600 font-semibold">⚠️ Approving SellerAdmins requires SuperAdmin access.</span>}
             </div>
 
             <div className="space-y-3">
@@ -365,18 +368,24 @@ export default function KoyambeduAdmin() {
                     </span>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    {sa.status === 'pending_review' && (
+                    {isSuperAdmin ? (
                       <>
-                        <button onClick={() => saAction(sa._id, 'approve')} className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl">✓ Approve</button>
-                        <button onClick={() => { setRejectModal({ id: sa._id, type: 'sa' }); setRejectReason(''); }}
-                          className="bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl">✕ Reject</button>
+                        {sa.status === 'pending_review' && (
+                          <>
+                            <button onClick={() => saAction(sa._id, 'approve')} className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl">✓ Approve</button>
+                            <button onClick={() => { setRejectModal({ id: sa._id, type: 'sa' }); setRejectReason(''); }}
+                              className="bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl">✕ Reject</button>
+                          </>
+                        )}
+                        {sa.status === 'approved' && (
+                          <button onClick={() => saAction(sa._id, 'suspend')} className="text-xs font-bold px-3 py-1.5 rounded-xl border border-orange-300 text-orange-600 hover:bg-orange-50">Suspend</button>
+                        )}
+                        {(sa.status === 'suspended' || sa.status === 'rejected') && (
+                          <button onClick={() => saAction(sa._id, 'approve')} className="text-xs font-bold px-3 py-1.5 rounded-xl border border-green-300 text-green-600 hover:bg-green-50">Re-approve</button>
+                        )}
                       </>
-                    )}
-                    {sa.status === 'approved' && (
-                      <button onClick={() => saAction(sa._id, 'suspend')} className="text-xs font-bold px-3 py-1.5 rounded-xl border border-orange-300 text-orange-600 hover:bg-orange-50">Suspend</button>
-                    )}
-                    {(sa.status === 'suspended' || sa.status === 'rejected') && (
-                      <button onClick={() => saAction(sa._id, 'approve')} className="text-xs font-bold px-3 py-1.5 rounded-xl border border-green-300 text-green-600 hover:bg-green-50">Re-approve</button>
+                    ) : (
+                      <span className="text-[10px] text-gray-400 italic">Approval requires SuperAdmin</span>
                     )}
                   </div>
                 </div>
