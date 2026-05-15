@@ -8,6 +8,7 @@ import { Helmet } from 'react-helmet-async';
 import { FiMapPin, FiSearch, FiStar, FiChevronRight, FiX } from 'react-icons/fi';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
+import BottomNav from '../../components/common/BottomNav';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
@@ -184,7 +185,7 @@ export default function UzhavarHome() {
       </Helmet>
       <Navbar />
 
-      <main className="min-h-screen bg-gradient-to-b from-green-50 to-white">
+      <main className="min-h-screen bg-gradient-to-b from-green-50 to-white pb-24 md:pb-0">
         {/* Hero */}
         <div className="bg-gradient-to-br from-green-800 via-green-700 to-lime-600 text-white px-4 pt-8 pb-14 text-center relative overflow-hidden">
           <div className="relative">
@@ -381,7 +382,8 @@ export default function UzhavarHome() {
           </div>
         </div>
       </main>
-      <Footer />
+      <Footer className="hidden md:block" />
+      <BottomNav />
     </>
   );
 }

@@ -3,17 +3,16 @@
 // Fixed glass bottom nav · Products first · Scroll only products
 // ============================================
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
-  FiArrowRight, FiSearch, FiShoppingCart,
-  FiZap, FiStar, FiChevronRight, FiHome,
-  FiGrid, FiPackage,
+  FiArrowRight, FiSearch,
+  FiZap, FiChevronRight,
 } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
+import BottomNav from '../components/common/BottomNav';
 import ProductCard from '../components/product/ProductCard';
 import { ProductGridSkeleton } from '../components/common/Loader';
-import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 
 // ── Countdown ────────────────────────────────────────────────
@@ -215,70 +214,6 @@ const Divider = () => (
   </div>
 );
 
-// ── Bottom Nav ────────────────────────────────────────────────
-function BottomNav() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { isLoggedIn } = useAuth();
-
-  const tabs = [
-    { id: 'home',     icon: FiHome,    label: 'Home',     path: '/' },
-    { id: 'uzhavar',  emoji: '🌾',    label: 'Uzhavar',  path: '/uzhavar' },
-    { id: 'koyambedu',emoji: '🥬',    label: 'Koyambedu',path: '/koyambedu' },
-    { id: 'categories',icon: FiGrid,   label: 'Categories',path: '/shop' },
-  ];
-
-  const active = (path) => {
-    if (path === '/') return location.pathname === '/';
-    return location.pathname.startsWith(path);
-  };
-
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden safe-bottom">
-      {/* frosted glass */}
-      <div
-        className="border-t border-gray-200/60 px-1 pt-2 pb-3"
-        style={{
-          background: 'rgba(255,255,255,0.88)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-          boxShadow: '0 -8px 32px rgba(0,0,0,0.08)',
-        }}
-      >
-        <div className="flex items-center justify-around">
-          {tabs.map(tab => {
-            const isActive = active(tab.path);
-            return (
-              <button key={tab.id}
-                onClick={() => navigate(tab.path)}
-                className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all active:scale-90 relative">
-                {/* Active indicator dot */}
-                {isActive && (
-                  <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-orange-500" />
-                )}
-                <div className={`w-10 h-9 flex items-center justify-center rounded-xl transition-all
-                  ${isActive ? 'bg-orange-50' : ''}`}>
-                  {tab.emoji ? (
-                    <span className={`text-xl transition-all ${isActive ? 'scale-110' : 'opacity-60'}`}>
-                      {tab.emoji}
-                    </span>
-                  ) : (
-                    <tab.icon size={20}
-                      className={`transition-all ${isActive ? 'text-orange-500 scale-110' : 'text-gray-400'}`} />
-                  )}
-                </div>
-                <span className={`text-[10px] font-bold transition-all
-                  ${isActive ? 'text-orange-500' : 'text-gray-400'}`}>
-                  {tab.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </nav>
-  );
-}
 
 // ── Promo banner carousel ─────────────────────────────────────
 const PROMOS = [
