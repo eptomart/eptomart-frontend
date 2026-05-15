@@ -8,8 +8,10 @@ import toast from 'react-hot-toast';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user,               setUser]               = useState(null);
+  const [loading,            setLoading]            = useState(true);
+  const [isKoyambeduSeller,  setIsKoyambeduSeller]  = useState(false);
+  const [isKoyambeduSA,      setIsKoyambeduSA]      = useState(false);
 
   // Load user on mount
   useEffect(() => {
@@ -21,6 +23,17 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const checkKoyambeduRoles = async () => {
+    try {
+      const { data } = await api.get('/koyambedu/seller/profile');
+      if (data.seller?.status === 'approved') setIsKoyambeduSeller(true);
+    } catch { setIsKoyambeduSeller(false); }
+    try {
+      const { data } = await api.get('/koyambedu/seller-admin/profile');
+      if (data.sellerAdmin?.status === 'approved') setIsKoyambeduSA(true);
+    } catch { setIsKoyambeduSA(false); }
+  };
+
   const loadUser = async () => {
     try {
       const { data } = await api.get('/auth/me');
@@ -29,9 +42,12 @@ export const AuthProvider = ({ children }) => {
       if (data.token) {
         localStorage.setItem('eptomart_token', data.token);
       }
+      checkKoyambeduRoles();
     } catch {
       localStorage.removeItem('eptomart_token');
       setUser(null);
+      setIsKoyambeduSeller(false);
+      setIsKoyambeduSA(false);
     } finally {
       setLoading(false);
     }
@@ -73,10 +89,10 @@ export const AuthProvider = ({ children }) => {
   const isSuperAdmin = user?.role === 'superAdmin';
   const isAdmin      = user?.role === 'admin' || isSuperAdmin;
   const isSeller     = user?.role === 'seller';
-  const isLoggedIn = !!user;
+  const isLoggedIn   = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, loading, isLoggedIn, isAdmin, isSuperAdmin, isSeller, sendOtp, verifyOtp, logout, updateProfile, loadUser }}>
+    <AuthContext.Provider value={{ user, loading, isLoggedIn, isAdmin, isSuperAdmin, isSeller, isKoyambeduSeller, isKoyambeduSA, sendOtp, verifyOtp, logout, updateProfile, loadUser }}>
       {children}
     </AuthContext.Provider>
   );

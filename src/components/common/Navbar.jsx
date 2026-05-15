@@ -11,7 +11,7 @@ import api from '../../utils/api';
 import EptomartLogo from './EptomartLogo';
 
 export default function Navbar() {
-  const { user, isLoggedIn, isAdmin, isSeller, isSuperAdmin, logout } = useAuth();
+  const { user, isLoggedIn, isAdmin, isSeller, isSuperAdmin, isKoyambeduSeller, isKoyambeduSA, logout } = useAuth();
   const { cartCount, setIsCartOpen } = useCart();
   const { wishlistCount } = useWishlist();
   const [searchQuery, setSearchQuery] = useState('');
@@ -175,6 +175,16 @@ export default function Navbar() {
                     {(isSeller || isSuperAdmin) && (
                       <Link to="/seller/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm font-medium" style={{color:'#f4941c'}} onClick={() => setShowUserMenu(false)}>
                         <FiGrid size={16} /> Seller Portal
+                      </Link>
+                    )}
+                    {isKoyambeduSeller && (
+                      <Link to="/koyambedu/seller" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-green-50 text-sm font-medium text-green-700" onClick={() => setShowUserMenu(false)}>
+                        <span className="text-base leading-none">🥬</span> Koyambedu Seller
+                      </Link>
+                    )}
+                    {isKoyambeduSA && (
+                      <Link to="/koyambedu/seller-admin" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-green-50 text-sm font-medium text-green-700" onClick={() => setShowUserMenu(false)}>
+                        <span className="text-base leading-none">🏪</span> Koyambedu Admin
                       </Link>
                     )}
                     {isAdmin && (
