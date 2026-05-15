@@ -6,6 +6,15 @@ import toast from 'react-hot-toast';
 
 const TAB_LIST = ['dashboard', 'orders', 'sellers', 'seller-admins', 'categories'];
 
+const UNITS_KBD  = ['kg','g','piece','bunch','dozen','litre','pack','leaf'];
+const BADGES_KBD = ['fresh_arrival','low_stock','best_seller','seasonal','organic','festival_special','bulk_deal'];
+const EMPTY_KBD_PRODUCT = {
+  categoryId:'', name:'', nameTamil:'', unit:'kg', unitLabel:'kg',
+  currentPrice:'', stockQty:0, minQty:0.5, maxQty:50, weightKg:1,
+  sameDayCutoff:'10:00', isSameDay:true, isNextDay:true, isAvailable:true,
+  badges:[], description:'',
+};
+
 const STATUS_OPTIONS = [
   'placed','pending_confirmation','price_revision_pending','confirmed',
   'packing','dispatched','delivered','cancelled',
@@ -57,6 +66,13 @@ export default function KoyambeduAdmin() {
   // Reject reason modal
   const [rejectModal, setRejectModal] = useState(null); // { id, type: 'seller'|'sa' }
   const [rejectReason, setRejectReason] = useState('');
+
+  // Add Product modal (admin adds product for any seller)
+  const [showAddProduct,   setShowAddProduct]   = useState(false);
+  const [addProdSeller,    setAddProdSeller]     = useState(null); // full seller object
+  const [kbdCategories,    setKbdCategories]     = useState([]);
+  const [kbdProdForm,      setKbdProdForm]       = useState(EMPTY_KBD_PRODUCT);
+  const [addProdSaving,    setAddProdSaving]      = useState(false);
 
   useEffect(() => { loadTab(tab); }, [tab]);
 
@@ -166,6 +182,31 @@ export default function KoyambeduAdmin() {
       toast.success(approve ? 'Category approved' : 'Category rejected');
       loadTab('categories');
     } catch { toast.error('Failed'); }
+  };
+
+  const openAddProduct = async (seller) => {
+    setAddProdSeller(seller);
+    setKbdProdForm(EMPTY_KBD_PRODUCT);
+    if (!kbdCategories.length) {
+      try {
+        const { data } = await api.get('/koyambedu/categories');
+        setKbdCategories(data.categories || []);
+      } catch {}
+    }
+    setShowAddProduct(true);
+  };
+
+  const submitAddProduct = async () => {
+    if (!kbdProdForm.categoryId || !kbdProdForm.name || !kbdProdForm.currentPrice) {
+      toast.error('Category, name and price are required'); return;
+    }
+    setAddProdSaving(true);
+    try {
+      await api.post(`/koyambedu/admin/sellers/${addProdSeller._id}/products`, kbdProdForm);
+      toast.success('Product added!');
+      setShowAddProduct(false);
+    } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
+    finally { setAddProdSaving(false); }
   };
 
   return (
@@ -310,7 +351,10 @@ export default function KoyambeduAdmin() {
                       </>
                     )}
                     {s.status === 'approved' && (
-                      <button onClick={() => sellerAction(s._id, 'suspend')} className="text-xs font-bold px-3 py-1.5 rounded-xl border border-orange-300 text-orange-600 hover:bg-orange-50">Suspend</button>
+                      <>
+                        <button onClick={() => sellerAction(s._id, 'suspend')} className="text-xs font-bold px-3 py-1.5 rounded-xl border border-orange-300 text-orange-600 hover:bg-orange-50">Suspend</button>
+                        <button onClick={() => openAddProduct(s)} className="text-xs font-bold px-3 py-1.5 rounded-xl bg-green-600 text-white hover:bg-green-700">+ Add Product</button>
+                      </>
                     )}
                     {s.status === 'suspended' && (
                       <button onClick={() => sellerAction(s._id, 'unsuspend')} className="text-xs font-bold px-3 py-1.5 rounded-xl border border-green-300 text-green-600 hover:bg-green-50">Unsuspend</button>
@@ -529,6 +573,112 @@ export default function KoyambeduAdmin() {
                 className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
                 {saCreating ? 'Creating...' : 'Create'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Product modal (admin) ── */}
+      {showAddProduct && addProdSeller && (
+        <div className="fixed inset-0 bg-black/50 z-[9995] overflow-y-auto">
+          <div className="min-h-screen flex items-end sm:items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-gray-800">Add Product</h3>
+                  <p className="text-xs text-gray-500">For: {addProdSeller.businessName} · {addProdSeller.ownerName}</p>
+                </div>
+                <button onClick={() => setShowAddProduct(false)} className="text-gray-400 text-xl">✕</button>
+              </div>
+
+              <div>
+                <label className="text-xs text-gray-500 font-medium">Category *</label>
+                <select value={kbdProdForm.categoryId} onChange={e => setKbdProdForm(f => ({ ...f, categoryId: e.target.value }))}
+                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                  <option value="">Select category</option>
+                  {kbdCategories.map(c => <option key={c._id} value={c._id}>{c.icon} {c.name}</option>)}
+                </select>
+              </div>
+
+              {[['name','Product Name *'],['nameTamil','Tamil Name'],['description','Description']].map(([k,label]) => (
+                <div key={k}>
+                  <label className="text-xs text-gray-500 font-medium">{label}</label>
+                  {k === 'description' ? (
+                    <textarea value={kbdProdForm[k]} onChange={e => setKbdProdForm(f => ({ ...f, [k]: e.target.value }))} rows={2}
+                      className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none resize-none" />
+                  ) : (
+                    <input value={kbdProdForm[k]} onChange={e => setKbdProdForm(f => ({ ...f, [k]: e.target.value }))}
+                      className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                  )}
+                </div>
+              ))}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 font-medium">Unit</label>
+                  <select value={kbdProdForm.unit} onChange={e => setKbdProdForm(f => ({ ...f, unit: e.target.value, unitLabel: e.target.value }))}
+                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none">
+                    {UNITS_KBD.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium">Unit Label</label>
+                  <input value={kbdProdForm.unitLabel} onChange={e => setKbdProdForm(f => ({ ...f, unitLabel: e.target.value }))}
+                    placeholder="e.g. 500g, 1 bunch"
+                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium">Price (₹) *</label>
+                  <input type="number" value={kbdProdForm.currentPrice} onChange={e => setKbdProdForm(f => ({ ...f, currentPrice: e.target.value }))}
+                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium">Stock Qty</label>
+                  <input type="number" value={kbdProdForm.stockQty} onChange={e => setKbdProdForm(f => ({ ...f, stockQty: e.target.value }))}
+                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium">Weight per unit (kg)</label>
+                  <input type="number" step="0.001" value={kbdProdForm.weightKg} onChange={e => setKbdProdForm(f => ({ ...f, weightKg: e.target.value }))}
+                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium">Same Day Cutoff</label>
+                  <input type="time" value={kbdProdForm.sameDayCutoff} onChange={e => setKbdProdForm(f => ({ ...f, sameDayCutoff: e.target.value }))}
+                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-gray-500 font-medium">Badges</label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {BADGES_KBD.map(b => (
+                    <button key={b} type="button"
+                      onClick={() => setKbdProdForm(f => ({ ...f, badges: f.badges.includes(b) ? f.badges.filter(x => x !== b) : [...f.badges, b] }))}
+                      className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border transition ${kbdProdForm.badges.includes(b) ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                      {b.replace(/_/g,' ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {[['isSameDay','Same Day'],['isNextDay','Next Day'],['isAvailable','In Stock']].map(([k,label]) => (
+                  <label key={k} className="flex items-center gap-2 cursor-pointer bg-gray-50 rounded-xl px-3 py-2">
+                    <input type="checkbox" checked={kbdProdForm[k]} onChange={e => setKbdProdForm(f => ({ ...f, [k]: e.target.checked }))} className="w-4 h-4 accent-green-600" />
+                    <span className="text-xs text-gray-700 font-medium">{label}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setShowAddProduct(false)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
+                <button onClick={submitAddProduct}
+                  disabled={addProdSaving || !kbdProdForm.categoryId || !kbdProdForm.name || !kbdProdForm.currentPrice}
+                  className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
+                  {addProdSaving ? 'Adding...' : 'Add Product'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

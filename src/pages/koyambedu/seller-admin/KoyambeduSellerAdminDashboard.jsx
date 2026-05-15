@@ -5,6 +5,9 @@ import toast from 'react-hot-toast';
 
 const TABS = ['sellers', 'products'];
 
+const UNITS   = ['kg','g','piece','bunch','dozen','litre','pack','leaf'];
+const BADGES  = ['fresh_arrival','low_stock','best_seller','seasonal','organic','festival_special','bulk_deal'];
+
 const STATUS_COLOR = {
   pending_review: 'bg-yellow-100 text-yellow-700',
   approved:       'bg-green-100 text-green-700',
@@ -15,6 +18,17 @@ const STATUS_COLOR = {
 const EMPTY_SELLER = {
   ownerName: '', businessName: '', stallNumber: '', marketSection: '',
   contactPhone: '', contactEmail: '', description: '',
+  // account creation (optional)
+  createAccount: false, accountPhone: '', accountEmail: '',
+};
+
+const EMPTY_PRODUCT = {
+  categoryId: '', name: '', nameTamil: '', unit: 'kg', unitLabel: 'kg',
+  currentPrice: '', stockQty: 0, minQty: 0.5, maxQty: 50,
+  weightKg: 1, marketPriceMin: '', marketPriceMax: '',
+  freshArrivalTime: '', sameDayCutoff: '10:00',
+  isSameDay: true, isNextDay: true, isAvailable: true,
+  badges: [], description: '',
 };
 
 export default function KoyambeduSellerAdminDashboard() {
@@ -26,19 +40,22 @@ export default function KoyambeduSellerAdminDashboard() {
   const [saving,   setSaving]   = useState(false);
 
   // Seller create modal
-  const [showCreate, setShowCreate] = useState(false);
-  const [sellerForm, setSellerForm] = useState(EMPTY_SELLER);
+  const [showCreate,  setShowCreate]  = useState(false);
+  const [sellerForm,  setSellerForm]  = useState(EMPTY_SELLER);
+
+  // Product create modal
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [addProdSellerId, setAddProdSellerId] = useState('');
+  const [prodCreateForm,  setProdCreateForm]  = useState(EMPTY_PRODUCT);
+  const [categories,      setCategories]      = useState([]);
 
   // Product edit modal
-  const [products,    setProducts]    = useState([]);
-  const [sellerFilter,setSellerFilter]= useState('');
-  const [editProduct, setEditProduct] = useState(null);
-  const [prodForm,    setProdForm]    = useState({});
+  const [products,     setProducts]     = useState([]);
+  const [sellerFilter, setSellerFilter] = useState('');
+  const [editProduct,  setEditProduct]  = useState(null);
+  const [prodForm,     setProdForm]     = useState({});
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
+  useEffect(() => { loadProfile(); }, []);
   useEffect(() => {
     if (tab === 'sellers') loadSellers();
     if (tab === 'products' && sellerFilter) loadProducts(sellerFilter);
@@ -48,7 +65,7 @@ export default function KoyambeduSellerAdminDashboard() {
     try {
       const { data } = await api.get('/koyambedu/seller-admin/profile');
       setProfile(data.sellerAdmin);
-      if (data.sellerAdmin.status !== 'approved') return; // blocked below
+      if (data.sellerAdmin.status !== 'approved') return;
       loadSellers();
     } catch {
       toast.error('Not authorised as Seller Admin');
@@ -70,6 +87,15 @@ export default function KoyambeduSellerAdminDashboard() {
     } catch { toast.error('Failed to load products'); }
   };
 
+  const loadCategories = async () => {
+    if (categories.length) return;
+    try {
+      const { data } = await api.get('/koyambedu/categories');
+      setCategories(data.categories || []);
+    } catch {}
+  };
+
+  // ── Create Seller ─────────────────────────────────────
   const createSeller = async () => {
     if (!sellerForm.ownerName || !sellerForm.businessName || !sellerForm.contactPhone) {
       toast.error('Owner name, business name and phone are required'); return;
@@ -85,16 +111,39 @@ export default function KoyambeduSellerAdminDashboard() {
     finally { setSaving(false); }
   };
 
+  // ── Add Product (for a seller) ────────────────────────
+  const openAddProduct = async (sellerId) => {
+    setAddProdSellerId(sellerId);
+    setProdCreateForm(EMPTY_PRODUCT);
+    await loadCategories();
+    setShowAddProduct(true);
+  };
+
+  const submitAddProduct = async () => {
+    if (!prodCreateForm.categoryId || !prodCreateForm.name || !prodCreateForm.currentPrice) {
+      toast.error('Category, name and price are required'); return;
+    }
+    setSaving(true);
+    try {
+      await api.post(`/koyambedu/seller-admin/sellers/${addProdSellerId}/products`, prodCreateForm);
+      toast.success('Product added!');
+      setShowAddProduct(false);
+      if (sellerFilter === addProdSellerId) loadProducts(addProdSellerId);
+    } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
+    finally { setSaving(false); }
+  };
+
+  // ── Edit Product ──────────────────────────────────────
   const openEditProduct = (p) => {
     setEditProduct(p);
     setProdForm({
-      currentPrice:    p.currentPrice,
-      stockQty:        p.stockQty,
-      minQty:          p.minQty,
-      isAvailable:     p.isAvailable,
-      isSameDay:       p.isSameDay,
-      isNextDay:       p.isNextDay,
-      sameDayCutoff:   p.sameDayCutoff || '10:00',
+      currentPrice:  p.currentPrice,
+      stockQty:      p.stockQty,
+      minQty:        p.minQty,
+      isAvailable:   p.isAvailable,
+      isSameDay:     p.isSameDay,
+      isNextDay:     p.isNextDay,
+      sameDayCutoff: p.sameDayCutoff || '10:00',
     });
   };
 
@@ -109,15 +158,14 @@ export default function KoyambeduSellerAdminDashboard() {
     finally { setSaving(false); }
   };
 
+  // ─────────────────────────────────────────────────────
   if (loading) return (
     <div className="min-h-screen bg-green-50 flex items-center justify-center">
       <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
     </div>
   );
-
   if (!profile) return null;
 
-  // Not approved yet
   if (profile.status !== 'approved') return (
     <div className="min-h-screen bg-green-50 flex flex-col items-center justify-center px-6 gap-4">
       <p className="text-5xl">⏳</p>
@@ -150,8 +198,6 @@ export default function KoyambeduSellerAdminDashboard() {
             Seller Admin
           </span>
         </div>
-
-        {/* Tabs */}
         <div className="flex gap-2 mt-3">
           {TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
@@ -174,11 +220,9 @@ export default function KoyambeduSellerAdminDashboard() {
                 + Add Seller
               </button>
             </div>
-
             <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 mb-4 text-xs text-blue-700">
               ℹ️ New sellers require SuperAdmin approval before they can list products.
             </div>
-
             <div className="space-y-3">
               {sellers.map(s => (
                 <div key={s._id} className="bg-white rounded-2xl border border-green-100 p-4">
@@ -187,17 +231,25 @@ export default function KoyambeduSellerAdminDashboard() {
                       <p className="font-bold text-gray-800">{s.businessName}</p>
                       <p className="text-xs text-gray-500">{s.ownerName} · {s.contact?.phone}</p>
                       <p className="text-xs text-gray-400">Stall {s.stallNumber || '—'} · {s.marketSection || '—'}</p>
+                      {s.user && <p className="text-xs text-green-600">✓ Has Eptomart account</p>}
                     </div>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_COLOR[s.status] || 'bg-gray-100 text-gray-600'}`}>
                       {(s.status || '').replace(/_/g,' ')}
                     </span>
                   </div>
                   {s.status === 'approved' && (
-                    <button
-                      onClick={() => { setSellerFilter(s._id); setTab('products'); loadProducts(s._id); }}
-                      className="mt-3 text-xs font-bold text-green-700 border border-green-200 px-3 py-1.5 rounded-xl hover:bg-green-50">
-                      View Products →
-                    </button>
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => { setSellerFilter(s._id); setTab('products'); loadProducts(s._id); }}
+                        className="text-xs font-bold text-green-700 border border-green-200 px-3 py-1.5 rounded-xl hover:bg-green-50">
+                        View Products →
+                      </button>
+                      <button
+                        onClick={() => openAddProduct(s._id)}
+                        className="text-xs font-bold text-white bg-green-600 px-3 py-1.5 rounded-xl hover:bg-green-700">
+                        + Add Product
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}
@@ -217,16 +269,23 @@ export default function KoyambeduSellerAdminDashboard() {
         {/* ── PRODUCTS TAB ── */}
         {tab === 'products' && (
           <div>
-            {/* Seller picker */}
-            <div className="mb-4">
-              <label className="text-xs text-gray-500 font-medium">Select Seller</label>
-              <select value={sellerFilter} onChange={e => { setSellerFilter(e.target.value); if (e.target.value) loadProducts(e.target.value); }}
-                className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
-                <option value="">-- Choose a seller --</option>
-                {sellers.filter(s => s.status === 'approved').map(s => (
-                  <option key={s._id} value={s._id}>{s.businessName} · {s.ownerName}</option>
-                ))}
-              </select>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex-1">
+                <label className="text-xs text-gray-500 font-medium">Select Seller</label>
+                <select value={sellerFilter} onChange={e => { setSellerFilter(e.target.value); if (e.target.value) loadProducts(e.target.value); }}
+                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                  <option value="">-- Choose a seller --</option>
+                  {sellers.filter(s => s.status === 'approved').map(s => (
+                    <option key={s._id} value={s._id}>{s.businessName} · {s.ownerName}</option>
+                  ))}
+                </select>
+              </div>
+              {sellerFilter && (
+                <button onClick={() => openAddProduct(sellerFilter)}
+                  className="mt-5 bg-green-600 text-white text-xs font-bold px-3 py-2.5 rounded-xl hover:bg-green-700 whitespace-nowrap">
+                  + Add Product
+                </button>
+              )}
             </div>
 
             {!sellerFilter && (
@@ -259,14 +318,22 @@ export default function KoyambeduSellerAdminDashboard() {
                 </div>
               ))}
               {sellerFilter && products.length === 0 && (
-                <p className="text-center text-gray-400 py-8 text-sm">No products for this seller</p>
+                <div className="text-center py-10">
+                  <p className="text-gray-400 text-sm mb-3">No products for this seller yet</p>
+                  <button onClick={() => openAddProduct(sellerFilter)}
+                    className="bg-green-600 text-white font-bold px-5 py-2 rounded-xl text-sm">
+                    + Add First Product
+                  </button>
+                </div>
               )}
             </div>
           </div>
         )}
       </div>
 
-      {/* ── Create Seller Modal ── */}
+      {/* ══════════════════════════════════════════
+          CREATE SELLER MODAL
+      ══════════════════════════════════════════ */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 z-[9995] flex items-end sm:items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-3 max-h-[90vh] overflow-y-auto">
@@ -274,16 +341,16 @@ export default function KoyambeduSellerAdminDashboard() {
               <h3 className="font-bold text-gray-800">Add New Seller</h3>
               <button onClick={() => setShowCreate(false)} className="text-gray-400 text-xl">✕</button>
             </div>
-            <p className="text-xs text-gray-500">Fill in the seller's details below. No prior Eptomart account needed.</p>
+            <p className="text-xs text-gray-500">Fill in the seller's details. No prior Eptomart account needed.</p>
 
-            {/* Seller details */}
             {[
               ['ownerName',    'Owner Name *',    'text'],
               ['businessName', 'Business Name *', 'text'],
               ['stallNumber',  'Stall Number',    'text'],
               ['marketSection','Market Section',  'text'],
-              ['contactPhone', 'Phone',           'tel'],
-              ['contactEmail', 'Email',           'email'],
+              ['contactPhone', 'Contact Phone *', 'tel'],
+              ['contactEmail', 'Contact Email',   'email'],
+              ['description',  'Description',     'text'],
             ].map(([k, label, type]) => (
               <div key={k}>
                 <label className="text-xs text-gray-500 font-medium">{label}</label>
@@ -292,9 +359,41 @@ export default function KoyambeduSellerAdminDashboard() {
               </div>
             ))}
 
+            {/* ── Optional: Create Eptomart Login Account ── */}
+            <div className="border border-green-200 rounded-xl p-3 bg-green-50/50 space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={sellerForm.createAccount}
+                  onChange={e => setSellerForm(f => ({ ...f, createAccount: e.target.checked }))}
+                  className="w-4 h-4 accent-green-600" />
+                <span className="text-sm font-semibold text-gray-700">Create Eptomart Login Account</span>
+              </label>
+              <p className="text-xs text-gray-500 pl-6">The seller can use this to log in and manage their own products.</p>
+
+              {sellerForm.createAccount && (
+                <div className="pl-6 space-y-2 pt-1">
+                  <div>
+                    <label className="text-xs text-gray-500 font-medium">Login Phone</label>
+                    <input type="tel" value={sellerForm.accountPhone}
+                      onChange={e => setSellerForm(f => ({ ...f, accountPhone: e.target.value }))}
+                      placeholder="Mobile number for OTP login"
+                      className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 font-medium">Login Email</label>
+                    <input type="email" value={sellerForm.accountEmail}
+                      onChange={e => setSellerForm(f => ({ ...f, accountEmail: e.target.value }))}
+                      placeholder="Email for OTP login"
+                      className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                  </div>
+                  <p className="text-[10px] text-orange-600">⚠️ The seller will need to verify their phone/email via OTP on first login.</p>
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-3 pt-1">
               <button onClick={() => setShowCreate(false)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
-              <button onClick={createSeller} disabled={saving || !sellerForm.ownerName || !sellerForm.businessName || !sellerForm.contactPhone}
+              <button onClick={createSeller}
+                disabled={saving || !sellerForm.ownerName || !sellerForm.businessName || !sellerForm.contactPhone}
                 className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
                 {saving ? 'Creating...' : 'Create Seller'}
               </button>
@@ -303,7 +402,115 @@ export default function KoyambeduSellerAdminDashboard() {
         </div>
       )}
 
-      {/* ── Edit Product Modal ── */}
+      {/* ══════════════════════════════════════════
+          ADD PRODUCT MODAL
+      ══════════════════════════════════════════ */}
+      {showAddProduct && (
+        <div className="fixed inset-0 bg-black/50 z-[9995] overflow-y-auto">
+          <div className="min-h-screen flex items-end sm:items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-gray-800">Add Product</h3>
+                <button onClick={() => setShowAddProduct(false)} className="text-gray-400 text-xl">✕</button>
+              </div>
+
+              <div>
+                <label className="text-xs text-gray-500 font-medium">Category *</label>
+                <select value={prodCreateForm.categoryId} onChange={e => setProdCreateForm(f => ({ ...f, categoryId: e.target.value }))}
+                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                  <option value="">Select category</option>
+                  {categories.map(c => <option key={c._id} value={c._id}>{c.icon} {c.name}</option>)}
+                </select>
+              </div>
+
+              {[['name','Product Name *'],['nameTamil','Tamil Name'],['description','Description']].map(([k, label]) => (
+                <div key={k}>
+                  <label className="text-xs text-gray-500 font-medium">{label}</label>
+                  {k === 'description' ? (
+                    <textarea value={prodCreateForm[k]} onChange={e => setProdCreateForm(f => ({ ...f, [k]: e.target.value }))} rows={2}
+                      className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none" />
+                  ) : (
+                    <input value={prodCreateForm[k]} onChange={e => setProdCreateForm(f => ({ ...f, [k]: e.target.value }))}
+                      className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                  )}
+                </div>
+              ))}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 font-medium">Unit</label>
+                  <select value={prodCreateForm.unit} onChange={e => setProdCreateForm(f => ({ ...f, unit: e.target.value, unitLabel: e.target.value }))}
+                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none">
+                    {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium">Unit Label</label>
+                  <input value={prodCreateForm.unitLabel} onChange={e => setProdCreateForm(f => ({ ...f, unitLabel: e.target.value }))}
+                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+                    placeholder="e.g. 500g, 1 bunch" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium">Price (₹) *</label>
+                  <input type="number" value={prodCreateForm.currentPrice} onChange={e => setProdCreateForm(f => ({ ...f, currentPrice: e.target.value }))}
+                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium">Stock Qty</label>
+                  <input type="number" value={prodCreateForm.stockQty} onChange={e => setProdCreateForm(f => ({ ...f, stockQty: e.target.value }))}
+                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium">Weight per unit (kg)</label>
+                  <input type="number" step="0.001" value={prodCreateForm.weightKg} onChange={e => setProdCreateForm(f => ({ ...f, weightKg: e.target.value }))}
+                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+                    placeholder="e.g. 1, 0.5" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium">Same Day Cutoff</label>
+                  <input type="time" value={prodCreateForm.sameDayCutoff} onChange={e => setProdCreateForm(f => ({ ...f, sameDayCutoff: e.target.value }))}
+                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-gray-500 font-medium">Badges</label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {BADGES.map(b => (
+                    <button key={b} type="button"
+                      onClick={() => setProdCreateForm(f => ({ ...f, badges: f.badges.includes(b) ? f.badges.filter(x => x !== b) : [...f.badges, b] }))}
+                      className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border transition ${prodCreateForm.badges.includes(b) ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                      {b.replace(/_/g,' ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {[['isSameDay','Same Day'],['isNextDay','Next Day'],['isAvailable','In Stock']].map(([k, label]) => (
+                  <label key={k} className="flex items-center gap-2 cursor-pointer bg-gray-50 rounded-xl px-3 py-2">
+                    <input type="checkbox" checked={prodCreateForm[k]} onChange={e => setProdCreateForm(f => ({ ...f, [k]: e.target.checked }))} className="w-4 h-4 accent-green-600" />
+                    <span className="text-xs text-gray-700 font-medium">{label}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setShowAddProduct(false)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
+                <button onClick={submitAddProduct}
+                  disabled={saving || !prodCreateForm.categoryId || !prodCreateForm.name || !prodCreateForm.currentPrice}
+                  className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
+                  {saving ? 'Adding...' : 'Add Product'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════
+          EDIT PRODUCT MODAL
+      ══════════════════════════════════════════ */}
       {editProduct && (
         <div className="fixed inset-0 bg-black/50 z-[9995] flex items-end sm:items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-3 max-h-[90vh] overflow-y-auto">
@@ -311,7 +518,7 @@ export default function KoyambeduSellerAdminDashboard() {
               <h3 className="font-bold text-gray-800">Edit: {editProduct.name}</h3>
               <button onClick={() => setEditProduct(null)} className="text-gray-400 text-xl">✕</button>
             </div>
-            <p className="text-xs text-gray-400">You can update price, stock, and availability only.</p>
+            <p className="text-xs text-gray-400">Update price, stock, and availability.</p>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -322,12 +529,12 @@ export default function KoyambeduSellerAdminDashboard() {
               <div>
                 <label className="text-xs text-gray-500 font-medium">Stock Qty</label>
                 <input type="number" value={prodForm.stockQty} onChange={e => setProdForm(f => ({ ...f, stockQty: e.target.value }))}
-                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
               </div>
               <div>
                 <label className="text-xs text-gray-500 font-medium">Min Qty</label>
                 <input type="number" step="0.5" value={prodForm.minQty} onChange={e => setProdForm(f => ({ ...f, minQty: e.target.value }))}
-                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
               </div>
               <div>
                 <label className="text-xs text-gray-500 font-medium">Same Day Cutoff</label>
