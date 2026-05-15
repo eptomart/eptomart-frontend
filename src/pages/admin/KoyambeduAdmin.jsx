@@ -67,6 +67,15 @@ export default function KoyambeduAdmin() {
   const [rejectModal, setRejectModal] = useState(null); // { id, type: 'seller'|'sa' }
   const [rejectReason, setRejectReason] = useState('');
 
+  // Edit Seller modal (SuperAdmin only)
+  const [editSeller,    setEditSeller]    = useState(null); // seller object
+  const [editForm,      setEditForm]      = useState({});
+  const [editSaving,    setEditSaving]    = useState(false);
+
+  // Review SA edit modal (SuperAdmin only)
+  const [reviewEditSeller, setReviewEditSeller] = useState(null); // seller with pendingEdit
+  const [reviewEditSaving, setReviewEditSaving] = useState(false);
+
   // Add Product modal (admin adds product for any seller)
   const [showAddProduct,   setShowAddProduct]   = useState(false);
   const [addProdSeller,    setAddProdSeller]     = useState(null); // full seller object
@@ -176,12 +185,53 @@ export default function KoyambeduAdmin() {
     finally { setSaCreating(false); }
   };
 
+  const reviewSellerEdit = async (approve, rejectReason = '') => {
+    if (!reviewEditSeller) return;
+    setReviewEditSaving(true);
+    try {
+      const { data } = await api.post(
+        `/koyambedu/admin/sellers/${reviewEditSeller._id}/review-edit`,
+        { approve, rejectReason }
+      );
+      toast.success(approve ? 'Edit approved and applied!' : 'Edit rejected');
+      setReviewEditSeller(null);
+      setSellers(prev => prev.map(s => s._id === reviewEditSeller._id ? data.seller : s));
+    } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
+    finally { setReviewEditSaving(false); }
+  };
+
   const approveCategory = async (catId, approve) => {
     try {
       await api.patch(`/koyambedu/admin/categories/${catId}/approve`, { approve });
       toast.success(approve ? 'Category approved' : 'Category rejected');
       loadTab('categories');
     } catch { toast.error('Failed'); }
+  };
+
+  const openEditSeller = (s) => {
+    setEditSeller(s);
+    setEditForm({
+      ownerName:     s.ownerName     || '',
+      businessName:  s.businessName  || '',
+      stallNumber:   s.stallNumber   || '',
+      marketSection: s.marketSection || '',
+      description:   s.description   || '',
+      contactPhone:  s.contact?.phone || '',
+      contactEmail:  s.contact?.email || '',
+      syncToAccount: false,
+    });
+  };
+
+  const saveEditSeller = async () => {
+    setEditSaving(true);
+    try {
+      const { data } = await api.patch(`/koyambedu/admin/sellers/${editSeller._id}/contact`, editForm);
+      toast.success('Seller updated');
+      setEditSeller(null);
+      // Update the local list immediately
+      setSellers(prev => prev.map(s => s._id === editSeller._id ? data.seller : s));
+    } catch (err) { toast.error(err?.response?.data?.message || 'Failed to update'); }
+    finally { setEditSaving(false); }
   };
 
   const openAddProduct = async (seller) => {
@@ -335,6 +385,9 @@ export default function KoyambeduAdmin() {
                       {s.createdBySellerAdmin && (
                         <p className="text-xs text-blue-500">Created by SA: {s.createdBySellerAdmin.name}</p>
                       )}
+                      {s.pendingEdit?.submittedAt && (
+                        <p className="text-[10px] font-bold text-amber-600 mt-0.5">📝 Edit Pending Review</p>
+                      )}
                     </div>
                     <div className="flex flex-col gap-1 items-end">
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${SELLER_STATUS_COLOR[s.status] || 'bg-gray-100 text-gray-600'}`}>
@@ -366,6 +419,20 @@ export default function KoyambeduAdmin() {
                       className={`text-xs font-bold px-3 py-1.5 rounded-xl border ${s.isActive ? 'border-red-300 text-red-600 hover:bg-red-50' : 'border-green-300 text-green-600 hover:bg-green-50'}`}>
                       {s.isActive ? 'Deactivate' : 'Activate'}
                     </button>
+                    {isSuperAdmin && (
+                      <>
+                        <button onClick={() => openEditSeller(s)}
+                          className="text-xs font-bold px-3 py-1.5 rounded-xl border border-blue-300 text-blue-600 hover:bg-blue-50">
+                          ✏️ Edit
+                        </button>
+                        {s.pendingEdit?.submittedAt && (
+                          <button onClick={() => setReviewEditSeller(s)}
+                            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-500 text-white hover:bg-amber-600">
+                            📝 Review Edit
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -578,6 +645,76 @@ export default function KoyambeduAdmin() {
         </div>
       )}
 
+      {/* ── Edit Seller modal (SuperAdmin only) ── */}
+      {editSeller && (
+        <div className="fixed inset-0 bg-black/50 z-[9995] flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-gray-800">Edit Seller</h3>
+                <p className="text-xs text-gray-500">{editSeller.businessName}</p>
+              </div>
+              <button onClick={() => setEditSeller(null)} className="text-gray-400 text-xl">✕</button>
+            </div>
+
+            {[
+              ['ownerName',    'Owner Name',     'text'],
+              ['businessName', 'Business Name',  'text'],
+              ['stallNumber',  'Stall Number',   'text'],
+              ['marketSection','Market Section', 'text'],
+              ['description',  'Description',    'text'],
+            ].map(([k, label, type]) => (
+              <div key={k}>
+                <label className="text-xs text-gray-500 font-medium">{label}</label>
+                <input type={type} value={editForm[k]}
+                  onChange={e => setEditForm(f => ({ ...f, [k]: e.target.value }))}
+                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+            ))}
+
+            {/* Contact fields — highlighted */}
+            <div className="border border-blue-200 rounded-xl p-3 bg-blue-50/40 space-y-2">
+              <p className="text-xs font-bold text-blue-700">📞 Contact Details</p>
+              <div>
+                <label className="text-xs text-gray-500 font-medium">Phone</label>
+                <input type="tel" value={editForm.contactPhone}
+                  onChange={e => setEditForm(f => ({ ...f, contactPhone: e.target.value }))}
+                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 font-medium">Email</label>
+                <input type="email" value={editForm.contactEmail}
+                  onChange={e => setEditForm(f => ({ ...f, contactEmail: e.target.value }))}
+                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+            </div>
+
+            {/* Sync to Eptomart account toggle — only shown if seller has a linked account */}
+            {editSeller.user && (
+              <label className="flex items-start gap-2 cursor-pointer p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                <input type="checkbox" checked={editForm.syncToAccount}
+                  onChange={e => setEditForm(f => ({ ...f, syncToAccount: e.target.checked }))}
+                  className="w-4 h-4 accent-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-700">Also update linked Eptomart account</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Syncs phone &amp; email to the seller's login account ({editSeller.user?.email || editSeller.user?.phone || 'linked account'}) so they can log in with the new details.
+                  </p>
+                </div>
+              </label>
+            )}
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setEditSeller(null)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
+              <button onClick={saveEditSeller} disabled={editSaving}
+                className="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl hover:bg-blue-700 disabled:opacity-60">
+                {editSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Add Product modal (admin) ── */}
       {showAddProduct && addProdSeller && (
         <div className="fixed inset-0 bg-black/50 z-[9995] overflow-y-auto">
@@ -679,6 +816,105 @@ export default function KoyambeduAdmin() {
                   {addProdSaving ? 'Adding...' : 'Add Product'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Review SA Edit modal (SuperAdmin only) ── */}
+      {reviewEditSeller && reviewEditSeller.pendingEdit && (
+        <div className="fixed inset-0 bg-black/50 z-[9996] flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-gray-800">Review Proposed Edit</h3>
+                <p className="text-xs text-gray-500">{reviewEditSeller.businessName} · submitted {new Date(reviewEditSeller.pendingEdit.submittedAt).toLocaleDateString('en-IN')}</p>
+              </div>
+              <button onClick={() => setReviewEditSeller(null)} className="text-gray-400 text-xl">✕</button>
+            </div>
+
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+              ⚠️ Approving will immediately apply these changes to the live seller profile. Rejecting will discard them.
+            </p>
+
+            {/* Diff view */}
+            <div className="space-y-2">
+              {[
+                ['Owner Name',     'ownerName'],
+                ['Business Name',  'businessName'],
+                ['Stall Number',   'stallNumber'],
+                ['Market Section', 'marketSection'],
+                ['Description',    'description'],
+              ].map(([label, key]) => {
+                const current  = reviewEditSeller[key] || '—';
+                const proposed = reviewEditSeller.pendingEdit[key];
+                if (proposed === undefined) return null;
+                const changed = proposed !== current;
+                return (
+                  <div key={key} className={`rounded-xl px-3 py-2.5 border ${changed ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-100'}`}>
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">{label}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {changed ? (
+                        <>
+                          <span className="text-xs text-red-500 line-through">{current}</span>
+                          <span className="text-gray-400">→</span>
+                          <span className="text-xs font-semibold text-green-700">{proposed || '—'}</span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-gray-600">{current} <span className="text-gray-400">(no change)</span></span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Contact fields */}
+              {reviewEditSeller.pendingEdit.contact && [
+                ['Phone',     'contact.phone',    'phone'],
+                ['Email',     'contact.email',    'email'],
+                ['Alt Phone', 'contact.altPhone', 'altPhone'],
+              ].map(([label, _, key]) => {
+                const current  = reviewEditSeller.contact?.[key] || '—';
+                const proposed = reviewEditSeller.pendingEdit.contact?.[key];
+                if (proposed === undefined) return null;
+                const changed = proposed !== current;
+                return (
+                  <div key={key} className={`rounded-xl px-3 py-2.5 border ${changed ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-100'}`}>
+                    <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wide">{label} (contact)</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {changed ? (
+                        <>
+                          <span className="text-xs text-red-500 line-through">{current}</span>
+                          <span className="text-gray-400">→</span>
+                          <span className="text-xs font-semibold text-blue-700">{proposed || '—'}</span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-gray-600">{current} <span className="text-gray-400">(no change)</span></span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {reviewEditSeller.user && reviewEditSeller.pendingEdit.contact && (
+                reviewEditSeller.pendingEdit.contact.phone || reviewEditSeller.pendingEdit.contact.email
+              ) && (
+                <p className="text-[10px] text-blue-500 px-1">
+                  ℹ️ Phone/email changes will also sync to the seller's Eptomart login account.
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setReviewEditSeller(null)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
+              <button onClick={() => reviewSellerEdit(false)} disabled={reviewEditSaving}
+                className="flex-1 bg-red-500 text-white font-bold py-2.5 rounded-xl hover:bg-red-600 disabled:opacity-60">
+                {reviewEditSaving ? '...' : '✕ Reject'}
+              </button>
+              <button onClick={() => reviewSellerEdit(true)} disabled={reviewEditSaving}
+                className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
+                {reviewEditSaving ? '...' : '✓ Approve'}
+              </button>
             </div>
           </div>
         </div>

@@ -55,6 +55,12 @@ export default function KoyambeduSellerAdminDashboard() {
   const [prodCreateForm,  setProdCreateForm]  = useState(EMPTY_PRODUCT);
   const [categories,      setCategories]      = useState([]);
 
+  // Edit seller (pending-approval flow)
+  const [showEditSeller,  setShowEditSeller]  = useState(false);
+  const [editSellerTarget, setEditSellerTarget] = useState(null);
+  const [editSellerForm,  setEditSellerForm]  = useState({});
+  const [editSellerSaving, setEditSellerSaving] = useState(false);
+
   // Product edit modal
   const [products,     setProducts]     = useState([]);
   const [sellerFilter, setSellerFilter] = useState('');
@@ -139,6 +145,35 @@ export default function KoyambeduSellerAdminDashboard() {
       loadSellers();
     } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
     finally { setSaving(false); }
+  };
+
+  // ── Edit Seller (pending-approval) ───────────────────
+  const openEditSeller = (s) => {
+    setEditSellerTarget(s);
+    setEditSellerForm({
+      ownerName:      s.ownerName     || '',
+      businessName:   s.businessName  || '',
+      stallNumber:    s.stallNumber   || '',
+      marketSection:  s.marketSection || '',
+      description:    s.description   || '',
+      contactPhone:   s.contact?.phone    || '',
+      contactEmail:   s.contact?.email    || '',
+      contactAltPhone:s.contact?.altPhone || '',
+    });
+    setShowEditSeller(true);
+  };
+
+  const submitEditRequest = async () => {
+    if (!editSellerTarget) return;
+    setEditSellerSaving(true);
+    try {
+      await api.patch(`/koyambedu/seller-admin/sellers/${editSellerTarget._id}/edit-request`, editSellerForm);
+      toast.success('Edit request submitted — awaiting SuperAdmin review');
+      setShowEditSeller(false);
+      setEditSellerTarget(null);
+      loadSellers();
+    } catch (err) { toast.error(err?.response?.data?.message || 'Failed to submit edit'); }
+    finally { setEditSellerSaving(false); }
   };
 
   // ── Add Product (for a seller) ────────────────────────
@@ -256,31 +291,42 @@ export default function KoyambeduSellerAdminDashboard() {
             <div className="space-y-3">
               {sellers.map(s => (
                 <div key={s._id} className="bg-white rounded-2xl border border-green-100 p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
                       <p className="font-bold text-gray-800">{s.businessName}</p>
                       <p className="text-xs text-gray-500">{s.ownerName} · {s.contact?.phone}</p>
                       <p className="text-xs text-gray-400">Stall {s.stallNumber || '—'} · {s.marketSection || '—'}</p>
-                      {s.user && <p className="text-xs text-green-600">✓ Has Eptomart account</p>}
+                      {s.user && <p className="text-xs text-green-600 mt-0.5">✓ Has Eptomart account</p>}
+                      {s.pendingEdit?.submittedAt && (
+                        <p className="text-[10px] font-bold text-amber-600 mt-0.5">⏳ Edit Pending Review</p>
+                      )}
                     </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_COLOR[s.status] || 'bg-gray-100 text-gray-600'}`}>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${STATUS_COLOR[s.status] || 'bg-gray-100 text-gray-600'}`}>
                       {(s.status || '').replace(/_/g,' ')}
                     </span>
                   </div>
-                  {s.status === 'approved' && (
-                    <div className="flex gap-2 mt-3">
-                      <button
-                        onClick={() => { setSellerFilter(s._id); setTab('products'); loadProducts(s._id); }}
-                        className="text-xs font-bold text-green-700 border border-green-200 px-3 py-1.5 rounded-xl hover:bg-green-50">
-                        View Products →
-                      </button>
-                      <button
-                        onClick={() => openAddProduct(s._id)}
-                        className="text-xs font-bold text-white bg-green-600 px-3 py-1.5 rounded-xl hover:bg-green-700">
-                        + Add Product
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <button
+                      onClick={() => openEditSeller(s)}
+                      disabled={!!s.pendingEdit?.submittedAt}
+                      className="text-xs font-bold text-blue-700 border border-blue-200 px-3 py-1.5 rounded-xl hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                      ✏️ Edit Details
+                    </button>
+                    {s.status === 'approved' && (
+                      <>
+                        <button
+                          onClick={() => { setSellerFilter(s._id); setTab('products'); loadProducts(s._id); }}
+                          className="text-xs font-bold text-green-700 border border-green-200 px-3 py-1.5 rounded-xl hover:bg-green-50">
+                          View Products →
+                        </button>
+                        <button
+                          onClick={() => openAddProduct(s._id)}
+                          className="text-xs font-bold text-white bg-green-600 px-3 py-1.5 rounded-xl hover:bg-green-700">
+                          + Add Product
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
               {sellers.length === 0 && (
@@ -625,6 +671,63 @@ export default function KoyambeduSellerAdminDashboard() {
                   {saving ? 'Adding...' : 'Add Product'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════
+          EDIT SELLER MODAL (pending-approval flow)
+      ══════════════════════════════════════════ */}
+      {showEditSeller && editSellerTarget && (
+        <div className="fixed inset-0 bg-black/50 z-[9995] flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-800">Edit Seller Details</h3>
+              <button onClick={() => setShowEditSeller(false)} className="text-gray-400 text-xl">✕</button>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-700">
+              ⚠️ Your changes will be submitted for SuperAdmin review. They won't go live until approved.
+            </div>
+
+            {[
+              ['ownerName',     'Owner Name',     'text'],
+              ['businessName',  'Business Name',  'text'],
+              ['stallNumber',   'Stall / Shop No','text'],
+              ['marketSection', 'Market Section', 'text'],
+              ['description',   'Description',    'text'],
+            ].map(([k, label, type]) => (
+              <div key={k}>
+                <label className="text-xs text-gray-500 font-medium">{label}</label>
+                <input type={type} value={editSellerForm[k]}
+                  onChange={e => setEditSellerForm(f => ({ ...f, [k]: e.target.value }))}
+                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+            ))}
+
+            <div className="border border-blue-100 rounded-xl p-3 bg-blue-50/40 space-y-2">
+              <p className="text-xs font-semibold text-blue-700">Contact Details</p>
+              {[
+                ['contactPhone',    'Phone',        'tel'],
+                ['contactEmail',    'Email',        'email'],
+                ['contactAltPhone', 'Alt. Phone',   'tel'],
+              ].map(([k, label, type]) => (
+                <div key={k}>
+                  <label className="text-xs text-gray-500 font-medium">{label}</label>
+                  <input type={type} value={editSellerForm[k]}
+                    onChange={e => setEditSellerForm(f => ({ ...f, [k]: e.target.value }))}
+                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                </div>
+              ))}
+              <p className="text-[10px] text-blue-500">Contact changes to phone/email will also update the seller's Eptomart login once approved.</p>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setShowEditSeller(false)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
+              <button onClick={submitEditRequest} disabled={editSellerSaving}
+                className="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl hover:bg-blue-700 disabled:opacity-60">
+                {editSellerSaving ? 'Submitting...' : 'Submit for Approval'}
+              </button>
             </div>
           </div>
         </div>
