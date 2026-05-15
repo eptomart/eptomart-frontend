@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 import { usePincodeAutofill } from '../../hooks/usePincodeAutofill';
+import { useAuth } from '../../context/AuthContext';
 
 // ── KYC Document Upload Row ─────────────────────────────────
 function KycDocRow({ sellerId, docType, label, hint, icon, existing, uploading, extraSelect, onUpload }) {
@@ -94,6 +95,7 @@ const STATUS_COLOR = {
 
 export default function AdminSellers() {
   const navigate = useNavigate();
+  const { isSuperAdmin } = useAuth();
   const [sellers,       setSellers]       = useState([]);
   const [deletedSellers,setDeletedSellers] = useState([]);
   const [loading,       setLoading]       = useState(true);
@@ -473,19 +475,24 @@ export default function AdminSellers() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email {modal === 'create' ? '' : ''}
+                    Email
                   </label>
                   <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
                     className="input-field" placeholder="seller@email.com"
-                    disabled={modal === 'edit'} // contact changes handled separately
+                    disabled={modal === 'edit' && !isSuperAdmin}
                   />
-                  {modal === 'edit' && <p className="text-xs text-gray-400 mt-1">Contact email is read-only</p>}
+                  {modal === 'edit' && !isSuperAdmin && (
+                    <p className="text-xs text-gray-400 mt-1">Contact email can only be changed by SuperAdmin</p>
+                  )}
+                  {modal === 'edit' && isSuperAdmin && (
+                    <p className="text-xs text-blue-500 mt-1">⚡ SuperAdmin — changes will sync to seller's login account</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                   <input value={form.phone} onChange={e => set('phone', e.target.value)}
                     className="input-field" placeholder="9876543210"
-                    disabled={modal === 'edit'}
+                    disabled={modal === 'edit' && !isSuperAdmin}
                   />
                 </div>
               </div>
