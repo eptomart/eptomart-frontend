@@ -17,6 +17,8 @@ const ALL_PERMISSIONS = [
   { key: 'categories',  label: 'Categories' },
   { key: 'expenses',    label: 'Expenses' },
   { key: 'settlements', label: 'Settlements' },
+  { key: 'uzhavar',     label: 'Uzhavar Fresh' },
+  { key: 'koyambedu',   label: 'Koyambedu Daily' },
 ];
 
 const BLANK = { name: '', email: '', phone: '', permissions: ['orders'] };
