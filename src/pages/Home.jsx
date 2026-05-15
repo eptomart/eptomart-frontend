@@ -668,9 +668,9 @@ export default function Home() {
 
               {/* Full product grid sections */}
               <ProductShelf title="Featured Products" emoji="⭐" products={featuredProducts} link="/shop?featured=true" loading={loading} />
-              <ProductShelf title="New Arrivals" emoji="🆕" products={newArrivals} link="/shop?sort=-createdAt" loading={loading} />
-              {topRated.filter(p => p.ratings?.count > 0).length > 0 && (
-                <ProductShelf title="Top Rated" emoji="🏆" products={topRated.filter(p => p.ratings?.count > 0)} link="/shop?sort=-ratings.average" loading={loading} />
+              <ProductShelf title="New Arrivals" emoji="🆕" products={allProducts} link="/shop?sort=-createdAt" loading={loading} />
+              {allProducts.filter(p => p.ratings?.count > 0).length > 0 && (
+                <ProductShelf title="Top Rated" emoji="🏆" products={allProducts.filter(p => p.ratings?.count > 0).slice(0,8)} link="/shop?sort=-ratings.average" loading={loading} />
               )}
 
               {/* Why Eptomart */}
