@@ -47,6 +47,10 @@ export default function KoyambeduAdmin() {
   const [showSaCreate, setShowSaCreate] = useState(false);
   const [saForm, setSaForm] = useState({ userId:'', name:'', businessName:'', contactPhone:'', contactEmail:'' });
   const [saCreating, setSaCreating] = useState(false);
+  const [userQuery,   setUserQuery]   = useState('');
+  const [userResults, setUserResults] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userSearching, setUserSearching] = useState(false);
 
   // Reject reason modal
   const [rejectModal, setRejectModal] = useState(null); // { id, type: 'seller'|'sa' }
@@ -120,14 +124,35 @@ export default function KoyambeduAdmin() {
     } catch { toast.error('Failed'); }
   };
 
+  const searchUsers = async (q) => {
+    setUserQuery(q);
+    setSelectedUser(null);
+    setSaForm(f => ({ ...f, userId: '' }));
+    if (q.trim().length < 3) { setUserResults([]); return; }
+    setUserSearching(true);
+    try {
+      const { data } = await api.get(`/koyambedu/admin/user-search?q=${encodeURIComponent(q.trim())}`);
+      setUserResults(data.users || []);
+    } catch { setUserResults([]); }
+    finally { setUserSearching(false); }
+  };
+
+  const selectUser = (u) => {
+    setSelectedUser(u);
+    setUserResults([]);
+    setUserQuery(u.email || u.phone || '');
+    setSaForm(f => ({ ...f, userId: u._id, name: f.name || u.name || '', contactPhone: f.contactPhone || u.phone || '', contactEmail: f.contactEmail || u.email || '' }));
+  };
+
   const createSellerAdmin = async () => {
-    if (!saForm.userId || !saForm.name) { toast.error('User ID and name required'); return; }
+    if (!saForm.userId || !saForm.name) { toast.error('Select a user and enter a name'); return; }
     setSaCreating(true);
     try {
       await api.post('/koyambedu/admin/seller-admins', saForm);
       toast.success('SellerAdmin created. Pending review.');
       setShowSaCreate(false);
       setSaForm({ userId:'', name:'', businessName:'', contactPhone:'', contactEmail:'' });
+      setSelectedUser(null); setUserQuery(''); setUserResults([]);
       loadTab('seller-admins');
     } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
     finally { setSaCreating(false); }
@@ -426,16 +451,60 @@ export default function KoyambeduAdmin() {
 
       {/* ── Create SellerAdmin modal ── */}
       {showSaCreate && (
-        <div className="fixed inset-0 bg-black/50 z-[9995] flex items-end justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-3">
+        <div className="fixed inset-0 bg-black/50 z-[9995] flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-3 max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-gray-800">Create Seller Admin</h3>
             <p className="text-xs text-gray-500">Seller Admins can create and manage sellers but cannot approve them.</p>
+
+            {/* User search */}
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Search Eptomart User * (email, phone or name)</label>
+              <div className="relative mt-1">
+                <input
+                  type="text"
+                  value={userQuery}
+                  onChange={e => searchUsers(e.target.value)}
+                  placeholder="Type email, phone or name..."
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                />
+                {userSearching && (
+                  <div className="absolute right-3 top-3">
+                    <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
+              {/* Dropdown results */}
+              {userResults.length > 0 && (
+                <div className="mt-1 border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+                  {userResults.map(u => (
+                    <button key={u._id} onClick={() => selectUser(u)}
+                      className="w-full text-left px-3 py-2.5 hover:bg-green-50 border-b border-gray-100 last:border-0 transition">
+                      <p className="text-sm font-semibold text-gray-800">{u.name}</p>
+                      <p className="text-xs text-gray-400">{u.email || '—'} · {u.phone || '—'}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* Selected user badge */}
+              {selectedUser && (
+                <div className="mt-2 flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                  <span className="text-green-500 text-lg">✓</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-green-800 truncate">{selectedUser.name}</p>
+                    <p className="text-xs text-green-600 truncate">{selectedUser.email || selectedUser.phone}</p>
+                  </div>
+                  <button onClick={() => { setSelectedUser(null); setUserQuery(''); setSaForm(f => ({ ...f, userId: '' })); }}
+                    className="text-gray-400 hover:text-red-500 text-sm font-bold flex-shrink-0">✕</button>
+                </div>
+              )}
+            </div>
+
+            {/* Rest of form fields */}
             {[
-              ['userId',       'Eptomart User ID *', 'text'],
-              ['name',         'Full Name *',        'text'],
-              ['businessName', 'Business Name',      'text'],
-              ['contactPhone', 'Phone',              'tel'],
-              ['contactEmail', 'Email',              'email'],
+              ['name',         'Full Name *',     'text'],
+              ['businessName', 'Business Name',   'text'],
+              ['contactPhone', 'Phone',           'tel'],
+              ['contactEmail', 'Email',           'email'],
             ].map(([k, label, type]) => (
               <div key={k}>
                 <label className="text-xs text-gray-500 font-medium">{label}</label>
@@ -443,9 +512,11 @@ export default function KoyambeduAdmin() {
                   className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
               </div>
             ))}
-            <div className="flex gap-3">
-              <button onClick={() => setShowSaCreate(false)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
-              <button onClick={createSellerAdmin} disabled={saCreating}
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => { setShowSaCreate(false); setUserQuery(''); setUserResults([]); setSelectedUser(null); }}
+                className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
+              <button onClick={createSellerAdmin} disabled={saCreating || !saForm.userId || !saForm.name}
                 className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
                 {saCreating ? 'Creating...' : 'Create'}
               </button>
