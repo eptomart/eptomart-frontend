@@ -152,8 +152,11 @@ export default function KoyambeduHome() {
           <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full whitespace-nowrap border border-white/30">
             🌅 Today's Market Open
           </span>
-          <span className="bg-orange-400/80 text-white text-[11px] font-semibold px-3 py-1 rounded-full whitespace-nowrap">
-            ₹40 delivery · Free above ₹499
+          <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full whitespace-nowrap border border-white/30">
+            🚚 &lt;20 kg → ₹149 · 20–90 kg → ₹249
+          </span>
+          <span className="bg-yellow-400/90 text-green-900 text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap">
+            📦 &gt;90 kg? Contact us
           </span>
         </div>
       </div>
