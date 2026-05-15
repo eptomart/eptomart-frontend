@@ -119,10 +119,8 @@ export default function Login() {
     } catch { return null; }
   });
   const [otp,           setOtp]          = useState('');
-  const [firstName,     setFirstName]    = useState('');
-  const [lastName,      setLastName]     = useState('');
+  const [fullName,      setFullName]     = useState('');
   const [loading,       setLoading]      = useState(false);
-  const [address,       setAddress]      = useState({ addressLine1: '', city: '', state: '', pincode: '', phone: '' });
   const [accountExists, setAccountExists] = useState(null); // null = unknown, true = existing, false = new
 
   const confirmRef   = useRef(null);
@@ -230,11 +228,10 @@ export default function Login() {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    if (!firstName.trim()) return toast.error('First name is required');
-    if (!lastName.trim())  return toast.error('Last name is required');
+    if (!fullName.trim()) return toast.error('Please enter your name');
     setLoading(true);
     try {
-      await api.put('/auth/update-profile', { firstName: firstName.trim(), lastName: lastName.trim(), address });
+      await api.put('/auth/update-profile', { name: fullName.trim() });
       await loadUser();
       toast.success('Welcome to Eptomart! 🎉');
       navigate(from, { replace: true });
@@ -440,117 +437,36 @@ export default function Login() {
               </>
             )}
 
-            {/* STEP 3 — Profile (new users + existing users without firstName) */}
+            {/* STEP 3 — Name (first-time users only) */}
             {step === STEPS.PROFILE && (
               <>
                 <div style={{ marginBottom:24 }}>
                   <h2 style={{ color:C.textPrimary, fontSize:20, fontWeight:700, margin:0 }}>
-                    Complete Your Profile 🏠
+                    What's your name? 👋
                   </h2>
                   <p style={{ color:C.textMuted, fontSize:13, marginTop:4 }}>
-                    Your name is required to place orders on Eptomart.
+                    We need your name to personalise your experience.
                   </p>
                 </div>
 
-                <form onSubmit={handleSaveProfile} style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                    <div>
-                      <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
-                        First Name *
-                      </label>
-                      <DarkInput
-                        type="text"
-                        placeholder="First name"
-                        value={firstName}
-                        onChange={e => setFirstName(e.target.value)}
-                        autoFocus
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
-                        Last Name *
-                      </label>
-                      <DarkInput
-                        type="text"
-                        placeholder="Last name"
-                        value={lastName}
-                        onChange={e => setLastName(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
+                <form onSubmit={handleSaveProfile} style={{ display:'flex', flexDirection:'column', gap:16 }}>
                   <div>
                     <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
-                      Address Line *
+                      Your Name *
                     </label>
                     <DarkInput
                       type="text"
-                      placeholder="House/Flat no., Street, Area"
-                      value={address.addressLine1}
-                      onChange={e => setAddress(a => ({ ...a, addressLine1: e.target.value }))}
+                      placeholder="Enter your full name"
+                      value={fullName}
+                      onChange={e => setFullName(e.target.value)}
+                      autoFocus
                       required
                     />
                   </div>
 
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                    <div>
-                      <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
-                        City *
-                      </label>
-                      <DarkInput
-                        type="text"
-                        placeholder="City"
-                        value={address.city}
-                        onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
-                        Pincode *
-                      </label>
-                      <DarkInput
-                        type="text"
-                        placeholder="6-digit pincode"
-                        value={address.pincode}
-                        onChange={e => setAddress(a => ({ ...a, pincode: e.target.value.replace(/\D/g,'').slice(0,6) }))}
-                        maxLength={6}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{ display:'block', color:C.textMuted, fontSize:11, fontWeight:600, letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
-                      State
-                    </label>
-                    <DarkInput
-                      type="text"
-                      placeholder="State"
-                      value={address.state}
-                      onChange={e => setAddress(a => ({ ...a, state: e.target.value }))}
-                    />
-                  </div>
-
-                  <div style={{ display:'flex', gap:10 }}>
-                    <button
-                      type="button"
-                      onClick={() => navigate(from, { replace: true })}
-                      style={{
-                        flex:1, padding:'13px', borderRadius:12, border:`1.5px solid ${C.border}`,
-                        background:'transparent', color:C.textMuted, fontSize:14, cursor:'pointer',
-                      }}
-                    >
-                      Skip for now
-                    </button>
-                    <div style={{ flex:2 }}>
-                      <OrangeButton type="submit" disabled={loading} loading={loading}>
-                        {loading ? 'Saving…' : 'Save & Continue →'}
-                      </OrangeButton>
-                    </div>
-                  </div>
+                  <OrangeButton type="submit" disabled={loading || !fullName.trim()} loading={loading}>
+                    {loading ? 'Saving…' : 'Continue →'}
+                  </OrangeButton>
                 </form>
               </>
             )}
