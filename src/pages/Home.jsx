@@ -409,15 +409,10 @@ export default function Home() {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get('/products?limit=40&sort=-createdAt&approvalStatus=approved&isActive=true');
+        const { data } = await api.get('/products?limit=40&sort=-createdAt');
         setAllProducts(data.products || []);
       } catch (e) {
         console.error('Home products fetch error:', e);
-        // Try without filters in case backend doesn't support them
-        try {
-          const { data } = await api.get('/products?limit=40&sort=-createdAt');
-          setAllProducts(data.products || []);
-        } catch {}
       } finally {
         setLoading(false);
       }
@@ -476,8 +471,9 @@ export default function Home() {
             </div>
           ) : (
             <div className="text-center py-10 px-4">
-              <p className="text-4xl mb-2">📦</p>
-              <p className="text-gray-400 text-sm">Products loading…</p>
+              <p className="text-4xl mb-2">🌟</p>
+              <p className="text-gray-500 text-sm font-medium">Featured products coming soon</p>
+              <Link to="/shop" className="mt-3 inline-block text-xs text-orange-500 font-bold">Browse all products →</Link>
             </div>
           )}
         </section>
@@ -522,8 +518,9 @@ export default function Home() {
             </>
           ) : (
             <div className="text-center py-10 px-4">
-              <p className="text-4xl mb-2">📦</p>
-              <p className="text-gray-400 text-sm">Products coming soon!</p>
+              <p className="text-4xl mb-2">🆕</p>
+              <p className="text-gray-500 text-sm font-medium">New products arriving soon</p>
+              <Link to="/shop" className="mt-3 inline-block text-xs text-orange-500 font-bold">Explore the shop →</Link>
             </div>
           )}
         </section>

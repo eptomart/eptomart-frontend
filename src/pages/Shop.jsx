@@ -90,8 +90,7 @@ export default function Shop() {
           ...(filters.minPrice && { minPrice: filters.minPrice }),
           ...(filters.maxPrice && { maxPrice: filters.maxPrice }),
           ...(filters.inStock  && { inStock:  filters.inStock }),
-          ...(searchParams.get('search')   && { search:   searchParams.get('search') }),
-          ...(searchParams.get('featured') && { featured: 'true' }),
+          ...(searchParams.get('search') && { search: searchParams.get('search') }),
         });
 
         const { data } = await api.get(`/products?${params}`);

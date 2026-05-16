@@ -236,23 +236,23 @@ export default function Navbar() {
 
           <div className="h-4 w-px bg-white/15 mx-1 flex-shrink-0" />
 
-          {/* Featured — scrolls to section on home, navigates on other pages */}
+          {/* Featured — scrolls to #section-featured if on home, else opens shop */}
           <button
             onClick={() => {
               const el = document.getElementById('section-featured');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-              else navigate('/shop?featured=true');
+              if (el) { el.scrollIntoView({ behavior: 'smooth' }); }
+              else { navigate('/'); setTimeout(() => { const s = document.getElementById('section-featured'); if (s) s.scrollIntoView({ behavior: 'smooth' }); }, 400); }
             }}
             className="text-[11px] text-gray-400 hover:text-white px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">
             ✨ Featured
           </button>
 
-          {/* Flash Deals — scrolls to section on home, navigates on other pages */}
+          {/* Flash Deals — scrolls to #section-flash if on home, else opens shop sorted by price */}
           <button
             onClick={() => {
               const el = document.getElementById('section-flash');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-              else navigate('/shop?sort=-discount');
+              if (el) { el.scrollIntoView({ behavior: 'smooth' }); }
+              else { navigate('/'); setTimeout(() => { const s = document.getElementById('section-flash'); if (s) s.scrollIntoView({ behavior: 'smooth' }); }, 400); }
             }}
             className="text-[11px] text-gray-400 hover:text-white px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">
             ⚡ Flash Deals
