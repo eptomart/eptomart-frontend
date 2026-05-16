@@ -39,7 +39,7 @@ export default function Categories() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.get('/categories?all=true')
+    api.get('/categories?all=true&moduleType=eptomart')
       .then(res => setAllCats(res.data.categories || []))
       .catch(() => {})
       .finally(() => setLoading(false));

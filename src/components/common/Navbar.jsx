@@ -1,11 +1,12 @@
 // ============================================
 // NAVBAR — Search on every screen + Back button
 // ============================================
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   FiSearch, FiShoppingCart, FiUser, FiX, FiLogOut,
   FiPackage, FiSettings, FiHeart, FiGrid, FiArrowLeft, FiMic,
+  FiChevronDown, FiChevronRight,
 } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -40,17 +41,49 @@ export default function Navbar() {
   const { cartCount } = useCart();
   const { wishlistCount } = useWishlist();
 
-  const [query,       setQuery]       = useState('');
-  const [results,     setResults]     = useState([]);
-  const [dropOpen,    setDropOpen]    = useState(false);
+  const [query,        setQuery]        = useState('');
+  const [results,      setResults]      = useState([]);
+  const [dropOpen,     setDropOpen]     = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [listening,   setListening]   = useState(false);
+  const [listening,    setListening]    = useState(false);
+  const [catMenuOpen,  setCatMenuOpen]  = useState(false);
+  const [categories,   setCategories]   = useState([]);   // {parent, subs[]}
+  const [hoveredCat,   setHoveredCat]   = useState(null);
 
   const navigate       = useNavigate();
   const { pathname }   = useLocation();
   const inputRef       = useRef(null);
   const searchTimeout  = useRef(null);
   const wrapRef        = useRef(null);
+  const catMenuRef     = useRef(null);
+
+  // Fetch categories for mega-menu (desktop)
+  useEffect(() => {
+    api.get('/categories?all=true&moduleType=eptomart')
+      .then(res => {
+        const all = res.data.categories || [];
+        const parents = all.filter(c => !c.parentCategory);
+        const built = parents.map(p => ({
+          parent: p,
+          subs: all.filter(c => {
+            const pid = typeof c.parentCategory === 'object' ? c.parentCategory?._id : c.parentCategory;
+            return pid?.toString() === p._id?.toString();
+          }),
+        }));
+        setCategories(built);
+        if (built.length > 0) setHoveredCat(built[0].parent._id);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Close cat menu on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (catMenuRef.current && !catMenuRef.current.contains(e.target)) setCatMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const isHome       = pathname === '/';
   const isKoyambedu  = pathname.startsWith('/koyambedu');
@@ -338,17 +371,85 @@ export default function Navbar() {
         {/* ── Row 3: Sub-module strip ── */}
         <div className="flex items-center gap-1 pb-2 border-t border-white/10 pt-2 -mx-3 px-3 overflow-x-auto scrollbar-hide">
 
-          <Link to="/categories"
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all flex-shrink-0"
-            style={{
-              background: pathname === '/categories' ? 'rgba(244,148,28,0.35)' : 'rgba(244,148,28,0.12)',
-              color: '#fff',
-              border: pathname === '/categories' ? '1px solid rgba(244,148,28,0.5)' : '1px solid transparent',
-            }}>
-            🗂️ Categories
-          </Link>
+          {/* Desktop-only mega-menu trigger */}
+          <div className="relative hidden md:block flex-shrink-0" ref={catMenuRef}>
+            <button
+              onClick={() => setCatMenuOpen(o => !o)}
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all"
+              style={{
+                background: catMenuOpen ? 'rgba(244,148,28,0.35)' : 'rgba(244,148,28,0.12)',
+                color: '#fff',
+                border: catMenuOpen ? '1px solid rgba(244,148,28,0.5)' : '1px solid transparent',
+              }}
+            >
+              🗂️ Categories <FiChevronDown size={11} className={`transition-transform ${catMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
 
-          <div className="h-4 w-px bg-white/15 flex-shrink-0" />
+            {/* Mega-menu dropdown */}
+            {catMenuOpen && categories.length > 0 && (
+              <div
+                className="absolute left-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 z-[200] flex overflow-hidden"
+                style={{ width: 560, maxHeight: 420 }}
+              >
+                {/* Left: parent list */}
+                <div className="w-48 bg-gray-50 border-r border-gray-100 overflow-y-auto flex-shrink-0">
+                  {categories.map(({ parent }) => (
+                    <button
+                      key={parent._id}
+                      onMouseEnter={() => setHoveredCat(parent._id)}
+                      onClick={() => { navigate(`/shop/${parent.slug}`); setCatMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 text-left text-sm font-semibold transition-colors"
+                      style={{
+                        background: hoveredCat === parent._id ? '#fff7ed' : 'transparent',
+                        color: hoveredCat === parent._id ? '#f4941c' : '#374151',
+                        borderLeft: hoveredCat === parent._id ? '3px solid #f4941c' : '3px solid transparent',
+                      }}
+                    >
+                      <span className="text-base">{parent.icon || '📦'}</span>
+                      <span className="truncate">{parent.name}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Right: sub-categories */}
+                <div className="flex-1 p-4 overflow-y-auto">
+                  {categories.filter(c => c.parent._id === hoveredCat).map(({ parent, subs }) => (
+                    <div key={parent._id}>
+                      <Link
+                        to={`/shop/${parent.slug}`}
+                        onClick={() => setCatMenuOpen(false)}
+                        className="flex items-center gap-2 mb-3 group"
+                      >
+                        <span className="font-extrabold text-gray-800 text-sm group-hover:text-orange-500 transition-colors">
+                          All {parent.name}
+                        </span>
+                        <FiChevronRight size={13} className="text-orange-400" />
+                      </Link>
+                      {subs.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {subs.map(sub => (
+                            <Link
+                              key={sub._id}
+                              to={`/shop/${parent.slug}?sub=${sub._id}`}
+                              onClick={() => setCatMenuOpen(false)}
+                              className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-orange-50 text-xs font-semibold text-gray-600 hover:text-orange-600 transition-colors"
+                            >
+                              <span>{sub.icon || parent.icon || '📦'}</span>
+                              <span className="truncate">{sub.name}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400 italic">No sub-categories</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="hidden md:block h-4 w-px bg-white/15 flex-shrink-0" />
 
           <Link to="/koyambedu"
             className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all flex-shrink-0"
