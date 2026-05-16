@@ -47,10 +47,9 @@ const SkeletonCard = () => (
 function AutoScrollStrip({ title, emoji, products, link, loading, accent = 'orange' }) {
   const trackRef = useRef(null);
   const timerRef = useRef(null);
-  const CARD_W   = 148; // px per card + gap
 
-  useEffect(() => {
-    if (!products?.length) return;
+  const startTimer = () => {
+    clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       const el = trackRef.current;
       if (!el) return;
@@ -58,15 +57,21 @@ function AutoScrollStrip({ title, emoji, products, link, loading, accent = 'oran
       if (el.scrollLeft >= maxScroll - 10) {
         el.scrollTo({ left: 0, behavior: 'smooth' });
       } else {
-        el.scrollBy({ left: CARD_W, behavior: 'smooth' });
+        // Scroll by the visible width so a fresh "page" of cards slides in cleanly
+        el.scrollBy({ left: el.clientWidth * 0.75, behavior: 'smooth' });
       }
-    }, 3200);
+    }, 4500);
+  };
+
+  useEffect(() => {
+    if (!products?.length) return;
+    startTimer();
     return () => clearInterval(timerRef.current);
   }, [products]);
 
   const colors = {
-    orange: { dot: 'bg-orange-500', label: 'text-orange-500', badge: 'bg-orange-500' },
-    red:    { dot: 'bg-red-500',    label: 'text-red-500',    badge: 'bg-red-500'    },
+    orange: { dot: 'bg-orange-500', label: 'text-orange-500' },
+    red:    { dot: 'bg-red-500',    label: 'text-red-500'    },
   };
   const c = colors[accent] || colors.orange;
 
@@ -82,20 +87,19 @@ function AutoScrollStrip({ title, emoji, products, link, loading, accent = 'oran
           See all <FiChevronRight size={12} />
         </Link>
       </div>
-      <div ref={trackRef} className="flex gap-3 px-4 overflow-x-auto scrollbar-hide pb-1 touch-pan-x"
+      <div
+        ref={trackRef}
+        className="flex gap-3 px-4 overflow-x-auto scrollbar-hide pb-1 touch-pan-x"
+        style={{ scrollSnapType: 'x mandatory' }}
         onMouseEnter={() => clearInterval(timerRef.current)}
-        onMouseLeave={() => {
-          timerRef.current = setInterval(() => {
-            const el = trackRef.current;
-            if (!el) return;
-            const maxScroll = el.scrollWidth - el.clientWidth;
-            if (el.scrollLeft >= maxScroll - 10) el.scrollTo({ left: 0, behavior: 'smooth' });
-            else el.scrollBy({ left: CARD_W, behavior: 'smooth' });
-          }, 3200);
-        }}>
+        onMouseLeave={startTimer}
+        onTouchStart={() => clearInterval(timerRef.current)}
+        onTouchEnd={startTimer}
+      >
         {loading
           ? [...Array(5)].map((_, i) => (
-              <div key={i} className="flex-shrink-0 w-36 bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse">
+              <div key={i} className="flex-shrink-0 w-36 bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse"
+                style={{ scrollSnapAlign: 'start' }}>
                 <div className="aspect-square bg-gray-100" />
                 <div className="p-3 space-y-2">
                   <div className="h-3 bg-gray-100 rounded w-3/4" />
@@ -104,7 +108,7 @@ function AutoScrollStrip({ title, emoji, products, link, loading, accent = 'oran
               </div>
             ))
           : products.map(p => (
-              <div key={p._id} className="flex-shrink-0 w-36">
+              <div key={p._id} className="flex-shrink-0 w-36" style={{ scrollSnapAlign: 'start' }}>
                 <ProductCard product={p} />
               </div>
             ))
@@ -149,15 +153,20 @@ function FlashBar({ products }) {
   const timerRef = useRef(null);
   const deals = (products || []).filter(p => p.discountPrice && p.discountPrice < p.price).slice(0, 8);
 
-  useEffect(() => {
-    if (!deals.length) return;
+  const startFlashTimer = () => {
+    clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       const el = trackRef.current;
       if (!el) return;
       const maxScroll = el.scrollWidth - el.clientWidth;
       if (el.scrollLeft >= maxScroll - 10) el.scrollTo({ left: 0, behavior: 'smooth' });
-      else el.scrollBy({ left: 140, behavior: 'smooth' });
-    }, 2800);
+      else el.scrollBy({ left: el.clientWidth * 0.75, behavior: 'smooth' });
+    }, 4000);
+  };
+
+  useEffect(() => {
+    if (!deals.length) return;
+    startFlashTimer();
     return () => clearInterval(timerRef.current);
   }, [deals.length]);
 
@@ -183,16 +192,11 @@ function FlashBar({ products }) {
       </div>
       <div ref={trackRef}
         className="flex gap-3 overflow-x-auto scrollbar-hide pb-1"
+        style={{ scrollSnapType: 'x mandatory' }}
         onMouseEnter={() => clearInterval(timerRef.current)}
-        onMouseLeave={() => {
-          timerRef.current = setInterval(() => {
-            const el = trackRef.current;
-            if (!el) return;
-            const maxScroll = el.scrollWidth - el.clientWidth;
-            if (el.scrollLeft >= maxScroll - 10) el.scrollTo({ left: 0, behavior: 'smooth' });
-            else el.scrollBy({ left: 140, behavior: 'smooth' });
-          }, 2800);
-        }}>
+        onMouseLeave={startFlashTimer}
+        onTouchStart={() => clearInterval(timerRef.current)}
+        onTouchEnd={startFlashTimer}>
         {deals.map(p => {
           const discPct = Math.round(((p.price - p.discountPrice) / p.price) * 100);
           // Stock bar: use stock count if available, else simulate
@@ -202,6 +206,7 @@ function FlashBar({ products }) {
           const stockColor = stockPct < 30 ? '#ef4444' : stockPct < 60 ? '#f97316' : '#22c55e';
           return (
             <Link key={p._id} to={`/product/${p.slug}`}
+              style={{ scrollSnapAlign: 'start' }}
               className="flex-shrink-0 w-32 bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-all active:scale-95 group">
               <div className="relative aspect-square bg-gray-50 overflow-hidden">
                 <img src={p.images?.[0]?.url || ''} alt={p.name}
