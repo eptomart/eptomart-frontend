@@ -483,9 +483,6 @@ export default function Home() {
 
       <main className="min-h-screen bg-[#f5f5f7] pb-24 md:pb-8">
 
-        {/* Mobile search */}
-        <MobileSearchBar />
-
         {/* Promo banner */}
         <div className="pt-2 pb-4"><PromoBanner /></div>
 

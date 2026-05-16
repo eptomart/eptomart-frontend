@@ -1,130 +1,207 @@
 // ============================================
-// NAVBAR — Top Navigation Bar
+// NAVBAR — Search on every screen + Back button
 // ============================================
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { FiSearch, FiShoppingCart, FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiSettings, FiHeart, FiGrid, FiMapPin } from 'react-icons/fi';
+import {
+  FiSearch, FiShoppingCart, FiUser, FiX, FiLogOut,
+  FiPackage, FiSettings, FiHeart, FiGrid, FiArrowLeft, FiMic,
+} from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import api from '../../utils/api';
-import EptomartLogo from './EptomartLogo';
+
+// ── Page titles for back-button label ─────────────────────────
+const PAGE_TITLES = {
+  '/shop':      'Shop',
+  '/cart':      'Cart',
+  '/orders':    'Orders',
+  '/profile':   'Profile',
+  '/wishlist':  'Wishlist',
+  '/login':     'Login',
+  '/checkout':  'Checkout',
+  '/koyambedu': 'Koyambedu Daily',
+  '/uzhavar':   'Uzhavar Fresh',
+  '/product':   'Product',
+  '/seller':    'Seller Portal',
+  '/admin':     'Admin Panel',
+};
+
+function getPageTitle(pathname) {
+  for (const [key, label] of Object.entries(PAGE_TITLES)) {
+    if (pathname.startsWith(key)) return label;
+  }
+  return 'Back';
+}
 
 export default function Navbar() {
   const { user, isLoggedIn, isAdmin, isSeller, isSuperAdmin, isKoyambeduSeller, isKoyambeduSA, logout } = useAuth();
-  const { cartCount, setIsCartOpen } = useCart();
+  const { cartCount } = useCart();
   const { wishlistCount } = useWishlist();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [showSearch, setShowSearch] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const navigate   = useNavigate();
-  const { pathname } = useLocation();
-  const searchRef  = useRef();
-  const searchTimeout = useRef();
 
-  // Active module detection
-  const isKoyambedu = pathname.startsWith('/koyambedu');
-  const isUzhavar   = pathname.startsWith('/uzhavar');
-  const isEptomart  = !isKoyambedu && !isUzhavar;
+  const [query,       setQuery]       = useState('');
+  const [results,     setResults]     = useState([]);
+  const [dropOpen,    setDropOpen]    = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [listening,   setListening]   = useState(false);
+
+  const navigate       = useNavigate();
+  const { pathname }   = useLocation();
+  const inputRef       = useRef(null);
+  const searchTimeout  = useRef(null);
+  const wrapRef        = useRef(null);
+
+  const isHome       = pathname === '/';
+  const isKoyambedu  = pathname.startsWith('/koyambedu');
+  const isUzhavar    = pathname.startsWith('/uzhavar');
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) { setDropOpen(false); } };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   // Live search
   useEffect(() => {
-    if (searchQuery.trim().length < 2) {
-      setSearchResults([]);
-      return;
-    }
+    if (query.trim().length < 2) { setResults([]); return; }
     clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(async () => {
       try {
-        const { data } = await api.get(`/products/search?q=${searchQuery}&limit=6`);
-        setSearchResults(data.products || []);
+        const { data } = await api.get(`/products/search?q=${encodeURIComponent(query)}&limit=6`);
+        setResults(data.products || []);
+        setDropOpen(true);
       } catch (_) {}
     }, 300);
-  }, [searchQuery]);
+  }, [query]);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/shop?search=${encodeURIComponent(searchQuery)}`);
-      setSearchQuery('');
-      setSearchResults([]);
-      setShowSearch(false);
-    }
+  const submit = (q = query) => {
+    if (!q.trim()) return;
+    navigate(`/shop?search=${encodeURIComponent(q.trim())}`);
+    setQuery('');
+    setResults([]);
+    setDropOpen(false);
+  };
+
+  const handleKey = (e) => {
+    if (e.key === 'Enter') submit();
+    if (e.key === 'Escape') { setDropOpen(false); setQuery(''); }
+  };
+
+  // Voice search
+  const startVoice = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR();
+    rec.lang = 'en-IN';
+    rec.onstart = () => setListening(true);
+    rec.onend   = () => setListening(false);
+    rec.onresult = (e) => {
+      const t = e.results[0][0].transcript;
+      setQuery(t);
+      submit(t);
+    };
+    rec.start();
+  };
+
+  // Back navigation — go back if history exists, else go home
+  const goBack = () => {
+    if (window.history.length > 2) navigate(-1);
+    else navigate('/');
   };
 
   return (
-    <header className="sticky top-0 z-50 safe-top shadow-lg" style={{background: '#0B1729'}}>
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center h-16 gap-3">
-          {/* Logo — header spec: 120×56 container, padding-left 12px */}
-          <Link
-            to="/"
-            style={{
-              width: 160,
-              height: 50,
-              paddingLeft: 4,
-              overflow: 'visible',
-              display: 'flex',
-              alignItems: 'center',
-              flexShrink: 0,
-              lineHeight: 0,
-            }}
-          >
+    <header className="sticky top-0 z-50 safe-top shadow-lg" style={{ background: '#0B1729' }}>
+      <div className="max-w-7xl mx-auto px-3">
+
+        {/* ── Row 1: Logo / Back · Actions ── */}
+        <div className="flex items-center h-14 gap-2">
+
+          {/* Back button (mobile only, not on home) */}
+          {!isHome && (
+            <button
+              onClick={goBack}
+              className="md:hidden flex items-center gap-1.5 text-white/80 hover:text-white transition-colors flex-shrink-0 pr-1"
+              aria-label="Go back"
+            >
+              <FiArrowLeft size={20} />
+              <span className="text-xs font-semibold text-white/70 whitespace-nowrap max-w-[90px] truncate">
+                {getPageTitle(pathname)}
+              </span>
+            </button>
+          )}
+
+          {/* Logo — shrinks on non-home mobile to leave room for back btn */}
+          <Link to="/" className="flex items-center flex-shrink-0" style={{ lineHeight: 0 }}>
             <img
               src="/logo-v3.png?v=3"
               alt="Eptomart"
-              style={{
-                width: 'auto',
-                height: 40,
-                objectFit: 'contain',
-                display: 'block',
-              }}
+              style={{ height: 36, width: 'auto', objectFit: 'contain', display: 'block' }}
             />
           </Link>
 
-          {/* Search Bar — Desktop */}
-          <form onSubmit={handleSearch} className="hidden md:flex flex-1 mx-6 relative">
+          {/* Desktop search bar */}
+          <form onSubmit={(e) => { e.preventDefault(); submit(); }}
+            ref={wrapRef}
+            className="hidden md:flex flex-1 mx-4 relative">
             <div className="relative w-full">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={15} />
               <input
+                ref={inputRef}
                 type="text"
-                placeholder="Search for products, brands..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white/15 transition-all"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                onKeyDown={handleKey}
+                onFocus={() => results.length > 0 && setDropOpen(true)}
+                placeholder="Search products, brands…"
+                className="w-full pl-9 pr-10 py-2.5 rounded-xl text-sm bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white/15 transition-all"
               />
-              {/* Search Dropdown */}
-              {searchResults.length > 0 && (
+              {query
+                ? <button type="button" onClick={() => { setQuery(''); setResults([]); setDropOpen(false); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors">
+                    <FiX size={14} />
+                  </button>
+                : <button type="button" onClick={startVoice}
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${listening ? 'text-red-400 animate-pulse' : 'text-gray-400 hover:text-orange-400'}`}>
+                    <FiMic size={14} />
+                  </button>
+              }
+              {/* Desktop dropdown */}
+              {dropOpen && results.length > 0 && (
                 <div className="absolute top-full left-0 right-0 bg-white shadow-2xl rounded-xl mt-1 border z-50 overflow-hidden">
-                  {searchResults.map(product => (
-                    <Link
-                      key={product._id}
-                      to={`/product/${product.slug}`}
+                  {results.map(p => (
+                    <Link key={p._id} to={`/product/${p.slug || p._id}`}
                       className="flex items-center gap-3 px-4 py-3 hover:bg-orange-50 transition-colors"
-                      onClick={() => { setSearchQuery(''); setSearchResults([]); }}
-                    >
-                      <img src={product.images?.[0]?.url} alt={product.name} className="w-10 h-10 object-cover rounded-lg" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-800 line-clamp-1">{product.name}</p>
-                        <p className="text-xs font-semibold" style={{color:'#f4941c'}}>₹{(product.discountPrice || product.price)?.toLocaleString('en-IN')}</p>
+                      onClick={() => { setQuery(''); setResults([]); setDropOpen(false); }}>
+                      <img src={p.images?.[0]?.url} alt={p.name} className="w-10 h-10 object-cover rounded-lg flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 line-clamp-1">{p.name}</p>
+                        <p className="text-xs font-semibold" style={{ color: '#f4941c' }}>
+                          ₹{(p.discountPrice || p.price)?.toLocaleString('en-IN')}
+                        </p>
                       </div>
                     </Link>
                   ))}
+                  <button onClick={() => submit()}
+                    className="w-full px-4 py-2.5 text-xs font-bold text-orange-500 border-t border-gray-100 hover:bg-orange-50 transition-colors text-left flex items-center gap-2">
+                    <FiSearch size={12} /> See all results for "{query}"
+                  </button>
                 </div>
               )}
             </div>
           </form>
 
-          <div className="flex items-center gap-1 ml-auto">
+          {/* Right actions */}
+          <div className="flex items-center gap-0.5 ml-auto">
 
-            {/* Wishlist */}
+            {/* Wishlist (desktop only) */}
             {isLoggedIn && (
-              <button onClick={() => navigate('/wishlist')} className="relative p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors hidden sm:flex">
-                <FiHeart size={22} />
+              <button onClick={() => navigate('/wishlist')}
+                className="relative p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors hidden sm:flex">
+                <FiHeart size={21} />
                 {wishlistCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
                     {wishlistCount > 9 ? '9+' : wishlistCount}
                   </span>
                 )}
@@ -132,166 +209,183 @@ export default function Navbar() {
             )}
 
             {/* Cart */}
-            <button
-              onClick={() => navigate('/cart')}
-              className="relative p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <FiShoppingCart size={22} />
+            <button onClick={() => navigate('/cart')}
+              className="relative p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
+              <FiShoppingCart size={21} />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold" style={{background:'#f4941c'}}>
+                <span className="absolute -top-1 -right-1 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold" style={{ background: '#f4941c' }}>
                   {cartCount > 9 ? '9+' : cartCount}
                 </span>
               )}
             </button>
 
-            {/* User Menu */}
+            {/* User */}
             {isLoggedIn ? (
               <div className="relative">
-                <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl hover:bg-white/10 transition-colors"
-                >
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white" style={{background:'#f4941c'}}>
+                <button onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1.5 rounded-xl hover:bg-white/10 transition-colors">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs text-white flex-shrink-0" style={{ background: '#f4941c' }}>
                     {user?.name?.charAt(0).toUpperCase()}
                   </div>
-                  <span className="hidden sm:block text-sm font-medium text-gray-200">
+                  <span className="hidden sm:block text-sm font-medium text-gray-200 whitespace-nowrap">
                     {user?.name?.split(' ')[0]}
                   </span>
                 </button>
 
                 {showUserMenu && (
-                  <div className="absolute right-0 top-12 bg-white shadow-2xl rounded-2xl p-2 w-56 border z-50">
+                  <div className="absolute right-0 top-12 bg-white shadow-2xl rounded-2xl p-2 w-52 border z-50">
                     <Link to="/profile" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}>
-                      <FiUser size={16} /> My Profile
+                      <FiUser size={15} /> My Profile
                     </Link>
                     <Link to="/orders" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}>
-                      <FiPackage size={16} /> My Orders
+                      <FiPackage size={15} /> My Orders
                     </Link>
                     <Link to="/cart" className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}>
-                      <span className="flex items-center gap-3"><FiShoppingCart size={16} /> My Cart</span>
-                      {cartCount > 0 && <span className="text-xs font-bold text-white px-2 py-0.5 rounded-full" style={{background:'#f4941c'}}>{cartCount}</span>}
+                      <span className="flex items-center gap-3"><FiShoppingCart size={15} /> My Cart</span>
+                      {cartCount > 0 && <span className="text-xs font-bold text-white px-1.5 py-0.5 rounded-full" style={{ background: '#f4941c' }}>{cartCount}</span>}
                     </Link>
                     <Link to="/wishlist" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}>
-                      <FiHeart size={16} /> My Wishlist
+                      <FiHeart size={15} /> Wishlist
                     </Link>
                     {(isSeller || isSuperAdmin) && (
-                      <Link to="/seller/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm font-medium" style={{color:'#f4941c'}} onClick={() => setShowUserMenu(false)}>
-                        <FiGrid size={16} /> Seller Portal
+                      <Link to="/seller/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm font-semibold" style={{ color: '#f4941c' }} onClick={() => setShowUserMenu(false)}>
+                        <FiGrid size={15} /> Seller Portal
                       </Link>
                     )}
                     {isKoyambeduSeller && (
-                      <Link to="/koyambedu/seller" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-green-50 text-sm font-medium text-green-700" onClick={() => setShowUserMenu(false)}>
-                        <span className="text-base leading-none">🥬</span> Koyambedu Seller
+                      <Link to="/koyambedu/seller" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-green-50 text-sm font-semibold text-green-700" onClick={() => setShowUserMenu(false)}>
+                        <span>🥬</span> Koyambedu Seller
                       </Link>
                     )}
                     {isKoyambeduSA && (
-                      <Link to="/koyambedu/seller-admin" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-green-50 text-sm font-medium text-green-700" onClick={() => setShowUserMenu(false)}>
-                        <span className="text-base leading-none">🏪</span> Koyambedu Admin
+                      <Link to="/koyambedu/seller-admin" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-green-50 text-sm font-semibold text-green-700" onClick={() => setShowUserMenu(false)}>
+                        <span>🏪</span> Koyambedu Admin
                       </Link>
                     )}
                     {isAdmin && (
-                      <Link to="/admin" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm font-medium" style={{color:'#f4941c'}} onClick={() => setShowUserMenu(false)}>
-                        <FiSettings size={16} /> Admin Panel
+                      <Link to="/admin" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm font-semibold" style={{ color: '#f4941c' }} onClick={() => setShowUserMenu(false)}>
+                        <FiSettings size={15} /> Admin Panel
                       </Link>
                     )}
                     <hr className="my-1" />
                     <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 text-sm text-red-500">
-                      <FiLogOut size={16} /> Logout
+                      <FiLogOut size={15} /> Logout
                     </button>
                   </div>
                 )}
               </div>
             ) : (
-              <Link to="/login" className="ml-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all" style={{background:'#f4941c'}}>Login</Link>
+              <Link to="/login" className="ml-1 px-3 py-1.5 rounded-xl text-xs font-bold text-white transition-all whitespace-nowrap" style={{ background: '#f4941c' }}>
+                Login
+              </Link>
             )}
           </div>
         </div>
 
-        {/* Sub-module nav strip */}
-        <div className="flex items-center gap-1 pb-2 border-t border-white/10 pt-2 -mx-4 px-4 overflow-x-auto scrollbar-hide">
+        {/* ── Row 2: Mobile search bar — always visible ── */}
+        <div className="md:hidden pb-2.5" ref={wrapRef}>
+          <div className="relative">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={handleKey}
+              onFocus={() => results.length > 0 && setDropOpen(true)}
+              placeholder="Search products, brands…"
+              className="w-full pl-8 pr-9 py-2 rounded-xl text-sm bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white/15 transition-all"
+            />
+            {query
+              ? <button type="button" onClick={() => { setQuery(''); setResults([]); setDropOpen(false); }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors p-0.5">
+                  <FiX size={14} />
+                </button>
+              : <button type="button" onClick={startVoice}
+                  className={`absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 transition-colors ${listening ? 'text-red-400 animate-pulse' : 'text-gray-400 hover:text-orange-400'}`}>
+                  <FiMic size={14} />
+                </button>
+            }
+            {/* Mobile dropdown */}
+            {dropOpen && results.length > 0 && (
+              <div className="absolute top-full left-0 right-0 bg-white shadow-2xl rounded-xl mt-1 border z-50 overflow-hidden">
+                {results.map(p => (
+                  <Link key={p._id} to={`/product/${p.slug || p._id}`}
+                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 transition-colors border-b border-gray-50 last:border-0"
+                    onClick={() => { setQuery(''); setResults([]); setDropOpen(false); }}>
+                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                      {p.images?.[0]?.url
+                        ? <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center text-xl">📦</div>
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 line-clamp-1">{p.name}</p>
+                      <p className="text-xs font-bold" style={{ color: '#f4941c' }}>
+                        ₹{(p.discountPrice || p.price)?.toLocaleString('en-IN')}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+                <button onClick={() => submit()}
+                  className="w-full px-4 py-2.5 text-xs font-bold text-orange-500 bg-orange-50 flex items-center gap-2">
+                  <FiSearch size={11} /> See all results for "{query}"
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
-          {/* Koyambedu Daily */}
+        {/* ── Row 3: Sub-module strip ── */}
+        <div className="flex items-center gap-1 pb-2 border-t border-white/10 pt-2 -mx-3 px-3 overflow-x-auto scrollbar-hide">
+
           <Link to="/koyambedu"
             className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all flex-shrink-0"
             style={{
               background: isKoyambedu ? 'rgba(16,185,129,0.45)' : 'rgba(16,185,129,0.18)',
               color: '#fff',
               border: isKoyambedu ? '1px solid rgba(16,185,129,0.6)' : '1px solid transparent',
-            }}
-          >
+            }}>
             🥬 Koyambedu Daily
           </Link>
 
-          {/* Uzhavar Fresh */}
           <Link to="/uzhavar"
             className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all flex-shrink-0"
             style={{
               background: isUzhavar ? 'rgba(132,204,22,0.4)' : 'rgba(132,204,22,0.15)',
               color: '#fff',
               border: isUzhavar ? '1px solid rgba(132,204,22,0.55)' : '1px solid transparent',
-            }}
-          >
+            }}>
             🌾 Uzhavar Fresh
           </Link>
 
           <div className="h-4 w-px bg-white/15 mx-1 flex-shrink-0" />
 
-          {/* Featured — scrolls to #section-featured if on home, else opens shop */}
           <button
             onClick={() => {
               const el = document.getElementById('section-featured');
-              if (el) { el.scrollIntoView({ behavior: 'smooth' }); }
-              else { navigate('/'); setTimeout(() => { const s = document.getElementById('section-featured'); if (s) s.scrollIntoView({ behavior: 'smooth' }); }, 400); }
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+              else { navigate('/'); setTimeout(() => document.getElementById('section-featured')?.scrollIntoView({ behavior: 'smooth' }), 400); }
             }}
             className="text-[11px] text-gray-400 hover:text-white px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">
             ✨ Featured
           </button>
 
-          {/* Flash Deals — scrolls to #section-flash if on home, else opens shop sorted by price */}
           <button
             onClick={() => {
               const el = document.getElementById('section-flash');
-              if (el) { el.scrollIntoView({ behavior: 'smooth' }); }
-              else { navigate('/'); setTimeout(() => { const s = document.getElementById('section-flash'); if (s) s.scrollIntoView({ behavior: 'smooth' }); }, 400); }
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+              else { navigate('/'); setTimeout(() => document.getElementById('section-flash')?.scrollIntoView({ behavior: 'smooth' }), 400); }
             }}
             className="text-[11px] text-gray-400 hover:text-white px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">
             ⚡ Flash Deals
           </button>
 
-          <Link to="/shop?sort=-createdAt" className="text-[11px] text-gray-400 hover:text-white px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">🆕 New</Link>
+          <Link to="/shop?sort=-createdAt"
+            className="text-[11px] text-gray-400 hover:text-white px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">
+            🆕 New
+          </Link>
         </div>
 
-        {/* Mobile Search Bar */}
-        {showSearch && (
-          <form onSubmit={handleSearch} className="pb-3 md:hidden">
-            <div className="relative">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                autoFocus
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
-              />
-            </div>
-            {searchResults.length > 0 && (
-              <div className="bg-white shadow-xl rounded-xl mt-1 border overflow-hidden">
-                {searchResults.map(product => (
-                  <Link
-                    key={product._id}
-                    to={`/product/${product.slug}`}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-orange-50 transition-colors"
-                    onClick={() => { setSearchQuery(''); setSearchResults([]); setShowSearch(false); }}
-                  >
-                    <img src={product.images?.[0]?.url} alt={product.name} className="w-10 h-10 object-cover rounded-lg" />
-                    <p className="text-sm font-medium text-gray-800 line-clamp-1">{product.name}</p>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </form>
-        )}
       </div>
     </header>
   );
