@@ -1,7 +1,7 @@
 // ============================================
 // HOME PAGE — Eptomart Premium
 // ============================================
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { FiArrowRight, FiSearch, FiZap, FiChevronRight, FiMic, FiX } from 'react-icons/fi';
@@ -57,93 +57,132 @@ function SectionHeader({ emoji, title, link, linkLabel = 'See all', dotColor = '
   );
 }
 
-// ── Flash Deals — horizontal swipe strip ──────────────────────
-function FlashDeals({ products }) {
-  const { h, m, s } = useCountdown(6);
+// ── Shared Product Carousel Card ──────────────────────────────
+function CarouselCard({ product: p, accent = '#f4941c' }) {
+  const orig = p.price || 0;
+  const disc = p.discountPrice && p.discountPrice < orig ? p.discountPrice : null;
+  const pct  = disc ? Math.round(((orig - disc) / orig) * 100) : 0;
+  const img  = p.images?.[0]?.url || '';
+  return (
+    <Link to={`/product/${p.slug || p._id}`}
+      style={{ scrollSnapAlign: 'start', flexShrink: 0, width: '148px' }}
+      className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-lg transition-all active:scale-95 group">
+
+      {/* Image */}
+      <div className="relative bg-gray-50 overflow-hidden" style={{ aspectRatio: '1/1' }}>
+        {img
+          ? <img src={img} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+          : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>
+        }
+        {pct >= 5 && (
+          <div className="absolute top-2 left-2 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow"
+            style={{ background: accent }}>
+            {pct}% OFF
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-2.5">
+        <p className="text-[11px] font-bold text-gray-800 line-clamp-2 leading-snug mb-1.5 min-h-[28px]">{p.name}</p>
+        <div className="flex items-baseline gap-1.5 flex-wrap">
+          <span className="text-sm font-extrabold text-gray-900">
+            ₹{(disc || orig).toLocaleString('en-IN')}
+          </span>
+          {disc && (
+            <span className="text-[10px] text-gray-400 line-through">
+              ₹{orig.toLocaleString('en-IN')}
+            </span>
+          )}
+        </div>
+        {p.ratings?.average > 0 && (
+          <div className="flex items-center gap-0.5 mt-1">
+            <span className="text-[9px] text-amber-500 font-bold">⭐ {p.ratings.average.toFixed(1)}</span>
+            {p.soldCount > 0 && <span className="text-[9px] text-gray-400 ml-1">· {p.soldCount} sold</span>}
+          </div>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+// ── Auto-cycling carousel used by BOTH Featured + Flash ────────
+function ProductCarouselTrack({ products, accent }) {
   const trackRef = useRef(null);
+  const timerRef = useRef(null);
 
-  // Use any product with discountPrice; fall back to first 8 products if none
-  const deals = useMemo(() => {
-    const withDiscount = products.filter(p => p.discountPrice && p.discountPrice < p.price);
-    return (withDiscount.length >= 3 ? withDiscount : products).slice(0, 10);
-  }, [products]);
-
-  const scrollBy = (dir) => {
+  const advance = useCallback(() => {
     const el = trackRef.current;
     if (!el) return;
-    el.scrollBy({ left: dir * (el.clientWidth * 0.85), behavior: 'smooth' });
-  };
+    const nearEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 20;
+    if (nearEnd) {
+      el.scrollTo({ left: 0, behavior: 'instant' });
+    } else {
+      el.scrollBy({ left: 158, behavior: 'smooth' }); // 148px card + 10px gap
+    }
+  }, []);
 
-  if (!deals.length) return null;
+  useEffect(() => {
+    timerRef.current = setInterval(advance, 3200);
+    return () => clearInterval(timerRef.current);
+  }, [advance]);
+
+  // Manual swipe resets timer so auto-scroll resumes cleanly
+  const handleScroll = useCallback(() => {
+    clearInterval(timerRef.current);
+    timerRef.current = setInterval(advance, 3200);
+  }, [advance]);
 
   return (
+    <div className="relative group/carousel">
+      {/* Desktop prev arrow */}
+      <button
+        onClick={() => { const el = trackRef.current; el?.scrollBy({ left: -316, behavior: 'smooth' }); }}
+        className="hidden md:flex absolute left-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white shadow-lg border border-gray-100 items-center justify-center text-gray-400 hover:text-orange-500 transition-all opacity-0 group-hover/carousel:opacity-100">
+        <FiChevronRight size={15} className="rotate-180" />
+      </button>
+
+      <div ref={trackRef}
+        onScroll={handleScroll}
+        className="flex gap-2.5 px-4 overflow-x-auto scrollbar-hide pb-1"
+        style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+        {products.map((p, i) => <CarouselCard key={`${p._id}-${i}`} product={p} accent={accent} />)}
+      </div>
+
+      {/* Desktop next arrow */}
+      <button
+        onClick={() => { const el = trackRef.current; el?.scrollBy({ left: 316, behavior: 'smooth' }); }}
+        className="hidden md:flex absolute right-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white shadow-lg border border-gray-100 items-center justify-center text-gray-400 hover:text-orange-500 transition-all opacity-0 group-hover/carousel:opacity-100">
+        <FiChevronRight size={15} />
+      </button>
+    </div>
+  );
+}
+
+// ── Flash Deals section (uses shared carousel) ─────────────────
+function FlashDeals({ products }) {
+  const { h, m, s } = useCountdown(6);
+  if (!products.length) return null;
+  return (
     <section id="section-flash">
-      {/* Header */}
       <div className="flex items-center justify-between mb-3 px-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-sm">
             <FiZap size={11} fill="white" /> FLASH DEALS
           </div>
           <div className="flex items-center gap-1 font-mono font-bold text-xs">
-            <span className="bg-gray-900 text-white px-1.5 py-0.5 rounded">{h}</span>
-            <span className="text-gray-400 font-black">:</span>
-            <span className="bg-gray-900 text-white px-1.5 py-0.5 rounded">{m}</span>
-            <span className="text-gray-400 font-black">:</span>
-            <span className="bg-gray-900 text-white px-1.5 py-0.5 rounded">{s}</span>
+            <span className="bg-gray-900 text-white px-1.5 py-0.5 rounded-md">{h}</span>
+            <span className="text-gray-500">:</span>
+            <span className="bg-gray-900 text-white px-1.5 py-0.5 rounded-md">{m}</span>
+            <span className="text-gray-500">:</span>
+            <span className="bg-gray-900 text-white px-1.5 py-0.5 rounded-md">{s}</span>
           </div>
         </div>
-        <Link to="/shop?sort=-discount" className="text-xs font-bold text-red-500 flex items-center gap-0.5">
-          All <FiChevronRight size={12} />
+        <Link to="/shop" className="text-xs font-bold text-red-500 flex items-center gap-0.5">
+          See all <FiChevronRight size={12} />
         </Link>
       </div>
-
-      {/* Swipe track */}
-      <div className="relative group/flash">
-        <button onClick={() => scrollBy(-1)}
-          className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white shadow-lg border border-gray-100 items-center justify-center text-gray-400 hover:text-red-500 transition-all opacity-0 group-hover/flash:opacity-100">
-          <FiChevronRight size={15} className="rotate-180" />
-        </button>
-
-        <div ref={trackRef}
-          className="flex gap-3 px-4 overflow-x-auto scrollbar-hide pb-1"
-          style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
-          {deals.map(p => {
-            const orig = p.price || 0;
-            const disc = p.discountPrice || orig;
-            const pct  = orig > disc ? Math.round(((orig - disc) / orig) * 100) : 0;
-            return (
-              <Link key={p._id} to={`/product/${p.slug || p._id}`}
-                style={{ scrollSnapAlign: 'start' }}
-                className="flex-shrink-0 w-36 bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all active:scale-95 group">
-                <div className="relative aspect-square bg-gray-50 overflow-hidden">
-                  <img src={p.images?.[0]?.url || ''} alt={p.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-                  {pct > 0 && (
-                    <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow">
-                      {pct}% OFF
-                    </div>
-                  )}
-                </div>
-                <div className="p-2.5">
-                  <p className="text-[11px] font-semibold text-gray-700 line-clamp-2 leading-snug mb-1">{p.name}</p>
-                  <p className="font-extrabold text-sm text-gray-900">₹{disc.toLocaleString('en-IN')}</p>
-                  {pct > 0 && <p className="text-[10px] text-gray-400 line-through">₹{orig.toLocaleString('en-IN')}</p>}
-                  {/* Stock bar */}
-                  <div className="mt-1.5 h-1 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-red-400 rounded-full w-[35%]" />
-                  </div>
-                  <p className="text-[9px] text-gray-400 mt-0.5">🔥 Selling fast</p>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-
-        <button onClick={() => scrollBy(1)}
-          className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white shadow-lg border border-gray-100 items-center justify-center text-gray-400 hover:text-red-500 transition-all opacity-0 group-hover/flash:opacity-100">
-          <FiChevronRight size={15} />
-        </button>
-      </div>
+      <ProductCarouselTrack products={products} accent="#ef4444" />
     </section>
   );
 }
@@ -419,13 +458,16 @@ export default function Home() {
     })();
   }, []);
 
-  // Featured = products with featured flag or discountPrice; fallback = all products
-  const featuredProducts = useMemo(() => {
-    const hand = allProducts.filter(p => p.featured || (p.discountPrice && p.discountPrice < p.price));
-    return (hand.length >= 4 ? hand : allProducts).slice(0, 12);
+  // Featured carousel = all products (cycles through everything)
+  const featuredProducts = useMemo(() => allProducts, [allProducts]);
+
+  // Flash deals = discounted products first, then fill with all products (also cycles through everything)
+  const flashProducts = useMemo(() => {
+    const withDiscount = allProducts.filter(p => p.discountPrice && p.discountPrice < p.price);
+    return withDiscount.length >= 3 ? [...withDiscount, ...allProducts.filter(p => !withDiscount.includes(p))] : allProducts;
   }, [allProducts]);
 
-  // New arrivals = everything sorted by date (already sorted from API)
+  // New arrivals = all products sorted newest first
   const newArrivals = allProducts.slice(0, 10);
 
   return (
@@ -458,17 +500,33 @@ export default function Home() {
 
         <Divider />
 
-        {/* ── FEATURED PRODUCTS — 2-col grid, not a scroll strip ── */}
+        {/* ── FEATURED PRODUCTS — auto-cycling carousel ── */}
         <section id="section-featured" className="pt-4 pb-5">
-          <SectionHeader emoji="⭐" title="Featured Products" link="/shop" />
+          <div className="flex items-center justify-between mb-3 px-4">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" />
+              <span className="text-base leading-none">⭐</span>
+              <h2 className="text-sm font-extrabold text-gray-900 tracking-tight">Featured Products</h2>
+            </div>
+            <Link to="/shop" className="text-xs font-bold text-orange-500 flex items-center gap-0.5">
+              See all <FiChevronRight size={12} />
+            </Link>
+          </div>
           {loading ? (
-            <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
+            <div className="flex gap-2.5 px-4 overflow-hidden">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex-shrink-0 w-36 bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse">
+                  <div className="aspect-square bg-gray-100" />
+                  <div className="p-2.5 space-y-1.5">
+                    <div className="h-3 bg-gray-100 rounded w-3/4" />
+                    <div className="h-3 bg-gray-100 rounded w-1/2" />
+                    <div className="h-4 bg-gray-100 rounded w-1/3" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : featuredProducts.length > 0 ? (
-            <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              {featuredProducts.map(p => <ProductCard key={p._id} product={p} />)}
-            </div>
+            <ProductCarouselTrack products={featuredProducts} accent="#f4941c" />
           ) : (
             <div className="text-center py-10 px-4">
               <p className="text-4xl mb-2">🌟</p>
@@ -480,18 +538,18 @@ export default function Home() {
 
         <Divider />
 
-        {/* ── FLASH DEALS — horizontal swipe strip ── */}
-        <section id="section-flash" className="pt-4 pb-5">
+        {/* ── FLASH DEALS — matching auto-cycling carousel ── */}
+        <section className="pt-4 pb-5">
           {loading
-            ? <div className="px-4 flex gap-3 overflow-hidden">
-                {[...Array(4)].map((_, i) => (
+            ? <div className="flex gap-2.5 px-4 overflow-hidden">
+                {[...Array(3)].map((_, i) => (
                   <div key={i} className="flex-shrink-0 w-36 bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse">
                     <div className="aspect-square bg-gray-100" />
                     <div className="p-2.5 space-y-1.5"><div className="h-3 bg-gray-100 rounded w-3/4" /><div className="h-4 bg-gray-100 rounded w-1/2" /></div>
                   </div>
                 ))}
               </div>
-            : <FlashDeals products={allProducts} />
+            : <FlashDeals products={flashProducts} />
           }
         </section>
 

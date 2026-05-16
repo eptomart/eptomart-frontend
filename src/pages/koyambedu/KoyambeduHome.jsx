@@ -111,14 +111,14 @@ export default function KoyambeduHome() {
 
   useEffect(() => {
     fetchCart();
+    // Load categories and featured products independently — one failure won't block the other
     Promise.all([
-      api.get('/koyambedu/categories'),
-      api.get('/koyambedu/products/featured'),
+      api.get('/koyambedu/categories').catch(() => ({ data: { categories: [] } })),
+      api.get('/koyambedu/products/featured').catch(() => ({ data: { sections: {} } })),
     ]).then(([catRes, featRes]) => {
       setCategories(catRes.data.categories || []);
       setSections(featRes.data.sections || {});
-    }).catch(() => toast.error('Failed to load market data'))
-      .finally(() => setLoading(false));
+    }).finally(() => setLoading(false));
   }, []);
 
   return (
