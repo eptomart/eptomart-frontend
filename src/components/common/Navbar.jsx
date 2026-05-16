@@ -473,30 +473,40 @@ export default function Navbar() {
 
           <div className="h-4 w-px bg-white/15 mx-1 flex-shrink-0" />
 
-          <button
-            onClick={() => {
-              const el = document.getElementById('section-featured');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-              else { navigate('/'); setTimeout(() => document.getElementById('section-featured')?.scrollIntoView({ behavior: 'smooth' }), 400); }
-            }}
-            className="text-[11px] text-gray-400 hover:text-white px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">
-            ✨ Featured
-          </button>
-
-          <button
-            onClick={() => {
-              const el = document.getElementById('section-flash');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-              else { navigate('/'); setTimeout(() => document.getElementById('section-flash')?.scrollIntoView({ behavior: 'smooth' }), 400); }
-            }}
-            className="text-[11px] text-gray-400 hover:text-white px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">
-            ⚡ Flash Deals
-          </button>
-
-          <Link to="/shop?sort=-createdAt"
-            className="text-[11px] text-gray-400 hover:text-white px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">
-            🆕 New
-          </Link>
+          {[
+            { label: '✨ Featured',   id: 'section-featured' },
+            { label: '⚡ Flash Deals', id: 'section-flash'    },
+            { label: '🆕 New',        id: 'section-new'      },
+          ].map(({ label, id }) => (
+            <button
+              key={id}
+              onClick={() => {
+                const scrollTo = (elId) => {
+                  const el = document.getElementById(elId);
+                  if (el) {
+                    const offset = 160; // navbar height (~3 rows)
+                    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: 'smooth' });
+                  }
+                };
+                if (document.getElementById(id)) {
+                  scrollTo(id);
+                } else {
+                  navigate('/');
+                  setTimeout(() => scrollTo(id), 500);
+                }
+              }}
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all flex-shrink-0"
+              style={{
+                background: 'rgba(244,148,28,0.12)',
+                color: '#fff',
+                border: '1px solid transparent',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(244,148,28,0.28)'; e.currentTarget.style.border = '1px solid rgba(244,148,28,0.4)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(244,148,28,0.12)'; e.currentTarget.style.border = '1px solid transparent'; }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
       </div>

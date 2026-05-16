@@ -771,7 +771,7 @@ export default function Home() {
           <Divider />
 
           {/* ── NEW ARRIVALS ── */}
-          <section className="pt-4 pb-6">
+          <section id="section-new" className="pt-4 pb-6">
             <SectionHeader emoji="🆕" title="New Arrivals" link="/shop?sort=-createdAt" />
             {loading ? (
               <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
