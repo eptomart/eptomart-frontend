@@ -338,6 +338,18 @@ export default function Navbar() {
         {/* ── Row 3: Sub-module strip ── */}
         <div className="flex items-center gap-1 pb-2 border-t border-white/10 pt-2 -mx-3 px-3 overflow-x-auto scrollbar-hide">
 
+          <Link to="/categories"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all flex-shrink-0"
+            style={{
+              background: pathname === '/categories' ? 'rgba(244,148,28,0.35)' : 'rgba(244,148,28,0.12)',
+              color: '#fff',
+              border: pathname === '/categories' ? '1px solid rgba(244,148,28,0.5)' : '1px solid transparent',
+            }}>
+            🗂️ Categories
+          </Link>
+
+          <div className="h-4 w-px bg-white/15 flex-shrink-0" />
+
           <Link to="/koyambedu"
             className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all flex-shrink-0"
             style={{

@@ -458,8 +458,8 @@ export default function Home() {
     })();
   }, []);
 
-  // Featured carousel = all products (cycles through everything)
-  const featuredProducts = useMemo(() => allProducts, [allProducts]);
+  // Featured carousel = first 4 products only (tight spotlight rotation)
+  const featuredProducts = useMemo(() => allProducts.slice(0, 4), [allProducts]);
 
   // Flash deals = discounted products first, then fill with all products (also cycles through everything)
   const flashProducts = useMemo(() => {
