@@ -223,8 +223,7 @@ export default function KoyambeduHome() {
           )}
         </div>
 
-        </div>{/* end product sections */}
-        </div>{/* end max-w-7xl */}
+        </div>{/* end max-w-7xl content wrapper */}
 
         {/* ── Smart Baskets ─────────────────── */}
         <div className="max-w-7xl mx-auto px-4 mb-6">
