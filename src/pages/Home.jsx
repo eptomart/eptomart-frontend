@@ -57,105 +57,128 @@ function SectionHeader({ emoji, title, link, linkLabel = 'See all', dotColor = '
   );
 }
 
-// ── Shared Product Carousel Card ──────────────────────────────
-function CarouselCard({ product: p, accent = '#f4941c' }) {
+// ── Product Card (used in both grid and slider) ────────────────
+function ProductGridCard({ product: p, accent = '#f4941c' }) {
   const orig = p.price || 0;
   const disc = p.discountPrice && p.discountPrice < orig ? p.discountPrice : null;
   const pct  = disc ? Math.round(((orig - disc) / orig) * 100) : 0;
   const img  = p.images?.[0]?.url || '';
   return (
     <Link to={`/product/${p.slug || p._id}`}
-      style={{ scrollSnapAlign: 'start', flexShrink: 0, width: '148px' }}
-      className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-lg transition-all active:scale-95 group">
-
-      {/* Image */}
+      className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 active:scale-95 group flex flex-col">
       <div className="relative bg-gray-50 overflow-hidden" style={{ aspectRatio: '1/1' }}>
         {img
           ? <img src={img} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
           : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>
         }
         {pct >= 5 && (
-          <div className="absolute top-2 left-2 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow"
+          <div className="absolute top-2 left-2 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md"
             style={{ background: accent }}>
             {pct}% OFF
           </div>
         )}
       </div>
-
-      {/* Info */}
-      <div className="p-2.5">
-        <p className="text-[11px] font-bold text-gray-800 line-clamp-2 leading-snug mb-1.5 min-h-[28px]">{p.name}</p>
-        <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-sm font-extrabold text-gray-900">
-            ₹{(disc || orig).toLocaleString('en-IN')}
-          </span>
-          {disc && (
-            <span className="text-[10px] text-gray-400 line-through">
-              ₹{orig.toLocaleString('en-IN')}
-            </span>
-          )}
+      <div className="p-3 flex flex-col gap-1 flex-1">
+        <p className="text-[12px] font-bold text-gray-800 line-clamp-2 leading-snug">{p.name}</p>
+        <div className="flex items-baseline gap-1.5 mt-auto pt-1">
+          <span className="text-sm font-extrabold text-gray-900">₹{(disc || orig).toLocaleString('en-IN')}</span>
+          {disc && <span className="text-[10px] text-gray-400 line-through">₹{orig.toLocaleString('en-IN')}</span>}
         </div>
         {p.ratings?.average > 0 && (
-          <div className="flex items-center gap-0.5 mt-1">
-            <span className="text-[9px] text-amber-500 font-bold">⭐ {p.ratings.average.toFixed(1)}</span>
-            {p.soldCount > 0 && <span className="text-[9px] text-gray-400 ml-1">· {p.soldCount} sold</span>}
-          </div>
+          <span className="text-[10px] text-amber-500 font-semibold">⭐ {p.ratings.average.toFixed(1)}</span>
         )}
       </div>
     </Link>
   );
 }
 
-// ── Auto-cycling carousel used by BOTH Featured + Flash ────────
-function ProductCarouselTrack({ products, accent }) {
-  const trackRef = useRef(null);
+// ── Desktop: static 5-col product grid (no animation "train") ─
+function DesktopProductGrid({ products, accent }) {
+  const [page, setPage] = useState(0);
+  const PER_PAGE = 5;
+  const pages = Math.ceil(products.length / PER_PAGE);
+  const visible = products.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
+
+  return (
+    <div>
+      <div className="grid grid-cols-5 gap-4 px-4">
+        {visible.map((p, i) => <ProductGridCard key={`${p._id}-${i}`} product={p} accent={accent} />)}
+        {/* Fill empty slots */}
+        {visible.length < PER_PAGE && [...Array(PER_PAGE - visible.length)].map((_, i) => (
+          <div key={`empty-${i}`} />
+        ))}
+      </div>
+      {pages > 1 && (
+        <div className="flex justify-center gap-2 mt-4 px-4">
+          {[...Array(pages)].map((_, i) => (
+            <button key={i} onClick={() => setPage(i)}
+              className={`h-1.5 rounded-full transition-all ${i === page ? 'w-6 bg-orange-500' : 'w-1.5 bg-gray-300 hover:bg-gray-400'}`} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Mobile: smooth CSS-transform slider (no "train" scroll) ────
+function MobileProductSlider({ products, accent }) {
+  const [idx, setIdx] = useState(0);
   const timerRef = useRef(null);
+  const total = products.length;
+  // Show 2 cards per "frame" on mobile
+  const VISIBLE = 2;
+  const maxIdx = Math.max(0, total - VISIBLE);
 
   const advance = useCallback(() => {
-    const el = trackRef.current;
-    if (!el) return;
-    const nearEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 20;
-    if (nearEnd) {
-      el.scrollTo({ left: 0, behavior: 'instant' });
-    } else {
-      el.scrollBy({ left: 158, behavior: 'smooth' }); // 148px card + 10px gap
-    }
-  }, []);
+    setIdx(i => (i >= maxIdx ? 0 : i + 1));
+  }, [maxIdx]);
 
   useEffect(() => {
-    timerRef.current = setInterval(advance, 3200);
+    timerRef.current = setInterval(advance, 3000);
     return () => clearInterval(timerRef.current);
   }, [advance]);
 
-  // Manual swipe resets timer so auto-scroll resumes cleanly
-  const handleScroll = useCallback(() => {
+  const resetTimer = () => {
     clearInterval(timerRef.current);
-    timerRef.current = setInterval(advance, 3200);
-  }, [advance]);
+    timerRef.current = setInterval(advance, 3000);
+  };
 
   return (
-    <div className="relative group/carousel">
-      {/* Desktop prev arrow */}
-      <button
-        onClick={() => { const el = trackRef.current; el?.scrollBy({ left: -316, behavior: 'smooth' }); }}
-        className="hidden md:flex absolute left-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white shadow-lg border border-gray-100 items-center justify-center text-gray-400 hover:text-orange-500 transition-all opacity-0 group-hover/carousel:opacity-100">
-        <FiChevronRight size={15} className="rotate-180" />
-      </button>
-
-      <div ref={trackRef}
-        onScroll={handleScroll}
-        className="flex gap-2.5 px-4 overflow-x-auto scrollbar-hide pb-1"
-        style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
-        {products.map((p, i) => <CarouselCard key={`${p._id}-${i}`} product={p} accent={accent} />)}
+    <div className="px-4 overflow-hidden">
+      <div
+        className="flex gap-3"
+        style={{
+          transform: `translateX(calc(-${idx} * (50% + 6px)))`,
+          transition: idx === 0 && products.length > 0 ? 'none' : 'transform 500ms cubic-bezier(0.4, 0, 0.2, 1)',
+          willChange: 'transform',
+        }}
+      >
+        {products.map((p, i) => (
+          <div key={`${p._id}-${i}`} className="flex-shrink-0" style={{ width: 'calc(50% - 6px)' }}>
+            <ProductGridCard product={p} accent={accent} />
+          </div>
+        ))}
       </div>
-
-      {/* Desktop next arrow */}
-      <button
-        onClick={() => { const el = trackRef.current; el?.scrollBy({ left: 316, behavior: 'smooth' }); }}
-        className="hidden md:flex absolute right-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white shadow-lg border border-gray-100 items-center justify-center text-gray-400 hover:text-orange-500 transition-all opacity-0 group-hover/carousel:opacity-100">
-        <FiChevronRight size={15} />
-      </button>
+      {/* Dot indicators */}
+      {total > VISIBLE && (
+        <div className="flex justify-center gap-1 mt-3">
+          {[...Array(maxIdx + 1)].map((_, i) => (
+            <button key={i} onClick={() => { setIdx(i); resetTimer(); }}
+              className={`h-1 rounded-full transition-all ${i === idx ? 'w-4 bg-orange-500' : 'w-1 bg-gray-300'}`} />
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+// ── Combined carousel: desktop grid / mobile slider ────────────
+function ProductCarouselTrack({ products, accent }) {
+  return (
+    <>
+      <div className="hidden md:block"><DesktopProductGrid products={products} accent={accent} /></div>
+      <div className="md:hidden"><MobileProductSlider products={products} accent={accent} /></div>
+    </>
   );
 }
 
@@ -401,18 +424,34 @@ function DesktopHero() {
 // ── Desktop Category Strip (JioMart-style row, hidden mobile) ──
 function DesktopCategoryStrip() {
   return (
-    <div className="grid grid-cols-8 gap-3 mb-5">
-      {EPTOMART_CATS.map(cat => (
-        <Link key={cat.slug} to={`/shop/${cat.slug}`}
-          className="flex flex-col items-center gap-2 bg-white rounded-2xl pt-4 pb-3 px-2 border border-gray-100 shadow-sm hover:border-orange-200 hover:shadow-md active:scale-95 transition-all group text-center">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110 flex-shrink-0"
-            style={{ background: `${cat.color}14` }}>
-            {cat.emoji}
-          </div>
-          <p className="text-[11px] font-bold text-gray-700 leading-snug line-clamp-2">{cat.name}</p>
-          <span className="text-[10px] font-semibold text-gray-400">From {cat.from}</span>
+    <div className="mb-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-extrabold text-gray-900">Shop by Category</h2>
+        <Link to="/categories" className="text-sm font-bold text-orange-500 flex items-center gap-1 hover:gap-2 transition-all">
+          All categories <FiChevronRight size={14} />
         </Link>
-      ))}
+      </div>
+      <div className="grid grid-cols-8 gap-3">
+        {EPTOMART_CATS.map(cat => (
+          <Link key={cat.slug} to={`/shop/${cat.slug}`}
+            className="relative flex flex-col items-center gap-2.5 rounded-2xl pt-5 pb-4 px-2 overflow-hidden active:scale-95 transition-all group text-center hover:shadow-lg hover:-translate-y-0.5"
+            style={{ background: `linear-gradient(145deg, ${cat.color}12 0%, ${cat.color}06 100%)`, border: `1.5px solid ${cat.color}20` }}>
+            {/* Hover glow */}
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
+              style={{ background: `linear-gradient(145deg, ${cat.color}22 0%, ${cat.color}10 100%)` }} />
+            <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center text-3xl transition-transform group-hover:scale-115 flex-shrink-0 shadow-sm"
+              style={{ background: `${cat.color}20` }}>
+              {cat.emoji}
+            </div>
+            <div className="relative">
+              <p className="text-[11px] font-extrabold leading-snug line-clamp-2" style={{ color: cat.color }}>
+                {cat.name}
+              </p>
+              <span className="text-[9px] font-semibold text-gray-400 mt-0.5 block">From {cat.from}</span>
+            </div>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
@@ -608,8 +647,8 @@ export default function Home() {
     })();
   }, []);
 
-  // Featured carousel = first 4 products only (tight spotlight rotation)
-  const featuredProducts = useMemo(() => allProducts.slice(0, 4), [allProducts]);
+  // Featured: up to 10 on desktop (shown as grid), 4 on mobile (slider)
+  const featuredProducts = useMemo(() => allProducts.slice(0, 10), [allProducts]);
 
   // Flash deals = discounted products first, then fill with all products (also cycles through everything)
   const flashProducts = useMemo(() => {
