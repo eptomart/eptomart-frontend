@@ -512,14 +512,14 @@ function MobileSearchBar() {
 
 // ── Fixed 8-category homepage grid ───────────────────────────
 const HOME_CATS = [
-  { name: 'Fruits',             slug: 'fruits',            emoji: '🍊', bg: '#fff7ed' },
-  { name: 'Vegetables',         slug: 'vegetables',        emoji: '🥦', bg: '#f0fdf4' },
-  { name: 'Flowers & Greens',   slug: 'flowers-greens',    emoji: '🌸', bg: '#fdf2f8' },
-  { name: 'Grocery & Staples',  slug: 'grocery-staples',   emoji: '🛒', bg: '#eff6ff' },
-  { name: 'Masalas & Spices',   slug: 'masalas-spices',    emoji: '🌶️', bg: '#fff1f2' },
-  { name: 'Farm Fresh',         slug: 'farm-fresh',        emoji: '🌾', bg: '#f7fee7' },
-  { name: 'Homemade & Organic', slug: 'homemade-organic',  emoji: '🏡', bg: '#fefce8' },
-  { name: 'Pooja & Coconut',    slug: 'pooja-coconut',     emoji: '🪔', bg: '#faf5ff' },
+  { name: 'Fruits',             slug: 'fruits',            emoji: '🍊', color: '#f97316' },
+  { name: 'Vegetables',         slug: 'vegetables',        emoji: '🥦', color: '#22c55e' },
+  { name: 'Flowers & Greens',   slug: 'flowers-greens',    emoji: '🌸', color: '#ec4899' },
+  { name: 'Grocery & Staples',  slug: 'grocery-staples',   emoji: '🛒', color: '#3b82f6' },
+  { name: 'Masalas & Spices',   slug: 'masalas-spices',    emoji: '🌶️', color: '#ef4444' },
+  { name: 'Farm Fresh',         slug: 'farm-fresh',        emoji: '🌾', color: '#84cc16' },
+  { name: 'Homemade & Organic', slug: 'homemade-organic',  emoji: '🏡', color: '#f59e0b' },
+  { name: 'Pooja & Coconut',    slug: 'pooja-coconut',     emoji: '🪔', color: '#a855f7' },
 ];
 
 function HomeCategoriesGrid() {
@@ -532,14 +532,18 @@ function HomeCategoriesGrid() {
           All <FiChevronRight size={12} />
         </Link>
       </div>
-      <div className="grid grid-cols-4 gap-2.5">
+      {/* 4 cols mobile → 8 cols desktop, all in one row on wider screens */}
+      <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
         {HOME_CATS.map((cat) => (
           <button key={cat.slug}
             onClick={() => navigate(`/shop/${cat.slug}`)}
-            className="flex flex-col items-center gap-1.5 rounded-2xl py-3 px-1 border border-gray-100 shadow-sm active:scale-95 transition-all hover:border-orange-200 hover:shadow-md group"
-            style={{ background: cat.bg }}>
-            <span className="text-2xl group-hover:scale-110 transition-transform leading-none">{cat.emoji}</span>
-            <span className="text-[10px] font-bold text-gray-600 text-center leading-tight line-clamp-2 px-0.5">{cat.name}</span>
+            className="flex flex-col items-center gap-2 bg-white rounded-2xl py-3 px-1 border border-gray-100 shadow-sm active:scale-95 transition-all hover:shadow-md hover:border-orange-200 group">
+            {/* Coloured icon circle */}
+            <div className="w-11 h-11 rounded-full flex items-center justify-center text-xl flex-shrink-0 transition-transform group-hover:scale-110"
+              style={{ background: `${cat.color}15` }}>
+              <span style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))' }}>{cat.emoji}</span>
+            </div>
+            <span className="text-[10px] font-semibold text-gray-600 text-center leading-tight line-clamp-2 w-full px-0.5">{cat.name}</span>
           </button>
         ))}
       </div>
@@ -666,19 +670,10 @@ export default function Home() {
         </div>
 
         {/* ══════════════════════════════════════
-            CATEGORY PILL STRIP (horizontal scroll)
-        ══════════════════════════════════════ */}
-        {categories.length > 0 && (
-          <div className="pb-3">
-            <CategoriesStrip categories={categories} />
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════
             FEATURED AUTO-SCROLL STRIP
         ══════════════════════════════════════ */}
         {(featuredProducts.length > 0 || loading) && (
-          <div className="pb-5">
+          <div id="section-featured" className="pb-5">
             <AutoScrollStrip
               title="Featured Products"
               emoji="⭐"
@@ -693,7 +688,7 @@ export default function Home() {
         {/* ══════════════════════════════════════
             FLASH DEALS — auto-scroll
         ══════════════════════════════════════ */}
-        <div className="pb-5">
+        <div id="section-flash" className="pb-5">
           <FlashBar products={featuredProducts} />
         </div>
 

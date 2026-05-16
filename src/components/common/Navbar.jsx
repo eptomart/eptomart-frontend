@@ -210,21 +210,9 @@ export default function Navbar() {
         {/* Sub-module nav strip */}
         <div className="flex items-center gap-1 pb-2 border-t border-white/10 pt-2 -mx-4 px-4 overflow-x-auto scrollbar-hide">
 
-          {/* Eptomart Main — active when NOT on koyambedu/uzhavar */}
-          <Link to="/"
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all"
-            style={{
-              background: isEptomart ? 'rgba(249,115,22,0.35)' : 'rgba(255,255,255,0.08)',
-              color: isEptomart ? '#fff' : 'rgba(255,255,255,0.55)',
-              border: isEptomart ? '1px solid rgba(249,115,22,0.5)' : '1px solid transparent',
-            }}
-          >
-            🏪 Eptomart
-          </Link>
-
           {/* Koyambedu Daily */}
           <Link to="/koyambedu"
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all flex-shrink-0"
             style={{
               background: isKoyambedu ? 'rgba(16,185,129,0.45)' : 'rgba(16,185,129,0.18)',
               color: '#fff',
@@ -236,7 +224,7 @@ export default function Navbar() {
 
           {/* Uzhavar Fresh */}
           <Link to="/uzhavar"
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all flex-shrink-0"
             style={{
               background: isUzhavar ? 'rgba(132,204,22,0.4)' : 'rgba(132,204,22,0.15)',
               color: '#fff',
@@ -247,9 +235,30 @@ export default function Navbar() {
           </Link>
 
           <div className="h-4 w-px bg-white/15 mx-1 flex-shrink-0" />
-          <Link to="/shop?featured=true" className="text-[11px] text-gray-400 hover:text-gray-200 px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">✨ Featured</Link>
-          <Link to="/shop?sort=-discount" className="text-[11px] text-gray-400 hover:text-gray-200 px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">⚡ Flash Deals</Link>
-          <Link to="/shop?sort=-createdAt" className="text-[11px] text-gray-400 hover:text-gray-200 px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">🆕 New</Link>
+
+          {/* Featured — scrolls to section on home, navigates on other pages */}
+          <button
+            onClick={() => {
+              const el = document.getElementById('section-featured');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+              else navigate('/shop?featured=true');
+            }}
+            className="text-[11px] text-gray-400 hover:text-white px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">
+            ✨ Featured
+          </button>
+
+          {/* Flash Deals — scrolls to section on home, navigates on other pages */}
+          <button
+            onClick={() => {
+              const el = document.getElementById('section-flash');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+              else navigate('/shop?sort=-discount');
+            }}
+            className="text-[11px] text-gray-400 hover:text-white px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">
+            ⚡ Flash Deals
+          </button>
+
+          <Link to="/shop?sort=-createdAt" className="text-[11px] text-gray-400 hover:text-white px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">🆕 New</Link>
         </div>
 
         {/* Mobile Search Bar */}
