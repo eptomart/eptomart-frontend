@@ -492,9 +492,6 @@ export default function Home() {
         {/* Trust badges */}
         <div className="pb-4"><TrustStrip /></div>
 
-        {/* ── Eptomart Categories (NO Koyambedu/Uzhavar cats) ── */}
-        <div className="pb-4"><HomeCategoriesGrid /></div>
-
         <Divider />
 
         {/* ── FEATURED PRODUCTS — auto-cycling carousel ── */}

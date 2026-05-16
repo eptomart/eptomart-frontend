@@ -30,7 +30,7 @@ export default function BottomNav() {
 
   const tabs = [
     { id: 'home',    Icon: FiHome,         label: 'Home',                      path: '/',        onClick: () => navigate('/')    },
-    { id: 'shop',    Icon: FiGrid,         label: 'Categories',                path: '/shop',    onClick: () => navigate('/shop') },
+    { id: 'categories', Icon: FiGrid,       label: 'Categories',                path: '/categories', onClick: () => navigate('/categories') },
     { id: 'search',  Icon: FiSearch,       label: 'Search',                    path: null,       onClick: handleSearch           },
     { id: 'cart',    Icon: FiShoppingCart, label: 'Cart',   badge: cartCount,  path: '/cart',    onClick: () => navigate('/cart') },
     { id: 'orders',  Icon: FiPackage,      label: 'Orders',                    path: '/orders',  onClick: () => navigate('/orders') },

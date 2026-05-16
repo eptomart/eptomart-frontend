@@ -12,6 +12,7 @@ import WhatsAppFloat from './components/WhatsAppFloat';
 
 // ── Customer pages ───────────────────────────
 const Home           = lazy(() => import('./pages/Home'));
+const Categories     = lazy(() => import('./pages/Categories'));
 const Shop           = lazy(() => import('./pages/Shop'));
 const ProductPage    = lazy(() => import('./pages/ProductPage'));
 const SellerStore    = lazy(() => import('./pages/SellerStore'));
@@ -113,6 +114,7 @@ function AppRoutes() {
         <Routes>
           {/* Public */}
           <Route path="/"              element={<Home />} />
+          <Route path="/categories"    element={<Categories />} />
           <Route path="/shop"          element={<Shop />} />
           <Route path="/shop/:category"element={<Shop />} />
           <Route path="/product/:slug" element={<ProductPage />} />
