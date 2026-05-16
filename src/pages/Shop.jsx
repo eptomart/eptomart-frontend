@@ -55,9 +55,9 @@ export default function Shop() {
     });
   }, [subCategories, categoryId]);
 
-  // Load all categories once
+  // Load only Eptomart (non-perishable) categories — perishable live in Koyambedu/Uzhavar
   useEffect(() => {
-    api.get('/categories?all=true')
+    api.get('/categories?all=true&moduleType=eptomart')
       .then(res => setAllCategories(res.data.categories || []))
       .catch(() => {});
   }, []);

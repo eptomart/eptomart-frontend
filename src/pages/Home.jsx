@@ -516,19 +516,35 @@ function MobileSearchBar() {
 }
 
 // ── Fixed 8-category homepage grid ───────────────────────────
+// module: 'koyambedu' → routes to Koyambedu Daily
+//         'uzhavar'   → routes to Uzhavar Fresh
+//         'eptomart'  → routes to main /shop
 const HOME_CATS = [
-  { name: 'Fruits',             slug: 'fruits',            emoji: '🍊', color: '#f97316' },
-  { name: 'Vegetables',         slug: 'vegetables',        emoji: '🥦', color: '#22c55e' },
-  { name: 'Flowers & Greens',   slug: 'flowers-greens',    emoji: '🌸', color: '#ec4899' },
-  { name: 'Grocery & Staples',  slug: 'grocery-staples',   emoji: '🛒', color: '#3b82f6' },
-  { name: 'Masalas & Spices',   slug: 'masalas-spices',    emoji: '🌶️', color: '#ef4444' },
-  { name: 'Farm Fresh',         slug: 'farm-fresh',        emoji: '🌾', color: '#84cc16' },
-  { name: 'Homemade & Organic', slug: 'homemade-organic',  emoji: '🏡', color: '#f59e0b' },
-  { name: 'Pooja & Coconut',    slug: 'pooja-coconut',     emoji: '🪔', color: '#a855f7' },
+  { name: 'Fruits',             slug: 'fruits',            emoji: '🍊', color: '#f97316', module: 'koyambedu' },
+  { name: 'Vegetables',         slug: 'vegetables',        emoji: '🥦', color: '#22c55e', module: 'koyambedu' },
+  { name: 'Flowers & Greens',   slug: 'flowers-greens',    emoji: '🌸', color: '#ec4899', module: 'koyambedu' },
+  { name: 'Grocery & Staples',  slug: 'grocery-staples',   emoji: '🛒', color: '#3b82f6', module: 'eptomart'  },
+  { name: 'Masalas & Spices',   slug: 'masalas-spices',    emoji: '🌶️', color: '#ef4444', module: 'eptomart'  },
+  { name: 'Farm Fresh',         slug: 'farm-fresh',        emoji: '🌾', color: '#84cc16', module: 'uzhavar'   },
+  { name: 'Homemade & Organic', slug: 'homemade-organic',  emoji: '🏡', color: '#f59e0b', module: 'uzhavar'   },
+  { name: 'Pooja & Coconut',    slug: 'pooja-coconut',     emoji: '🪔', color: '#a855f7', module: 'koyambedu' },
 ];
+
+// Small badge shown on perishable category cards
+const MODULE_BADGE = {
+  koyambedu: { label: 'Koyambedu', bg: 'rgba(16,185,129,0.12)', color: '#059669' },
+  uzhavar:   { label: 'Uzhavar',   bg: 'rgba(132,204,22,0.15)', color: '#65a30d' },
+};
 
 function HomeCategoriesGrid() {
   const navigate = useNavigate();
+
+  const handleCatClick = (cat) => {
+    if (cat.module === 'koyambedu') navigate(`/koyambedu/shop?search=${encodeURIComponent(cat.name)}`);
+    else if (cat.module === 'uzhavar') navigate('/uzhavar');
+    else navigate(`/shop/${cat.slug}`);
+  };
+
   return (
     <section className="px-4">
       <div className="flex items-center justify-between mb-3">
@@ -537,20 +553,32 @@ function HomeCategoriesGrid() {
           All <FiChevronRight size={12} />
         </Link>
       </div>
-      {/* 4 cols mobile → 8 cols desktop, all in one row on wider screens */}
+      {/* 4 cols mobile → 8 cols desktop */}
       <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
-        {HOME_CATS.map((cat) => (
-          <button key={cat.slug}
-            onClick={() => navigate(`/shop/${cat.slug}`)}
-            className="flex flex-col items-center gap-2 bg-white rounded-2xl py-3 px-1 border border-gray-100 shadow-sm active:scale-95 transition-all hover:shadow-md hover:border-orange-200 group">
-            {/* Coloured icon circle */}
-            <div className="w-11 h-11 rounded-full flex items-center justify-center text-xl flex-shrink-0 transition-transform group-hover:scale-110"
-              style={{ background: `${cat.color}15` }}>
-              <span style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))' }}>{cat.emoji}</span>
-            </div>
-            <span className="text-[10px] font-semibold text-gray-600 text-center leading-tight line-clamp-2 w-full px-0.5">{cat.name}</span>
-          </button>
-        ))}
+        {HOME_CATS.map((cat) => {
+          const badge = MODULE_BADGE[cat.module];
+          return (
+            <button key={cat.slug}
+              onClick={() => handleCatClick(cat)}
+              className="flex flex-col items-center gap-1.5 bg-white rounded-2xl pt-3 pb-2 px-1 border border-gray-100 shadow-sm active:scale-95 transition-all hover:shadow-md hover:border-orange-200 group">
+              {/* Coloured icon circle */}
+              <div className="w-11 h-11 rounded-full flex items-center justify-center text-xl flex-shrink-0 transition-transform group-hover:scale-110"
+                style={{ background: `${cat.color}15` }}>
+                <span style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))' }}>{cat.emoji}</span>
+              </div>
+              <span className="text-[10px] font-semibold text-gray-600 text-center leading-tight line-clamp-2 w-full px-0.5">
+                {cat.name}
+              </span>
+              {/* Substore badge for perishable categories */}
+              {badge && (
+                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none"
+                  style={{ background: badge.bg, color: badge.color }}>
+                  {badge.label}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </section>
   );
