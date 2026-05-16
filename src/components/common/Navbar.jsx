@@ -2,7 +2,7 @@
 // NAVBAR — Top Navigation Bar
 // ============================================
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FiSearch, FiShoppingCart, FiUser, FiMenu, FiX, FiLogOut, FiPackage, FiSettings, FiHeart, FiGrid, FiMapPin } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -19,9 +19,15 @@ export default function Navbar() {
   const [showSearch, setShowSearch] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const navigate = useNavigate();
-  const searchRef = useRef();
+  const navigate   = useNavigate();
+  const { pathname } = useLocation();
+  const searchRef  = useRef();
   const searchTimeout = useRef();
+
+  // Active module detection
+  const isKoyambedu = pathname.startsWith('/koyambedu');
+  const isUzhavar   = pathname.startsWith('/uzhavar');
+  const isEptomart  = !isKoyambedu && !isUzhavar;
 
   // Live search
   useEffect(() => {
@@ -203,27 +209,47 @@ export default function Navbar() {
 
         {/* Sub-module nav strip */}
         <div className="flex items-center gap-1 pb-2 border-t border-white/10 pt-2 -mx-4 px-4 overflow-x-auto scrollbar-hide">
+
+          {/* Eptomart Main — active when NOT on koyambedu/uzhavar */}
+          <Link to="/"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all"
+            style={{
+              background: isEptomart ? 'rgba(249,115,22,0.35)' : 'rgba(255,255,255,0.08)',
+              color: isEptomart ? '#fff' : 'rgba(255,255,255,0.55)',
+              border: isEptomart ? '1px solid rgba(249,115,22,0.5)' : '1px solid transparent',
+            }}
+          >
+            🏪 Eptomart
+          </Link>
+
+          {/* Koyambedu Daily */}
           <Link to="/koyambedu"
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl text-white whitespace-nowrap transition-all"
-            style={{background:'rgba(16,185,129,0.25)'}}
-            onMouseEnter={e => e.currentTarget.style.background='rgba(16,185,129,0.45)'}
-            onMouseLeave={e => e.currentTarget.style.background='rgba(16,185,129,0.25)'}
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all"
+            style={{
+              background: isKoyambedu ? 'rgba(16,185,129,0.45)' : 'rgba(16,185,129,0.18)',
+              color: '#fff',
+              border: isKoyambedu ? '1px solid rgba(16,185,129,0.6)' : '1px solid transparent',
+            }}
           >
             🥬 Koyambedu Daily
           </Link>
+
+          {/* Uzhavar Fresh */}
           <Link to="/uzhavar"
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl text-white whitespace-nowrap transition-all"
-            style={{background:'rgba(132,204,22,0.2)'}}
-            onMouseEnter={e => e.currentTarget.style.background='rgba(132,204,22,0.35)'}
-            onMouseLeave={e => e.currentTarget.style.background='rgba(132,204,22,0.2)'}
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all"
+            style={{
+              background: isUzhavar ? 'rgba(132,204,22,0.4)' : 'rgba(132,204,22,0.15)',
+              color: '#fff',
+              border: isUzhavar ? '1px solid rgba(132,204,22,0.55)' : '1px solid transparent',
+            }}
           >
             🌾 Uzhavar Fresh
           </Link>
-          <div className="h-4 w-px bg-white/20 mx-1" />
-          <Link to="/shop" className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1.5 whitespace-nowrap transition-colors">All Products</Link>
-          <Link to="/shop?featured=true" className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1.5 whitespace-nowrap transition-colors">Featured</Link>
-          <Link to="/shop?sort=-createdAt" className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1.5 whitespace-nowrap transition-colors">New Arrivals</Link>
-          <Link to="/shop?sort=-discount" className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1.5 whitespace-nowrap transition-colors">Flash Deals</Link>
+
+          <div className="h-4 w-px bg-white/15 mx-1 flex-shrink-0" />
+          <Link to="/shop?featured=true" className="text-[11px] text-gray-400 hover:text-gray-200 px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">✨ Featured</Link>
+          <Link to="/shop?sort=-discount" className="text-[11px] text-gray-400 hover:text-gray-200 px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">⚡ Flash Deals</Link>
+          <Link to="/shop?sort=-createdAt" className="text-[11px] text-gray-400 hover:text-gray-200 px-2 py-1.5 whitespace-nowrap transition-colors flex-shrink-0">🆕 New</Link>
         </div>
 
         {/* Mobile Search Bar */}

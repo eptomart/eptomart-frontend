@@ -193,23 +193,38 @@ function FlashBar({ products }) {
             else el.scrollBy({ left: 140, behavior: 'smooth' });
           }, 2800);
         }}>
-        {deals.map(p => (
-          <Link key={p._id} to={`/product/${p.slug}`}
-            className="flex-shrink-0 w-32 bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-all active:scale-95 group">
-            <div className="relative aspect-square bg-gray-50 overflow-hidden">
-              <img src={p.images?.[0]?.url || ''} alt={p.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-              <div className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
-                {Math.round(((p.price - p.discountPrice) / p.price) * 100)}% OFF
+        {deals.map(p => {
+          const discPct = Math.round(((p.price - p.discountPrice) / p.price) * 100);
+          // Stock bar: use stock count if available, else simulate
+          const maxStock  = p.stockCount > 0 ? p.stockCount : 20;
+          const curStock  = p.stock       > 0 ? p.stock      : Math.max(1, Math.floor(maxStock * 0.3));
+          const stockPct  = Math.min(100, Math.round((curStock / maxStock) * 100));
+          const stockColor = stockPct < 30 ? '#ef4444' : stockPct < 60 ? '#f97316' : '#22c55e';
+          return (
+            <Link key={p._id} to={`/product/${p.slug}`}
+              className="flex-shrink-0 w-32 bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-all active:scale-95 group">
+              <div className="relative aspect-square bg-gray-50 overflow-hidden">
+                <img src={p.images?.[0]?.url || ''} alt={p.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                <div className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm">
+                  {discPct}% OFF
+                </div>
               </div>
-            </div>
-            <div className="p-2">
-              <p className="text-[11px] text-gray-600 line-clamp-2 leading-tight mb-1">{p.name}</p>
-              <p className="font-bold text-sm text-gray-900">₹{p.discountPrice?.toLocaleString('en-IN')}</p>
-              <p className="text-[10px] text-gray-400 line-through">₹{p.price?.toLocaleString('en-IN')}</p>
-            </div>
-          </Link>
-        ))}
+              <div className="p-2">
+                <p className="text-[11px] text-gray-600 line-clamp-2 leading-tight mb-1">{p.name}</p>
+                <p className="font-bold text-sm text-gray-900">₹{p.discountPrice?.toLocaleString('en-IN')}</p>
+                <p className="text-[10px] text-gray-400 line-through">₹{p.price?.toLocaleString('en-IN')}</p>
+                {/* Stock progress bar */}
+                <div className="mt-1.5">
+                  <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${stockPct}%`, background: stockColor }} />
+                  </div>
+                  <p className="text-[9px] text-gray-400 mt-0.5">{stockPct < 30 ? '🔥 Almost gone' : 'Available'}</p>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </section>
   );
@@ -427,6 +442,7 @@ function MobileSearchBar() {
         <FiSearch className="text-gray-400 flex-shrink-0" size={16} />
         <input
           ref={inputRef}
+          id="mobile-search-input"
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
@@ -494,27 +510,20 @@ function MobileSearchBar() {
   );
 }
 
-// ── DB Categories grid — shows real admin-managed categories ─
-const CAT_FALLBACK_EMOJIS = ['🛍️','📦','🎁','🧩','🖼️','🪴','🧺','🔑','💡','🪞','🧲','🎯','🪀','🖊️','🗂️','🧳'];
+// ── Fixed 8-category homepage grid ───────────────────────────
+const HOME_CATS = [
+  { name: 'Fruits',             slug: 'fruits',            emoji: '🍊', bg: '#fff7ed' },
+  { name: 'Vegetables',         slug: 'vegetables',        emoji: '🥦', bg: '#f0fdf4' },
+  { name: 'Flowers & Greens',   slug: 'flowers-greens',    emoji: '🌸', bg: '#fdf2f8' },
+  { name: 'Grocery & Staples',  slug: 'grocery-staples',   emoji: '🛒', bg: '#eff6ff' },
+  { name: 'Masalas & Spices',   slug: 'masalas-spices',    emoji: '🌶️', bg: '#fff1f2' },
+  { name: 'Farm Fresh',         slug: 'farm-fresh',        emoji: '🌾', bg: '#f7fee7' },
+  { name: 'Homemade & Organic', slug: 'homemade-organic',  emoji: '🏡', bg: '#fefce8' },
+  { name: 'Pooja & Coconut',    slug: 'pooja-coconut',     emoji: '🪔', bg: '#faf5ff' },
+];
 
-function DBCategoriesGrid({ categories, loading }) {
+function HomeCategoriesGrid() {
   const navigate = useNavigate();
-  if (loading) {
-    return (
-      <section className="px-4">
-        <div className="h-5 w-40 bg-gray-200 rounded-lg mb-3 animate-pulse" />
-        <div className="grid grid-cols-4 gap-2.5">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl py-4 border border-gray-100 animate-pulse">
-              <div className="w-8 h-8 bg-gray-100 rounded-xl mx-auto mb-2" />
-              <div className="h-2.5 bg-gray-100 rounded w-3/4 mx-auto" />
-            </div>
-          ))}
-        </div>
-      </section>
-    );
-  }
-  if (!categories.length) return null;
   return (
     <section className="px-4">
       <div className="flex items-center justify-between mb-3">
@@ -524,18 +533,13 @@ function DBCategoriesGrid({ categories, loading }) {
         </Link>
       </div>
       <div className="grid grid-cols-4 gap-2.5">
-        {categories.slice(0, 12).map((cat, i) => (
-          <button key={cat._id}
+        {HOME_CATS.map((cat) => (
+          <button key={cat.slug}
             onClick={() => navigate(`/shop/${cat.slug}`)}
-            className="flex flex-col items-center gap-1.5 bg-white rounded-2xl py-3 px-1 border border-gray-100 shadow-sm active:scale-95 transition-all hover:border-orange-200 hover:shadow-md group">
-            {cat.image?.url
-              ? <img src={cat.image.url} alt={cat.name}
-                  className="w-9 h-9 rounded-xl object-cover group-hover:scale-110 transition-transform" />
-              : <span className="text-2xl group-hover:scale-110 transition-transform">
-                  {CAT_FALLBACK_EMOJIS[i % CAT_FALLBACK_EMOJIS.length]}
-                </span>
-            }
-            <span className="text-[10px] font-bold text-gray-600 text-center leading-tight line-clamp-2 px-1">{cat.name}</span>
+            className="flex flex-col items-center gap-1.5 rounded-2xl py-3 px-1 border border-gray-100 shadow-sm active:scale-95 transition-all hover:border-orange-200 hover:shadow-md group"
+            style={{ background: cat.bg }}>
+            <span className="text-2xl group-hover:scale-110 transition-transform leading-none">{cat.emoji}</span>
+            <span className="text-[10px] font-bold text-gray-600 text-center leading-tight line-clamp-2 px-0.5">{cat.name}</span>
           </button>
         ))}
       </div>
@@ -655,10 +659,10 @@ export default function Home() {
         </div>
 
         {/* ══════════════════════════════════════
-            DB CATEGORIES GRID (admin-managed)
+            HOMEPAGE CATEGORY GRID — 8 fixed
         ══════════════════════════════════════ */}
         <div className="pb-3">
-          <DBCategoriesGrid categories={categories} loading={loading} />
+          <HomeCategoriesGrid />
         </div>
 
         {/* ══════════════════════════════════════

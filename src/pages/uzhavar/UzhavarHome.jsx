@@ -184,18 +184,22 @@ export default function UzhavarHome() {
       </Helmet>
       <Navbar />
 
-      <main className="min-h-screen bg-gradient-to-b from-green-50 to-white pb-24 md:pb-0">
-        {/* Hero */}
-        <div className="bg-gradient-to-br from-green-800 via-green-700 to-lime-600 text-white px-4 pt-8 pb-14 text-center relative overflow-hidden">
-          <div className="relative">
+      {/* Same page body structure as Home — pb-24 for mobile bottom nav */}
+      <main className="min-h-screen bg-[#f5f5f7] pb-24 md:pb-8">
+        {/* Hero — full-bleed, content constrained */}
+        <div className="bg-gradient-to-br from-green-800 via-green-700 to-lime-600 text-white pt-8 pb-14 text-center relative overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 relative z-10">
             <div className="text-4xl mb-2">🌾</div>
             <h1 className="text-2xl font-black tracking-tight mb-0.5">UZHAVAR FRESH</h1>
             <p className="text-green-100 text-xs">உழவர் சந்தை · Farm to Home · Direct from Farmers</p>
           </div>
         </div>
 
+        {/* ── Page content wrapper — same max-width as Home ── */}
+        <div className="max-w-7xl mx-auto">
+
         {/* Location filter bar — overlaps hero */}
-        <div className="max-w-2xl mx-auto px-4 -mt-6 relative z-10 mb-4">
+        <div className="px-4 -mt-6 relative z-10 mb-4">
           {/* Row 1: district dropdown + GPS */}
           <div className="bg-white rounded-2xl shadow-lg p-3 flex flex-col gap-2">
             <div className="flex items-center gap-2">
@@ -261,7 +265,7 @@ export default function UzhavarHome() {
         </div>
 
         {/* ── Farmers section ─────────────────── */}
-        <div className="max-w-5xl mx-auto px-4 mb-6">
+        <div className="px-4 mb-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-extrabold text-gray-800 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500" />
@@ -299,7 +303,7 @@ export default function UzhavarHome() {
         </div>
 
         {/* ── Products section ─────────────────── */}
-        <div className="max-w-5xl mx-auto px-4 pb-6">
+        <div className="px-4 pb-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-extrabold text-gray-800 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-lime-500" />
@@ -345,7 +349,7 @@ export default function UzhavarHome() {
         </div>
 
         {/* Info strip */}
-        <div className="max-w-lg mx-auto px-4 pb-6">
+        <div className="px-4 pb-6">
           <div className="grid grid-cols-3 gap-3 text-center mb-4">
             {[
               { icon: '🌿', title: 'Farm Fresh', desc: 'Harvested today' },
@@ -375,7 +379,7 @@ export default function UzhavarHome() {
         </div>
 
         {/* Are you a farmer? */}
-        <div className="max-w-4xl mx-auto px-4 py-4 pb-10">
+        <div className="px-4 py-4 pb-10">
           <div className="bg-gradient-to-r from-green-700 to-lime-600 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-center sm:text-left">
               <p className="text-white font-black text-base">🌾 Are you a farmer?</p>
@@ -388,6 +392,7 @@ export default function UzhavarHome() {
             </button>
           </div>
         </div>
+        </div>{/* end max-w-7xl wrapper */}
       </main>
       <Footer className="hidden md:block" />
       <BottomNav />

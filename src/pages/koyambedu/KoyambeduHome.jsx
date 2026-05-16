@@ -130,39 +130,33 @@ export default function KoyambeduHome() {
 
       <Navbar />
 
-      <main className="min-h-screen bg-gradient-to-b from-emerald-50 to-white pb-24 md:pb-0">
+      {/* Same page body structure as Home — pb-24 for mobile bottom nav */}
+      <main className="min-h-screen bg-[#f5f5f7] pb-24 md:pb-8">
 
-        {/* ── Hero ─────────────────────────────── */}
+        {/* ── Hero — full-bleed, content max-width-constrained ── */}
         <div
-          className="text-white px-4 pt-8 pb-14 text-center relative overflow-hidden"
+          className="text-white pt-8 pb-14 text-center relative overflow-hidden"
           style={{ background: 'linear-gradient(135deg, #064e3b 0%, #065f46 40%, #059669 80%, #34d399 100%)' }}
         >
-          {/* Decorative circles */}
           <div className="absolute -right-16 -top-16 w-48 h-48 rounded-full bg-white/5" />
           <div className="absolute -left-10 bottom-0 w-32 h-32 rounded-full bg-black/10" />
-
-          <div className="relative z-10">
+          <div className="max-w-7xl mx-auto px-4 relative z-10">
             <div className="text-4xl mb-2">🥬</div>
             <h1 className="text-2xl font-black tracking-tight mb-0.5">KOYAMBEDU DAILY</h1>
             <p className="text-emerald-200 text-xs">கோயம்பேடு சந்தை · Wholesale Market · Direct Delivery</p>
-
-            {/* Info badges */}
             <div className="mt-3 flex gap-2 justify-center flex-wrap">
-              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30">
-                🌅 Market Open
-              </span>
-              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30">
-                🚚 ₹149 (up to 20 kg) · ₹249 (20–90 kg)
-              </span>
-              <span className="bg-yellow-400/90 text-emerald-900 text-[11px] font-bold px-3 py-1 rounded-full">
-                📦 &gt;90 kg? Contact us
-              </span>
+              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30">🌅 Market Open</span>
+              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30">🚚 ₹149 (up to 20 kg) · ₹249 (20–90 kg)</span>
+              <span className="bg-yellow-400/90 text-emerald-900 text-[11px] font-bold px-3 py-1 rounded-full">📦 &gt;90 kg? Contact us</span>
             </div>
           </div>
         </div>
 
+        {/* ── Page content — same max-width as Home ── */}
+        <div className="max-w-7xl mx-auto">
+
         {/* ── Search bar — overlaps hero ─────── */}
-        <div className="max-w-2xl mx-auto px-4 -mt-6 relative z-10 mb-4">
+        <div className="px-4 -mt-6 relative z-10 mb-4">
           <button onClick={() => navigate('/koyambedu/shop')}
             className="w-full bg-white rounded-2xl shadow-lg flex items-center gap-3 px-4 py-3.5 text-gray-400 text-sm active:scale-[0.98] transition-transform">
             <FiSearch size={16} className="flex-shrink-0" />
@@ -172,7 +166,7 @@ export default function KoyambeduHome() {
         </div>
 
         {/* ── Price note ────────────────────── */}
-        <div className="max-w-5xl mx-auto px-4 mb-4">
+        <div className="px-4 mb-4">
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
             <p className="text-amber-700 text-[11px] leading-relaxed">{priceNote}</p>
           </div>
@@ -180,7 +174,7 @@ export default function KoyambeduHome() {
 
         {/* ── Category chips ─────────────────── */}
         {categories.length > 0 && (
-          <div className="max-w-5xl mx-auto px-4 mb-5">
+          <div className="px-4 mb-5">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-sm font-extrabold text-gray-800">Browse Categories</h2>
               <Link to="/koyambedu/shop" className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
@@ -203,7 +197,7 @@ export default function KoyambeduHome() {
         )}
 
         {/* ── Product sections ──────────────── */}
-        <div className="max-w-5xl mx-auto">
+        <div>
           {loading ? (
             <div className="flex flex-col items-center py-16 text-gray-400 gap-3">
               <div className="text-4xl animate-bounce">🥬</div>
@@ -229,8 +223,11 @@ export default function KoyambeduHome() {
           )}
         </div>
 
+        </div>{/* end product sections */}
+        </div>{/* end max-w-7xl */}
+
         {/* ── Smart Baskets ─────────────────── */}
-        <div className="max-w-5xl mx-auto px-4 mb-6">
+        <div className="max-w-7xl mx-auto px-4 mb-6">
           <h2 className="font-bold text-gray-800 text-sm mb-3">🤖 Smart Baskets</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
@@ -251,7 +248,7 @@ export default function KoyambeduHome() {
         </div>
 
         {/* ── How it works ─────────────────── */}
-        <div className="max-w-5xl mx-auto px-4 mb-6">
+        <div className="max-w-7xl mx-auto px-4 mb-6">
           <div className="bg-white rounded-2xl border border-emerald-100 p-4 shadow-sm">
             <h3 className="font-bold text-gray-800 text-sm mb-3">How Koyambedu Daily Works</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -273,7 +270,7 @@ export default function KoyambeduHome() {
         </div>
 
         {/* ── Trust strip ─────────────────── */}
-        <div className="max-w-5xl mx-auto px-4 mb-6">
+        <div className="max-w-7xl mx-auto px-4 mb-6">
           <div className="grid grid-cols-3 gap-3 text-center">
             {[
               { icon: '🌿', title: 'Farm Fresh',     desc: 'Harvested today' },
@@ -290,7 +287,7 @@ export default function KoyambeduHome() {
         </div>
 
         {/* ── Seller CTA ─────────────────── */}
-        <div className="max-w-5xl mx-auto px-4 pb-8">
+        <div className="max-w-7xl mx-auto px-4 pb-8">
           <div className="rounded-2xl overflow-hidden"
             style={{ background: 'linear-gradient(135deg,#064e3b,#065f46)' }}>
             <div className="p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
