@@ -284,44 +284,194 @@ function PromoBanner() {
   );
 }
 
-// ── Eptomart-only category grid (NO Koyambedu / Uzhavar cats) ─
+// ── Desktop category data ──────────────────────────────────────
 const EPTOMART_CATS = [
-  { name: 'Grocery & Staples',  slug: 'grocery-staples',   emoji: '🛒', color: '#3b82f6' },
-  { name: 'Masalas & Spices',   slug: 'masalas-spices',    emoji: '🌶️', color: '#ef4444' },
-  { name: 'Rice & Millets',     slug: 'rice',              emoji: '🍚', color: '#f59e0b' },
-  { name: 'Dry Fruits',         slug: 'dry-fruits',        emoji: '🥜', color: '#92400e' },
-  { name: 'Oils',               slug: 'oils',              emoji: '🫙', color: '#d97706' },
-  { name: 'Snacks',             slug: 'snacks',            emoji: '🍿', color: '#ec4899' },
-  { name: 'Health Foods',       slug: 'health-foods',      emoji: '💪', color: '#10b981' },
-  { name: 'Natural Products',   slug: 'natural-products',  emoji: '🌿', color: '#059669' },
+  { name: 'Grocery & Staples',   slug: 'grocery-staples',    emoji: '🛒', color: '#3b82f6', from: '₹49' },
+  { name: 'Masalas & Spices',    slug: 'masalas-spices',     emoji: '🌶️', color: '#ef4444', from: '₹29' },
+  { name: 'Snacks & Namkeen',    slug: 'snacks-namkeen',     emoji: '🍿', color: '#ec4899', from: '₹39' },
+  { name: 'Dry Fruits & Nuts',   slug: 'dry-fruits-nuts',    emoji: '🥜', color: '#92400e', from: '₹99' },
+  { name: 'Oils & Ghee',         slug: 'oils-ghee',          emoji: '🫙', color: '#d97706', from: '₹89' },
+  { name: 'Pickles & Condiments',slug: 'pickles-condiments', emoji: '🥒', color: '#16a34a', from: '₹59' },
+  { name: 'Bakery & Dairy',      slug: 'bakery-dairy',       emoji: '🥖', color: '#f59e0b', from: '₹29' },
+  { name: 'Health & Organic',    slug: 'health-organic',     emoji: '🌿', color: '#059669', from: '₹79' },
 ];
 
-function HomeCategoriesGrid() {
+// ── Desktop Hero (JioMart-style, hidden on mobile) ─────────────
+const HERO_SLIDES = [
+  {
+    gradient: 'linear-gradient(135deg, #f97316 0%, #ef4444 55%, #dc2626 100%)',
+    tag: '🔥 Hot Deals This Week',
+    title: 'Shop Fresh,\nSave Big!',
+    sub: 'Groceries · Masalas · Organic Foods',
+    cta: 'Shop Now', to: '/shop',
+    cats: ['Grocery & Staples', 'Masalas & Spices', 'Snacks & Namkeen', 'Oils & Ghee'],
+  },
+  {
+    gradient: 'linear-gradient(135deg, #15803d 0%, #16a34a 55%, #4ade80 100%)',
+    tag: '🥬 Order by 10 AM, Get Today',
+    title: 'Koyambedu\nDaily Fresh',
+    sub: 'Vegetables · Fruits · Flowers · Temple',
+    cta: 'Order Now', to: '/koyambedu',
+    cats: ['Fruits', 'Vegetables', 'Flowers & Greens', 'Pooja & Coconut'],
+  },
+  {
+    gradient: 'linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #2dd4bf 100%)',
+    tag: '🌾 Farm-to-Door in Tamil Nadu',
+    title: 'Uzhavar Fresh\nஉழவர் சந்தை',
+    sub: 'Farm direct · No middlemen · Pure & Natural',
+    cta: 'Explore', to: '/uzhavar',
+    cats: ['Farm Fresh', 'Homemade & Organic', 'Farm Produce'],
+  },
+];
+
+function DesktopHero() {
+  const [active, setActive] = useState(0);
+  const timerRef = useRef(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    timerRef.current = setInterval(() => setActive(a => (a + 1) % HERO_SLIDES.length), 5000);
+    return () => clearInterval(timerRef.current);
+  }, []);
+
+  const s = HERO_SLIDES[active];
+  const catItems = EPTOMART_CATS.concat([
+    { name: 'Koyambedu Daily', slug: null, emoji: '🥬', color: '#16a34a', from: 'Fresh' },
+    { name: 'Uzhavar Fresh',   slug: null, emoji: '🌾', color: '#0d9488', from: 'Farm' },
+  ]);
+
   return (
-    <section className="px-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-extrabold text-gray-800 tracking-tight">Shop by Category</h2>
-        <Link to="/shop" className="text-xs font-bold text-orange-500 flex items-center gap-0.5">
-          All <FiChevronRight size={12} />
-        </Link>
-      </div>
-      <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
-        {EPTOMART_CATS.map(cat => (
-          <button key={cat.slug}
-            onClick={() => navigate(`/shop/${cat.slug}`)}
-            className="flex flex-col items-center gap-1.5 bg-white rounded-2xl pt-3 pb-2.5 px-1 border border-gray-100 shadow-sm active:scale-95 transition-all hover:shadow-md hover:border-orange-200 group">
-            <div className="w-11 h-11 rounded-full flex items-center justify-center text-xl flex-shrink-0 transition-transform group-hover:scale-110"
-              style={{ background: `${cat.color}18` }}>
-              <span style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.12))' }}>{cat.emoji}</span>
-            </div>
-            <span className="text-[10px] font-semibold text-gray-600 text-center leading-tight line-clamp-2 w-full px-0.5">
-              {cat.name}
-            </span>
+    <div className="relative overflow-hidden rounded-3xl mb-5" style={{ background: s.gradient, minHeight: 300 }}>
+      {/* BG decoration */}
+      <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-white/10" />
+      <div className="absolute -left-10 -bottom-16 w-56 h-56 rounded-full bg-black/10" />
+      <div className="absolute right-64 -bottom-10 w-36 h-36 rounded-full bg-white/8" />
+
+      <div className="relative z-10 flex items-stretch min-h-[300px]">
+        {/* Left: text + CTA */}
+        <div className="flex flex-col justify-center pl-10 pr-6 py-8 w-[42%]">
+          <span className="inline-block bg-white/25 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full w-fit mb-3 border border-white/30">
+            {s.tag}
+          </span>
+          <h1 className="text-4xl font-black text-white leading-tight whitespace-pre-line drop-shadow-sm">
+            {s.title}
+          </h1>
+          <p className="text-white/75 text-sm mt-2.5 font-medium">{s.sub}</p>
+          <button
+            onClick={() => navigate(s.to)}
+            className="mt-5 inline-flex items-center gap-2 bg-white font-black text-sm px-7 py-3 rounded-2xl w-fit hover:shadow-xl hover:scale-105 transition-all active:scale-95"
+            style={{ color: '#f4941c' }}
+          >
+            {s.cta} <FiArrowRight size={15} />
           </button>
+        </div>
+
+        {/* Right: category cards carousel */}
+        <div className="flex-1 flex items-center justify-end pr-8 pl-4 py-8 gap-3 overflow-hidden">
+          {EPTOMART_CATS.slice(0, 5).map((cat, i) => (
+            <Link
+              key={cat.slug}
+              to={`/shop/${cat.slug}`}
+              className="flex-shrink-0 flex flex-col items-center bg-white/95 backdrop-blur-sm rounded-2xl px-4 pt-4 pb-3.5 w-[108px] hover:scale-105 hover:shadow-xl transition-all active:scale-95 group"
+            >
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl mb-2 transition-transform group-hover:scale-110"
+                style={{ background: `${cat.color}18` }}>
+                {cat.emoji}
+              </div>
+              <p className="text-[11px] font-bold text-gray-800 text-center leading-tight line-clamp-2">{cat.name}</p>
+              <p className="text-[10px] font-semibold mt-1" style={{ color: '#f4941c' }}>From {cat.from}</p>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Slide dots */}
+      <div className="absolute bottom-4 left-10 flex gap-1.5 z-20">
+        {HERO_SLIDES.map((_, i) => (
+          <button key={i}
+            onClick={() => { setActive(i); clearInterval(timerRef.current); timerRef.current = setInterval(() => setActive(a => (a + 1) % HERO_SLIDES.length), 5000); }}
+            className={`h-1.5 rounded-full transition-all ${i === active ? 'w-6 bg-white' : 'w-1.5 bg-white/50'}`}
+          />
         ))}
       </div>
-    </section>
+    </div>
+  );
+}
+
+// ── Desktop Category Strip (JioMart-style row, hidden mobile) ──
+function DesktopCategoryStrip() {
+  return (
+    <div className="grid grid-cols-8 gap-3 mb-5">
+      {EPTOMART_CATS.map(cat => (
+        <Link key={cat.slug} to={`/shop/${cat.slug}`}
+          className="flex flex-col items-center gap-2 bg-white rounded-2xl pt-4 pb-3 px-2 border border-gray-100 shadow-sm hover:border-orange-200 hover:shadow-md active:scale-95 transition-all group text-center">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110 flex-shrink-0"
+            style={{ background: `${cat.color}14` }}>
+            {cat.emoji}
+          </div>
+          <p className="text-[11px] font-bold text-gray-700 leading-snug line-clamp-2">{cat.name}</p>
+          <span className="text-[10px] font-semibold text-gray-400">From {cat.from}</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+// ── Desktop 4-col Promo Banners (hidden mobile) ────────────────
+function DesktopPromoGrid({ onScrollTo }) {
+  const navigate = useNavigate();
+  const banners = [
+    {
+      gradient: 'linear-gradient(135deg,#14532d,#16a34a,#4ade80)',
+      tag: 'ORDER BY 10 AM', emoji: '🥬',
+      title: 'Koyambedu Daily',
+      sub: 'Fresh Veggies · Fruits · Flowers',
+      cta: 'Order Now', action: () => navigate('/koyambedu'),
+    },
+    {
+      gradient: 'linear-gradient(135deg,#134e4a,#0f766e,#2dd4bf)',
+      tag: 'FARM DIRECT', emoji: '🌾',
+      title: 'Uzhavar Fresh',
+      sub: 'உழவர் சந்தை · No middlemen',
+      cta: 'Explore', action: () => navigate('/uzhavar'),
+    },
+    {
+      gradient: 'linear-gradient(135deg,#7f1d1d,#dc2626,#fb923c)',
+      tag: '⚡ ENDS SOON', emoji: '🔥',
+      title: 'Flash Deals',
+      sub: 'Up to 60% off · Today only',
+      cta: 'Grab Now', action: () => onScrollTo('section-flash'),
+    },
+    {
+      gradient: 'linear-gradient(135deg,#312e81,#4f46e5,#818cf8)',
+      tag: '⭐ HANDPICKED', emoji: '✨',
+      title: 'Featured Products',
+      sub: 'Curated · Premium Quality',
+      cta: 'Shop Now', action: () => onScrollTo('section-featured'),
+    },
+  ];
+  return (
+    <div className="grid grid-cols-4 gap-4 mb-5">
+      {banners.map(b => (
+        <button key={b.title} onClick={b.action}
+          className="relative flex flex-col justify-between rounded-2xl p-5 overflow-hidden text-left active:scale-95 transition-transform hover:shadow-xl group"
+          style={{ background: b.gradient, minHeight: 130 }}>
+          <div className="absolute -bottom-4 -right-4 text-6xl opacity-15 select-none pointer-events-none transition-transform group-hover:scale-125 group-hover:opacity-25">
+            {b.emoji}
+          </div>
+          <div className="relative z-10">
+            <span className="bg-white/25 text-white text-[9px] font-black px-2 py-0.5 rounded-full tracking-wide">
+              {b.tag}
+            </span>
+            <p className="text-white font-black text-base mt-2 leading-tight">{b.title}</p>
+            <p className="text-white/70 text-[11px] mt-0.5">{b.sub}</p>
+          </div>
+          <span className="relative z-10 inline-flex items-center gap-1 text-white text-xs font-bold mt-3 group-hover:gap-2 transition-all">
+            {b.cta} <FiArrowRight size={11} />
+          </span>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -483,104 +633,136 @@ export default function Home() {
 
       <main className="min-h-screen bg-[#f5f5f7] pb-24 md:pb-8">
 
-        {/* Promo banner */}
-        <div className="pt-2 pb-4"><PromoBanner /></div>
+        {/* ══════════════════════════════════════════
+            DESKTOP LAYOUT (md and above)
+        ══════════════════════════════════════════ */}
+        <div className="hidden md:block max-w-7xl mx-auto px-4 pt-4">
+          {/* 1. Big hero banner */}
+          <DesktopHero />
 
-        {/* Koyambedu + Uzhavar entry banners */}
-        <div className="pb-4"><SubAppBanners /></div>
+          {/* 2. Category card strip */}
+          <DesktopCategoryStrip />
 
-        {/* Trust badges */}
-        <div className="pb-4"><TrustStrip /></div>
+          {/* 3. Promo 4-col banners */}
+          <DesktopPromoGrid onScrollTo={(id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })} />
 
-        <Divider />
-
-        {/* ── FEATURED PRODUCTS — auto-cycling carousel ── */}
-        <section id="section-featured" className="pt-4 pb-5">
-          <div className="flex items-center justify-between mb-3 px-4">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" />
-              <span className="text-base leading-none">⭐</span>
-              <h2 className="text-sm font-extrabold text-gray-900 tracking-tight">Featured Products</h2>
-            </div>
-            <Link to="/shop" className="text-xs font-bold text-orange-500 flex items-center gap-0.5">
-              See all <FiChevronRight size={12} />
-            </Link>
-          </div>
-          {loading ? (
-            <div className="flex gap-2.5 px-4 overflow-hidden">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="flex-shrink-0 w-36 bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse">
-                  <div className="aspect-square bg-gray-100" />
-                  <div className="p-2.5 space-y-1.5">
-                    <div className="h-3 bg-gray-100 rounded w-3/4" />
-                    <div className="h-3 bg-gray-100 rounded w-1/2" />
-                    <div className="h-4 bg-gray-100 rounded w-1/3" />
-                  </div>
+          {/* 4. Trust strip */}
+          <div className="flex gap-3 mb-5">
+            {[
+              { icon: '⚡', label: 'Fast Delivery', sub: 'Pan-India via Shiprocket' },
+              { icon: '✅', label: 'Verified Sellers', sub: 'GST & FSSAI checked' },
+              { icon: '🔄', label: 'Easy Returns', sub: '7-day return policy' },
+              { icon: '💸', label: 'Best Prices', sub: 'Direct from seller' },
+              { icon: '🛡️', label: 'Secure Pay', sub: 'Razorpay encrypted' },
+            ].map(b => (
+              <div key={b.label} className="flex-1 flex items-center gap-3 bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm">
+                <span className="text-2xl leading-none">{b.icon}</span>
+                <div>
+                  <p className="text-xs font-bold text-gray-800">{b.label}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{b.sub}</p>
                 </div>
-              ))}
-            </div>
-          ) : featuredProducts.length > 0 ? (
-            <ProductCarouselTrack products={featuredProducts} accent="#f4941c" />
-          ) : (
-            <div className="text-center py-10 px-4">
-              <p className="text-4xl mb-2">🌟</p>
-              <p className="text-gray-500 text-sm font-medium">Featured products coming soon</p>
-              <Link to="/shop" className="mt-3 inline-block text-xs text-orange-500 font-bold">Browse all products →</Link>
-            </div>
-          )}
-        </section>
+              </div>
+            ))}
+          </div>
+        </div>
 
-        <Divider />
+        {/* ══════════════════════════════════════════
+            MOBILE LAYOUT (below md)
+        ══════════════════════════════════════════ */}
+        <div className="md:hidden">
+          <div className="pt-2 pb-4"><PromoBanner /></div>
+          <div className="pb-4"><SubAppBanners /></div>
+          <div className="pb-4"><TrustStrip /></div>
+        </div>
 
-        {/* ── FLASH DEALS — matching auto-cycling carousel ── */}
-        <section className="pt-4 pb-5">
-          {loading
-            ? <div className="flex gap-2.5 px-4 overflow-hidden">
-                {[...Array(3)].map((_, i) => (
+        {/* ── FEATURED PRODUCTS — shown on both ── */}
+        <div className="md:max-w-7xl md:mx-auto">
+          <Divider />
+          <section id="section-featured" className="pt-4 pb-5">
+            <div className="flex items-center justify-between mb-3 px-4">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" />
+                <span className="text-base leading-none">⭐</span>
+                <h2 className="text-sm font-extrabold text-gray-900 tracking-tight">Featured Products</h2>
+              </div>
+              <Link to="/shop" className="text-xs font-bold text-orange-500 flex items-center gap-0.5">
+                See all <FiChevronRight size={12} />
+              </Link>
+            </div>
+            {loading ? (
+              <div className="flex gap-2.5 px-4 overflow-hidden">
+                {[...Array(4)].map((_, i) => (
                   <div key={i} className="flex-shrink-0 w-36 bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse">
                     <div className="aspect-square bg-gray-100" />
-                    <div className="p-2.5 space-y-1.5"><div className="h-3 bg-gray-100 rounded w-3/4" /><div className="h-4 bg-gray-100 rounded w-1/2" /></div>
+                    <div className="p-2.5 space-y-1.5">
+                      <div className="h-3 bg-gray-100 rounded w-3/4" />
+                      <div className="h-3 bg-gray-100 rounded w-1/2" />
+                    </div>
                   </div>
                 ))}
               </div>
-            : <FlashDeals products={flashProducts} />
-          }
-        </section>
-
-        <Divider />
-
-        {/* ── NEW ARRIVALS — 2-col grid ── */}
-        <section className="pt-4 pb-6">
-          <SectionHeader emoji="🆕" title="New Arrivals" link="/shop?sort=-createdAt" />
-          {loading ? (
-            <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
-            </div>
-          ) : newArrivals.length > 0 ? (
-            <>
-              <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                {newArrivals.map(p => <ProductCard key={p._id} product={p} />)}
+            ) : featuredProducts.length > 0 ? (
+              <ProductCarouselTrack products={featuredProducts} accent="#f4941c" />
+            ) : (
+              <div className="text-center py-10 px-4">
+                <p className="text-4xl mb-2">🌟</p>
+                <p className="text-gray-500 text-sm font-medium">Featured products coming soon</p>
+                <Link to="/shop" className="mt-3 inline-block text-xs text-orange-500 font-bold">Browse all products →</Link>
               </div>
-              <div className="text-center mt-5 px-4">
-                <Link to="/shop"
-                  className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 font-bold text-sm px-6 py-2.5 rounded-xl hover:border-orange-300 hover:text-orange-600 transition-all">
-                  Browse all products <FiArrowRight size={14} />
-                </Link>
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-10 px-4">
-              <p className="text-4xl mb-2">🆕</p>
-              <p className="text-gray-500 text-sm font-medium">New products arriving soon</p>
-              <Link to="/shop" className="mt-3 inline-block text-xs text-orange-500 font-bold">Explore the shop →</Link>
-            </div>
-          )}
-        </section>
+            )}
+          </section>
 
-        {/* Desktop — Why Eptomart */}
-        <div className="hidden md:block max-w-7xl mx-auto px-4 pb-12 mt-2">
           <Divider />
-          <section className="mt-8 bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+
+          {/* ── FLASH DEALS ── */}
+          <section className="pt-4 pb-5">
+            {loading
+              ? <div className="flex gap-2.5 px-4 overflow-hidden">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="flex-shrink-0 w-36 bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse">
+                      <div className="aspect-square bg-gray-100" />
+                      <div className="p-2.5 space-y-1.5"><div className="h-3 bg-gray-100 rounded w-3/4" /><div className="h-4 bg-gray-100 rounded w-1/2" /></div>
+                    </div>
+                  ))}
+                </div>
+              : <FlashDeals products={flashProducts} />
+            }
+          </section>
+
+          <Divider />
+
+          {/* ── NEW ARRIVALS ── */}
+          <section className="pt-4 pb-6">
+            <SectionHeader emoji="🆕" title="New Arrivals" link="/shop?sort=-createdAt" />
+            {loading ? (
+              <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : newArrivals.length > 0 ? (
+              <>
+                <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                  {newArrivals.map(p => <ProductCard key={p._id} product={p} />)}
+                </div>
+                <div className="text-center mt-5 px-4">
+                  <Link to="/shop"
+                    className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 font-bold text-sm px-6 py-2.5 rounded-xl hover:border-orange-300 hover:text-orange-600 transition-all">
+                    Browse all products <FiArrowRight size={14} />
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-10 px-4">
+                <p className="text-4xl mb-2">🆕</p>
+                <p className="text-gray-500 text-sm font-medium">New products arriving soon</p>
+                <Link to="/shop" className="mt-3 inline-block text-xs text-orange-500 font-bold">Explore the shop →</Link>
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* ── WHY EPTOMART (desktop only) ── */}
+        <div className="hidden md:block max-w-7xl mx-auto px-4 pb-12">
+          <section className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
             <h2 className="text-xl font-extrabold text-center text-gray-900 mb-1">Why Shop at Eptomart?</h2>
             <p className="text-center text-sm text-gray-400 mb-8">India's fastest growing multi-seller marketplace</p>
             <div className="grid grid-cols-4 gap-6">
