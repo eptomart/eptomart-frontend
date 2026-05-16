@@ -43,137 +43,107 @@ const SkeletonCard = () => (
   </div>
 );
 
-// ── Auto-scrolling product strip ──────────────────────────────
-function AutoScrollStrip({ title, emoji, products, link, loading, accent = 'orange' }) {
+// ── Featured product strip — swipe on mobile, arrows on desktop ─
+function FeaturedStrip({ title, emoji, products, link, loading, accent = 'orange' }) {
   const trackRef = useRef(null);
-  const timerRef = useRef(null);
 
-  const startTimer = () => {
-    clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      const el = trackRef.current;
-      if (!el) return;
-      const maxScroll = el.scrollWidth - el.clientWidth;
-      if (el.scrollLeft >= maxScroll - 10) {
-        el.scrollTo({ left: 0, behavior: 'smooth' });
-      } else {
-        // Scroll by the visible width so a fresh "page" of cards slides in cleanly
-        el.scrollBy({ left: el.clientWidth * 0.75, behavior: 'smooth' });
-      }
-    }, 4500);
+  const scroll = (dir) => {
+    const el = trackRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * (el.clientWidth * 0.85), behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    if (!products?.length) return;
-    startTimer();
-    return () => clearInterval(timerRef.current);
-  }, [products]);
-
-  const colors = {
-    orange: { dot: 'bg-orange-500', label: 'text-orange-500' },
-    red:    { dot: 'bg-red-500',    label: 'text-red-500'    },
-  };
-  const c = colors[accent] || colors.orange;
+  const labelColor   = accent === 'red' ? 'text-red-500'    : 'text-orange-500';
+  const dotColor     = accent === 'red' ? 'bg-red-500'      : 'bg-orange-500';
+  const arrowHover   = accent === 'red' ? 'hover:text-red-500' : 'hover:text-orange-500';
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-2 px-4">
+      {/* Section header */}
+      <div className="flex items-center justify-between mb-3 px-4">
         <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${c.dot}`} />
-          <span className="text-lg">{emoji}</span>
+          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} />
+          <span className="text-lg leading-none">{emoji}</span>
           <h2 className="text-sm font-extrabold text-gray-900 tracking-tight">{title}</h2>
         </div>
-        <Link to={link} className={`text-xs font-bold ${c.label} flex items-center gap-0.5`}>
+        <Link to={link} className={`text-xs font-bold ${labelColor} flex items-center gap-0.5`}>
           See all <FiChevronRight size={12} />
         </Link>
       </div>
-      <div
-        ref={trackRef}
-        className="flex gap-3 px-4 overflow-x-auto scrollbar-hide pb-1 touch-pan-x"
-        style={{ scrollSnapType: 'x mandatory' }}
-        onMouseEnter={() => clearInterval(timerRef.current)}
-        onMouseLeave={startTimer}
-        onTouchStart={() => clearInterval(timerRef.current)}
-        onTouchEnd={startTimer}
-      >
-        {loading
-          ? [...Array(5)].map((_, i) => (
-              <div key={i} className="flex-shrink-0 w-36 bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse"
-                style={{ scrollSnapAlign: 'start' }}>
-                <div className="aspect-square bg-gray-100" />
-                <div className="p-3 space-y-2">
-                  <div className="h-3 bg-gray-100 rounded w-3/4" />
-                  <div className="h-4 bg-gray-100 rounded w-1/2" />
+
+      {/* Strip with desktop arrow buttons */}
+      <div className="relative group/strip">
+        {/* Left arrow */}
+        <button
+          onClick={() => scroll(-1)}
+          className={`hidden md:flex absolute left-1 top-1/2 -translate-y-1/2 z-10
+            w-8 h-8 rounded-full bg-white shadow-lg border border-gray-100
+            items-center justify-center text-gray-400 ${arrowHover} transition-all
+            opacity-0 group-hover/strip:opacity-100 active:scale-90`}
+        >
+          <FiChevronRight size={16} style={{ transform: 'rotate(180deg)' }} />
+        </button>
+
+        {/* Scrollable track */}
+        <div
+          ref={trackRef}
+          className="flex gap-3 px-4 overflow-x-auto scrollbar-hide pb-2"
+          style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
+        >
+          {loading
+            ? [...Array(5)].map((_, i) => (
+                <div key={i}
+                  className="flex-shrink-0 w-[44vw] sm:w-44 bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse"
+                  style={{ scrollSnapAlign: 'start' }}>
+                  <div className="aspect-square bg-gray-100" />
+                  <div className="p-3 space-y-2">
+                    <div className="h-3 bg-gray-100 rounded w-3/4" />
+                    <div className="h-4 bg-gray-100 rounded w-1/2" />
+                  </div>
                 </div>
-              </div>
-            ))
-          : products.map(p => (
-              <div key={p._id} className="flex-shrink-0 w-36" style={{ scrollSnapAlign: 'start' }}>
-                <ProductCard product={p} />
-              </div>
-            ))
-        }
-      </div>
-    </section>
-  );
-}
-
-// ── Horizontal product shelf ──────────────────────────────────
-function ProductShelf({ title, emoji, products, link, loading }) {
-  return (
-    <section>
-      <div className="flex items-center justify-between mb-3 px-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">{emoji}</span>
-          <h2 className="text-base font-extrabold text-gray-900 tracking-tight">{title}</h2>
+              ))
+            : products.map(p => (
+                <div key={p._id}
+                  className="flex-shrink-0 w-[44vw] sm:w-44"
+                  style={{ scrollSnapAlign: 'start' }}>
+                  <ProductCard product={p} />
+                </div>
+              ))
+          }
         </div>
-        <Link to={link} className="flex items-center gap-1 text-xs font-bold text-orange-500">
-          See all <FiChevronRight size={13} />
-        </Link>
-      </div>
-      <div className="px-4">
-        {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {products.map(p => <ProductCard key={p._id} product={p} />)}
-          </div>
-        )}
+
+        {/* Right arrow */}
+        <button
+          onClick={() => scroll(1)}
+          className={`hidden md:flex absolute right-1 top-1/2 -translate-y-1/2 z-10
+            w-8 h-8 rounded-full bg-white shadow-lg border border-gray-100
+            items-center justify-center text-gray-400 ${arrowHover} transition-all
+            opacity-0 group-hover/strip:opacity-100 active:scale-90`}
+        >
+          <FiChevronRight size={16} />
+        </button>
       </div>
     </section>
   );
 }
 
-// ── Flash deals bar — auto-scrolling ─────────────────────────
+// ── Flash deals bar ──────────────────────────────────────────
 function FlashBar({ products }) {
   const { h, m, s } = useCountdown(4);
   const trackRef = useRef(null);
-  const timerRef = useRef(null);
   const deals = (products || []).filter(p => p.discountPrice && p.discountPrice < p.price).slice(0, 8);
 
-  const startFlashTimer = () => {
-    clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      const el = trackRef.current;
-      if (!el) return;
-      const maxScroll = el.scrollWidth - el.clientWidth;
-      if (el.scrollLeft >= maxScroll - 10) el.scrollTo({ left: 0, behavior: 'smooth' });
-      else el.scrollBy({ left: el.clientWidth * 0.75, behavior: 'smooth' });
-    }, 4000);
+  const scroll = (dir) => {
+    const el = trackRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * (el.clientWidth * 0.85), behavior: 'smooth' });
   };
-
-  useEffect(() => {
-    if (!deals.length) return;
-    startFlashTimer();
-    return () => clearInterval(timerRef.current);
-  }, [deals.length]);
 
   if (!deals.length) return null;
   return (
-    <section className="px-4">
-      <div className="flex items-center justify-between mb-3">
+    <section>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3 px-4">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-black px-3 py-1.5 rounded-xl">
             <FiZap size={12} style={{ fill: 'white' }} /> FLASH DEALS
@@ -190,16 +160,19 @@ function FlashBar({ products }) {
           All <FiChevronRight size={12} />
         </Link>
       </div>
-      <div ref={trackRef}
-        className="flex gap-3 overflow-x-auto scrollbar-hide pb-1"
-        style={{ scrollSnapType: 'x mandatory' }}
-        onMouseEnter={() => clearInterval(timerRef.current)}
-        onMouseLeave={startFlashTimer}
-        onTouchStart={() => clearInterval(timerRef.current)}
-        onTouchEnd={startFlashTimer}>
+
+      {/* Swipeable strip */}
+      <div className="relative group/flash">
+        <button onClick={() => scroll(-1)}
+          className="hidden md:flex absolute left-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white shadow-lg border border-gray-100 items-center justify-center text-gray-400 hover:text-red-500 transition-all opacity-0 group-hover/flash:opacity-100 active:scale-90">
+          <FiChevronRight size={16} style={{ transform: 'rotate(180deg)' }} />
+        </button>
+
+        <div ref={trackRef}
+          className="flex gap-3 px-4 overflow-x-auto scrollbar-hide pb-2"
+          style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
         {deals.map(p => {
           const discPct = Math.round(((p.price - p.discountPrice) / p.price) * 100);
-          // Stock bar: use stock count if available, else simulate
           const maxStock  = p.stockCount > 0 ? p.stockCount : 20;
           const curStock  = p.stock       > 0 ? p.stock      : Math.max(1, Math.floor(maxStock * 0.3));
           const stockPct  = Math.min(100, Math.round((curStock / maxStock) * 100));
@@ -207,7 +180,7 @@ function FlashBar({ products }) {
           return (
             <Link key={p._id} to={`/product/${p.slug}`}
               style={{ scrollSnapAlign: 'start' }}
-              className="flex-shrink-0 w-32 bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-all active:scale-95 group">
+              className="flex-shrink-0 w-[42vw] sm:w-36 bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-all active:scale-95 group">
               <div className="relative aspect-square bg-gray-50 overflow-hidden">
                 <img src={p.images?.[0]?.url || ''} alt={p.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
@@ -219,7 +192,6 @@ function FlashBar({ products }) {
                 <p className="text-[11px] text-gray-600 line-clamp-2 leading-tight mb-1">{p.name}</p>
                 <p className="font-bold text-sm text-gray-900">₹{p.discountPrice?.toLocaleString('en-IN')}</p>
                 <p className="text-[10px] text-gray-400 line-through">₹{p.price?.toLocaleString('en-IN')}</p>
-                {/* Stock progress bar */}
                 <div className="mt-1.5">
                   <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
                     <div className="h-full rounded-full transition-all" style={{ width: `${stockPct}%`, background: stockColor }} />
@@ -230,33 +202,14 @@ function FlashBar({ products }) {
             </Link>
           );
         })}
+        </div>
+
+        <button onClick={() => scroll(1)}
+          className="hidden md:flex absolute right-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white shadow-lg border border-gray-100 items-center justify-center text-gray-400 hover:text-red-500 transition-all opacity-0 group-hover/flash:opacity-100 active:scale-90">
+          <FiChevronRight size={16} />
+        </button>
       </div>
     </section>
-  );
-}
-
-// ── Categories pill strip — navigates to /shop/:slug ──────────
-function CategoriesStrip({ categories }) {
-  const navigate = useNavigate();
-  return (
-    <div className="px-4">
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-        <button onClick={() => navigate('/shop')}
-          className="flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 whitespace-nowrap border bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-100">
-          🛒 All
-        </button>
-        {categories.slice(0, 16).map(cat => (
-          <button key={cat._id}
-            onClick={() => navigate(`/shop/${cat.slug}`)}
-            className="flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 whitespace-nowrap border bg-white text-gray-600 border-gray-200 hover:border-orange-300 hover:text-orange-600">
-            {cat.image?.url
-              ? <img src={cat.image.url} alt="" className="w-4 h-4 object-cover rounded-full flex-shrink-0" />
-              : null}
-            {cat.name}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -584,71 +537,23 @@ function HomeCategoriesGrid() {
   );
 }
 
-// ── Horizontal category shelf ─────────────────────────────────
-function CategoryShelf({ cat, products }) {
-  const navigate = useNavigate();
-  const catPath = `/shop/${cat.slug}`;
-  return (
-    <section>
-      <div className="flex items-center justify-between px-4 mb-2">
-        <button
-          onClick={() => navigate(catPath)}
-          className="flex items-center gap-2 group active:scale-95 transition-transform">
-          {cat.image?.url
-            ? <img src={cat.image.url} alt="" className="w-6 h-6 rounded-full object-cover" />
-            : <span className="text-lg">🛍️</span>}
-          <span className="text-sm font-extrabold text-gray-900 group-hover:text-orange-500 transition-colors">
-            {cat.name}
-          </span>
-          <FiChevronRight size={13} className="text-gray-400 group-hover:text-orange-400" />
-        </button>
-        <button onClick={() => navigate(catPath)}
-          className="text-[11px] font-bold text-orange-500 border border-orange-200 px-2.5 py-1 rounded-lg active:scale-95 transition-all">
-          See all
-        </button>
-      </div>
-      <div className="flex gap-3 px-4 overflow-x-auto scrollbar-hide pb-1">
-        {products.map(p => (
-          <div key={p._id} className="flex-shrink-0 w-36">
-            <ProductCard product={p} />
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 // ── Main Home ─────────────────────────────────────────────────
 export default function Home() {
   const navigate = useNavigate();
 
-  const [categories,  setCategories]  = useState([]);
-  const [allProducts, setAllProducts] = useState([]);   // featured + recent combined
+  const [allProducts, setAllProducts] = useState([]);
   const [loading,     setLoading]     = useState(true);
 
-
-  // ── Mount: only 2 API calls ───────────────────────────────
+  // ── Mount: single API call ────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
-        const [catRes, prodRes] = await Promise.all([
-          api.get('/categories?limit=20'),
-          api.get('/products?limit=24&sort=-createdAt'),
-        ]);
-        setCategories(catRes.data.categories || []);
-        setAllProducts(prodRes.data.products || []);
+        const { data } = await api.get('/products?limit=24&sort=-createdAt');
+        setAllProducts(data.products || []);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     })();
   }, []);
-
-  // ── Group products by category ───────────────────────────
-  const catShelves = categories.slice(0, 8).map(cat => {
-    const prods = allProducts.filter(p =>
-      p.category?._id === cat._id || p.category === cat._id
-    );
-    return { cat, products: prods };
-  }).filter(s => s.products.length > 0);
 
   // Featured = products with discountPrice or featured flag
   const featuredProducts = allProducts.filter(p => p.discountPrice || p.featured).slice(0, 12);
@@ -703,11 +608,11 @@ export default function Home() {
         </div>
 
         {/* ══════════════════════════════════════
-            FEATURED AUTO-SCROLL STRIP
+            FEATURED STRIP  (swipe / arrows)
         ══════════════════════════════════════ */}
         {(featuredProducts.length > 0 || loading) && (
           <div id="section-featured" className="pb-5">
-            <AutoScrollStrip
+            <FeaturedStrip
               title="Featured Products"
               emoji="⭐"
               products={featuredProducts}
@@ -719,7 +624,7 @@ export default function Home() {
         )}
 
         {/* ══════════════════════════════════════
-            FLASH DEALS — auto-scroll
+            FLASH DEALS  (swipe / arrows)
         ══════════════════════════════════════ */}
         <div id="section-flash" className="pb-5">
           <FlashBar products={featuredProducts} />
@@ -728,128 +633,71 @@ export default function Home() {
         <Divider />
 
         {/* ══════════════════════════════════════
-            CATEGORY SHELVES (no tabs)
+            NEW ARRIVALS — clean product grid
+            (no per-category shelves on home)
         ══════════════════════════════════════ */}
-        <>
-          <div className="pt-3 pb-6 space-y-6">
-            {loading ? (
-              [0,1,2].map(i => (
-                <div key={i} className="px-4 space-y-2 animate-pulse">
-                  <div className="h-4 w-32 bg-gray-200 rounded-lg" />
-                  <div className="flex gap-3">
-                    {[0,1,2,3].map(j => (
-                      <div key={j} className="flex-shrink-0 w-36 bg-white rounded-2xl overflow-hidden border border-gray-100">
-                        <div className="aspect-square bg-gray-100" />
-                        <div className="p-3 space-y-2">
-                          <div className="h-3 bg-gray-100 rounded w-3/4" />
-                          <div className="h-4 bg-gray-100 rounded w-1/2" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))
-            ) : catShelves.length > 0 ? (
-              catShelves.map(({ cat, products }) => (
-                <CategoryShelf key={cat._id} cat={cat} products={products} />
-              ))
-            ) : allProducts.length > 0 ? (
-              <div className="px-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-extrabold text-gray-800">All Products</h2>
-                  <Link to="/shop" className="text-xs font-bold text-orange-500">See all</Link>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {allProducts.slice(0, 12).map(p => <ProductCard key={p._id} product={p} />)}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-16">
-                <p className="text-5xl mb-3">📦</p>
-                <p className="text-gray-400">Products coming soon — check back!</p>
-              </div>
-            )}
-
-            {!loading && (
-              <div className="px-4 text-center">
-                <Link to="/shop"
-                  className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 font-bold text-sm px-6 py-2.5 rounded-xl hover:border-orange-300 hover:text-orange-600 transition-all">
-                  Browse all products <FiArrowRight size={14} />
-                </Link>
-              </div>
-            )}
+        <div className="pt-4 pb-6 px-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0" />
+              <span className="text-lg leading-none">🆕</span>
+              <h2 className="text-sm font-extrabold text-gray-900 tracking-tight">New Arrivals</h2>
+            </div>
+            <Link to="/shop?sort=-createdAt" className="text-xs font-bold text-orange-500 flex items-center gap-0.5">
+              See all <FiChevronRight size={12} />
+            </Link>
           </div>
 
-          <Divider />
-
-            {/* ── Desktop: full sections below ── */}
-            <div className="hidden md:block max-w-7xl mx-auto px-4 mt-8 space-y-12">
-              {/* Sub-app banners — desktop wider version */}
-              <section className="grid grid-cols-2 gap-4">
-                <Link to="/koyambedu"
-                  className="relative flex items-center justify-between rounded-2xl px-6 py-5 overflow-hidden group hover:shadow-xl transition-all"
-                  style={{ background: 'linear-gradient(135deg, #14532d, #16a34a)' }}>
-                  <div className="absolute -top-6 -left-6 w-24 h-24 rounded-full bg-white/10 group-hover:scale-110 transition-transform" />
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-2xl">🥬</span>
-                      <span className="text-white font-black text-lg tracking-tight">KOYAMBEDU DAILY</span>
-                      <span className="bg-yellow-400 text-green-900 text-[10px] font-black px-2 py-0.5 rounded-full">ORDER BY 10 AM</span>
-                    </div>
-                    <p className="text-green-100 text-sm">Wholesale market-direct veggies, fruits & flowers</p>
-                    <p className="text-green-200 text-xs mt-0.5">கோயம்பேடு · Chennai's freshest market</p>
-                  </div>
-                  <span className="flex items-center gap-1.5 bg-white text-emerald-700 font-black text-sm px-5 py-3 rounded-xl shadow group-hover:shadow-md transition-all whitespace-nowrap flex-shrink-0 ml-4">
-                    Order Now <FiArrowRight size={14} />
-                  </span>
-                </Link>
-                <Link to="/uzhavar"
-                  className="relative flex items-center justify-between rounded-2xl px-6 py-5 overflow-hidden group hover:shadow-xl transition-all"
-                  style={{ background: 'linear-gradient(135deg, #134e4a, #0f766e)' }}>
-                  <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10 group-hover:scale-110 transition-transform" />
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-2xl">🌾</span>
-                      <span className="text-white font-black text-lg tracking-tight">UZHAVAR FRESH</span>
-                      <span className="bg-lime-400 text-teal-900 text-[10px] font-black px-2 py-0.5 rounded-full">FARM DIRECT</span>
-                    </div>
-                    <p className="text-teal-100 text-sm">Buy from farmers @ your doorstep · Farm fresh daily</p>
-                    <p className="text-teal-200 text-xs mt-0.5">உழவர் சந்தை · No middlemen</p>
-                  </div>
-                  <span className="flex items-center gap-1.5 bg-white text-teal-700 font-black text-sm px-5 py-3 rounded-xl shadow group-hover:shadow-md transition-all whitespace-nowrap flex-shrink-0 ml-4">
-                    Explore <FiArrowRight size={14} />
-                  </span>
-                </Link>
-              </section>
-
-              {/* Full product grid sections */}
-              <ProductShelf title="Featured Products" emoji="⭐" products={featuredProducts} link="/shop?featured=true" loading={loading} />
-              <ProductShelf title="New Arrivals" emoji="🆕" products={allProducts} link="/shop?sort=-createdAt" loading={loading} />
-              {allProducts.filter(p => p.ratings?.count > 0).length > 0 && (
-                <ProductShelf title="Top Rated" emoji="🏆" products={allProducts.filter(p => p.ratings?.count > 0).slice(0,8)} link="/shop?sort=-ratings.average" loading={loading} />
-              )}
-
-              {/* Why Eptomart */}
-              <section className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
-                <h2 className="text-xl font-extrabold text-center text-gray-900 mb-1">Why Shop at Eptomart?</h2>
-                <p className="text-center text-sm text-gray-400 mb-8">India's fastest growing multi-seller marketplace</p>
-                <div className="grid grid-cols-4 gap-6">
-                  {[
-                    { emoji: '🛡️', title: 'Verified Sellers', desc: 'KYC verified with GST & FSSAI compliance' },
-                    { emoji: '🚚', title: 'Pan-India Delivery', desc: 'Powered by Shiprocket — to every pincode' },
-                    { emoji: '💸', title: 'Best Prices', desc: 'Direct from sellers — no middlemen, no markups' },
-                    { emoji: '📞', title: 'Real Support', desc: 'Human support via WhatsApp, 7 days a week' },
-                  ].map(item => (
-                    <div key={item.title} className="text-center">
-                      <div className="text-4xl mb-3">{item.emoji}</div>
-                      <h3 className="font-bold text-sm text-gray-800 mb-1">{item.title}</h3>
-                      <p className="text-xs text-gray-500 leading-relaxed">{item.desc}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+              {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
             </div>
-        </>
+          ) : allProducts.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+              {allProducts.slice(0, 10).map(p => <ProductCard key={p._id} product={p} />)}
+            </div>
+          ) : (
+            <div className="text-center py-14">
+              <p className="text-5xl mb-3">📦</p>
+              <p className="text-gray-400 text-sm">Products coming soon — check back!</p>
+            </div>
+          )}
+
+          {!loading && allProducts.length > 0 && (
+            <div className="text-center mt-5">
+              <Link to="/shop"
+                className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 font-bold text-sm px-6 py-2.5 rounded-xl hover:border-orange-300 hover:text-orange-600 transition-all">
+                Browse all products <FiArrowRight size={14} />
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* ══════════════════════════════════════
+            DESKTOP-ONLY: WHY EPTOMART
+        ══════════════════════════════════════ */}
+        <div className="hidden md:block max-w-7xl mx-auto px-4 pb-12">
+          <Divider />
+          <section className="mt-10 bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+            <h2 className="text-xl font-extrabold text-center text-gray-900 mb-1">Why Shop at Eptomart?</h2>
+            <p className="text-center text-sm text-gray-400 mb-8">India's fastest growing multi-seller marketplace</p>
+            <div className="grid grid-cols-4 gap-6">
+              {[
+                { emoji: '🛡️', title: 'Verified Sellers', desc: 'KYC verified with GST & FSSAI compliance' },
+                { emoji: '🚚', title: 'Pan-India Delivery', desc: 'Powered by Shiprocket — to every pincode' },
+                { emoji: '💸', title: 'Best Prices', desc: 'Direct from sellers — no middlemen, no markups' },
+                { emoji: '📞', title: 'Real Support', desc: 'Human support via WhatsApp, 7 days a week' },
+              ].map(item => (
+                <div key={item.title} className="text-center">
+                  <div className="text-4xl mb-3">{item.emoji}</div>
+                  <h3 className="font-bold text-sm text-gray-800 mb-1">{item.title}</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
       </main>
 
       {/* ══════════════════════════════════════
