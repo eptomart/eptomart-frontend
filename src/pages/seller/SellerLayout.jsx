@@ -88,25 +88,37 @@ export default function SellerLayout() {
           </div>
         </header>
 
-        {/* Mobile horizontal nav — visible only on small screens */}
-        <div className="lg:hidden flex gap-2 overflow-x-auto scrollbar-hide px-3 py-2 border-b border-gray-100 bg-white sticky top-[57px] z-20">
-          <Link to="/"
-            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-orange-500 text-white">
-            <FiArrowLeft size={11} /> Store
-          </Link>
-          {NAV.map(({ path, label, icon: Icon }) => (
-            <NavLink key={path} to={path} onClick={() => setOpen(false)}
-              className={({ isActive }) =>
-                `flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors
-                ${isActive ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600'}`
-              }>
-              <Icon size={11} /> {label}
-            </NavLink>
-          ))}
-          <button onClick={logout}
-            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-red-50 text-red-500 transition-colors">
-            <FiLogOut size={11} /> Logout
-          </button>
+        {/* Mobile nav grid — visible only on small screens, shows all options */}
+        <div className="lg:hidden bg-white border-b border-gray-100 px-3 pt-2 pb-3">
+          <div className="grid grid-cols-3 gap-2">
+            {/* Back to Store */}
+            <Link to="/"
+              className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-2xl bg-orange-500 text-white active:scale-95 transition-transform">
+              <FiArrowLeft size={18} />
+              <span className="text-[10px] font-bold leading-tight text-center">Back to Store</span>
+            </Link>
+
+            {/* Nav items */}
+            {NAV.map(({ path, label, icon: Icon }) => (
+              <NavLink key={path} to={path} onClick={() => setOpen(false)}
+                className={({ isActive }) =>
+                  `flex flex-col items-center gap-1 py-2.5 px-1 rounded-2xl active:scale-95 transition-all
+                  ${isActive
+                    ? 'bg-orange-500 text-white shadow-md shadow-orange-200'
+                    : 'bg-gray-100 text-gray-600'}`
+                }>
+                <Icon size={18} />
+                <span className="text-[10px] font-bold leading-tight text-center">{label}</span>
+              </NavLink>
+            ))}
+
+            {/* Logout */}
+            <button onClick={logout}
+              className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-2xl bg-red-50 text-red-500 active:scale-95 transition-transform">
+              <FiLogOut size={18} />
+              <span className="text-[10px] font-bold leading-tight text-center">Logout</span>
+            </button>
+          </div>
         </div>
 
         <main className="flex-1 p-4 md:p-6 overflow-auto">
