@@ -290,8 +290,8 @@ export default function AdminSellers() {
         <div className="card p-12 text-center text-gray-400">No sellers found</div>
       ) : (
         <>
-          {/* ── Mobile cards (sm and below) ── */}
-          <div className="sm:hidden space-y-3">
+          {/* ── Mobile cards (below lg) ── */}
+          <div className="lg:hidden space-y-3">
             {sellers.map(s => (
               <div key={s._id} className="card p-4 space-y-3">
                 {/* Top row: avatar + name + status */}
@@ -367,8 +367,8 @@ export default function AdminSellers() {
             ))}
           </div>
 
-          {/* ── Desktop table (sm and above) ── */}
-          <div className="hidden sm:block card overflow-hidden">
+          {/* ── Desktop table (lg and above) ── */}
+          <div className="hidden lg:block card overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
