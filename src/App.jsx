@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
@@ -9,6 +9,7 @@ import Loader from './components/common/Loader';
 import CompareBar from './components/product/CompareBar';
 import AIAssistant from './components/AIAssistant';
 import WhatsAppFloat from './components/WhatsAppFloat';
+import BottomNav from './components/common/BottomNav';
 
 // ── Customer pages ───────────────────────────
 const Home           = lazy(() => import('./pages/Home'));
@@ -107,6 +108,17 @@ const SellerRoute = ({ children }) => {
   return children;
 };
 
+function GlobalBottomNav() {
+  const { pathname } = useLocation();
+  // Hide on admin, seller portal, and koyambedu seller/admin pages
+  const hidden = pathname.startsWith('/admin') ||
+                 pathname.startsWith('/seller') ||
+                 pathname.startsWith('/koyambedu/seller') ||
+                 pathname.startsWith('/koyambedu/seller-admin');
+  if (hidden) return null;
+  return <BottomNav />;
+}
+
 function AppRoutes() {
   return (
     <>
@@ -200,6 +212,7 @@ function AppRoutes() {
         </Routes>
       </Suspense>
 
+      <GlobalBottomNav />
       <CompareBar />
       <AIAssistant />
       <WhatsAppFloat />

@@ -6,7 +6,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { FiChevronRight, FiGrid } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
-import BottomNav from '../components/common/BottomNav';
 import api from '../utils/api';
 
 const PALETTE = [
@@ -101,8 +100,9 @@ export default function Categories() {
                     <button
                       key={cat._id}
                       onClick={() => {
-                        if (childCount === 0) { navigate(`/shop/${cat.slug}`); return; }
-                        setSelected(isSelected ? null : cat);
+                        // Always navigate to shop; also toggle sub-cat panel
+                        if (childCount > 0) setSelected(isSelected ? null : cat);
+                        navigate(`/shop/${cat.slug}`);
                       }}
                       className={`flex flex-col items-center gap-2.5 rounded-2xl p-4 border-2 transition-all active:scale-95 text-center
                         ${isSelected
@@ -122,11 +122,9 @@ export default function Categories() {
                           <p className="text-[10px] text-gray-400 mt-0.5">{childCount} sub-categories</p>
                         )}
                       </div>
-                      {childCount === 0 && (
-                        <span className="text-[10px] font-bold text-orange-500 flex items-center gap-0.5">
-                          Shop <FiChevronRight size={10} />
-                        </span>
-                      )}
+                      <span className="text-[10px] font-bold text-orange-500 flex items-center gap-0.5">
+                        Shop <FiChevronRight size={10} />
+                      </span>
                     </button>
                   );
                 })}
@@ -208,7 +206,6 @@ export default function Categories() {
         </div>
       </main>
 
-      <BottomNav />
     </>
   );
 }

@@ -88,7 +88,28 @@ export default function SellerLayout() {
           </div>
         </header>
 
-        <main className="flex-1 p-6 overflow-auto">
+        {/* Mobile horizontal nav — visible only on small screens */}
+        <div className="lg:hidden flex gap-2 overflow-x-auto scrollbar-hide px-3 py-2 border-b border-gray-100 bg-white sticky top-[57px] z-20">
+          <Link to="/"
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-orange-500 text-white">
+            <FiArrowLeft size={11} /> Store
+          </Link>
+          {NAV.map(({ path, label, icon: Icon }) => (
+            <NavLink key={path} to={path} onClick={() => setOpen(false)}
+              className={({ isActive }) =>
+                `flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors
+                ${isActive ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-600'}`
+              }>
+              <Icon size={11} /> {label}
+            </NavLink>
+          ))}
+          <button onClick={logout}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-red-50 text-red-500 transition-colors">
+            <FiLogOut size={11} /> Logout
+          </button>
+        </div>
+
+        <main className="flex-1 p-4 md:p-6 overflow-auto">
           <Outlet />
         </main>
       </div>

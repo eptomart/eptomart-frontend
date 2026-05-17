@@ -34,7 +34,7 @@ export default function ProductCard({ product }) {
   const hasVariantPrices = pricedVariants.length > 0;
   const lowestVariantPrice = hasVariantPrices ? Math.min(...pricedVariants.map(v => v.price)) : null;
   const effectivePrice = discountPrice || price;
-  const mainImage   = imgCard(images?.[0]?.url) || 'https://via.placeholder.com/300x300?text=No+Image';
+  const mainImage   = imgCard(images?.find(i => i.isDefault)?.url || images?.[0]?.url) || 'https://via.placeholder.com/300x300?text=No+Image';
   const isUnavailable = product.isActive === false;
 
   const handleWishlist = (e) => {

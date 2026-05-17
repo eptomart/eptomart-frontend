@@ -8,7 +8,6 @@ import { FiArrowRight, FiSearch, FiZap, FiChevronRight, FiMic, FiX } from 'react
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/common/Navbar';
-import BottomNav from '../components/common/BottomNav';
 import ProductCard from '../components/product/ProductCard';
 import api from '../utils/api';
 
@@ -62,7 +61,7 @@ function ProductGridCard({ product: p, accent = '#f4941c' }) {
   const orig = p.price || 0;
   const disc = p.discountPrice && p.discountPrice < orig ? p.discountPrice : null;
   const pct  = disc ? Math.round(((orig - disc) / orig) * 100) : 0;
-  const img  = p.images?.[0]?.url || '';
+  const img  = p.images?.find(i => i.isDefault)?.url || p.images?.[0]?.url || '';
   return (
     <Link to={`/product/${p.slug || p._id}`}
       className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 active:scale-95 group flex flex-col">
@@ -823,7 +822,6 @@ export default function Home() {
 
       </main>
 
-      <BottomNav />
     </>
   );
 }
