@@ -31,6 +31,7 @@ const ShippingPolicy = lazy(() => import('./pages/ShippingPolicy'));
 const ReturnPolicy   = lazy(() => import('./pages/ReturnPolicy'));
 const PrivacyPolicy  = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
+const DeleteAccount  = lazy(() => import('./pages/DeleteAccount'));
 const ProductPreview = lazy(() => import('./pages/ProductPreview'));
 const InvoiceView    = lazy(() => import('./pages/invoice/InvoiceView'));
 
@@ -141,6 +142,7 @@ function AppRoutes() {
           <Route path="/return-policy"   element={<ReturnPolicy />} />
           <Route path="/privacy-policy"  element={<PrivacyPolicy />} />
           <Route path="/terms-of-service"element={<TermsOfService />} />
+          <Route path="/delete-account"  element={<DeleteAccount />} />
           {/* Product preview — requires seller/admin login */}
           <Route path="/preview/:id"   element={<ProtectedRoute><ProductPreview /></ProtectedRoute>} />
 
