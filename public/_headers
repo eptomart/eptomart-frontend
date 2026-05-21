@@ -1,5 +1,10 @@
 # Cloudflare Pages — Cache headers for performance
 
+# Digital Asset Links (Android TWA verification)
+/.well-known/assetlinks.json
+  Content-Type: application/json
+  Cache-Control: public, max-age=3600
+
 # HTML — no cache (always fresh)
 /*.html
   Cache-Control: no-cache, no-store, must-revalidate

@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.eptomart.app",
+    "sha256_cert_fingerprints": [
+      "25:A5:7F:30:BA:B7:58:1C:7A:38:41:5E:3D:C0:A4:7A:F9:34:1F:94:94:2C:C1:CC:76:0D:F6:6B:7D:1F:74:FA"
+    ]
+  }
+}]
