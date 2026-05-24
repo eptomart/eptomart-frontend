@@ -21,8 +21,24 @@ export default function About() {
   return (
     <>
       <Helmet>
-        <title>About Us — Eptomart</title>
-        <meta name="description" content="Eptomart is a premium quality-focused ecommerce platform from Eptosi Group of Companies. Trusted products, reliable service, transparent billing." />
+        <title>About Eptomart — India's Trusted Online Shopping Platform | Eptosi Group</title>
+        <meta name="description" content="Eptomart is a premium quality-focused ecommerce platform from Eptosi Group of Companies. Verified sellers, GST invoices, Shiprocket delivery, and trusted products across India." />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://www.eptomart.com/about" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "OnlineStore",
+          "@id": "https://www.eptomart.com/#organization",
+          "name": "Eptomart",
+          "url": "https://www.eptomart.com",
+          "logo": "https://www.eptomart.com/logo-v3.png",
+          "description": "Eptomart is a premium quality-focused ecommerce platform from Eptosi Group of Companies. Trusted products, reliable service, transparent billing across India.",
+          "foundingDate": "2026",
+          "areaServed": { "@type": "Country", "name": "India" },
+          "email": "eptosicare@gmail.com",
+          "parentOrganization": { "@type": "Organization", "name": "Eptosi Group of Companies" },
+          "sameAs": ["https://www.eptomart.com"]
+        })}</script>
       </Helmet>
       <Navbar />
 

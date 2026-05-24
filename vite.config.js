@@ -7,10 +7,21 @@ export default defineConfig({
   ],
   build: {
     target: 'es2015',
+    // Smaller chunks = faster LCP (Core Web Vitals = SEO ranking factor)
+    chunkSizeWarningLimit: 500,
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+          // Core React — always needed
+          'react-core': ['react', 'react-dom', 'react-router-dom'],
+          // UI / animation — split from core
+          'ui-libs': ['framer-motion', 'react-icons', 'swiper'],
+          // Charts — only loaded on admin pages
+          'charts': ['recharts'],
+          // Firebase — large, lazy-loaded
+          'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+          // Utilities
+          'utils': ['axios', 'react-hot-toast', 'react-helmet-async'],
         },
       },
     },

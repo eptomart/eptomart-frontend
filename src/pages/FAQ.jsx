@@ -82,8 +82,19 @@ export default function FAQ() {
   return (
     <>
       <Helmet>
-        <title>FAQ — Eptomart</title>
-        <meta name="description" content="Frequently asked questions about ordering, payment, delivery, returns, and more on Eptomart." />
+        <title>FAQ — Frequently Asked Questions | Eptomart Online Shopping</title>
+        <meta name="description" content="Get answers to common questions about ordering, payment methods (UPI, COD, cards), delivery times, returns, refunds, GST invoices and more on Eptomart." />
+        <meta name="robots" content="index, follow, max-snippet:-1" />
+        <link rel="canonical" href="https://www.eptomart.com/faq" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": FAQS.map(f => ({
+            "@type": "Question",
+            "name": f.q,
+            "acceptedAnswer": { "@type": "Answer", "text": f.a }
+          }))
+        })}</script>
       </Helmet>
       <Navbar />
 

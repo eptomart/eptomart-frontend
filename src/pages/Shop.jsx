@@ -128,7 +128,19 @@ export default function Shop() {
   return (
     <>
       <Helmet>
-        <title>{pageTitle} — Eptomart Shop</title>
+        <title>{pageTitle} — Buy Online at Eptomart | India</title>
+        <meta name="description" content={activeCat ? `Shop ${activeCat} online on Eptomart — trusted sellers, fast pan-India delivery, GST invoices. Browse ${activeCat} products at best prices.` : `Browse thousands of products across all categories on Eptomart. Electronics, fashion, groceries, fresh produce & more. Fast delivery across India.`} />
+        <meta name="robots" content="index, follow, max-snippet:-1" />
+        <link rel="canonical" href={activeCat ? `https://www.eptomart.com/shop?category=${activeCat}` : "https://www.eptomart.com/shop"} />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.eptomart.com/" },
+            { "@type": "ListItem", "position": 2, "name": "Shop", "item": "https://www.eptomart.com/shop" },
+            ...(activeCat ? [{ "@type": "ListItem", "position": 3, "name": activeCat, "item": `https://www.eptomart.com/shop?category=${activeCat}` }] : [])
+          ]
+        })}</script>
       </Helmet>
       <Navbar />
 

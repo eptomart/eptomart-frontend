@@ -1,5 +1,19 @@
+# Eptomart — robots.txt
 User-agent: *
 Allow: /
+Allow: /shop
+Allow: /categories
+Allow: /product/
+Allow: /about
+Allow: /contact
+Allow: /faq
+Allow: /koyambedu
+Allow: /uzhavar
+Allow: /shipping-policy
+Allow: /return-policy
+Allow: /privacy-policy
+Allow: /terms
+
 Disallow: /admin
 Disallow: /admin/*
 Disallow: /checkout
@@ -8,5 +22,12 @@ Disallow: /profile
 Disallow: /orders
 Disallow: /seller/*
 Disallow: /api/
+Disallow: /login
+Disallow: /delete-account
 
+# Crawl-delay for considerate crawling
+Crawl-delay: 1
+
+# Sitemaps
+Sitemap: https://www.eptomart.com/sitemap.xml
 Sitemap: https://www.eptomart.com/api/sitemap/sitemap.xml

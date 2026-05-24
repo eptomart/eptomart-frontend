@@ -661,10 +661,26 @@ export default function Home() {
   return (
     <>
       <Helmet>
-        <title>Eptomart — Shop Everything Online | India's Best Online Store</title>
-        <meta name="description" content="Shop groceries, masalas, health foods and more. Koyambedu Daily for fresh produce. Uzhavar Fresh farm-direct. Fast delivery across India." />
-        <meta name="robots" content="index, follow" />
+        <title>Eptomart — Online Shopping India | Groceries, Fashion, Electronics</title>
+        <meta name="description" content="Shop on Eptomart — India's trusted online store. Fresh groceries, Koyambedu Daily produce, Uzhavar farm-direct, electronics, fashion & more. Fast pan-India delivery. GST invoices. Verified sellers." />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
         <link rel="canonical" href="https://www.eptomart.com/" />
+        <meta name="keywords" content="online shopping india, buy groceries online, koyambedu market online, uzhavar fresh vegetables, eptomart, indian ecommerce, buy electronics india, fashion online india, fresh produce delivery" />
+        {/* Homepage structured data */}
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "@id": "https://www.eptomart.com/#webpage",
+          "url": "https://www.eptomart.com/",
+          "name": "Eptomart — Online Shopping India",
+          "isPartOf": { "@id": "https://www.eptomart.com/#website" },
+          "about": { "@id": "https://www.eptomart.com/#organization" },
+          "description": "India's trusted multi-category online shopping platform. Shop electronics, fashion, groceries, fresh produce and more.",
+          "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [{ "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.eptomart.com/" }]
+          }
+        })}</script>
       </Helmet>
 
       <Navbar />

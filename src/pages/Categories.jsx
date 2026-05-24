@@ -57,7 +57,18 @@ export default function Categories() {
   return (
     <>
       <Helmet>
-        <title>All Categories — Eptomart</title>
+        <title>All Categories — Browse & Shop Online | Eptomart India</title>
+        <meta name="description" content="Explore all shopping categories on Eptomart — electronics, fashion, groceries, fresh produce, health & beauty, and more. Find what you need and buy online with fast India delivery." />
+        <meta name="robots" content="index, follow, max-snippet:-1" />
+        <link rel="canonical" href="https://www.eptomart.com/categories" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.eptomart.com/" },
+            { "@type": "ListItem", "position": 2, "name": "All Categories", "item": "https://www.eptomart.com/categories" }
+          ]
+        })}</script>
       </Helmet>
 
       <Navbar />

@@ -156,9 +156,9 @@ export default function ProductPage() {
   return (
     <>
       <Helmet>
-        <title>{product.name} — Eptomart</title>
-        <meta name="description" content={product.shortDescription || product.description?.slice(0, 160)} />
-        <meta name="robots" content="index, follow" />
+        <title>{product.name} — Buy Online at Best Price | Eptomart India</title>
+        <meta name="description" content={`Buy ${product.name} online at best price in India. ${product.shortDescription || product.description?.slice(0, 100) || ''} Fast delivery, GST invoice, verified seller — Eptomart.`} />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
         <link rel="canonical" href={`https://www.eptomart.com/product/${slug}`} />
         {/* Open Graph */}
         <meta property="og:type" content="product" />
@@ -199,6 +199,17 @@ export default function ProductPage() {
               "reviewCount": product.ratings.count
             }
           } : {})
+        })}</script>
+        {/* BreadcrumbList — improves SERP appearance */}
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.eptomart.com/" },
+            { "@type": "ListItem", "position": 2, "name": "Shop", "item": "https://www.eptomart.com/shop" },
+            ...(product.category ? [{ "@type": "ListItem", "position": 3, "name": product.category, "item": `https://www.eptomart.com/shop?category=${encodeURIComponent(product.category)}` }] : []),
+            { "@type": "ListItem", "position": product.category ? 4 : 3, "name": product.name, "item": `https://www.eptomart.com/product/${slug}` }
+          ]
         })}</script>
       </Helmet>
       <Navbar />

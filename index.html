@@ -9,8 +9,14 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta name="theme-color" content="#0D1B3E" />
-    <meta name="description" content="Eptomart — India's fast, affordable online shopping destination. Shop electronics, fashion, groceries and more." />
-    <meta name="keywords" content="eptomart, online shopping, india, ecommerce, buy online" />
+    <meta name="description" content="Eptomart — India's trusted online shopping destination. Buy electronics, fashion, groceries, fresh produce & more. Fast pan-India delivery, GST invoices, verified sellers." />
+    <meta name="keywords" content="eptomart, online shopping india, buy online india, ecommerce india, fresh groceries online, koyambedu market online, uzhavar fresh, indian online store, shop electronics india, fashion online india" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="canonical" href="https://www.eptomart.com/" />
+    <!-- Geo targeting — India -->
+    <meta name="geo.region" content="IN" />
+    <meta name="geo.placename" content="India" />
+    <meta name="language" content="English" />
 
     <!-- PWA Meta -->
     <link rel="manifest" href="/manifest.json" />
@@ -29,7 +35,8 @@
     <meta property="og:title" content="Eptomart — Shop Everything" />
     <meta property="og:description" content="India's fast, affordable online shopping destination. Shop electronics, fashion, groceries and more." />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://eptomart.com" />
+    <meta property="og:url" content="https://www.eptomart.com/" />
+    <meta property="og:locale" content="en_IN" />
     <meta property="og:image" content="https://eptomart.com/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -46,7 +53,58 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
-    <title>Eptomart — Shop Everything</title>
+    <title>Eptomart — Online Shopping India | Buy Fresh, Fashion, Electronics</title>
+
+    <!-- Organization + WebSite JSON-LD — Enables Google Sitelinks Search Box -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://www.eptomart.com/#organization",
+          "name": "Eptomart",
+          "alternateName": "Eptosi Group",
+          "url": "https://www.eptomart.com",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://www.eptomart.com/logo-v3.png",
+            "width": 512,
+            "height": 512
+          },
+          "sameAs": [],
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer service",
+            "email": "eptosicare@gmail.com",
+            "availableLanguage": ["English", "Tamil"]
+          },
+          "areaServed": {
+            "@type": "Country",
+            "name": "India"
+          },
+          "description": "Eptomart is India's trusted multi-category online shopping platform by Eptosi Group of Companies. Shop electronics, fashion, groceries, fresh produce and more with fast pan-India delivery."
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://www.eptomart.com/#website",
+          "url": "https://www.eptomart.com",
+          "name": "Eptomart",
+          "description": "India's trusted online shopping destination — electronics, fashion, groceries, fresh produce & more.",
+          "publisher": { "@id": "https://www.eptomart.com/#organization" },
+          "inLanguage": "en-IN",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://www.eptomart.com/shop?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    }
+    </script>
 
     <!-- KILL all service workers immediately — runs before anything else -->
     <script>
