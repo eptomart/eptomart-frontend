@@ -598,45 +598,63 @@ export default function SellerOrders() {
                     </div>
                   )}
 
-                  {/* Shipping section — AWB and tracking for shipped/delivered orders */}
-                  {(o.orderStatus === 'shipped' || o.orderStatus === 'delivered') && (
-                    <div className="border-t border-gray-200 pt-3 mt-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FiTruck size={14} className="text-blue-600" />
-                        <span className="font-semibold text-sm text-gray-700">Shipping Details</span>
-                      </div>
-                      <div className="space-y-2 text-xs">
-                        {/* AWB Number */}
-                        <div className="flex items-start justify-between">
-                          <span className="text-gray-600">AWB Number:</span>
-                          <span className="font-mono font-semibold text-gray-800">
-                            {o.shiprocket?.awb || o.trackingNumber || (
-                              <span className="text-orange-600">⏳ AWB Pending</span>
-                            )}
-                          </span>
+                  {/* Shipping section — AWB and tracking */}
+                  {(['confirmed','processing','shipped','delivered'].includes(o.orderStatus)) && (() => {
+                    // Find this seller's breakdown entry (if multi-seller)
+                    const myBreakdown = o.sellerBreakdown?.find(sb =>
+                      sb.shiprocket?.awb || sb.shiprocket?.shipmentId
+                    );
+                    const sr = myBreakdown?.shiprocket || o.shiprocket;
+                    const awb = sr?.awb || o.trackingNumber;
+                    return (
+                      <div className="border-t border-gray-200 pt-3 mt-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <FiTruck size={14} className="text-blue-600" />
+                          <span className="font-semibold text-sm text-gray-700">Shipping Details</span>
+                          {o.sellerBreakdown?.length > 1 && (
+                            <span className="text-[11px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
+                              Multi-seller order
+                            </span>
+                          )}
                         </div>
-
-                        {/* Courier */}
-                        {(o.shiprocket?.courier || o.deliveryPartner) && (
+                        <div className="space-y-2 text-xs">
                           <div className="flex items-start justify-between">
-                            <span className="text-gray-600">Courier:</span>
-                            <span className="font-semibold text-gray-800">{o.shiprocket?.courier || o.deliveryPartner}</span>
+                            <span className="text-gray-600">AWB Number:</span>
+                            <span className="font-mono font-semibold text-gray-800">
+                              {awb || <span className="text-orange-600">⏳ AWB Pending — confirm order to generate</span>}
+                            </span>
                           </div>
-                        )}
-
-                        {/* Tracking Link */}
-                        {o.shiprocket?.trackingUrl && (
-                          <div className="flex items-start justify-between">
-                            <span className="text-gray-600">Track Shipment:</span>
-                            <a href={o.shiprocket.trackingUrl} target="_blank" rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
-                              Track Now <FiExternalLink size={11} />
-                            </a>
-                          </div>
-                        )}
+                          {(sr?.courier || o.deliveryPartner) && (
+                            <div className="flex items-start justify-between">
+                              <span className="text-gray-600">Courier:</span>
+                              <span className="font-semibold text-gray-800">{sr?.courier || o.deliveryPartner}</span>
+                            </div>
+                          )}
+                          {sr?.trackingUrl && (
+                            <div className="flex items-start justify-between">
+                              <span className="text-gray-600">Track Shipment:</span>
+                              <a href={sr.trackingUrl} target="_blank" rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                                Track Now <FiExternalLink size={11} />
+                              </a>
+                            </div>
+                          )}
+                          {/* Show all per-seller AWBs for multi-seller orders */}
+                          {o.sellerBreakdown?.length > 1 && (
+                            <div className="mt-2 p-2 bg-indigo-50 rounded-lg">
+                              <p className="text-[11px] font-semibold text-indigo-700 mb-1.5">All Seller AWBs</p>
+                              {o.sellerBreakdown.map((sb, i) => (
+                                <div key={i} className="flex items-start justify-between text-[11px] text-indigo-800 py-0.5">
+                                  <span className="truncate mr-2">{sb.sellerName || `Seller ${i+1}`}:</span>
+                                  <span className="font-mono font-semibold">{sb.shiprocket?.awb || '—'}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Shipping address */}
                   {o.shippingAddress && (

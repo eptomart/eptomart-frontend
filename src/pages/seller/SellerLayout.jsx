@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
-import { FiGrid, FiPackage, FiPlus, FiShoppingBag, FiUser, FiMenu, FiX, FiLogOut, FiArrowLeft, FiMessageSquare } from 'react-icons/fi';
+import { FiGrid, FiPackage, FiPlus, FiShoppingBag, FiUser, FiMenu, FiX, FiLogOut, FiArrowLeft, FiMessageSquare, FiDatabase } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import EptomartLogo from '../../components/common/EptomartLogo';
 import NotificationBell from '../../components/common/NotificationBell';
@@ -11,6 +11,7 @@ const NAV = [
   { path: '/seller/products/add', label: 'Add Product',  icon: FiPlus },
   { path: '/seller/orders',       label: 'My Orders',    icon: FiShoppingBag },
   { path: '/seller/messages',     label: 'Messages',     icon: FiMessageSquare },
+  { path: '/seller/suppliers',    label: 'Suppliers',    icon: FiDatabase },
   { path: '/seller/profile',      label: 'My Profile',   icon: FiUser },
 ];
 

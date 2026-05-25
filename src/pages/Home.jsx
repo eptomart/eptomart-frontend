@@ -8,6 +8,7 @@ import { FiArrowRight, FiSearch, FiZap, FiChevronRight, FiMic, FiX } from 'react
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/common/Navbar';
+import Footer from '../components/common/Footer';
 import ProductCard from '../components/product/ProductCard';
 import api from '../utils/api';
 
@@ -838,6 +839,88 @@ export default function Home() {
 
       </main>
 
+      {/* ── QUICK LINKS + POLICY SECTION ── */}
+      <div style={{ background: '#f8f9fb' }} className="border-t border-gray-200 py-10 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+
+            {/* Quick Links */}
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Quick Links</h4>
+              <ul className="space-y-2">
+                {[
+                  { label: '🏠 Home',        path: '/'          },
+                  { label: '🛍️ Shop',         path: '/shop'      },
+                  { label: '📦 My Orders',    path: '/orders'    },
+                  { label: '👤 My Profile',   path: '/profile'   },
+                  { label: '❤️ Wishlist',     path: '/wishlist'  },
+                ].map(({ label, path }) => (
+                  <li key={path}>
+                    <Link to={path} className="text-sm text-gray-600 hover:text-orange-500 transition-colors">{label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Categories */}
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Categories</h4>
+              <ul className="space-y-2">
+                {[
+                  { label: '🥦 Vegetables',    path: '/shop?category=vegetables'  },
+                  { label: '🍎 Fruits',         path: '/shop?category=fruits'      },
+                  { label: '👗 Fashion',         path: '/shop?category=fashion'     },
+                  { label: '📱 Electronics',     path: '/shop?category=electronics' },
+                  { label: '🗂️ All Categories', path: '/categories'                },
+                ].map(({ label, path }) => (
+                  <li key={path}>
+                    <Link to={path} className="text-sm text-gray-600 hover:text-orange-500 transition-colors">{label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Help & Support */}
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Help & Support</h4>
+              <ul className="space-y-2">
+                {[
+                  { label: '📞 Contact Us',       path: '/contact'         },
+                  { label: '❓ FAQ',               path: '/faq'             },
+                  { label: '🚚 Shipping Policy',   path: '/shipping-policy' },
+                  { label: '↩️ Return Policy',     path: '/return-policy'   },
+                  { label: '🏪 Sell on Eptomart',  path: '/seller/profile'  },
+                ].map(({ label, path }) => (
+                  <li key={path}>
+                    <Link to={path} className="text-sm text-gray-600 hover:text-orange-500 transition-colors">{label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Legal / Policies */}
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Policies</h4>
+              <ul className="space-y-2">
+                {[
+                  { label: '🔒 Privacy Policy',   path: '/privacy-policy'  },
+                  { label: '📋 Terms of Service',  path: '/terms'           },
+                  { label: '🧾 GST Invoices',      path: '/faq#gst'         },
+                  { label: '🌿 Uzhavar Fresh',     path: '/uzhavar'         },
+                  { label: '🏢 Koyambedu Daily',   path: '/koyambedu'       },
+                ].map(({ label, path }) => (
+                  <li key={path}>
+                    <Link to={path} className="text-sm text-gray-600 hover:text-orange-500 transition-colors">{label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <Footer />
     </>
   );
 }

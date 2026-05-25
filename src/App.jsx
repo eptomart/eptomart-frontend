@@ -87,6 +87,7 @@ const SellerProductForm = lazy(() => import('./pages/seller/ProductForm'));
 const SellerOrders    = lazy(() => import('./pages/seller/Orders'));
 const SellerProfile   = lazy(() => import('./pages/seller/Profile'));
 const SellerMessages  = lazy(() => import('./pages/seller/Messages'));
+const SellerSuppliers = lazy(() => import('./pages/seller/Suppliers'));
 
 // ── Route guards ─────────────────────────────
 const ProtectedRoute = ({ children }) => {
@@ -162,6 +163,7 @@ function AppRoutes() {
             <Route path="products/:id"     element={<SellerProductForm />} />
             <Route path="orders"           element={<SellerOrders />} />
             <Route path="messages"         element={<SellerMessages />} />
+            <Route path="suppliers"        element={<SellerSuppliers />} />
             <Route path="profile"          element={<SellerProfile />} />
           </Route>
 

@@ -609,18 +609,7 @@ export default function ProductForm() {
             </button>
           </div>
 
-          {/* Column headers */}
-          {(form.variants || []).length > 0 && (
-            <div className="grid grid-cols-6 gap-2 px-3 text-xs text-gray-400 font-medium">
-              <span>Label *</span>
-              <span>Value</span>
-              <span>Unit</span>
-              <span>Price (₹)</span>
-              <span>Stock</span>
-              <span></span>
-            </div>
-          )}
-
+          {/* Variants — desktop: 6-col grid; mobile: stacked cards */}
           {(form.variants || []).map((v, idx) => {
             // Immutable field updater — avoids direct state mutation
             const setField = (field, val) =>
@@ -629,59 +618,69 @@ export default function ProductForm() {
               ));
 
             return (
-              <div key={v._id?.toString() || idx} className="grid grid-cols-6 gap-2 items-end bg-gray-50 rounded-xl p-3">
-                <div>
-                  <input
-                    value={v.label || ''}
-                    placeholder="e.g. 500g"
-                    onChange={e => setField('label', e.target.value)}
-                    className="input-field text-sm"
-                  />
+              <div key={v._id?.toString() || idx} className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+                {/* Mobile: stacked 2-col grid; Desktop: single row */}
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 items-end">
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="block text-[10px] text-gray-400 font-medium mb-1">Label *</label>
+                    <input
+                      value={v.label || ''}
+                      placeholder="e.g. 500g"
+                      onChange={e => setField('label', e.target.value)}
+                      className="input-field text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-400 font-medium mb-1">Value</label>
+                    <input
+                      type="number"
+                      value={v.value || ''}
+                      placeholder="500"
+                      onChange={e => setField('value', e.target.value)}
+                      className="input-field text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-400 font-medium mb-1">Unit</label>
+                    <select
+                      value={v.unit || 'g'}
+                      onChange={e => setField('unit', e.target.value)}
+                      className="input-field text-sm"
+                    >
+                      {['g', 'kg', 'ml', 'l', 'pieces', 'pack', 'other'].map(u => (
+                        <option key={u} value={u}>{u}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-400 font-medium mb-1">Price (₹)</label>
+                    <input
+                      type="number"
+                      value={v.price || ''}
+                      placeholder="Optional"
+                      onChange={e => setField('price', e.target.value)}
+                      className="input-field text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-400 font-medium mb-1">Stock</label>
+                    <input
+                      type="number"
+                      value={v.stock ?? ''}
+                      placeholder="Stock"
+                      min={0}
+                      onChange={e => setField('stock', e.target.value)}
+                      className={`input-field text-sm ${v.stock === 0 ? 'border-red-300 bg-red-50' : ''}`}
+                    />
+                  </div>
+                  <div className="flex items-end justify-end sm:justify-center">
+                    <button
+                      type="button"
+                      onClick={() => set('variants', form.variants.filter((_, i) => i !== idx))}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 text-lg font-bold transition-colors"
+                    >×</button>
+                  </div>
                 </div>
-                <div>
-                  <input
-                    type="number"
-                    value={v.value || ''}
-                    placeholder="500"
-                    onChange={e => setField('value', e.target.value)}
-                    className="input-field text-sm"
-                  />
-                </div>
-                <div>
-                  <select
-                    value={v.unit || 'g'}
-                    onChange={e => setField('unit', e.target.value)}
-                    className="input-field text-sm"
-                  >
-                    {['g', 'kg', 'ml', 'l', 'pieces', 'pack', 'other'].map(u => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <input
-                    type="number"
-                    value={v.price || ''}
-                    placeholder="Optional"
-                    onChange={e => setField('price', e.target.value)}
-                    className="input-field text-sm"
-                  />
-                </div>
-                <div>
-                  <input
-                    type="number"
-                    value={v.stock ?? ''}
-                    placeholder="Stock"
-                    min={0}
-                    onChange={e => setField('stock', e.target.value)}
-                    className={`input-field text-sm ${v.stock === 0 ? 'border-red-300 bg-red-50' : ''}`}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => set('variants', form.variants.filter((_, i) => i !== idx))}
-                  className="pb-0.5 text-red-400 hover:text-red-600 text-lg font-bold self-end"
-                >×</button>
               </div>
             );
           })}
