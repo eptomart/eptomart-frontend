@@ -340,7 +340,7 @@ const HERO_SLIDES = [
   {
     gradient: 'linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #2dd4bf 100%)',
     tag: '🌾 Farm-to-Door in Tamil Nadu',
-    title: 'Uzhavar Fresh\nஉழவர் சந்தை',
+    title: 'Farmer Fresh\nஉழவர் சந்தை',
     sub: 'Farm direct · No middlemen · Pure & Natural',
     cta: 'Explore', to: '/uzhavar',
     cats: ['Farm Fresh', 'Homemade & Organic', 'Farm Produce'],
@@ -360,7 +360,7 @@ function DesktopHero() {
   const s = HERO_SLIDES[active];
   const catItems = EPTOMART_CATS.concat([
     { name: 'Koyambedu Daily', slug: null, emoji: '🥬', color: '#16a34a', from: 'Fresh' },
-    { name: 'Uzhavar Fresh',   slug: null, emoji: '🌾', color: '#0d9488', from: 'Farm' },
+    { name: 'Farmer Fresh',   slug: null, emoji: '🌾', color: '#0d9488', from: 'Farm' },
   ]);
 
   return (
@@ -470,7 +470,7 @@ function DesktopPromoGrid({ onScrollTo }) {
     {
       gradient: 'linear-gradient(135deg,#134e4a,#0f766e,#2dd4bf)',
       tag: 'FARM DIRECT', emoji: '🌾',
-      title: 'Uzhavar Fresh',
+      title: 'Farmer Fresh',
       sub: 'உழவர் சந்தை · No middlemen',
       cta: 'Explore', action: () => navigate('/uzhavar'),
     },
@@ -666,7 +666,7 @@ export default function Home() {
         <meta name="description" content="Shop on Eptomart — India's trusted online store. Fresh groceries, Koyambedu Daily produce, Uzhavar farm-direct, electronics, fashion & more. Fast pan-India delivery. GST invoices. Verified sellers." />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
         <link rel="canonical" href="https://www.eptomart.com/" />
-        <meta name="keywords" content="online shopping india, buy groceries online, koyambedu market online, uzhavar fresh vegetables, eptomart, indian ecommerce, buy electronics india, fashion online india, fresh produce delivery" />
+        <meta name="keywords" content="online shopping india, buy groceries online, koyambedu market online, farmer fresh vegetables, eptomart, indian ecommerce, buy electronics india, fashion online india, fresh produce delivery" />
         {/* Homepage structured data */}
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
@@ -906,7 +906,7 @@ export default function Home() {
                   { label: '🔒 Privacy Policy',   path: '/privacy-policy'  },
                   { label: '📋 Terms of Service',  path: '/terms'           },
                   { label: '🧾 GST Invoices',      path: '/faq#gst'         },
-                  { label: '🌿 Uzhavar Fresh',     path: '/uzhavar'         },
+                  { label: '🌿 Farmer Fresh',      path: '/uzhavar'         },
                   { label: '🏢 Koyambedu Daily',   path: '/koyambedu'       },
                 ].map(({ label, path }) => (
                   <li key={path}>

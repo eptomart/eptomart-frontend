@@ -42,7 +42,7 @@ export default function UzhavarPopup() {
           <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/10" />
 
           <div className="text-5xl mb-2">🌱</div>
-          <h2 className="text-2xl font-black text-white tracking-tight">UZHAVAR FRESH</h2>
+          <h2 className="text-2xl font-black text-white tracking-tight">FARMER FRESH</h2>
           <p className="text-green-100 text-sm mt-1 font-medium">உழவர் சந்தை உங்கள் வீட்டு வாசலில்</p>
         </div>
 
