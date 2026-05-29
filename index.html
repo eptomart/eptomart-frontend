@@ -181,6 +181,21 @@
       });
     </script>
 
+    <!-- Keep splash visible for minimum 2s so animation is seen -->
+    <script>
+      window.__splashStart = Date.now();
+      window.__hideSplash = function() {
+        var splash = document.getElementById('app-splash');
+        if (!splash) return;
+        var elapsed = Date.now() - window.__splashStart;
+        var delay = Math.max(0, 2000 - elapsed);
+        setTimeout(function() {
+          splash.style.transition = 'opacity 0.4s ease';
+          splash.style.opacity = '0';
+          setTimeout(function() { splash.style.display = 'none'; }, 400);
+        }, delay);
+      };
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

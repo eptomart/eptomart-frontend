@@ -73,6 +73,9 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// Hide splash after minimum display time
+if (typeof window.__hideSplash === 'function') window.__hideSplash();
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <ErrorBoundary>
     <HelmetProvider>
