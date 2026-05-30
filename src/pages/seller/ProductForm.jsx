@@ -190,11 +190,7 @@ export default function ProductForm() {
         subCategory:    form.subCategory || undefined,
         // Re-editing an approved product via the full form always requires re-approval
         // (stock-only updates go through PATCH /stock and never reach here)
-        approvalStatus: submitForApproval
-          ? 'pending'
-          : form.approvalStatus === 'approved'
-            ? 'pending'
-            : form.approvalStatus || 'draft',
+        approvalStatus: submitForApproval ? 'pending' : 'draft',
         submittedAt:    submitForApproval ? new Date().toISOString() : undefined,
       };
       Object.entries(payload).forEach(([k, v]) => {
@@ -777,10 +773,10 @@ export default function ProductForm() {
 
         {/* Actions */}
         <div className="flex gap-3 pb-8">
-          <button onClick={() => handleSave(false)} disabled={saving} className="btn-outline flex-1">
+          <button type="button" onClick={() => handleSave(false)} disabled={saving} className="btn-outline flex-1">
             {saving ? 'Saving...' : '💾 Save as Draft'}
           </button>
-          <button onClick={() => handleSave(true)} disabled={saving} className="btn-primary flex-1">
+          <button type="button" onClick={() => handleSave(true)} disabled={saving} className="btn-primary flex-1">
             {saving ? 'Submitting...' : '🚀 Submit for Approval'}
           </button>
         </div>
