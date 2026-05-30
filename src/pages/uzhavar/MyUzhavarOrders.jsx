@@ -69,12 +69,12 @@ export default function MyUzhavarOrders() {
 
   return (
     <>
-      <Helmet><title>My Farmer Fresh Orders</title></Helmet>
+      <Helmet><title>My Uzhavar Fresh Orders</title></Helmet>
       <Navbar />
       <main className="max-w-2xl mx-auto px-4 py-6 min-h-screen pb-12">
         <button onClick={() => navigate('/uzhavar')}
           className="flex items-center gap-2 text-sm text-gray-500 hover:text-green-700 mb-4">
-          <FiArrowLeft size={14} /> Farmer Fresh
+          <FiArrowLeft size={14} /> Uzhavar Fresh
         </button>
         <h1 className="text-xl font-black text-gray-800 mb-4">My Orders 🌾</h1>
 

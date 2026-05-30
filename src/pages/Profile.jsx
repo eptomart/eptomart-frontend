@@ -274,7 +274,7 @@ function FarmerTab() {
       <div className="bg-gradient-to-r from-green-700 to-lime-600 rounded-2xl p-5 text-white">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs text-green-200 font-semibold uppercase tracking-wider mb-1">Farmer Fresh</p>
+            <p className="text-xs text-green-200 font-semibold uppercase tracking-wider mb-1">Uzhavar Fresh</p>
             <h3 className="font-black text-lg leading-tight">{farmer.name}</h3>
             <p className="text-green-100 text-sm">{farmer.address?.village ? `${farmer.address.village}, ` : ''}{farmer.address?.district}</p>
             <p className="text-green-200 text-xs mt-0.5">📍 {farmer.deliveryRadius}km delivery radius</p>
@@ -348,7 +348,7 @@ function FarmerTab() {
         <button onClick={() => navigate('/uzhavar/my-orders')}
           className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3 hover:border-green-300 hover:bg-green-50 transition-all">
           <span className="flex items-center gap-3 text-sm font-semibold text-gray-700">
-            <span className="text-lg">📦</span> My Farmer Fresh Orders
+            <span className="text-lg">📦</span> My Uzhavar Fresh Orders
           </span>
           <FiExternalLink size={15} className="text-gray-400" />
         </button>

@@ -233,7 +233,7 @@ function SubAppBanners() {
         <div className="absolute -bottom-3 -right-3 text-5xl opacity-20 select-none pointer-events-none">🌾</div>
         <div>
           <span className="bg-lime-400 text-teal-900 text-[9px] font-black px-1.5 py-0.5 rounded-full">FARM DIRECT</span>
-          <p className="text-white font-black text-sm mt-1.5 leading-tight">Farmer<br/>Fresh</p>
+          <p className="text-white font-black text-sm mt-1.5 leading-tight">Uzhavar<br/>Fresh</p>
           <p className="text-teal-200 text-[10px] mt-0.5">உழவர் சந்தை · No middlemen</p>
         </div>
         <span className="inline-flex items-center gap-1 text-white text-[11px] font-bold mt-2">
@@ -340,7 +340,7 @@ const HERO_SLIDES = [
   {
     gradient: 'linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #2dd4bf 100%)',
     tag: '🌾 Farm-to-Door in Tamil Nadu',
-    title: 'Farmer Fresh\nஉழவர் சந்தை',
+    title: 'Uzhavar Fresh\nஉழவர் சந்தை',
     sub: 'Farm direct · No middlemen · Pure & Natural',
     cta: 'Explore', to: '/uzhavar',
     cats: ['Farm Fresh', 'Homemade & Organic', 'Farm Produce'],
@@ -360,7 +360,7 @@ function DesktopHero() {
   const s = HERO_SLIDES[active];
   const catItems = EPTOMART_CATS.concat([
     { name: 'Koyambedu Daily', slug: null, emoji: '🥬', color: '#16a34a', from: 'Fresh' },
-    { name: 'Farmer Fresh',   slug: null, emoji: '🌾', color: '#0d9488', from: 'Farm' },
+    { name: 'Uzhavar Fresh',   slug: null, emoji: '🌾', color: '#0d9488', from: 'Farm' },
   ]);
 
   return (
@@ -470,7 +470,7 @@ function DesktopPromoGrid({ onScrollTo }) {
     {
       gradient: 'linear-gradient(135deg,#134e4a,#0f766e,#2dd4bf)',
       tag: 'FARM DIRECT', emoji: '🌾',
-      title: 'Farmer Fresh',
+      title: 'Uzhavar Fresh',
       sub: 'உழவர் சந்தை · No middlemen',
       cta: 'Explore', action: () => navigate('/uzhavar'),
     },
@@ -906,7 +906,7 @@ export default function Home() {
                   { label: '🔒 Privacy Policy',   path: '/privacy-policy'  },
                   { label: '📋 Terms of Service',  path: '/terms'           },
                   { label: '🧾 GST Invoices',      path: '/faq#gst'         },
-                  { label: '🌿 Farmer Fresh',      path: '/uzhavar'         },
+                  { label: '🌿 Uzhavar Fresh',      path: '/uzhavar'         },
                   { label: '🏢 Koyambedu Daily',   path: '/koyambedu'       },
                 ].map(({ label, path }) => (
                   <li key={path}>

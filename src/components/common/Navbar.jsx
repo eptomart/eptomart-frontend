@@ -23,7 +23,7 @@ const PAGE_TITLES = {
   '/login':     'Login',
   '/checkout':  'Checkout',
   '/koyambedu': 'Koyambedu Daily',
-  '/uzhavar':   'Farmer Fresh',
+  '/uzhavar':   'Uzhavar Fresh',
   '/product':   'Product',
   '/seller':    'Seller Portal',
   '/admin':     'Admin Panel',
@@ -468,7 +468,7 @@ export default function Navbar() {
               color: '#fff',
               border: isUzhavar ? '1px solid rgba(132,204,22,0.55)' : '1px solid transparent',
             }}>
-            🌾 Farmer Fresh
+            🌾 Uzhavar Fresh
           </Link>
 
           <div className="h-4 w-px bg-white/15 mx-1 flex-shrink-0" />

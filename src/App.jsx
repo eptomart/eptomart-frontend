@@ -71,7 +71,7 @@ const KoyambeduSellerDashboard     = lazy(() => import('./pages/koyambedu/seller
 const KoyambeduSellerProducts      = lazy(() => import('./pages/koyambedu/seller/KoyambeduSellerProducts'));
 const KoyambeduSellerAdminDashboard= lazy(() => import('./pages/koyambedu/seller-admin/KoyambeduSellerAdminDashboard'));
 
-// ── Farmer Fresh pages ───────────────────────
+// ── Uzhavar Fresh pages ───────────────────────
 const UzhavarHome       = lazy(() => import('./pages/uzhavar/UzhavarHome'));
 const FarmerDetail      = lazy(() => import('./pages/uzhavar/FarmerDetail'));
 const FarmerDashboard   = lazy(() => import('./pages/uzhavar/FarmerDashboard'));
@@ -204,7 +204,7 @@ function AppRoutes() {
           <Route path="/koyambedu/seller/products"           element={<ProtectedRoute><KoyambeduSellerProducts /></ProtectedRoute>} />
           <Route path="/koyambedu/seller-admin"              element={<ProtectedRoute><KoyambeduSellerAdminDashboard /></ProtectedRoute>} />
 
-          {/* ── Farmer Fresh ───────────────────── */}
+          {/* ── Uzhavar Fresh ───────────────────── */}
           <Route path="/uzhavar"                    element={<UzhavarHome />} />
           <Route path="/uzhavar/farmer/register"    element={<ProtectedRoute><FarmerRegister /></ProtectedRoute>} />
           <Route path="/uzhavar/farmer/:farmerId"   element={<FarmerDetail />} />
