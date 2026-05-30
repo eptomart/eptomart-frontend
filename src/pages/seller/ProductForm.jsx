@@ -140,22 +140,20 @@ export default function ProductForm() {
   };
 
   const handleSave = async (submitForApproval = false) => {
-    // Price is required — unless variants carry their own prices (autoSyncedPrice takes over)
-    if (!form.name || (!form.price && !variantsDrivePrice) || !form.stock || !form.category) {
-      return toast.error('Name, price, stock and category are required');
-    }
-    if (variantsDrivePrice && !autoSyncedPrice) {
-      return toast.error('At least one variant must have a valid price');
-    }
-    if (!form.hsnCode) {
-      return toast.error('HSN Code is required');
+    // Only name is required for draft — full validation only on submit for approval
+    if (!form.name?.trim()) {
+      return toast.error('Product name is required');
     }
     if (submitForApproval) {
+      if (!form.price && !variantsDrivePrice) return toast.error('Price is required for submission');
+      if (variantsDrivePrice && !autoSyncedPrice) return toast.error('At least one variant must have a valid price');
+      if (!form.stock)         return toast.error('Stock quantity is required for submission');
+      if (!form.category)      return toast.error('Category is required for submission');
+      if (!form.hsnCode)       return toast.error('HSN Code is required for submission');
       if (!form.costPrice)     return toast.error('Cost price is required for submission');
       if (!form.sellerPrice)   return toast.error('Seller price is required for submission');
       if (!form.eptomartMargin && form.eptomartMargin !== 0) return toast.error('Eptomart margin % is required for submission');
       if (!form.gstRate && form.gstRate !== 0)  return toast.error('GST % is required for submission');
-      if (!form.stock)         return toast.error('Stock quantity is required for submission');
     }
     setSaving(true);
     try {

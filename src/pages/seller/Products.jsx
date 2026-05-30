@@ -382,8 +382,8 @@ EPT-002,,Product B (no SKU),0,100
           <Link to="/seller/products/add" className="btn-primary text-sm">Add Product</Link>
         </div>
       ) : (
-        <div className="card overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="card overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
                 <th className="text-left p-4">Product</th>
