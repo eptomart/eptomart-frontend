@@ -75,7 +75,7 @@ export default function UzhavarSubscribe() {
         key:      import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount,
         currency: 'INR',
-        name:     'Uzhavar Fresh',
+        name:     'Farmer Fresh',
         description: `${selected === 'quarterly' ? '3 Month' : '1 Month'} Subscription`,
         order_id: rzpOrderId,
         handler: async (response) => {
@@ -104,7 +104,7 @@ export default function UzhavarSubscribe() {
 
   return (
     <>
-      <Helmet><title>Uzhavar Fresh Subscription</title></Helmet>
+      <Helmet><title>Farmer Fresh Subscription</title></Helmet>
       <Navbar />
       <main className="max-w-lg mx-auto px-4 py-8 min-h-screen pb-16">
         <button onClick={() => navigate('/uzhavar')}
@@ -114,7 +114,7 @@ export default function UzhavarSubscribe() {
 
         <div className="text-center mb-6">
           <div className="text-4xl mb-2">🌱</div>
-          <h1 className="text-2xl font-black text-gray-800">Uzhavar Fresh Subscription</h1>
+          <h1 className="text-2xl font-black text-gray-800">Farmer Fresh Subscription</h1>
           <p className="text-gray-500 text-sm mt-1">Unlimited fresh orders · No booking fee</p>
         </div>
 

@@ -179,7 +179,7 @@ export default function UzhavarHome() {
   return (
     <>
       <Helmet>
-        <title>Uzhavar Fresh — Farm to Home | Eptomart</title>
+        <title>Farmer Fresh — Farm to Home | Eptomart</title>
         <meta name="description" content="Buy fresh vegetables and fruits directly from farmers near you. Same-day delivery." />
       </Helmet>
       <Navbar />
@@ -365,7 +365,7 @@ export default function UzhavarHome() {
           </div>
 
           <div className="bg-gradient-to-r from-green-600 to-lime-500 rounded-2xl p-5 text-white text-center">
-            <p className="font-bold text-sm mb-0.5">📦 Uzhavar Fresh Subscription</p>
+            <p className="font-bold text-sm mb-0.5">📦 Farmer Fresh Subscription</p>
             <p className="text-green-100 text-xs mb-3">Unlimited fresh orders · No booking fee per order</p>
             <div className="flex gap-2 justify-center text-xs font-semibold mb-3">
               <span className="bg-white/20 rounded-lg px-3 py-1.5">₹299 / month</span>
