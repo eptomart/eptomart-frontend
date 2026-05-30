@@ -233,7 +233,7 @@ function SubAppBanners() {
         <div className="absolute -bottom-3 -right-3 text-5xl opacity-20 select-none pointer-events-none">🌾</div>
         <div>
           <span className="bg-lime-400 text-teal-900 text-[9px] font-black px-1.5 py-0.5 rounded-full">FARM DIRECT</span>
-          <p className="text-white font-black text-sm mt-1.5 leading-tight">Uzhavar<br/>Fresh</p>
+          <p className="text-white font-black text-sm mt-1.5 leading-tight">Farmer<br/>Fresh</p>
           <p className="text-teal-200 text-[10px] mt-0.5">உழவர் சந்தை · No middlemen</p>
         </div>
         <span className="inline-flex items-center gap-1 text-white text-[11px] font-bold mt-2">
