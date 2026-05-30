@@ -523,7 +523,8 @@ export default function SellerOrders() {
 
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className="font-bold text-gray-900">{formatINR(o.pricing?.total)}</p>
+                    <p className="font-bold text-gray-900">{formatINR(o._myTotal ?? o.pricing?.total)}</p>
+                    {o._isMultiSeller && <p className="text-[10px] text-indigo-500 font-medium">Your portion</p>}
                     <p className="text-xs text-gray-400">{o.items?.length} item(s)</p>
                   </div>
 
