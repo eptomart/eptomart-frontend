@@ -199,7 +199,7 @@ export default function FarmerDashboard() {
 
   return (
     <>
-      <Helmet><title>Farmer Dashboard — Farmer Fresh</title></Helmet>
+      <Helmet><title>Farmer Dashboard — Uzhavar Fresh</title></Helmet>
       <Navbar />
 
       <main className="max-w-3xl mx-auto px-4 py-6 pb-12 min-h-screen">

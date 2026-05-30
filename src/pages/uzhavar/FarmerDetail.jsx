@@ -269,7 +269,7 @@ export default function FarmerDetail() {
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount, currency,
-        name: 'Farmer Fresh',
+        name: 'Uzhavar Fresh',
         description: `Booking fee · ${cartCount} item${cartCount > 1 ? 's' : ''}`,
         order_id: rzpOrderId,
         prefill: { name: deliveryAddr.name, contact: `+91${deliveryAddr.phone}` },
@@ -307,7 +307,7 @@ export default function FarmerDetail() {
 
   return (
     <>
-      <Helmet><title>{farmer?.name} — Farmer Fresh</title></Helmet>
+      <Helmet><title>{farmer?.name} — Uzhavar Fresh</title></Helmet>
       <Navbar />
 
       <main className="max-w-2xl mx-auto px-4 py-6 pb-40 min-h-screen">
@@ -793,7 +793,7 @@ export default function FarmerDetail() {
               <div className="mb-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
                 <span className="text-amber-500 mt-0.5 flex-shrink-0">⚠️</span>
                 <div>
-                  <p className="text-xs font-bold text-amber-800">Minimum order quantity for Farmer Fresh is 5 kg.</p>
+                  <p className="text-xs font-bold text-amber-800">Minimum order quantity for Uzhavar Fresh is 5 kg.</p>
                   <p className="text-xs text-amber-600">Add {kgNeeded.toFixed(1)} kg more to place the order.</p>
                 </div>
               </div>

@@ -467,7 +467,7 @@ export default function UzhavarAdmin() {
 
   return (
     <>
-      <Helmet><title>Farmer Fresh Admin</title></Helmet>
+      <Helmet><title>Uzhavar Fresh Admin</title></Helmet>
       {showAddModal && (
         <AddFarmerModal
           onClose={() => setShowAddModal(false)}
@@ -482,7 +482,7 @@ export default function UzhavarAdmin() {
       )}
       <div className="p-4 max-w-6xl mx-auto">
         <h1 className="text-xl font-black text-gray-800 mb-5 flex items-center gap-2">
-          🌾 Farmer Fresh — Admin
+          🌾 Uzhavar Fresh — Admin
         </h1>
 
         {/* Tabs */}
