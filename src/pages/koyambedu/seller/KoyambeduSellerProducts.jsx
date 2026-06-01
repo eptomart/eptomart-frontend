@@ -3,6 +3,36 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
 
+// ── AI helpers ───────────────────────────────
+const useAI = () => {
+  const [translating, setTranslating] = useState(false);
+  const [describing,  setDescribing]  = useState(false);
+
+  const translate = async (text, onResult) => {
+    if (!text?.trim()) { toast.error('Enter a product name first'); return; }
+    setTranslating(true);
+    try {
+      const { data } = await api.post('/koyambedu/ai/translate', { text });
+      onResult(data.tamil);
+      toast.success('Translated to Tamil!');
+    } catch { toast.error('Translation failed'); }
+    finally { setTranslating(false); }
+  };
+
+  const describe = async ({ name, nameTamil, category, unit }, onResult) => {
+    if (!name?.trim()) { toast.error('Enter a product name first'); return; }
+    setDescribing(true);
+    try {
+      const { data } = await api.post('/koyambedu/ai/describe', { name, nameTamil, category, unit });
+      onResult(data.description);
+      toast.success('Description generated!');
+    } catch { toast.error('AI description failed'); }
+    finally { setDescribing(false); }
+  };
+
+  return { translate, describe, translating, describing };
+};
+
 const UNITS = ['kg','g','piece','bunch','dozen','litre','pack','leaf'];
 const BADGES = ['fresh_arrival','low_stock','best_seller','seasonal','organic','festival_special','bulk_deal'];
 
@@ -25,6 +55,7 @@ export default function KoyambeduSellerProducts() {
   const [editId,     setEditId]     = useState(null);
   const [form,       setForm]       = useState(EMPTY_FORM);
   const [saving,     setSaving]     = useState(false);
+  const { translate, describe, translating, describing } = useAI();
 
   useEffect(() => {
     Promise.all([
@@ -180,19 +211,58 @@ export default function KoyambeduSellerProducts() {
                 </select>
               </div>
 
-              {/* Name */}
-              {[['name','Product Name *'],['nameTamil','Tamil Name'],['description','Description']].map(([k,label]) => (
-                <div key={k}>
-                  <label className="text-xs text-gray-500 font-medium">{label}</label>
-                  {k === 'description' ? (
-                    <textarea value={form[k]} onChange={e => set(k, e.target.value)} rows={2}
-                      className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none" />
-                  ) : (
-                    <input type="text" value={form[k]} onChange={e => set(k, e.target.value)}
-                      className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-                  )}
+              {/* Product Name */}
+              <div>
+                <label className="text-xs text-gray-500 font-medium">Product Name *</label>
+                <input type="text" value={form.name} onChange={e => set('name', e.target.value)}
+                  placeholder="e.g. Tomato, Banana, Rose"
+                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+              </div>
+
+              {/* Tamil Name with Translate button */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-gray-500 font-medium">Tamil Name</label>
+                  <button
+                    type="button"
+                    onClick={() => translate(form.name, (tamil) => set('nameTamil', tamil))}
+                    disabled={translating || !form.name?.trim()}
+                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 disabled:opacity-50 transition"
+                  >
+                    {translating
+                      ? <><span className="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin inline-block" /> Translating...</>
+                      : <>🌐 Auto-Translate</>
+                    }
+                  </button>
                 </div>
-              ))}
+                <input type="text" value={form.nameTamil} onChange={e => set('nameTamil', e.target.value)}
+                  placeholder="Tamil translation will appear here"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+              </div>
+
+              {/* Description with AI Write button */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-gray-500 font-medium">Description</label>
+                  <button
+                    type="button"
+                    onClick={() => describe(
+                      { name: form.name, nameTamil: form.nameTamil, category: categories.find(c => c._id === form.categoryId)?.name, unit: form.unit },
+                      (desc) => set('description', desc)
+                    )}
+                    disabled={describing || !form.name?.trim()}
+                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 disabled:opacity-50 transition"
+                  >
+                    {describing
+                      ? <><span className="w-3 h-3 border-2 border-purple-400 border-t-transparent rounded-full animate-spin inline-block" /> Writing...</>
+                      : <>✨ AI Write</>
+                    }
+                  </button>
+                </div>
+                <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3}
+                  placeholder="Describe your product — or click ✨ AI Write to generate one"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none" />
+              </div>
 
               {/* Unit + Price */}
               <div className="grid grid-cols-2 gap-3">
