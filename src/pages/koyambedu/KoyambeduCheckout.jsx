@@ -373,9 +373,29 @@ export default function KoyambeduCheckout() {
         )}
 
         {/* ── STEP 3 — PAYMENT ─────────────────── */}
-        {step === 3 && (
+        {step === 3 && (() => {
+          // Check pincode match for all cart items that have servicePincodes set
+          const buyerPincode = String(addr.pincode).trim();
+          const blockedItems = cart.items?.filter(item => {
+            const sp = item.product?.seller?.servicePincodes;
+            return sp?.length > 0 && !sp.includes(buyerPincode);
+          }) || [];
+          return (
           <div className="space-y-4">
             <h2 className="font-bold text-gray-800">Payment Method</h2>
+
+            {/* Pincode mismatch warning */}
+            {blockedItems.length > 0 && (
+              <div className="bg-red-50 border border-red-300 rounded-2xl px-4 py-3 space-y-1">
+                <p className="text-red-700 font-bold text-sm">🚫 Delivery not available for your pincode ({buyerPincode})</p>
+                {blockedItems.map(item => (
+                  <p key={item.product?._id} className="text-red-600 text-xs">
+                    • <strong>{item.product?.name}</strong> — available only in: {item.product?.seller?.servicePincodes?.join(', ')}
+                  </p>
+                ))}
+                <p className="text-red-500 text-xs mt-1">Please remove these items or use a different delivery address.</p>
+              </div>
+            )}
 
             {[
               { val: 'razorpay', label: 'Online Payment',   sub: 'Credit/Debit card, UPI, NetBanking', icon: '💳' },
@@ -429,13 +449,14 @@ export default function KoyambeduCheckout() {
 
             <div className="flex gap-3">
               <button onClick={() => setStep(2)} className="flex-1 border-2 border-green-600 text-green-600 font-bold py-3 rounded-xl">← Back</button>
-              <button onClick={handlePlaceOrder} disabled={loading}
+              <button onClick={handlePlaceOrder} disabled={loading || blockedItems.length > 0}
                 className="flex-1 bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 disabled:opacity-60 transition">
                 {loading ? 'Placing...' : `Place Order ₹${total.toFixed(2)}`}
               </button>
             </div>
           </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );

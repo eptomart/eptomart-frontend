@@ -49,7 +49,18 @@ const ProductCard = ({ product }) => {
             </button>
           ) : (
             <div className="flex items-center gap-1">
-              <button onClick={() => updateItem(product._id, Math.max(0, qty - (product.qtyStep || 1)))}
+              {/* Delete button */}
+              <button
+                onClick={() => updateItem(product._id, 0)}
+                disabled={loading}
+                className="w-6 h-6 rounded-full bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition"
+                title="Remove from cart"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
+              <button onClick={() => updateItem(product._id, Math.max(product.qtyStep || 1, qty - (product.qtyStep || 1)))}
                 className="w-6 h-6 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center">−</button>
               <span className="text-xs font-bold text-green-700 w-6 text-center">{qty}</span>
               <button onClick={() => updateItem(product._id, Math.min(product.maxQty || 50, qty + (product.qtyStep || 1)))}

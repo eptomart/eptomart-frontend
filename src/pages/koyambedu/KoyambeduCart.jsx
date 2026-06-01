@@ -83,9 +83,18 @@ export default function KoyambeduCart() {
                   {item.deliveryType === 'today' ? '⚡ Today' : '📅 Tomorrow'}
                 </span>
               </div>
-              <div className="text-right flex flex-col justify-between">
+              <div className="text-right flex flex-col justify-between items-end">
                 <p className="font-bold text-green-700 text-sm">₹{line.toFixed(2)}</p>
-                <button onClick={() => updateItem(String(prod?._id || item.product), 0)} className="text-red-400 hover:text-red-600 text-xs">Remove</button>
+                <button
+                  onClick={() => updateItem(String(prod?._id || item.product), 0)}
+                  disabled={loading}
+                  className="mt-2 w-8 h-8 flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 transition disabled:opacity-50"
+                  title="Remove item"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
               </div>
             </div>
           );
