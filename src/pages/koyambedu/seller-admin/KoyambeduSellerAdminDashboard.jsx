@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
+import KoyambeduImageUploader from '../../../components/koyambedu/KoyambeduImageUploader';
 
 // ── AI helpers ───────────────────────────────
 const useAI = () => {
@@ -58,7 +59,7 @@ const EMPTY_PRODUCT = {
   weightKg: 1, marketPriceMin: '', marketPriceMax: '',
   freshArrivalTime: '', sameDayCutoff: '10:00',
   isSameDay: true, isNextDay: true, isAvailable: true,
-  badges: [], description: '',
+  badges: [], description: '', images: [],
 };
 
 export default function KoyambeduSellerAdminDashboard() {
@@ -705,6 +706,12 @@ export default function KoyambeduSellerAdminDashboard() {
                     className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
                 </div>
               </div>
+
+              {/* Images */}
+              <KoyambeduImageUploader
+                images={prodCreateForm.images || []}
+                onChange={(imgs) => setProdCreateForm(f => ({ ...f, images: imgs }))}
+              />
 
               <div>
                 <label className="text-xs text-gray-500 font-medium">Badges</label>

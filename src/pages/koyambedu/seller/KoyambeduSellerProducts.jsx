@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
+import KoyambeduImageUploader from '../../../components/koyambedu/KoyambeduImageUploader';
 
 // ── AI helpers ───────────────────────────────
 const useAI = () => {
@@ -43,7 +44,7 @@ const EMPTY_FORM = {
   marketPriceMin:0, marketPriceMax:0, currentPrice:'', stockQty:0,
   freshArrivalTime:'', isSameDay:true, isNextDay:true, sameDayCutoff:'10:00',
   badges:[], tags:'', isBulkAvailable:false, bulkMinQty:'', bulkPricePerUnit:'',
-  isActive:true, isAvailable:true,
+  isActive:true, isAvailable:true, images:[],
 };
 
 export default function KoyambeduSellerProducts() {
@@ -314,6 +315,12 @@ export default function KoyambeduSellerProducts() {
                 <input value={form.freshArrivalTime} onChange={e => set('freshArrivalTime', e.target.value)}
                   className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
               </div>
+
+              {/* Images */}
+              <KoyambeduImageUploader
+                images={form.images || []}
+                onChange={(imgs) => set('images', imgs)}
+              />
 
               {/* Badges */}
               <div>
