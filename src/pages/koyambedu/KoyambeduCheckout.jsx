@@ -447,9 +447,24 @@ export default function KoyambeduCheckout() {
               <p className="text-amber-700 text-[11px]">⚠️ Prices subject to daily market fluctuations. You'll be notified if any change occurs before dispatch.</p>
             </div>
 
+            {/* Phone not verified warning */}
+            {!user?.phoneVerified && (
+              <div className="bg-red-50 border border-red-300 rounded-xl px-4 py-3 flex items-start gap-2">
+                <span className="text-red-500 text-lg">📵</span>
+                <div>
+                  <p className="text-red-700 font-bold text-sm">Mobile number not verified</p>
+                  <p className="text-red-600 text-xs mt-0.5">You must verify your mobile number before placing an order.</p>
+                  <button onClick={() => navigate('/profile')}
+                    className="mt-1.5 text-xs font-bold text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded-lg transition">
+                    Go to Profile → Verify Now
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button onClick={() => setStep(2)} className="flex-1 border-2 border-green-600 text-green-600 font-bold py-3 rounded-xl">← Back</button>
-              <button onClick={handlePlaceOrder} disabled={loading || blockedItems.length > 0}
+              <button onClick={handlePlaceOrder} disabled={loading || blockedItems.length > 0 || !user?.phoneVerified}
                 className="flex-1 bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 disabled:opacity-60 transition">
                 {loading ? 'Placing...' : `Place Order ₹${total.toFixed(2)}`}
               </button>

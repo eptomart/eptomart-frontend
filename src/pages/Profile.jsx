@@ -365,6 +365,7 @@ function FarmerTab() {
 }
 
 const BLANK_ADDR = { label: 'Home', fullName: '', phone: '', addressLine1: '', addressLine2: '', city: '', state: '', pincode: '', isDefault: false };
+const INDIAN_MOBILE = /^[6-9]\d{9}$/;
 
 export default function Profile() {
   const { user, updateProfile, loadUser } = useAuth();
@@ -374,6 +375,38 @@ export default function Profile() {
   const [showAddAddr, setShowAddAddr] = useState(false);
   const [addrForm,    setAddrForm]    = useState(BLANK_ADDR);
   const [savingAddr,  setSavingAddr]  = useState(false);
+
+  // ── Phone verification state ──────────────────
+  const [phoneStep,     setPhoneStep]     = useState('idle'); // idle | sending | otp | done
+  const [phoneOtp,      setPhoneOtp]      = useState('');
+  const [phoneVerifying,setPhoneVerifying]= useState(false);
+
+  const sendPhoneOtp = async () => {
+    setPhoneStep('sending');
+    try {
+      await api.post('/auth/send-phone-otp');
+      setPhoneStep('otp');
+      toast.success('OTP sent to your mobile number');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to send OTP');
+      setPhoneStep('idle');
+    }
+  };
+
+  const confirmPhoneOtp = async () => {
+    if (!phoneOtp || phoneOtp.length !== 6) { toast.error('Enter 6-digit OTP'); return; }
+    setPhoneVerifying(true);
+    try {
+      await api.post('/auth/confirm-phone-otp', { code: phoneOtp });
+      await loadUser();
+      setPhoneStep('done');
+      toast.success('Mobile number verified!');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Incorrect OTP');
+    } finally {
+      setPhoneVerifying(false);
+    }
+  };
 
   const { lookupPincode, pincodeLoading } = usePincodeAutofill(
     useCallback(({ city, state }) => setAddrForm(f => ({ ...f, city, state })), [])
@@ -392,6 +425,9 @@ export default function Profile() {
     e.preventDefault();
     if (!addrForm.fullName || !addrForm.phone || !addrForm.addressLine1 || !addrForm.city || !addrForm.state || !addrForm.pincode) {
       return toast.error('Please fill in all required fields');
+    }
+    if (!INDIAN_MOBILE.test(addrForm.phone)) {
+      return toast.error('Enter a valid 10-digit Indian mobile number (starts with 6-9)');
     }
     setSavingAddr(true);
     try {
@@ -487,8 +523,47 @@ export default function Profile() {
             )}
             {user?.phone && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
-                <input type="text" value={user.phone} disabled className="input-field bg-gray-50" />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Mobile Number</label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input type="text" value={user.phone} disabled className="input-field bg-gray-50 pr-8" />
+                    {user.phoneVerified && (
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-green-500" title="Verified">
+                        <FiCheck size={16} strokeWidth={3} />
+                      </span>
+                    )}
+                  </div>
+                  {user.phoneVerified ? (
+                    <span className="text-xs text-green-600 font-semibold whitespace-nowrap flex items-center gap-1">
+                      <FiCheck size={13} /> Verified
+                    </span>
+                  ) : (
+                    <button type="button" onClick={sendPhoneOtp} disabled={phoneStep === 'sending'}
+                      className="text-xs font-bold px-3 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-60 whitespace-nowrap transition">
+                      {phoneStep === 'sending' ? 'Sending...' : 'Verify Now'}
+                    </button>
+                  )}
+                </div>
+
+                {/* OTP input */}
+                {phoneStep === 'otp' && (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      type="number"
+                      value={phoneOtp}
+                      onChange={e => setPhoneOtp(e.target.value.slice(0, 6))}
+                      placeholder="Enter 6-digit OTP"
+                      className="input-field text-sm flex-1"
+                    />
+                    <button type="button" onClick={confirmPhoneOtp} disabled={phoneVerifying}
+                      className="text-sm font-bold px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-60 transition">
+                      {phoneVerifying ? 'Verifying...' : 'Confirm'}
+                    </button>
+                  </div>
+                )}
+                {!user.phoneVerified && phoneStep === 'idle' && (
+                  <p className="text-xs text-orange-500 mt-1">⚠️ Verify your mobile number to place orders.</p>
+                )}
               </div>
             )}
             <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">
@@ -561,7 +636,16 @@ export default function Profile() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Phone *</label>
-                  <input value={addrForm.phone} onChange={e => setA('phone', e.target.value)} className="input-field text-sm" placeholder="9876543210" />
+                  <input
+                    value={addrForm.phone}
+                    onChange={e => setA('phone', e.target.value.replace(/\D/g,'').slice(0,10))}
+                    className={`input-field text-sm ${addrForm.phone && !INDIAN_MOBILE.test(addrForm.phone) ? 'border-red-400 focus:ring-red-300' : ''}`}
+                    placeholder="9876543210"
+                    inputMode="numeric"
+                  />
+                  {addrForm.phone && !INDIAN_MOBILE.test(addrForm.phone) && (
+                    <p className="text-xs text-red-500 mt-0.5">Enter a valid 10-digit Indian mobile number</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Pincode *</label>
