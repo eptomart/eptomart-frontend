@@ -378,10 +378,12 @@ function DeleteAccountSection() {
     setStep('deleting');
     try {
       await api.delete('/auth/delete-account');
-      await logout();
+      // Show confirmation FIRST before logout clears context
       setStep('deleted');
-      // Redirect to home after 3 seconds
-      setTimeout(() => navigate('/'), 3000);
+      setTimeout(async () => {
+        await logout();
+        navigate('/');
+      }, 3000);
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to delete account');
       setStep('confirm');
