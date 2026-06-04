@@ -366,9 +366,9 @@ function FarmerTab() {
 
 // ── Delete Account Section ────────────────────
 function DeleteAccountSection() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const [step,    setStep]    = useState('idle'); // idle | confirm | deleting
+  const { logout } = useAuth();
+  const navigate   = useNavigate();
+  const [step,    setStep]    = useState('idle'); // idle | confirm | deleting | deleted
   const [confirm, setConfirm] = useState('');
 
   const handleDelete = async () => {
@@ -378,14 +378,31 @@ function DeleteAccountSection() {
     setStep('deleting');
     try {
       await api.delete('/auth/delete-account');
-      toast.success('Account deleted successfully');
       await logout();
-      navigate('/');
+      setStep('deleted');
+      // Redirect to home after 3 seconds
+      setTimeout(() => navigate('/'), 3000);
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to delete account');
       setStep('confirm');
     }
   };
+
+  // Full-screen confirmation shown after deletion
+  if (step === 'deleted') return (
+    <div className="fixed inset-0 bg-white z-[9999] flex flex-col items-center justify-center p-8 text-center">
+      <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-5">
+        <FiCheck size={36} className="text-red-500" />
+      </div>
+      <h2 className="text-2xl font-black text-gray-800 mb-2">Account Deleted</h2>
+      <p className="text-gray-500 text-sm mb-1">Your account and all personal data have been permanently deleted.</p>
+      <p className="text-gray-400 text-xs mb-8">You will be redirected to the home page shortly.</p>
+      <button onClick={() => navigate('/')}
+        className="bg-gray-800 text-white font-bold px-8 py-3 rounded-xl hover:bg-gray-900 transition">
+        Go to Home
+      </button>
+    </div>
+  );
 
   return (
     <div className="card p-6 mb-6 border-red-100">
