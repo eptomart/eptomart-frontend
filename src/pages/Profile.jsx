@@ -364,6 +364,81 @@ function FarmerTab() {
   );
 }
 
+// ── Delete Account Section ────────────────────
+function DeleteAccountSection() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [step,    setStep]    = useState('idle'); // idle | confirm | deleting
+  const [confirm, setConfirm] = useState('');
+
+  const handleDelete = async () => {
+    if (confirm.trim().toUpperCase() !== 'DELETE') {
+      toast.error('Type DELETE to confirm'); return;
+    }
+    setStep('deleting');
+    try {
+      await api.delete('/auth/delete-account');
+      toast.success('Account deleted successfully');
+      await logout();
+      navigate('/');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to delete account');
+      setStep('confirm');
+    }
+  };
+
+  return (
+    <div className="card p-6 mb-6 border-red-100">
+      <h2 className="font-bold text-gray-800 mb-1 flex items-center gap-2">
+        <FiTrash2 size={16} className="text-red-500" /> Delete Account
+      </h2>
+      <p className="text-sm text-gray-500 mb-4">
+        Permanently delete your account and all associated data. This cannot be undone.
+      </p>
+
+      {step === 'idle' && (
+        <button onClick={() => setStep('confirm')}
+          className="text-sm font-semibold text-red-500 border border-red-300 px-4 py-2 rounded-xl hover:bg-red-50 transition">
+          Delete My Account
+        </button>
+      )}
+
+      {(step === 'confirm' || step === 'deleting') && (
+        <div className="space-y-3">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+            <p className="text-sm text-red-700 font-semibold">⚠️ This will permanently delete:</p>
+            <ul className="text-xs text-red-600 mt-1 space-y-0.5 list-disc list-inside">
+              <li>Your profile and login access</li>
+              <li>Saved addresses and wishlist</li>
+              <li>Cart items</li>
+            </ul>
+            <p className="text-xs text-red-500 mt-1">Order history is anonymised and retained for legal compliance.</p>
+          </div>
+          <div>
+            <label className="text-xs text-gray-600 font-medium">Type <strong>DELETE</strong> to confirm</label>
+            <input
+              value={confirm}
+              onChange={e => setConfirm(e.target.value)}
+              placeholder="DELETE"
+              className="w-full mt-1 border border-red-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
+            />
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => { setStep('idle'); setConfirm(''); }}
+              className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl text-sm">
+              Cancel
+            </button>
+            <button onClick={handleDelete} disabled={step === 'deleting'}
+              className="flex-1 bg-red-500 text-white font-bold py-2.5 rounded-xl hover:bg-red-600 disabled:opacity-60 text-sm transition">
+              {step === 'deleting' ? 'Deleting...' : 'Permanently Delete'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const BLANK_ADDR = { label: 'Home', fullName: '', phone: '', addressLine1: '', addressLine2: '', city: '', state: '', pincode: '', isDefault: false };
 const INDIAN_MOBILE = /^[6-9]\d{9}$/;
 
@@ -638,6 +713,9 @@ export default function Profile() {
             </div>
           </Link>
         </div>
+        {/* Delete Account */}
+        <DeleteAccountSection />
+
         </> }
       </main>
       <Footer />
