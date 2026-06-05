@@ -193,6 +193,8 @@ export default function Checkout() {
     const { data } = await api.post('/payment/razorpay/create-order', { orderId });
 
     return new Promise((resolve) => {
+      let handlerCalled = false; // prevent ondismiss from overriding a successful payment
+
       const options = {
         key: data.keyId,
         amount: data.amount,
@@ -208,6 +210,7 @@ export default function Checkout() {
         },
         theme: { color: '#f97316' },
         handler: async (response) => {
+          handlerCalled = true;
           try {
             const verifyRes = await api.post('/payment/razorpay/verify', {
               razorpay_order_id: response.razorpay_order_id,
@@ -215,12 +218,8 @@ export default function Checkout() {
               razorpay_signature: response.razorpay_signature,
               orderId: data.orderId,
             });
-            if (verifyRes.data.success) {
-              resolve(true);
-            } else {
-              toast.error('Payment verification failed');
-              resolve(false);
-            }
+            resolve(verifyRes.data.success ? true : false);
+            if (!verifyRes.data.success) toast.error('Payment verification failed');
           } catch {
             toast.error('Payment verification failed');
             resolve(false);
@@ -228,16 +227,21 @@ export default function Checkout() {
         },
         modal: {
           ondismiss: () => {
-            toast('Payment cancelled', { icon: '⚠️' });
-            resolve(false);
+            // Only cancel if payment handler was never called
+            if (!handlerCalled) {
+              toast('Payment cancelled', { icon: '⚠️' });
+              resolve(false);
+            }
           },
         },
       };
 
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', (resp) => {
-        toast.error(`Payment failed: ${resp.error.description}`);
-        resolve(false);
+        if (!handlerCalled) {
+          toast.error(`Payment failed: ${resp.error.description}`);
+          resolve(false);
+        }
       });
       rzp.open();
     });
