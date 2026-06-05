@@ -247,14 +247,14 @@ export default function Login() {
       <div id="recaptcha-container" />
       {/* ── Full-page background ── */}
       <div style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         background: C.navy,
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
         padding: '24px 16px',
         position: 'relative',
-        overflow: 'visible',   /* was 'hidden' — that clipped the logo */
+        overflowY: 'auto',
       }}>
 
         {/* Subtle background glow blobs — clipped only within themselves */}
