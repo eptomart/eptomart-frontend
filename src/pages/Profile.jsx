@@ -378,10 +378,11 @@ function DeleteAccountSection() {
     setStep('deleting');
     try {
       await api.delete('/auth/delete-account');
-      // Clear token immediately — do NOT call logout() as it may redirect to /login
+      // Clear token immediately
       localStorage.removeItem('eptomart_token');
       setStep('deleted');
-      setTimeout(() => navigate('/'), 3000);
+      // Hard redirect clears React state fully — prevents back-navigation to profile
+      setTimeout(() => { window.location.href = '/'; }, 3000);
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to delete account');
       setStep('confirm');
@@ -397,7 +398,7 @@ function DeleteAccountSection() {
       <h2 className="text-2xl font-black text-gray-800 mb-2">Account Deleted</h2>
       <p className="text-gray-500 text-sm mb-1">Your account and all personal data have been permanently deleted.</p>
       <p className="text-gray-400 text-xs mb-8">You will be redirected to the home page shortly.</p>
-      <button onClick={() => navigate('/')}
+      <button onClick={() => { window.location.href = '/'; }}
         className="bg-gray-800 text-white font-bold px-8 py-3 rounded-xl hover:bg-gray-900 transition">
         Go to Home
       </button>
