@@ -51,7 +51,7 @@ function DarkInput({ style = {}, ...props }) {
         background: 'rgba(255,255,255,0.07)',
         border: `1.5px solid ${focused ? C.borderFocus : C.border}`,
         color: C.textPrimary,
-        fontSize: 14,
+        fontSize: 16, /* must be ≥16px to prevent iOS auto-zoom on focus */
         outline: 'none',
         transition: 'border-color 0.2s, box-shadow 0.2s',
         boxShadow: focused ? `0 0 0 3px ${C.orangeGlow}` : 'none',
