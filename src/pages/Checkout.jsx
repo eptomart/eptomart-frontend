@@ -321,7 +321,8 @@ export default function Checkout() {
       if (paymentMethod === 'razorpay') {
         const paid = await handleRazorpayPayment(order._id);
         if (!paid) {
-          // Payment cancelled or failed — keep cart intact, go back to cart
+          // Cancel the order on server so it doesn't show as placed
+          try { await api.put(`/orders/${order._id}/cancel`, { reason: 'Payment not completed' }); } catch (_) {}
           toast.error('Payment was not completed. Your cart items are saved — try again when ready.', { duration: 5000 });
           setLoading(false);
           navigate('/cart');

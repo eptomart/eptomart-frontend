@@ -196,8 +196,7 @@ export default function Login() {
         if (data.success) {
           localStorage.setItem('eptomart_token', data.token);
           await loadUser();
-          toast.success(data.message || 'Login successful!');
-          // Show profile step for new users OR existing users without firstName
+          if (data.isNewUser) toast.success(data.message || 'Welcome to Eptomart!');
           if (data.needsProfile && data.user?.role === 'user') { setStep(STEPS.PROFILE); return; }
           navigate(from, { replace: true });
         }

@@ -63,7 +63,8 @@ export const AuthProvider = ({ children }) => {
     if (data.success) {
       localStorage.setItem('eptomart_token', data.token);
       setUser(data.user);
-      toast.success(data.message);
+      // Only show toast for new users — returning users go silently to home
+      if (data.isNewUser) toast.success(data.message);
     }
     return data;
   };

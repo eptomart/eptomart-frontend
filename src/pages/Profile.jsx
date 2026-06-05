@@ -378,12 +378,10 @@ function DeleteAccountSection() {
     setStep('deleting');
     try {
       await api.delete('/auth/delete-account');
-      // Show confirmation FIRST, then navigate to home, then logout
+      // Clear token immediately — do NOT call logout() as it may redirect to /login
+      localStorage.removeItem('eptomart_token');
       setStep('deleted');
-      setTimeout(async () => {
-        navigate('/');
-        await logout();
-      }, 3000);
+      setTimeout(() => navigate('/'), 3000);
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to delete account');
       setStep('confirm');
