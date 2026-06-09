@@ -11,24 +11,40 @@ import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 
-// Search via backend proxy → Google Places Autocomplete
+// ── Search: Google Places (if configured) → Photon fallback ──
+// Returns { type: 'google'|'photon', results: [...] }
 async function searchPlaces(query) {
   if (!query || query.length < 2) return null;
+
+  // 1. Try Google Places via backend proxy
   try {
     const { data } = await api.get(`/eptofresh/places/autocomplete?q=${encodeURIComponent(query)}`);
-    return Array.isArray(data.predictions) ? data.predictions : [];
-  } catch (e) {
-    console.error('Search error:', e);
-    return [];
-  }
+    if (Array.isArray(data.predictions) && data.predictions.length > 0) {
+      return { type: 'google', results: data.predictions };
+    }
+  } catch {}
+
+  // 2. Fallback: Photon (Komoot) — free, no key, great India coverage
+  try {
+    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lang=en&limit=7&bbox=68.7,8.4,97.25,37.6`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    const features = (data.features || []).filter(f => {
+      const c = f.properties?.country;
+      return !c || c === 'India';
+    });
+    return { type: 'photon', results: features };
+  } catch {}
+
+  return { type: 'none', results: [] };
 }
 
-// Get lat/lng for a place_id via backend proxy → Google Place Details
-async function getPlaceLatLng(place_id) {
+// Get lat/lng for Google place_id
+async function getGooglePlaceLatLng(place_id) {
   try {
     const { data } = await api.get(`/eptofresh/places/details?place_id=${place_id}`);
     const loc = data.result?.geometry?.location;
-    return loc ? { lat: loc.lat, lng: loc.lng, address: data.result.formatted_address, name: data.result.name } : null;
+    return loc ? { lat: loc.lat, lng: loc.lng, name: data.result.name, address: data.result.formatted_address } : null;
   } catch { return null; }
 }
 
@@ -64,7 +80,7 @@ export function EptoFreshLocationPicker() {
   const [fullAddr, setFullAddr]       = useState('');
   const [mapMoving, setMapMoving]     = useState(false);
   const [searchQuery, setSearchQuery]   = useState('');
-  const [suggestions, setSuggestions]   = useState(null); // null=idle, []=no results, [...]=results
+  const [suggestions, setSuggestions]   = useState(null); // null | { type, results }
   const [searchBusy, setSearchBusy]     = useState(false);
   const [confirming, setConfirming]     = useState(false);
 
@@ -145,31 +161,38 @@ export function EptoFreshLocationPicker() {
     setSearchBusy(true);
     const t = setTimeout(async () => {
       const res = await searchPlaces(searchQuery);
-      setSuggestions(res);  // [] = no results, [...] = found
+      setSuggestions(res);
       setSearchBusy(false);
-      if (res && res.length === 0) toast('No results found. Try a different name.', { icon: '🔍' });
-    }, 600);
+      if (res && res.results.length === 0) toast('No results. Try a different name.', { icon: '🔍' });
+    }, 500);
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  const pickSuggestion = async (r) => {
+  const pickSuggestion = async (r, type) => {
     setSearchQuery('');
     setSuggestions(null);
-    setSearchBusy(true);
 
-    const detail = await getPlaceLatLng(r.place_id);
-    setSearchBusy(false);
+    if (type === 'google') {
+      setSearchBusy(true);
+      const detail = await getGooglePlaceLatLng(r.place_id);
+      setSearchBusy(false);
+      if (!detail) { toast.error('Could not get location. Try again.'); return; }
+      mapRef.current?.setView([detail.lat, detail.lng], 16);
+      setCenter({ lat: detail.lat, lng: detail.lng });
+      setShortAddr(r.structured_formatting?.main_text || detail.name);
+      setFullAddr(r.description || detail.address);
 
-    if (!detail) { toast.error('Could not get location details. Try again.'); return; }
-
-    mapRef.current?.setView([detail.lat, detail.lng], 16);
-    setCenter({ lat: detail.lat, lng: detail.lng });
-
-    // Short name = first part of description, full = formatted address
-    const short = r.structured_formatting?.main_text || r.description?.split(',')[0] || detail.name;
-    const secondary = r.structured_formatting?.secondary_text || '';
-    setShortAddr(short);
-    setFullAddr([short, secondary].filter(Boolean).join(', ') || detail.address);
+    } else {
+      // Photon result — lat/lng are in geometry.coordinates [lng, lat]
+      const [lng, lat] = r.geometry.coordinates;
+      const p = r.properties;
+      const short = p.name || p.city || p.county || '';
+      const parts = [p.name, p.city || p.county, p.state].filter(Boolean);
+      mapRef.current?.setView([lat, lng], 16);
+      setCenter({ lat, lng });
+      setShortAddr(short);
+      setFullAddr(parts.join(', '));
+    }
   };
 
   const confirm = () => {
@@ -230,24 +253,30 @@ export function EptoFreshLocationPicker() {
         </div>
 
         {/* Search suggestions */}
-        {Array.isArray(suggestions) && suggestions.length > 0 && (
+        {suggestions?.results?.length > 0 && (
           <div className="rounded-2xl overflow-hidden mb-1"
             style={{ background: '#0f2035', border: '1px solid rgba(255,255,255,0.1)' }}>
-            {suggestions.map((r, i) => (
-              <button key={r.place_id || i} onClick={() => pickSuggestion(r)}
-                className="w-full flex items-start gap-3 px-4 py-3 text-left active:opacity-70"
-                style={{ borderBottom: i < suggestions.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-                <FiMapPin className="text-orange-400 mt-0.5 shrink-0" size={14} />
-                <div className="min-w-0">
-                  <p className="text-white text-sm truncate font-medium">
-                    {r.structured_formatting?.main_text || r.description?.split(',')[0]}
-                  </p>
-                  <p className="text-gray-500 text-xs truncate">
-                    {r.structured_formatting?.secondary_text || r.description?.split(',').slice(1).join(',')}
-                  </p>
-                </div>
-              </button>
-            ))}
+            {suggestions.results.map((r, i) => {
+              const isGoogle = suggestions.type === 'google';
+              const main = isGoogle
+                ? (r.structured_formatting?.main_text || r.description?.split(',')[0])
+                : (r.properties?.name || r.properties?.city || '');
+              const sub = isGoogle
+                ? (r.structured_formatting?.secondary_text || '')
+                : [r.properties?.city, r.properties?.state].filter(Boolean).join(', ');
+              return (
+                <button key={isGoogle ? r.place_id : i}
+                  onClick={() => pickSuggestion(r, suggestions.type)}
+                  className="w-full flex items-start gap-3 px-4 py-3 text-left active:opacity-70"
+                  style={{ borderBottom: i < suggestions.results.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                  <FiMapPin className="text-orange-400 mt-0.5 shrink-0" size={14} />
+                  <div className="min-w-0">
+                    <p className="text-white text-sm truncate font-medium">{main}</p>
+                    {sub ? <p className="text-gray-500 text-xs truncate">{sub}</p> : null}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
