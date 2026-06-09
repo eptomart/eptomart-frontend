@@ -19,43 +19,66 @@ const CATEGORIES = [
   { key: 'ready_to_cook', label: 'Ready to Cook', emoji: '🍱' },
 ];
 
-// Geocode pincode → lat/lng via OpenStreetMap (free, no key)
+// Geocode pincode → lat/lng + area name via OpenStreetMap (free, no key)
 async function geocodePincode(pincode) {
   try {
-    const url = `https://nominatim.openstreetmap.org/search?postalcode=${pincode}&country=India&format=json&limit=1`;
+    const url = `https://nominatim.openstreetmap.org/search?postalcode=${pincode}&country=India&format=json&limit=1&addressdetails=1`;
     const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
     const data = await res.json();
     if (data && data[0]) {
-      return {
-        lat:   parseFloat(data[0].lat),
-        lng:   parseFloat(data[0].lon),
-        label: data[0].display_name.split(',').slice(0, 2).join(', '),
-      };
+      const addr  = data[0].address || {};
+      const area  = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.city_district || '';
+      const city  = addr.city || addr.county || addr.state_district || '';
+      const label = [area, city].filter(Boolean).join(', ') || data[0].display_name.split(',').slice(0, 2).join(', ');
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), label };
     }
   } catch {}
   return null;
+}
+
+// Reverse geocode lat/lng → area name
+async function reverseGeocode(lat, lng) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
+    const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const data = await res.json();
+    const addr = data.address || {};
+    const area = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.city_district || '';
+    const city = addr.city || addr.county || addr.state_district || '';
+    return [area, city].filter(Boolean).join(', ') || 'Your Location';
+  } catch {}
+  return 'Your Location';
 }
 
 export default function EptoFreshHome() {
   const navigate = useNavigate();
   const { userLocation, setUserLocation } = useEptoFreshCart();
 
-  const [sellers, setSellers]           = useState([]);
-  const [loading, setLoading]           = useState(false);
+  const [sellers, setSellers]               = useState([]);
+  const [loading, setLoading]               = useState(false);
   const [activeCategory, setActiveCategory] = useState('');
-  const [locationLabel, setLocationLabel]   = useState(null);
+
+  // Persist area name in localStorage so it survives refresh
+  const [locationLabel, setLocationLabel] = useState(
+    () => localStorage.getItem('eptofresh_area') || null
+  );
 
   // Location picker modal state
-  const [showPicker, setShowPicker]     = useState(false);
-  const [pincode, setPincode]           = useState('');
-  const [gpsLoading, setGpsLoading]     = useState(false);
+  const [showPicker, setShowPicker]         = useState(false);
+  const [pincode, setPincode]               = useState('');
+  const [gpsLoading, setGpsLoading]         = useState(false);
   const [pincodeLoading, setPincodeLoading] = useState(false);
 
-  // On mount — fetch all sellers; show picker if no location yet
+  // On mount — fetch all sellers; show picker if no location saved
   useEffect(() => {
     fetchSellers(userLocation, '');
     if (!userLocation) setShowPicker(true);
   }, []);
+
+  const saveLabel = (label) => {
+    setLocationLabel(label);
+    localStorage.setItem('eptofresh_area', label);
+  };
 
   const fetchSellers = async (loc, category) => {
     setLoading(true);
@@ -78,7 +101,7 @@ export default function EptoFreshHome() {
     fetchSellers(userLocation, newCat);
   };
 
-  // GPS — triggered by user tap (iOS requires this)
+  // GPS — triggered ONLY by user tap (iOS requires this)
   const useGPS = () => {
     if (!navigator.geolocation) {
       toast.error('GPS not supported on this device');
@@ -86,13 +109,15 @@ export default function EptoFreshHome() {
     }
     setGpsLoading(true);
     navigator.geolocation.getCurrentPosition(
-      pos => {
+      async (pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation(loc);
-        setLocationLabel('Current Location');
         setShowPicker(false);
         fetchSellers(loc, activeCategory);
         setGpsLoading(false);
+        // Reverse geocode to get real area name
+        const area = await reverseGeocode(loc.lat, loc.lng);
+        saveLabel(area);
       },
       (err) => {
         setGpsLoading(false);
@@ -121,7 +146,7 @@ export default function EptoFreshHome() {
     }
     const loc = { lat: result.lat, lng: result.lng };
     setUserLocation(loc);
-    setLocationLabel(`Pincode ${pincode}`);
+    saveLabel(result.label);   // real area name from geocoder
     setShowPicker(false);
     fetchSellers(loc, activeCategory);
   };
@@ -234,13 +259,13 @@ export default function EptoFreshHome() {
             {/* Location bar — tap to change */}
             <button
               onClick={() => setShowPicker(true)}
-              className="flex items-center gap-1 mt-0.5"
+              className="flex items-center gap-1 mt-0.5 max-w-[220px]"
             >
-              <FiMapPin size={11} className="text-orange-400" />
-              <span className="text-orange-400 text-xs font-semibold">
-                {locationLabel || (userLocation ? 'Current Location' : 'Set location')}
+              <FiMapPin size={12} className="text-orange-400 shrink-0" />
+              <span className="text-orange-400 text-xs font-semibold truncate">
+                {locationLabel || (userLocation ? 'Current Location' : '📍 Set your location')}
               </span>
-              <FiEdit2 size={10} className="text-gray-500 ml-0.5" />
+              <FiEdit2 size={10} className="text-gray-500 ml-0.5 shrink-0" />
             </button>
           </div>
           <button
