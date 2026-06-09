@@ -1,0 +1,439 @@
+// ============================================
+// EPTOFRESH ADMIN PANEL
+// Full control: sellers, products, orders, payouts
+// ============================================
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import api from '../../../utils/api';
+import toast from 'react-hot-toast';
+import { FiGrid, FiUsers, FiPackage, FiShoppingBag, FiDollarSign, FiTag, FiCheck, FiX, FiCamera, FiBarChart2 } from 'react-icons/fi';
+
+export default function EptoFreshAdmin() {
+  const location = useLocation();
+  const [tab, setTab] = useState('dashboard');
+  const [dash, setDash] = useState(null);
+
+  useEffect(() => {
+    api.get('/eptofresh/admin/dashboard').then(r => { if (r.data.success) setDash(r.data); }).catch(() => {});
+  }, []);
+
+  const TABS = [
+    { key: 'dashboard', label: 'Dashboard', Icon: FiGrid },
+    { key: 'sellers',   label: 'Sellers',   Icon: FiUsers },
+    { key: 'products',  label: 'Products',  Icon: FiPackage },
+    { key: 'orders',    label: 'Orders',    Icon: FiShoppingBag },
+    { key: 'payouts',   label: 'Payouts',   Icon: FiDollarSign },
+    { key: 'coupons',   label: 'Coupons',   Icon: FiTag },
+  ];
+
+  return (
+    <div className="min-h-screen pb-24" style={{ background: '#0B1729' }}>
+      {/* Header */}
+      <div className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <h1 className="text-white font-bold text-xl">🥩 EptoFresh Admin</h1>
+        <p className="text-gray-500 text-xs mt-0.5">Hyperlocal Proteins Marketplace</p>
+      </div>
+
+      {/* Tab nav */}
+      <div className="flex overflow-x-auto scrollbar-hide border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+        {TABS.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className="flex items-center gap-1.5 px-4 py-3 text-xs font-semibold whitespace-nowrap transition-all"
+            style={{ color: tab === t.key ? '#f4941c' : 'rgba(255,255,255,0.4)', borderBottom: tab === t.key ? '2px solid #f4941c' : '2px solid transparent' }}>
+            <t.Icon size={13} /> {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="p-4">
+        {tab === 'dashboard'  && <DashboardTab dash={dash} />}
+        {tab === 'sellers'    && <SellersTab />}
+        {tab === 'products'   && <ProductsTab />}
+        {tab === 'orders'     && <OrdersTab />}
+        {tab === 'payouts'    && <PayoutsTab />}
+        {tab === 'coupons'    && <CouponsTab />}
+      </div>
+    </div>
+  );
+}
+
+// ── Dashboard ────────────────────────────────────────────
+function DashboardTab({ dash }) {
+  if (!dash) return <div className="flex justify-center py-10"><div className="w-8 h-8 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" /></div>;
+
+  const stats = dash.stats;
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { label: 'Total Orders',       value: stats.totalOrders,         color: '#60a5fa' },
+          { label: 'Today Orders',       value: stats.todayOrders,         color: '#f4941c' },
+          { label: 'Active Sellers',     value: stats.activeSellers,       color: '#34d399' },
+          { label: 'Pending Approvals',  value: stats.pendingPackedApprovals + stats.pendingSellers, color: '#f87171' },
+          { label: 'Revenue',            value: `₹${(stats.totalRevenue||0).toFixed(0)}`, color: '#a78bfa' },
+          { label: 'Pending Payouts',    value: `₹${(stats.pendingPayouts||0).toFixed(0)}`, color: '#fbbf24' },
+        ].map(s => (
+          <div key={s.label} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <p className="font-bold text-lg" style={{ color: s.color }}>{s.value}</p>
+            <p className="text-gray-500 text-xs mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {stats.pendingPackedApprovals > 0 && (
+        <div className="rounded-2xl p-4" style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.2)' }}>
+          <p className="text-purple-400 font-semibold">📦 {stats.pendingPackedApprovals} order{stats.pendingPackedApprovals > 1 ? 's' : ''} waiting for photo approval</p>
+          <p className="text-gray-500 text-xs">Verify packed product photos to trigger Porter delivery</p>
+        </div>
+      )}
+
+      <div>
+        <p className="text-white font-semibold mb-3 text-sm">Recent Orders</p>
+        <div className="space-y-2">
+          {(dash.recentOrders || []).map(o => (
+            <div key={o._id} className="flex items-center justify-between rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <div>
+                <p className="text-white text-xs font-semibold">#{o.orderId}</p>
+                <p className="text-gray-500 text-[10px]">{o.seller?.shopName}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-orange-400 text-xs font-bold">₹{o.pricing?.total}</p>
+                <p className="text-gray-600 text-[10px] capitalize">{o.orderStatus}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Sellers ──────────────────────────────────────────────
+function SellersTab() {
+  const [sellers, setSellers] = useState([]);
+  const [filter, setFilter]   = useState('pending_review');
+  const [acting, setActing]   = useState(null);
+
+  useEffect(() => {
+    api.get(`/eptofresh/admin/sellers?status=${filter}&limit=50`).then(r => { if (r.data.success) setSellers(r.data.sellers); }).catch(() => {});
+  }, [filter]);
+
+  const approve = async (id) => {
+    setActing(id + 'approve');
+    await api.post(`/eptofresh/admin/sellers/${id}/approve`).then(r => { if (r.data.success) { toast.success('Seller approved'); setSellers(s => s.filter(x => x._id !== id)); } }).catch(() => toast.error('Failed'));
+    setActing(null);
+  };
+  const reject = async (id) => {
+    const reason = window.prompt('Rejection reason?');
+    if (!reason) return;
+    await api.post(`/eptofresh/admin/sellers/${id}/reject`, { reason }).then(r => { if (r.data.success) { toast.success('Seller rejected'); setSellers(s => s.filter(x => x._id !== id)); } }).catch(() => toast.error('Failed'));
+  };
+
+  return (
+    <div>
+      <div className="flex gap-2 mb-4 overflow-x-auto">
+        {['pending_review','approved','rejected','suspended'].map(f => (
+          <button key={f} onClick={() => setFilter(f)} className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap capitalize"
+            style={{ background: filter === f ? '#f4941c' : 'rgba(255,255,255,0.07)', color: filter === f ? '#fff' : 'rgba(255,255,255,0.5)' }}>
+            {f.replace('_', ' ')}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-3">
+        {sellers.map(s => (
+          <div key={s._id} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="flex items-start justify-between mb-2">
+              <div>
+                <p className="text-white font-semibold">{s.shopName}</p>
+                <p className="text-gray-400 text-xs">{s.ownerName} • {s.contact?.phone}</p>
+                <p className="text-gray-600 text-xs">{s.address?.city} • {s.address?.pincode}</p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {(s.categories || []).map(c => <span key={c} className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: 'rgba(244,148,28,0.1)', color: '#f4941c' }}>{c.replace('_',' ')}</span>)}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <a href={s.kyc?.panUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs underline">{s.kyc?.panNumber}</a>
+              </div>
+            </div>
+
+            {/* KYC info */}
+            <div className="grid grid-cols-2 gap-2 text-xs text-gray-400 mb-3">
+              <span>FSSAI: {s.kyc?.fssaiNumber || '—'}</span>
+              <span>PAN: {s.kyc?.panNumber || '—'}</span>
+              <span>GST: {s.kyc?.gstNumber || 'N/A'}</span>
+              <span>Aadhaar: {s.kyc?.aadhaarNumber ? '✓' : '—'}</span>
+            </div>
+
+            {s.status === 'pending_review' && (
+              <div className="flex gap-2">
+                <button onClick={() => approve(s._id)} disabled={acting === s._id + 'approve'}
+                  className="flex-1 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60"
+                  style={{ background: '#34d399' }}>
+                  <FiCheck size={13} /> Approve
+                </button>
+                <button onClick={() => reject(s._id)} className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
+                  style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171' }}>
+                  <FiX size={13} /> Reject
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+        {sellers.length === 0 && <p className="text-gray-600 text-center py-8">No sellers in this status</p>}
+      </div>
+    </div>
+  );
+}
+
+// ── Products Approval ────────────────────────────────────
+function ProductsTab() {
+  const [products, setProducts] = useState([]);
+  const [acting, setActing]     = useState(null);
+
+  useEffect(() => {
+    api.get('/eptofresh/admin/products/pending').then(r => { if (r.data.success) setProducts(r.data.products); }).catch(() => {});
+  }, []);
+
+  const approve = async (id) => {
+    setActing(id);
+    await api.post(`/eptofresh/admin/products/${id}/approve`).then(r => { if (r.data.success) { toast.success('Product approved'); setProducts(p => p.filter(x => x._id !== id)); } }).catch(() => toast.error('Failed'));
+    setActing(null);
+  };
+  const reject = async (id) => {
+    const reason = window.prompt('Reason?');
+    if (!reason) return;
+    await api.post(`/eptofresh/admin/products/${id}/reject`, { reason }).then(r => { if (r.data.success) setProducts(p => p.filter(x => x._id !== id)); }).catch(() => {});
+  };
+
+  return (
+    <div className="space-y-3">
+      {products.length === 0 && <p className="text-gray-600 text-center py-8">No products pending approval</p>}
+      {products.map(p => (
+        <div key={p._id} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="flex gap-3 mb-3">
+            <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-700 shrink-0 flex items-center justify-center">
+              {p.images?.[0]?.url ? <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" /> : <span className="text-xl">🥩</span>}
+            </div>
+            <div>
+              <p className="text-white font-semibold">{p.name}</p>
+              <p className="text-gray-400 text-xs capitalize">{p.category.replace('_',' ')} • {p.seller?.shopName}</p>
+              <p className="text-orange-400 text-xs">₹{p.basePrice}/{p.unit}</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => approve(p._id)} disabled={acting === p._id}
+              className="flex-1 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60"
+              style={{ background: '#34d399' }}><FiCheck size={12} /> Approve</button>
+            <button onClick={() => reject(p._id)} className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
+              style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171' }}><FiX size={12} /> Reject</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Orders ────────────────────────────────────────────────
+function OrdersTab() {
+  const [orders, setOrders] = useState([]);
+  const [filter, setFilter] = useState('packed');
+  const [acting, setActing] = useState(null);
+
+  useEffect(() => {
+    api.get(`/eptofresh/admin/orders?status=${filter}&limit=30`).then(r => { if (r.data.success) setOrders(r.data.orders); }).catch(() => {});
+  }, [filter]);
+
+  const approvePhotos = async (id) => {
+    setActing(id);
+    await api.post(`/eptofresh/admin/orders/${id}/approve-packed`).then(r => {
+      if (r.data.success) { toast.success('Photos approved, Porter notified!'); setOrders(o => o.filter(x => x._id !== id)); }
+    }).catch(err => toast.error(err.response?.data?.message || 'Failed'));
+    setActing(null);
+  };
+
+  const rejectPhotos = async (id) => {
+    const reason = window.prompt('Rejection reason?'); if (!reason) return;
+    await api.post(`/eptofresh/admin/orders/${id}/reject-packed`, { reason }).then(r => {
+      if (r.data.success) { toast.success('Photos rejected, seller notified'); setOrders(o => o.filter(x => x._id !== id)); }
+    }).catch(() => toast.error('Failed'));
+  };
+
+  return (
+    <div>
+      <div className="flex gap-2 mb-4 overflow-x-auto">
+        {['packed','accepted','placed','out_for_delivery','delivered','cancelled'].map(f => (
+          <button key={f} onClick={() => setFilter(f)} className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap capitalize"
+            style={{ background: filter === f ? '#f4941c' : 'rgba(255,255,255,0.07)', color: filter === f ? '#fff' : 'rgba(255,255,255,0.5)' }}>
+            {f.replace(/_/g,' ')}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-3">
+        {orders.length === 0 && <p className="text-gray-600 text-center py-8">No orders</p>}
+        {orders.map(o => (
+          <div key={o._id} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="flex items-start justify-between mb-2">
+              <div>
+                <p className="text-white font-semibold text-sm">#{o.orderId}</p>
+                <p className="text-gray-400 text-xs">{o.seller?.shopName} • {o.shippingAddress?.city}</p>
+                <p className="text-gray-600 text-xs">{o.distanceKm?.toFixed(1)} km</p>
+              </div>
+              <p className="text-orange-400 font-bold">₹{o.pricing?.total}</p>
+            </div>
+
+            {/* Packed photos */}
+            {o.orderStatus === 'packed' && (
+              <div className="mb-3">
+                <p className="text-purple-400 text-xs font-semibold mb-2 flex items-center gap-1"><FiCamera size={12} /> Packed Photos</p>
+                <div className="flex gap-2 flex-wrap">
+                  {(o.packedPhotos || []).map((ph, i) => (
+                    <a key={i} href={ph.url} target="_blank" rel="noopener noreferrer">
+                      <img src={ph.url} alt="packed" className="w-16 h-16 rounded-xl object-cover" style={{ border: '1px solid rgba(255,255,255,0.1)' }} />
+                    </a>
+                  ))}
+                  {!o.packedPhotos?.length && <p className="text-gray-600 text-xs">No photos uploaded</p>}
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button onClick={() => approvePhotos(o._id)} disabled={acting === o._id || !o.packedPhotos?.length}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60"
+                    style={{ background: '#34d399' }}><FiCheck size={12} /> Approve & Book Porter</button>
+                  <button onClick={() => rejectPhotos(o._id)} className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
+                    style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171' }}><FiX size={12} /> Reject Photos</button>
+                </div>
+              </div>
+            )}
+
+            {/* Porter status */}
+            {o.porter?.status && (
+              <p className="text-blue-400 text-xs">🚗 Porter: {o.porter.status}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Payouts ───────────────────────────────────────────────
+function PayoutsTab() {
+  const [payouts, setPayouts] = useState([]);
+  const [selected, setSelected] = useState([]);
+  const [settling, setSettling] = useState(false);
+
+  useEffect(() => {
+    api.get('/eptofresh/admin/payouts?status=pending&limit=50').then(r => { if (r.data.success) setPayouts(r.data.payouts); }).catch(() => {});
+  }, []);
+
+  const settle = async () => {
+    if (!selected.length) return toast.error('Select payouts to settle');
+    const ref = window.prompt('Transfer reference (UTR / Transaction ID)'); if (!ref) return;
+    setSettling(true);
+    await api.post('/eptofresh/admin/payouts/settle', { payoutIds: selected, transferRef: ref, transferMode: 'bank' })
+      .then(r => { if (r.data.success) { toast.success(r.data.message); setPayouts(p => p.filter(x => !selected.includes(x._id))); setSelected([]); } })
+      .catch(() => toast.error('Failed'));
+    setSettling(false);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-white font-semibold">{payouts.length} pending payouts</p>
+        <button onClick={settle} disabled={!selected.length || settling} className="px-3 py-1.5 rounded-xl text-xs font-bold text-white disabled:opacity-50" style={{ background: '#34d399' }}>
+          {settling ? 'Processing...' : `Settle (${selected.length})`}
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {payouts.length === 0 && <p className="text-gray-600 text-center py-8">No pending payouts</p>}
+        {payouts.map(p => (
+          <label key={p._id} className="flex items-center gap-3 rounded-xl p-3 cursor-pointer" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${selected.includes(p._id) ? 'rgba(52,211,153,0.3)' : 'rgba(255,255,255,0.07)'}` }}>
+            <input type="checkbox" checked={selected.includes(p._id)} onChange={e => setSelected(s => e.target.checked ? [...s, p._id] : s.filter(x => x !== p._id))} className="w-4 h-4 accent-green-400" />
+            <div className="flex-1">
+              <p className="text-white text-xs font-semibold">#{p.orderId}</p>
+              <p className="text-gray-500 text-[10px]">{p.seller?.shopName} • {p.seller?.bankDetails?.upiId || p.seller?.bankDetails?.accountNumber}</p>
+            </div>
+            <p className="text-green-400 font-bold text-sm">₹{p.sellerReceives?.toFixed(2)}</p>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Coupons ───────────────────────────────────────────────
+function CouponsTab() {
+  const [coupons, setCoupons] = useState([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ code: '', description: '', discountType: 'flat', discountValue: '', minOrderValue: 0, maxUsage: 100, validFrom: '', validTo: '' });
+
+  useEffect(() => {
+    api.get('/eptofresh/admin/coupons').then(r => { if (r.data.success) setCoupons(r.data.coupons); }).catch(() => {});
+  }, []);
+
+  const createCoupon = async () => {
+    try {
+      const { data } = await api.post('/eptofresh/admin/coupons', form);
+      if (data.success) { toast.success('Coupon created'); setCoupons(c => [data.coupon, ...c]); setShowAdd(false); }
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+  };
+
+  const toggle = async (id) => {
+    await api.patch(`/eptofresh/admin/coupons/${id}/toggle`).then(r => { if (r.data.success) setCoupons(c => c.map(x => x._id === id ? r.data.coupon : x)); }).catch(() => {});
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-white font-semibold">Coupons</p>
+        <button onClick={() => setShowAdd(!showAdd)} className="px-3 py-1.5 rounded-xl text-xs font-bold text-white" style={{ background: '#f4941c' }}>+ New</button>
+      </div>
+
+      {showAdd && (
+        <div className="rounded-2xl p-4 mb-4 space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          {[
+            { key: 'code', label: 'Coupon Code', type: 'text', placeholder: 'FRESH50' },
+            { key: 'description', label: 'Description', type: 'text' },
+            { key: 'discountValue', label: 'Discount Value (₹ or %)', type: 'number' },
+            { key: 'minOrderValue', label: 'Min Order Value', type: 'number' },
+            { key: 'validFrom', label: 'Valid From', type: 'date' },
+            { key: 'validTo', label: 'Valid To', type: 'date' },
+          ].map(f => (
+            <div key={f.key}>
+              <label className="text-gray-400 text-xs">{f.label}</label>
+              <input type={f.type} value={form[f.key]} onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))}
+                placeholder={f.placeholder}
+                className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-white outline-none"
+                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }} />
+            </div>
+          ))}
+          <div className="flex gap-2">
+            <select value={form.discountType} onChange={e => setForm(v => ({ ...v, discountType: e.target.value }))}
+              className="flex-1 px-3 py-2 rounded-xl text-sm text-white outline-none" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <option value="flat" className="bg-gray-900">Flat ₹</option>
+              <option value="percent" className="bg-gray-900">Percent %</option>
+            </select>
+          </div>
+          <button onClick={createCoupon} className="w-full py-2.5 rounded-xl font-bold text-white text-sm" style={{ background: '#f4941c' }}>Create Coupon</button>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {coupons.map(c => (
+          <div key={c._id} className="flex items-center justify-between rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div>
+              <p className="text-white font-bold text-sm">{c.code}</p>
+              <p className="text-gray-400 text-xs">{c.discountType === 'flat' ? `₹${c.discountValue} off` : `${c.discountValue}% off`} • Min ₹{c.minOrderValue}</p>
+              <p className="text-gray-600 text-[10px]">Used: {c.usedCount}/{c.maxUsage}</p>
+            </div>
+            <button onClick={() => toggle(c._id)} className="px-2.5 py-1 rounded-lg text-xs font-semibold"
+              style={{ background: c.isActive ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)', color: c.isActive ? '#34d399' : '#f87171' }}>
+              {c.isActive ? 'Active' : 'Inactive'}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

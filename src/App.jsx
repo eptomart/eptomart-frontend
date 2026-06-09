@@ -5,6 +5,7 @@ import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { CompareProvider } from './context/CompareContext';
 import { KoyambeduCartProvider } from './context/KoyambeduCartContext';
+import { EptoFreshCartProvider } from './context/EptoFreshCartContext';
 import Loader from './components/common/Loader';
 import CompareBar from './components/product/CompareBar';
 import AIAssistant from './components/AIAssistant';
@@ -79,6 +80,22 @@ const FarmerRegister    = lazy(() => import('./pages/uzhavar/FarmerRegister'));
 const MyUzhavarOrders   = lazy(() => import('./pages/uzhavar/MyUzhavarOrders'));
 const UzhavarSubscribe  = lazy(() => import('./pages/uzhavar/UzhavarSubscribe'));
 
+// ── EptoFresh Proteins pages ──────────────────
+const EptoFreshHome            = lazy(() => import('./pages/eptofresh/EptoFreshHome'));
+const EptoFreshShop            = lazy(() => import('./pages/eptofresh/EptoFreshShop'));
+const EptoFreshCart            = lazy(() => import('./pages/eptofresh/EptoFreshCart'));
+const EptoFreshCheckout        = lazy(() => import('./pages/eptofresh/EptoFreshCheckout'));
+const EptoFreshOrders          = lazy(() => import('./pages/eptofresh/EptoFreshOrders'));
+const EptoFreshOrderDetail     = lazy(() => import('./pages/eptofresh/EptoFreshOrders').then(m => ({ default: m.EptoFreshOrderDetail })));
+const EptoFreshTracking        = lazy(() => import('./pages/eptofresh/EptoFreshTracking'));
+const EptoFreshSellerRegister  = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerRegister'));
+const EptoFreshSellerDashboard = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerDashboard'));
+const EptoFreshSellerProducts  = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerProducts'));
+const EptoFreshSellerOrders    = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerOrders'));
+const EptoFreshSellerOrderDetail = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerOrders').then(m => ({ default: m.EptoFreshSellerOrderDetail })));
+const EptoFreshSellerPayouts   = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerPayouts'));
+const EptoFreshAdmin           = lazy(() => import('./pages/eptofresh/admin/EptoFreshAdmin'));
+
 // ── Seller pages ─────────────────────────────
 const SellerLayout  = lazy(() => import('./pages/seller/SellerLayout'));
 const SellerDashboard = lazy(() => import('./pages/seller/Dashboard'));
@@ -112,11 +129,12 @@ const SellerRoute = ({ children }) => {
 
 function GlobalBottomNav() {
   const { pathname } = useLocation();
-  // Hide on admin, seller portal, and koyambedu seller/admin pages
+  // Hide on admin, seller portal, koyambedu seller/admin, and eptofresh seller pages
   const hidden = pathname.startsWith('/admin') ||
                  pathname.startsWith('/seller') ||
                  pathname.startsWith('/koyambedu/seller') ||
-                 pathname.startsWith('/koyambedu/seller-admin');
+                 pathname.startsWith('/koyambedu/seller-admin') ||
+                 pathname.startsWith('/eptofresh/seller');
   if (hidden) return null;
   return <BottomNav />;
 }
@@ -212,6 +230,22 @@ function AppRoutes() {
           <Route path="/uzhavar/my-orders"          element={<ProtectedRoute><MyUzhavarOrders /></ProtectedRoute>} />
           <Route path="/uzhavar/subscribe"          element={<UzhavarSubscribe />} />
 
+          {/* ── EptoFresh Proteins ──────────────── */}
+          <Route path="/eptofresh"                              element={<EptoFreshHome />} />
+          <Route path="/eptofresh/shop/:sellerId"               element={<EptoFreshShop />} />
+          <Route path="/eptofresh/cart"                         element={<ProtectedRoute><EptoFreshCart /></ProtectedRoute>} />
+          <Route path="/eptofresh/checkout"                     element={<ProtectedRoute><EptoFreshCheckout /></ProtectedRoute>} />
+          <Route path="/eptofresh/orders"                       element={<ProtectedRoute><EptoFreshOrders /></ProtectedRoute>} />
+          <Route path="/eptofresh/orders/:orderId"              element={<ProtectedRoute><EptoFreshOrderDetail /></ProtectedRoute>} />
+          <Route path="/eptofresh/orders/:orderId/tracking"     element={<ProtectedRoute><EptoFreshTracking /></ProtectedRoute>} />
+          <Route path="/eptofresh/seller/register"              element={<ProtectedRoute><EptoFreshSellerRegister /></ProtectedRoute>} />
+          <Route path="/eptofresh/seller"                       element={<ProtectedRoute><EptoFreshSellerDashboard /></ProtectedRoute>} />
+          <Route path="/eptofresh/seller/products"              element={<ProtectedRoute><EptoFreshSellerProducts /></ProtectedRoute>} />
+          <Route path="/eptofresh/seller/orders"                element={<ProtectedRoute><EptoFreshSellerOrders /></ProtectedRoute>} />
+          <Route path="/eptofresh/seller/orders/:orderId"       element={<ProtectedRoute><EptoFreshSellerOrderDetail /></ProtectedRoute>} />
+          <Route path="/eptofresh/seller/payouts"               element={<ProtectedRoute><EptoFreshSellerPayouts /></ProtectedRoute>} />
+          <Route path="/admin/eptofresh"                        element={<AdminRoute><EptoFreshAdmin /></AdminRoute>} />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
@@ -231,7 +265,9 @@ export default function App() {
         <WishlistProvider>
           <CompareProvider>
             <KoyambeduCartProvider>
-              <AppRoutes />
+              <EptoFreshCartProvider>
+                <AppRoutes />
+              </EptoFreshCartProvider>
             </KoyambeduCartProvider>
           </CompareProvider>
         </WishlistProvider>
