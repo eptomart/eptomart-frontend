@@ -2,7 +2,7 @@
 // EPTOFRESH HOME — Nearby Sellers Discovery
 // GPS + Manual pincode location picker
 // ============================================
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
@@ -68,6 +68,7 @@ export default function EptoFreshHome() {
   const [pincode, setPincode]               = useState('');
   const [gpsLoading, setGpsLoading]         = useState(false);
   const [pincodeLoading, setPincodeLoading] = useState(false);
+  const gpsActiveRef = useRef(false); // prevent double-calls
 
   // On mount — fetch all sellers; show picker if no location saved
   useEffect(() => {
@@ -103,28 +104,33 @@ export default function EptoFreshHome() {
 
   // GPS — triggered ONLY by user tap (iOS requires this)
   const useGPS = () => {
+    if (gpsActiveRef.current) return; // block double-tap
     if (!navigator.geolocation) {
       toast.error('GPS not supported on this device');
       return;
     }
+    gpsActiveRef.current = true;
     setGpsLoading(true);
+
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
+      (pos) => {                        // ← must NOT be async (breaks iOS Safari)
+        gpsActiveRef.current = false;
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation(loc);
+        saveLabel('Detecting area…');   // placeholder while reverse-geocoding
         setShowPicker(false);
-        fetchSellers(loc, activeCategory);
         setGpsLoading(false);
-        // Reverse geocode to get real area name
-        const area = await reverseGeocode(loc.lat, loc.lng);
-        saveLabel(area);
+        fetchSellers(loc, activeCategory);
+        // Reverse geocode in background — .then() not await (keeps callback sync)
+        reverseGeocode(loc.lat, loc.lng).then(area => saveLabel(area));
       },
       (err) => {
+        gpsActiveRef.current = false;
         setGpsLoading(false);
         if (err.code === 1) {
-          toast.error('Location denied. Please enter your pincode instead.');
+          toast.error('Location denied. Enter your pincode instead.');
         } else {
-          toast.error('Could not get location. Try pincode.');
+          toast.error('Could not get GPS location. Try pincode.');
         }
       },
       { timeout: 10000, maximumAge: 60000, enableHighAccuracy: false }
