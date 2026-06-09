@@ -28,9 +28,9 @@ export default function EptoFreshHome() {
   const [activeCategory, setActiveCategory] = useState('');
   const [locationStatus, setLocationStatus] = useState('idle'); // idle | requesting | granted | denied
 
-  // On mount — do NOT auto-request location (iOS requires user tap to show popup)
+  // Auto-fetch sellers on mount (no location needed for basic listing)
   useEffect(() => {
-    // nothing on mount — wait for user tap
+    fetchSellers(null, '');
   }, []);
 
   const requestLocation = () => {
