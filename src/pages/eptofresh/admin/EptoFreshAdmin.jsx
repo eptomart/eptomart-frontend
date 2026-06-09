@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
-import { FiGrid, FiUsers, FiPackage, FiShoppingBag, FiDollarSign, FiTag, FiCheck, FiX, FiCamera, FiBarChart2 } from 'react-icons/fi';
+import { FiGrid, FiUsers, FiPackage, FiShoppingBag, FiDollarSign, FiTag, FiCheck, FiX, FiCamera, FiBarChart2, FiSettings } from 'react-icons/fi';
 
 export default function EptoFreshAdmin() {
   const location = useLocation();
@@ -24,6 +24,7 @@ export default function EptoFreshAdmin() {
     { key: 'orders',    label: 'Orders',    Icon: FiShoppingBag },
     { key: 'payouts',   label: 'Payouts',   Icon: FiDollarSign },
     { key: 'coupons',   label: 'Coupons',   Icon: FiTag },
+    { key: 'config',    label: 'Config',    Icon: FiSettings },
   ];
 
   return (
@@ -52,6 +53,7 @@ export default function EptoFreshAdmin() {
         {tab === 'orders'     && <OrdersTab />}
         {tab === 'payouts'    && <PayoutsTab />}
         {tab === 'coupons'    && <CouponsTab />}
+        {tab === 'config'     && <DeliveryConfigTab />}
       </div>
     </div>
   );
@@ -434,6 +436,96 @@ function CouponsTab() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ── Delivery Config ──────────────────────────────────────
+function DeliveryConfigTab() {
+  const DEFAULTS = {
+    freeDeliveryThreshold: 1049,
+    freeDeliveryDistanceLimit: 10,
+    highValueSurchargePerSlab: 50,
+    highValueSlabSizeKm: 2,
+    standardSurchargePerSlab: 50,
+    standardSlabSizeKm: 3,
+    standardBaseBeyond12km: 199,
+    maxServiceableDistance: 0,
+  };
+  const [config, setConfig] = useState(DEFAULTS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+
+  useEffect(() => {
+    api.get('/eptofresh/admin/delivery-config')
+      .then(r => { if (r.data.success) setConfig({ ...DEFAULTS, ...r.data.config }); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const { data } = await api.put('/eptofresh/admin/delivery-config', config);
+      if (data.success) toast.success('Delivery config saved!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Save failed');
+    } finally { setSaving(false); }
+  };
+
+  const FIELDS = [
+    { key: 'freeDeliveryThreshold',     label: 'Free Delivery Threshold (₹)',           hint: 'Orders ≥ this amount qualify for free delivery' },
+    { key: 'freeDeliveryDistanceLimit', label: 'Free Delivery Distance Limit (km)',      hint: 'Free delivery only within this distance' },
+    { key: 'highValueSurchargePerSlab', label: 'High Value Surcharge per Slab (₹)',      hint: 'Charge per slab for orders ≥ threshold beyond limit' },
+    { key: 'highValueSlabSizeKm',       label: 'High Value Slab Size (km)',              hint: 'km per slab for high value long-distance orders' },
+    { key: 'standardSurchargePerSlab',  label: 'Standard Surcharge per Slab (₹)',        hint: 'Extra charge per slab beyond 12km for standard orders' },
+    { key: 'standardSlabSizeKm',        label: 'Standard Slab Size (km)',               hint: 'km per slab for standard orders beyond 12km' },
+    { key: 'standardBaseBeyond12km',    label: 'Standard Base Charge beyond 12km (₹)',   hint: 'Base delivery charge when distance > 12km' },
+    { key: 'maxServiceableDistance',    label: 'Max Serviceable Distance (km)',          hint: '0 = unlimited. Orders beyond this are rejected.' },
+  ];
+
+  if (loading) return <div className="flex justify-center py-10"><div className="w-8 h-8 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" /></div>;
+
+  return (
+    <div className="space-y-4 max-w-lg">
+      <div className="rounded-xl p-3" style={{ background: 'rgba(244,148,28,0.06)', border: '1px solid rgba(244,148,28,0.15)' }}>
+        <p className="text-orange-400 text-xs font-semibold">⚙️ Global Delivery Rules</p>
+        <p className="text-gray-500 text-xs mt-0.5">Changes apply to all new delivery quotes immediately. No code changes needed.</p>
+      </div>
+
+      {FIELDS.map(f => (
+        <div key={f.key}>
+          <label className="text-white text-sm font-semibold block mb-0.5">{f.label}</label>
+          <p className="text-gray-500 text-xs mb-1">{f.hint}</p>
+          <input
+            type="number"
+            value={config[f.key] ?? ''}
+            onChange={e => setConfig(c => ({ ...c, [f.key]: parseFloat(e.target.value) || 0 }))}
+            className="w-full px-3 py-2.5 rounded-xl text-white text-sm outline-none"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }}
+          />
+        </div>
+      ))}
+
+      {/* Live preview */}
+      <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <p className="text-white text-xs font-semibold mb-3">📊 Current Policy Preview</p>
+        <div className="space-y-1 text-xs text-gray-400">
+          <p>• Free delivery: Orders ≥ ₹{config.freeDeliveryThreshold} within {config.freeDeliveryDistanceLimit} km → <span className="text-green-400">FREE</span></p>
+          <p>• Orders ≥ ₹{config.freeDeliveryThreshold} beyond {config.freeDeliveryDistanceLimit} km → ₹{config.highValueSurchargePerSlab} per {config.highValueSlabSizeKm} km</p>
+          <p>• Standard 0–6 km → ₹49</p>
+          <p>• Standard 6–10 km → ₹149</p>
+          <p>• Standard 10–12 km → ₹{config.standardBaseBeyond12km}</p>
+          <p>• Standard {'>'} 12 km → ₹{config.standardBaseBeyond12km} + ₹{config.standardSurchargePerSlab} per {config.standardSlabSizeKm} km</p>
+          {config.maxServiceableDistance > 0 && (
+            <p className="text-red-400">• Max distance: {config.maxServiceableDistance} km (orders beyond this are rejected)</p>
+          )}
+        </div>
+      </div>
+
+      <button onClick={save} disabled={saving} className="w-full py-3 rounded-2xl font-bold text-white disabled:opacity-60" style={{ background: '#f4941c' }}>
+        {saving ? 'Saving...' : 'Save Configuration'}
+      </button>
     </div>
   );
 }

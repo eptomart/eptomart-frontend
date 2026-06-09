@@ -52,7 +52,7 @@ export default function EptoFreshHome() {
     if (!loc) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ lat: loc.lat, lng: loc.lng, radius: 15 });
+      const params = new URLSearchParams({ lat: loc.lat, lng: loc.lng, radius: 30 });
       if (category) params.set('category', category);
       const { data } = await api.get(`/eptofresh/sellers?${params}`);
       if (data.success) setSellers(data.sellers || []);
@@ -188,65 +188,84 @@ export default function EptoFreshHome() {
   );
 }
 
+// Estimated delivery time based on distance
+function estimatedTime(dist) {
+  if (dist <= 3)  return '15-25 min';
+  if (dist <= 6)  return '25-35 min';
+  if (dist <= 10) return '35-50 min';
+  if (dist <= 15) return '50-70 min';
+  return '70+ min';
+}
+
 function SellerCard({ seller, onClick }) {
-  const dist = seller.distanceKm;
-  const isFar = dist > 10;
-  const isVeryFar = dist > 15;
+  const dist     = seller.distanceKm;
+  const isLong   = dist > 10;   // Long Distance badge threshold per policy
+  const distColor = dist <= 6 ? '#34d399' : dist <= 10 ? '#fbbf24' : '#f87171';
 
   return (
     <button
       onClick={onClick}
-      className="w-full text-left rounded-2xl p-4 flex items-center gap-3 transition-all active:scale-[0.98]"
-      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+      className="w-full text-left rounded-2xl overflow-hidden transition-all active:scale-[0.98]"
+      style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${isLong ? 'rgba(248,113,113,0.2)' : 'rgba(255,255,255,0.07)'}` }}
     >
-      {/* Image */}
-      <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-gray-700 flex items-center justify-center">
-        {seller.shopImage ? (
-          <img src={seller.shopImage} alt={seller.shopName} className="w-full h-full object-cover" />
-        ) : (
-          <span className="text-2xl">🥩</span>
-        )}
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 mb-0.5">
-          <span className="text-white font-semibold text-sm truncate">{seller.shopName}</span>
-          {seller.badges?.verified && <span className="text-blue-400 text-xs">✓</span>}
-          {seller.badges?.topRated && <span className="text-yellow-400 text-xs">⭐</span>}
+      <div className="p-4 flex items-center gap-3">
+        {/* Image */}
+        <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-gray-700 flex items-center justify-center">
+          {seller.shopImage ? (
+            <img src={seller.shopImage} alt={seller.shopName} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-2xl">🥩</span>
+          )}
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-gray-400">
-          <span className="flex items-center gap-1">
-            <FiStar size={11} className="text-yellow-400" />
-            {Number(seller.rating || 0).toFixed(1)} ({seller.ratingCount || 0})
-          </span>
-          <span className="flex items-center gap-1" style={{ color: isVeryFar ? '#ef4444' : isFar ? '#f59e0b' : '#34d399' }}>
-            <FiMapPin size={11} />
-            {dist.toFixed(1)} km
-          </span>
-          <span className="flex items-center gap-1">
-            <FiClock size={11} />
-            {dist < 5 ? '20-30 min' : dist < 10 ? '30-45 min' : '45-60 min'}
-          </span>
-        </div>
+        <div className="flex-1 min-w-0">
+          {/* Name + badges */}
+          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+            <span className="text-white font-semibold text-sm truncate">{seller.shopName}</span>
+            {seller.badges?.verified  && <span className="text-blue-400 text-[10px] font-bold">✓ Verified</span>}
+            {seller.badges?.topRated  && <span className="text-yellow-400 text-[10px]">⭐ Top Rated</span>}
+            {seller.badges?.fastDelivery && <span className="text-green-400 text-[10px]">⚡ Fast</span>}
+          </div>
 
-        <div className="flex gap-1 mt-1.5 flex-wrap">
-          {(seller.categories || []).slice(0, 3).map(c => (
-            <span key={c} className="px-1.5 py-0.5 rounded text-[10px] capitalize" style={{ background: 'rgba(244,148,28,0.12)', color: '#f4941c' }}>
-              {c.replace('_', ' ')}
+          {/* Stats row */}
+          <div className="flex items-center gap-3 text-xs text-gray-400">
+            <span className="flex items-center gap-1">
+              <FiStar size={11} className="text-yellow-400" />
+              {Number(seller.rating || 0).toFixed(1)} ({seller.ratingCount || 0})
             </span>
-          ))}
+            <span className="flex items-center gap-1 font-semibold" style={{ color: distColor }}>
+              <FiMapPin size={11} />
+              {dist.toFixed(1)} km
+            </span>
+            <span className="flex items-center gap-1">
+              <FiClock size={11} />
+              {estimatedTime(dist)}
+            </span>
+          </div>
+
+          {/* Category tags */}
+          <div className="flex gap-1 mt-1.5 flex-wrap">
+            {(seller.categories || []).slice(0, 3).map(c => (
+              <span key={c} className="px-1.5 py-0.5 rounded text-[10px] capitalize" style={{ background: 'rgba(244,148,28,0.12)', color: '#f4941c' }}>
+                {c.replace('_', ' ')}
+              </span>
+            ))}
+          </div>
         </div>
 
-        {isFar && !isVeryFar && (
-          <p className="text-yellow-400 text-[10px] mt-1">⚠ Freshness may be affected</p>
-        )}
-        {isVeryFar && (
-          <p className="text-red-400 text-[10px] mt-1">⛔ Very far — confirm before ordering</p>
-        )}
+        <FiChevronRight className="text-gray-600 shrink-0" />
       </div>
 
-      <FiChevronRight className="text-gray-600 shrink-0" />
+      {/* Long Distance badge banner — per policy: show for >10km */}
+      {isLong && (
+        <div className="px-4 pb-3 flex items-center gap-1.5">
+          <span className="text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1"
+            style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)' }}>
+            📍 Long Distance Delivery
+          </span>
+          <span className="text-[10px] text-gray-500">Additional charges may apply</span>
+        </div>
+      )}
     </button>
   );
 }

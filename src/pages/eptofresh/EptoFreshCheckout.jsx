@@ -23,6 +23,8 @@ export default function EptoFreshCheckout() {
   const [checkingDelivery, setCheckingDelivery] = useState(false);
   const [distanceWarning, setDistanceWarning]   = useState(null);
   const [confirmedFar, setConfirmedFar] = useState(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [consentChecked, setConsentChecked]     = useState(false);
   const [couponCode, setCouponCode]     = useState('');
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [useWallet, setUseWallet]       = useState(false);
@@ -60,8 +62,13 @@ export default function EptoFreshCheckout() {
       if (data.success) {
         setDeliveryInfo(data);
         if (data.warning) setDistanceWarning(data.warning);
-        if (data.requiresConfirmation) setConfirmedFar(false);
-        setStep(1);
+        if (data.requiresConsent) {
+          setConfirmedFar(false);
+          setConsentChecked(false);
+          setShowConsentModal(true); // Show mandatory popup before proceeding
+        } else {
+          setStep(1);
+        }
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to check delivery');
@@ -94,8 +101,8 @@ export default function EptoFreshCheckout() {
   };
 
   const placeOrder = async () => {
-    if (deliveryInfo?.requiresConfirmation && !confirmedFar) {
-      return toast.error('Please confirm you want to order from a far seller');
+    if (deliveryInfo?.requiresConsent && !confirmedFar) {
+      return toast.error('Please accept the long distance delivery conditions');
     }
     setPlacing(true);
     try {
@@ -168,6 +175,64 @@ export default function EptoFreshCheckout() {
 
   return (
     <div className="min-h-screen pb-32" style={{ background: '#0B1729' }}>
+
+      {/* ── Mandatory Long Distance Consent Modal ── */}
+      {showConsentModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.75)' }}>
+          <div className="w-full max-w-lg rounded-t-3xl p-6 pb-10" style={{ background: '#0f2035', border: '1px solid rgba(239,68,68,0.3)' }}>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-2xl">⚠️</span>
+              <h2 className="text-white font-bold text-base">LONG DISTANCE DELIVERY NOTICE</h2>
+            </div>
+            <p className="text-gray-300 text-sm mb-4">
+              This seller is located more than 10 KM away from your delivery location.
+              Additional delivery charges have been applied based on distance.
+            </p>
+            <p className="text-gray-400 text-xs mb-1 font-semibold">Due to the extended travel distance:</p>
+            <ul className="text-gray-400 text-xs space-y-1 mb-4 list-disc list-inside">
+              <li>Delivery time may be longer than usual.</li>
+              <li>Product freshness may be affected depending on weather and travel conditions.</li>
+              <li>Long-distance delivery charges are <span className="text-red-400 font-semibold">non-refundable</span> once the order is accepted and dispatched.</li>
+            </ul>
+            <div className="rounded-xl p-3 mb-4 flex justify-between items-center" style={{ background: 'rgba(244,148,28,0.08)', border: '1px solid rgba(244,148,28,0.2)' }}>
+              <span className="text-gray-400 text-sm">Distance</span>
+              <span className="text-white font-semibold">{deliveryInfo?.distanceKm} km</span>
+            </div>
+            <div className="rounded-xl p-3 mb-5 flex justify-between items-center" style={{ background: 'rgba(244,148,28,0.08)', border: '1px solid rgba(244,148,28,0.2)' }}>
+              <span className="text-gray-400 text-sm">Delivery Charge</span>
+              <span className="text-orange-400 font-bold">₹{deliveryInfo?.charge}</span>
+            </div>
+            <label className="flex items-start gap-3 cursor-pointer mb-5">
+              <input
+                type="checkbox"
+                checked={consentChecked}
+                onChange={e => setConsentChecked(e.target.checked)}
+                className="w-5 h-5 accent-orange-400 mt-0.5 shrink-0"
+              />
+              <span className="text-white text-sm">
+                I understand and accept the additional delivery charges and delivery conditions.
+              </span>
+            </label>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowConsentModal(false); setDeliveryInfo(null); }}
+                className="flex-1 py-3 rounded-2xl font-semibold text-sm"
+                style={{ background: 'rgba(255,255,255,0.07)', color: '#fff' }}
+              >
+                Go Back
+              </button>
+              <button
+                disabled={!consentChecked}
+                onClick={() => { setConfirmedFar(true); setShowConsentModal(false); setStep(1); }}
+                className="flex-1 py-3 rounded-2xl font-bold text-white text-sm disabled:opacity-40"
+                style={{ background: '#f4941c' }}
+              >
+                Accept & Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-12 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <button onClick={() => step > 0 ? setStep(step - 1) : navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
@@ -249,15 +314,15 @@ export default function EptoFreshCheckout() {
             </div>
 
             {distanceWarning && (
-              <div className="rounded-xl p-3 flex items-start gap-2" style={{ background: deliveryInfo.requiresConfirmation ? 'rgba(239,68,68,0.08)' : 'rgba(251,191,36,0.08)' }}>
-                <FiAlertTriangle className={deliveryInfo.requiresConfirmation ? 'text-red-400' : 'text-yellow-400'} size={14} />
+              <div className="rounded-xl p-3 flex items-start gap-2" style={{ background: deliveryInfo.requiresConsent ? 'rgba(239,68,68,0.08)' : 'rgba(251,191,36,0.08)', border: `1px solid ${deliveryInfo.requiresConsent ? 'rgba(239,68,68,0.2)' : 'rgba(251,191,36,0.2)'}` }}>
+                <FiAlertTriangle className={deliveryInfo.requiresConsent ? 'text-red-400' : 'text-yellow-400'} size={14} />
                 <div className="flex-1">
-                  <p className="text-sm" style={{ color: deliveryInfo.requiresConfirmation ? '#f87171' : '#fbbf24' }}>{distanceWarning}</p>
-                  {deliveryInfo.requiresConfirmation && (
-                    <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                      <input type="checkbox" checked={confirmedFar} onChange={e => setConfirmedFar(e.target.checked)} className="w-4 h-4" />
-                      <span className="text-gray-300 text-xs">I understand and want to proceed</span>
-                    </label>
+                  <p className="text-sm font-semibold mb-0.5" style={{ color: deliveryInfo.requiresConsent ? '#f87171' : '#fbbf24' }}>
+                    {deliveryInfo.requiresConsent ? 'Long Distance Delivery' : 'Distance Notice'}
+                  </p>
+                  <p className="text-xs text-gray-400">{distanceWarning}</p>
+                  {deliveryInfo.requiresConsent && confirmedFar && (
+                    <p className="text-green-400 text-xs mt-1 font-semibold">✓ Conditions accepted</p>
                   )}
                 </div>
               </div>
