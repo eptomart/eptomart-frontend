@@ -8,14 +8,27 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiSearch, FiMapPin, FiArrowLeft, FiX } from 'react-icons/fi';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
+import toast from 'react-hot-toast';
 
 async function searchPlaces(query) {
-  if (!query || query.length < 3) return [];
+  if (!query || query.length < 2) return null; // null = not searched yet
   try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&countrycodes=in&format=json&limit=6&addressdetails=1`;
-    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-    return await res.json();
-  } catch { return []; }
+    const params = new URLSearchParams({
+      q: `${query}, India`,
+      format: 'json',
+      limit: '6',
+      addressdetails: '1',
+      'accept-language': 'en',
+      email: 'eptosicare@gmail.com',  // required by Nominatim ToS
+    });
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error('Search error:', e);
+    return [];
+  }
 }
 
 async function reverseGeocode(lat, lng) {
@@ -49,10 +62,10 @@ export function EptoFreshLocationPicker() {
   const [shortAddr, setShortAddr]     = useState('');
   const [fullAddr, setFullAddr]       = useState('');
   const [mapMoving, setMapMoving]     = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [suggestions, setSuggestions] = useState([]);
-  const [searchBusy, setSearchBusy]   = useState(false);
-  const [confirming, setConfirming]   = useState(false);
+  const [searchQuery, setSearchQuery]   = useState('');
+  const [suggestions, setSuggestions]   = useState(null); // null=idle, []=no results, [...]=results
+  const [searchBusy, setSearchBusy]     = useState(false);
+  const [confirming, setConfirming]     = useState(false);
 
   // ── Load Leaflet from CDN then init map ────
   useEffect(() => {
@@ -123,13 +136,18 @@ export function EptoFreshLocationPicker() {
 
   // ── Search debounce ────────────────────────
   useEffect(() => {
-    if (!searchQuery || searchQuery.length < 3) { setSuggestions([]); return; }
-    const t = setTimeout(async () => {
-      setSearchBusy(true);
-      const res = await searchPlaces(searchQuery);
-      setSuggestions(res);
+    if (!searchQuery || searchQuery.length < 2) {
+      setSuggestions(null);
       setSearchBusy(false);
-    }, 500);
+      return;
+    }
+    setSearchBusy(true);
+    const t = setTimeout(async () => {
+      const res = await searchPlaces(searchQuery);
+      setSuggestions(res);  // [] = no results, [...] = found
+      setSearchBusy(false);
+      if (res && res.length === 0) toast('No results found. Try a different name.', { icon: '🔍' });
+    }, 600);
     return () => clearTimeout(t);
   }, [searchQuery]);
 
@@ -196,7 +214,7 @@ export function EptoFreshLocationPicker() {
               }}
             />
             {searchQuery ? (
-              <button onClick={() => { setSearchQuery(''); setSuggestions([]); }}
+              <button onClick={() => { setSearchQuery(''); setSuggestions(null); setSearchBusy(false); }}
                 className="absolute right-3 top-1/2 -translate-y-1/2">
                 <FiX className="text-gray-400" size={14} />
               </button>
@@ -207,12 +225,12 @@ export function EptoFreshLocationPicker() {
         </div>
 
         {/* Search suggestions */}
-        {suggestions.length > 0 && (
+        {Array.isArray(suggestions) && suggestions.length > 0 && (
           <div className="rounded-2xl overflow-hidden mb-1"
             style={{ background: '#0f2035', border: '1px solid rgba(255,255,255,0.1)' }}>
             {suggestions.map((r, i) => (
               <button key={i} onClick={() => pickSuggestion(r)}
-                className="w-full flex items-start gap-3 px-4 py-3 text-left"
+                className="w-full flex items-start gap-3 px-4 py-3 text-left active:opacity-70"
                 style={{ borderBottom: i < suggestions.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
                 <FiMapPin className="text-orange-400 mt-0.5 shrink-0" size={14} />
                 <div className="min-w-0">
