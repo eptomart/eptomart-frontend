@@ -60,6 +60,7 @@ export function EptoFreshLocationPicker() {
   const [searchBusy, setSearchBusy]       = useState(false);
   const [gpsLoading, setGpsLoading]       = useState(false);
   const [confirming, setConfirming]       = useState(false);
+  const [gpsBlocked, setGpsBlocked]       = useState(false); // permission denied
 
   // ── Load Leaflet from CDN then init map ────
   useEffect(() => {
@@ -169,13 +170,23 @@ export function EptoFreshLocationPicker() {
   };
 
   // ── GPS ────────────────────────────────────
-  const useGPS = () => {
+  const useGPS = async () => {
     if (gpsActiveRef.current) return;
     if (!navigator.geolocation) { toast.error('GPS not supported on this device'); return; }
+
+    // Check permission state first — avoids silent failure in iOS PWA
+    if (navigator.permissions) {
+      try {
+        const perm = await navigator.permissions.query({ name: 'geolocation' });
+        if (perm.state === 'denied') { setGpsBlocked(true); return; }
+      } catch {}
+    }
+
     gpsActiveRef.current = true;
     setGpsLoading(true);
+
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      (pos) => {                    // keep sync — no async here
         gpsActiveRef.current = false;
         setGpsLoading(false);
         const lat = pos.coords.latitude;
@@ -187,10 +198,11 @@ export function EptoFreshLocationPicker() {
       (err) => {
         gpsActiveRef.current = false;
         setGpsLoading(false);
-        const msg = err.code === 1
-          ? 'Location denied. Search your area instead.'
-          : 'GPS unavailable. Search your area.';
-        toast.error(msg);
+        if (err.code === 1) {
+          setGpsBlocked(true);      // show Settings instructions instead of toast
+        } else {
+          toast.error('GPS timed out. Search your area or pan the map.');
+        }
       },
       { timeout: 10000, maximumAge: 60000, enableHighAccuracy: false }
     );
@@ -323,6 +335,37 @@ export function EptoFreshLocationPicker() {
           />
         </div>
       </div>
+
+      {/* ── GPS blocked sheet ── */}
+      {gpsBlocked && (
+        <>
+          <div className="absolute inset-0 z-20" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setGpsBlocked(false)} />
+          <div className="absolute left-0 right-0 bottom-0 z-30 rounded-t-3xl px-5 pt-4 pb-6"
+            style={{ background: '#0f2035', border: '1px solid rgba(255,255,255,0.1)', paddingBottom: 'max(24px,env(safe-area-inset-bottom))' }}>
+            <div className="flex justify-center mb-4"><div className="w-10 h-1 rounded-full bg-gray-600" /></div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'rgba(244,148,28,0.15)' }}>
+                <span className="text-2xl">📍</span>
+              </div>
+              <div>
+                <p className="text-white font-bold text-sm">Location Access Blocked</p>
+                <p className="text-gray-400 text-xs mt-0.5">Enable it in your device Settings to use GPS</p>
+              </div>
+            </div>
+            <div className="rounded-2xl p-4 mb-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <p className="text-gray-300 text-xs leading-5">
+                <span className="text-white font-semibold">iPhone:</span> Settings → Privacy & Security → Location Services → Safari / your browser → select <span className="text-orange-400">While Using</span>
+              </p>
+              <p className="text-gray-500 text-xs mt-2">After enabling, come back and tap the GPS button again.</p>
+            </div>
+            <button onClick={() => setGpsBlocked(false)}
+              className="w-full py-3.5 rounded-2xl font-semibold text-white text-sm"
+              style={{ background: '#f4941c' }}>
+              OK — I'll search my area instead
+            </button>
+          </div>
+        </>
+      )}
 
       {/* ── GPS button ── */}
       <div className="absolute z-10" style={{ bottom: 220, right: 16 }}>
