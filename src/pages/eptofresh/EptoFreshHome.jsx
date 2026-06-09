@@ -160,61 +160,63 @@ export default function EptoFreshHome() {
   return (
     <div className="min-h-screen pb-24" style={{ background: '#0B1729' }}>
 
-      {/* ── Location Picker Modal ── */}
+      {/* ── Location Picker — fixed bottom sheet, no vh units ── */}
       {showPicker && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center"
-          style={{ background: 'rgba(0,0,0,0.75)' }}
-          onTouchStart={e => e.stopPropagation()}
-        >
+        <>
+          {/* Backdrop */}
           <div
-            className="w-full max-w-lg rounded-t-3xl overflow-y-auto"
+            className="fixed inset-0 z-40"
+            style={{ background: 'rgba(0,0,0,0.72)' }}
+            onClick={() => setShowPicker(false)}
+          />
+          {/* Sheet — anchored to bottom, height auto, safe-area aware */}
+          <div
+            className="fixed left-0 right-0 bottom-0 z-50 rounded-t-3xl"
             style={{
               background: '#0f2035',
-              border: '1px solid rgba(255,255,255,0.08)',
-              maxHeight: '80vh',
-              paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderBottom: 'none',
+              paddingBottom: 'env(safe-area-inset-bottom, 16px)',
             }}
           >
-            <div className="sticky top-0 pt-4 pb-2 flex justify-center" style={{ background: '#0f2035' }}>
-              <div className="w-10 h-1 bg-gray-600 rounded-full" />
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-gray-600" />
             </div>
 
-            <div className="px-6 pb-4">
-              <h2 className="text-white font-bold text-lg mb-1">Set Your Location</h2>
-              <p className="text-gray-400 text-sm mb-5">We'll show nearest sellers and delivery charges</p>
+            <div className="px-5 pt-2 pb-5">
+              <p className="text-white font-bold text-base mb-0.5">Set Your Location</p>
+              <p className="text-gray-500 text-xs mb-4">We'll show nearby sellers and delivery charges</p>
 
               {/* GPS button */}
               <button
                 onClick={useGPS}
                 disabled={gpsLoading}
-                className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl mb-3 disabled:opacity-60"
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl mb-3 disabled:opacity-60"
                 style={{ background: 'rgba(244,148,28,0.12)', border: '1px solid rgba(244,148,28,0.3)' }}
               >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#f4941c' }}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#f4941c' }}>
                   {gpsLoading
-                    ? <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    : <FiNavigation className="text-white" size={18} />}
+                    ? <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                    : <FiNavigation className="text-white" size={16} />}
                 </div>
                 <div className="text-left flex-1">
-                  <p className="text-white font-semibold text-sm">
+                  <p className="text-white font-semibold text-sm leading-tight">
                     {gpsLoading ? 'Getting your location…' : 'Use Current Location'}
                   </p>
-                  <p className="text-gray-400 text-xs">Tap to allow GPS access</p>
+                  <p className="text-gray-500 text-xs">Tap to allow GPS access</p>
                 </div>
               </button>
 
               {/* Divider */}
-              <div className="flex items-center gap-3 my-4">
+              <div className="flex items-center gap-3 mb-3">
                 <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
-                <span className="text-gray-500 text-xs font-medium">OR</span>
+                <span className="text-gray-600 text-xs">OR</span>
                 <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
               </div>
 
-              <p className="text-gray-400 text-xs mb-2">Enter your area pincode</p>
-
-              {/* Pincode input — type="tel" works best on iOS */}
-              <div className="flex gap-2 mb-4">
+              {/* Pincode input */}
+              <div className="flex gap-2 mb-3">
                 <input
                   type="tel"
                   inputMode="numeric"
@@ -223,38 +225,36 @@ export default function EptoFreshHome() {
                   value={pincode}
                   onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   onKeyDown={e => e.key === 'Enter' && usePincode()}
-                  placeholder="e.g. 600001"
-                  className="flex-1 px-4 py-3.5 rounded-2xl text-white outline-none"
+                  placeholder="Enter 6-digit pincode"
+                  className="flex-1 px-4 py-3 rounded-2xl text-white outline-none placeholder-gray-600"
                   style={{
-                    background: 'rgba(255,255,255,0.07)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    fontSize: '16px',   /* prevents iOS zoom */
-                    letterSpacing: '2px',
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    fontSize: '16px',
                   }}
                 />
                 <button
                   onClick={usePincode}
                   disabled={pincodeLoading || pincode.length !== 6}
-                  className="px-5 py-3.5 rounded-2xl font-bold text-white disabled:opacity-40 flex items-center gap-1.5"
-                  style={{ background: '#f4941c', minWidth: 80 }}
+                  className="px-5 rounded-2xl font-semibold text-white text-sm disabled:opacity-40"
+                  style={{ background: '#f4941c' }}
                 >
                   {pincodeLoading
                     ? <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    : <><FiSearch size={15} /> <span className="text-sm">Find</span></>}
+                    : 'Find'}
                 </button>
               </div>
 
               {/* Skip */}
               <button
                 onClick={() => setShowPicker(false)}
-                className="w-full py-3 text-gray-500 text-sm rounded-2xl"
-                style={{ border: '1px solid rgba(255,255,255,0.06)' }}
+                className="w-full py-2.5 text-gray-500 text-sm"
               >
                 Skip — Browse all sellers
               </button>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Header */}
