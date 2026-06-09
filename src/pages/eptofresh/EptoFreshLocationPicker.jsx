@@ -9,26 +9,27 @@ import { useNavigate } from 'react-router-dom';
 import { FiSearch, FiMapPin, FiArrowLeft, FiX } from 'react-icons/fi';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
 import toast from 'react-hot-toast';
+import api from '../../utils/api';
 
+// Search via backend proxy → Google Places Autocomplete
 async function searchPlaces(query) {
-  if (!query || query.length < 2) return null; // null = not searched yet
+  if (!query || query.length < 2) return null;
   try {
-    const params = new URLSearchParams({
-      q: `${query}, India`,
-      format: 'json',
-      limit: '6',
-      addressdetails: '1',
-      'accept-language': 'en',
-      email: 'eptosicare@gmail.com',  // required by Nominatim ToS
-    });
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
+    const { data } = await api.get(`/eptofresh/places/autocomplete?q=${encodeURIComponent(query)}`);
+    return Array.isArray(data.predictions) ? data.predictions : [];
   } catch (e) {
     console.error('Search error:', e);
     return [];
   }
+}
+
+// Get lat/lng for a place_id via backend proxy → Google Place Details
+async function getPlaceLatLng(place_id) {
+  try {
+    const { data } = await api.get(`/eptofresh/places/details?place_id=${place_id}`);
+    const loc = data.result?.geometry?.location;
+    return loc ? { lat: loc.lat, lng: loc.lng, address: data.result.formatted_address, name: data.result.name } : null;
+  } catch { return null; }
 }
 
 async function reverseGeocode(lat, lng) {
@@ -151,20 +152,24 @@ export function EptoFreshLocationPicker() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  const pickSuggestion = (r) => {
-    const lat = parseFloat(r.lat);
-    const lng = parseFloat(r.lon);
-    mapRef.current?.setView([lat, lng], 16);
-    setCenter({ lat, lng });
-    const a = r.address || {};
-    const short = [
-      a.suburb || a.neighbourhood || a.village || a.town || a.city_district,
-      a.city || a.county,
-    ].filter(Boolean).join(', ') || r.display_name.split(',')[0];
-    setShortAddr(short);
-    setFullAddr(r.display_name);
+  const pickSuggestion = async (r) => {
     setSearchQuery('');
-    setSuggestions([]);
+    setSuggestions(null);
+    setSearchBusy(true);
+
+    const detail = await getPlaceLatLng(r.place_id);
+    setSearchBusy(false);
+
+    if (!detail) { toast.error('Could not get location details. Try again.'); return; }
+
+    mapRef.current?.setView([detail.lat, detail.lng], 16);
+    setCenter({ lat: detail.lat, lng: detail.lng });
+
+    // Short name = first part of description, full = formatted address
+    const short = r.structured_formatting?.main_text || r.description?.split(',')[0] || detail.name;
+    const secondary = r.structured_formatting?.secondary_text || '';
+    setShortAddr(short);
+    setFullAddr([short, secondary].filter(Boolean).join(', ') || detail.address);
   };
 
   const confirm = () => {
@@ -229,16 +234,16 @@ export function EptoFreshLocationPicker() {
           <div className="rounded-2xl overflow-hidden mb-1"
             style={{ background: '#0f2035', border: '1px solid rgba(255,255,255,0.1)' }}>
             {suggestions.map((r, i) => (
-              <button key={i} onClick={() => pickSuggestion(r)}
+              <button key={r.place_id || i} onClick={() => pickSuggestion(r)}
                 className="w-full flex items-start gap-3 px-4 py-3 text-left active:opacity-70"
                 style={{ borderBottom: i < suggestions.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
                 <FiMapPin className="text-orange-400 mt-0.5 shrink-0" size={14} />
                 <div className="min-w-0">
                   <p className="text-white text-sm truncate font-medium">
-                    {r.display_name.split(',')[0]}
+                    {r.structured_formatting?.main_text || r.description?.split(',')[0]}
                   </p>
                   <p className="text-gray-500 text-xs truncate">
-                    {r.display_name.split(',').slice(1, 3).join(',')}
+                    {r.structured_formatting?.secondary_text || r.description?.split(',').slice(1).join(',')}
                   </p>
                 </div>
               </button>
