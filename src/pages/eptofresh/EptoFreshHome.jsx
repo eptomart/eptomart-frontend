@@ -26,38 +26,55 @@ export default function EptoFreshHome() {
   const [loading, setLoading]         = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
   const [activeCategory, setActiveCategory] = useState('');
-  const [locationStatus, setLocationStatus] = useState('requesting'); // requesting | granted | denied
+  const [locationStatus, setLocationStatus] = useState('idle'); // idle | requesting | granted | denied
 
+  // On mount — do NOT auto-request location (iOS requires user tap to show popup)
   useEffect(() => {
+    // nothing on mount — wait for user tap
+  }, []);
+
+  const requestLocation = () => {
     if (!navigator.geolocation) {
       setLocationStatus('denied');
       setLocationDenied(true);
+      fetchSellers(null, '');
       return;
     }
+    setLocationStatus('requesting');
+    const fallbackTimer = setTimeout(() => {
+      setLocationStatus('denied');
+      setLocationDenied(true);
+      fetchSellers(null, '');
+    }, 10000);
+
     navigator.geolocation.getCurrentPosition(
       pos => {
+        clearTimeout(fallbackTimer);
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation(loc);
         setLocationStatus('granted');
         fetchSellers(loc, '');
       },
       () => {
+        clearTimeout(fallbackTimer);
         setLocationStatus('denied');
         setLocationDenied(true);
-      }
+        fetchSellers(null, '');
+      },
+      { timeout: 10000, maximumAge: 60000, enableHighAccuracy: false }
     );
-  }, []);
+  };
 
   const fetchSellers = async (loc, category) => {
-    if (!loc) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ lat: loc.lat, lng: loc.lng, radius: 30 });
+      const params = new URLSearchParams({ radius: 30 });
+      if (loc) { params.set('lat', loc.lat); params.set('lng', loc.lng); }
       if (category) params.set('category', category);
       const { data } = await api.get(`/eptofresh/sellers?${params}`);
       if (data.success) setSellers(data.sellers || []);
     } catch {
-      toast.error('Failed to load nearby sellers');
+      toast.error('Failed to load sellers');
     } finally {
       setLoading(false);
     }
@@ -69,30 +86,45 @@ export default function EptoFreshHome() {
     fetchSellers(userLocation, newCat);
   };
 
-  const requestLocation = () => {
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserLocation(loc);
-        setLocationStatus('granted');
-        setLocationDenied(false);
-        fetchSellers(loc, activeCategory);
-      },
-      () => toast.error('Location permission denied. Please enable in browser settings.')
-    );
-  };
-
-  if (locationStatus === 'requesting') {
+  if (locationStatus === 'idle' || locationStatus === 'requesting') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: 'linear-gradient(135deg, #0B1729 0%, #1a2a4a 100%)' }}>
-        <div className="text-center text-white px-6">
-          <div className="text-6xl mb-4">🥩</div>
+      <div className="min-h-screen flex flex-col items-center justify-center px-6" style={{ background: 'linear-gradient(135deg, #0B1729 0%, #1a2a4a 100%)' }}>
+        <div className="text-center text-white w-full max-w-xs">
+          <div className="text-7xl mb-5">🥩</div>
           <h1 className="text-2xl font-bold mb-2">EptoFresh Proteins</h1>
-          <p className="text-gray-400 mb-6">Fresh meat, delivered from nearby shops</p>
-          <div className="flex items-center gap-2 text-orange-400 justify-center">
-            <FiMapPin className="animate-pulse" />
-            <span className="text-sm">Requesting your location...</span>
-          </div>
+          <p className="text-gray-400 text-sm mb-8">Fresh chicken, mutton, fish & more — delivered from nearby shops</p>
+
+          {locationStatus === 'requesting' ? (
+            <div className="flex items-center justify-center gap-2 text-orange-400 mb-6">
+              <FiMapPin className="animate-pulse" />
+              <span className="text-sm">Getting your location...</span>
+            </div>
+          ) : (
+            <>
+              {/* Tap button — this triggers iOS popup */}
+              <button
+                onClick={requestLocation}
+                className="w-full py-4 rounded-2xl font-bold text-white text-base mb-4 flex items-center justify-center gap-2"
+                style={{ background: 'linear-gradient(135deg, #f4941c, #e07b10)', boxShadow: '0 8px 24px rgba(244,148,28,0.4)' }}
+              >
+                <FiMapPin size={18} /> Allow Location Access
+              </button>
+              <p className="text-gray-500 text-xs mb-6">
+                We use your location to show the nearest sellers with delivery estimates
+              </p>
+            </>
+          )}
+
+          <button
+            onClick={() => {
+              setLocationStatus('denied');
+              setLocationDenied(true);
+              fetchSellers(null, '');
+            }}
+            className="text-gray-500 text-sm underline"
+          >
+            Skip — Browse all sellers
+          </button>
         </div>
       </div>
     );
@@ -127,7 +159,7 @@ export default function EptoFreshHome() {
             <div className="flex-1">
               <p className="text-red-300 text-sm">Location required to show nearby sellers</p>
             </div>
-            <button onClick={requestLocation} className="text-orange-400 text-sm font-semibold shrink-0">
+            <button onClick={() => { setLocationStatus('idle'); setSellers([]); }} className="text-orange-400 text-sm font-semibold shrink-0">
               Enable
             </button>
           </div>
