@@ -95,6 +95,7 @@ const EptoFreshSellerOrders    = lazy(() => import('./pages/eptofresh/seller/Ept
 const EptoFreshSellerOrderDetail = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerOrders').then(m => ({ default: m.EptoFreshSellerOrderDetail })));
 const EptoFreshSellerPayouts   = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerPayouts'));
 const EptoFreshAdmin           = lazy(() => import('./pages/eptofresh/admin/EptoFreshAdmin'));
+const EptoFreshLocationPicker  = lazy(() => import('./pages/eptofresh/EptoFreshLocationPicker').then(m => ({ default: m.EptoFreshLocationPicker })));
 
 // ── Seller pages ─────────────────────────────
 const SellerLayout  = lazy(() => import('./pages/seller/SellerLayout'));
@@ -134,7 +135,8 @@ function GlobalBottomNav() {
                  pathname.startsWith('/seller') ||
                  pathname.startsWith('/koyambedu/seller') ||
                  pathname.startsWith('/koyambedu/seller-admin') ||
-                 pathname.startsWith('/eptofresh/seller');
+                 pathname.startsWith('/eptofresh/seller') ||
+                 pathname === '/eptofresh/location';
   if (hidden) return null;
   return <BottomNav />;
 }
@@ -232,6 +234,7 @@ function AppRoutes() {
 
           {/* ── EptoFresh Proteins ──────────────── */}
           <Route path="/eptofresh"                              element={<EptoFreshHome />} />
+          <Route path="/eptofresh/location"                     element={<EptoFreshLocationPicker />} />
           <Route path="/eptofresh/shop/:sellerId"               element={<EptoFreshShop />} />
           <Route path="/eptofresh/cart"                         element={<ProtectedRoute><EptoFreshCart /></ProtectedRoute>} />
           <Route path="/eptofresh/checkout"                     element={<ProtectedRoute><EptoFreshCheckout /></ProtectedRoute>} />
