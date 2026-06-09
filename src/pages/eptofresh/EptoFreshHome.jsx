@@ -231,8 +231,9 @@ function estimatedTime(dist) {
 
 function SellerCard({ seller, onClick }) {
   const dist     = seller.distanceKm;
-  const isLong   = dist > 10;   // Long Distance badge threshold per policy
-  const distColor = dist <= 6 ? '#34d399' : dist <= 10 ? '#fbbf24' : '#f87171';
+  const hasdist  = dist !== null && dist !== undefined;
+  const isLong   = hasdist && dist > 10;
+  const distColor = !hasdist ? '#94a3b8' : dist <= 6 ? '#34d399' : dist <= 10 ? '#fbbf24' : '#f87171';
 
   return (
     <button
@@ -265,14 +266,22 @@ function SellerCard({ seller, onClick }) {
               <FiStar size={11} className="text-yellow-400" />
               {Number(seller.rating || 0).toFixed(1)} ({seller.ratingCount || 0})
             </span>
-            <span className="flex items-center gap-1 font-semibold" style={{ color: distColor }}>
-              <FiMapPin size={11} />
-              {dist.toFixed(1)} km
-            </span>
-            <span className="flex items-center gap-1">
-              <FiClock size={11} />
-              {estimatedTime(dist)}
-            </span>
+            {hasdist ? (
+              <>
+                <span className="flex items-center gap-1 font-semibold" style={{ color: distColor }}>
+                  <FiMapPin size={11} />
+                  {dist.toFixed(1)} km
+                </span>
+                <span className="flex items-center gap-1">
+                  <FiClock size={11} />
+                  {estimatedTime(dist)}
+                </span>
+              </>
+            ) : (
+              <span className="flex items-center gap-1 text-gray-500">
+                <FiMapPin size={11} /> Enable location for distance
+              </span>
+            )}
           </div>
 
           {/* Category tags */}
