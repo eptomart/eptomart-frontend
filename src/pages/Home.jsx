@@ -213,31 +213,50 @@ function FlashDeals({ products }) {
 // ── Sub-app banners ────────────────────────────────────────────
 function SubAppBanners() {
   return (
-    <div className="px-4 grid grid-cols-2 gap-3">
-      <Link to="/koyambedu"
-        className="relative flex flex-col justify-between rounded-2xl p-4 overflow-hidden min-h-[115px] active:scale-95 transition-transform shadow-sm"
-        style={{ background: 'linear-gradient(135deg,#14532d 0%,#16a34a 60%,#4ade80 100%)' }}>
-        <div className="absolute -bottom-3 -right-3 text-5xl opacity-20 select-none pointer-events-none">🥬</div>
+    <div className="px-4 space-y-3">
+      {/* Top row: Koyambedu + Uzhavar */}
+      <div className="grid grid-cols-2 gap-3">
+        <Link to="/koyambedu"
+          className="relative flex flex-col justify-between rounded-2xl p-4 overflow-hidden min-h-[115px] active:scale-95 transition-transform shadow-sm"
+          style={{ background: 'linear-gradient(135deg,#14532d 0%,#16a34a 60%,#4ade80 100%)' }}>
+          <div className="absolute -bottom-3 -right-3 text-5xl opacity-20 select-none pointer-events-none">🥬</div>
+          <div>
+            <span className="bg-yellow-400 text-green-900 text-[9px] font-black px-1.5 py-0.5 rounded-full">ORDER BY 10 AM</span>
+            <p className="text-white font-black text-sm mt-1.5 leading-tight">Koyambedu<br/>Daily</p>
+            <p className="text-green-200 text-[10px] mt-0.5">Veggies · Fruits · Flowers</p>
+          </div>
+          <span className="inline-flex items-center gap-1 text-white text-[11px] font-bold mt-2">
+            Order Now <FiArrowRight size={10} />
+          </span>
+        </Link>
+        <Link to="/uzhavar"
+          className="relative flex flex-col justify-between rounded-2xl p-4 overflow-hidden min-h-[115px] active:scale-95 transition-transform shadow-sm"
+          style={{ background: 'linear-gradient(135deg,#134e4a 0%,#0f766e 60%,#2dd4bf 100%)' }}>
+          <div className="absolute -bottom-3 -right-3 text-5xl opacity-20 select-none pointer-events-none">🌾</div>
+          <div>
+            <span className="bg-lime-400 text-teal-900 text-[9px] font-black px-1.5 py-0.5 rounded-full">FARM DIRECT</span>
+            <p className="text-white font-black text-sm mt-1.5 leading-tight">Uzhavar<br/>Fresh</p>
+            <p className="text-teal-200 text-[10px] mt-0.5">உழவர் சந்தை · No middlemen</p>
+          </div>
+          <span className="inline-flex items-center gap-1 text-white text-[11px] font-bold mt-2">
+            Explore <FiArrowRight size={10} />
+          </span>
+        </Link>
+      </div>
+
+      {/* Full-width EptoFresh banner */}
+      <Link to="/eptofresh"
+        className="relative flex items-center justify-between rounded-2xl p-4 overflow-hidden active:scale-95 transition-transform shadow-sm"
+        style={{ background: 'linear-gradient(135deg,#1a0a00 0%,#7c2d12 40%,#c2410c 75%,#f97316 100%)', minHeight: 90 }}>
+        <div className="absolute -bottom-4 -right-4 text-6xl opacity-15 select-none pointer-events-none">🥩</div>
+        <div className="absolute -top-4 right-24 text-4xl opacity-10 select-none pointer-events-none">🍗</div>
         <div>
-          <span className="bg-yellow-400 text-green-900 text-[9px] font-black px-1.5 py-0.5 rounded-full">ORDER BY 10 AM</span>
-          <p className="text-white font-black text-sm mt-1.5 leading-tight">Koyambedu<br/>Daily</p>
-          <p className="text-green-200 text-[10px] mt-0.5">Veggies · Fruits · Flowers</p>
+          <span className="bg-orange-400 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">HYPERLOCAL · GPS-BASED</span>
+          <p className="text-white font-black text-base mt-1.5 leading-tight">EptoFresh Proteins</p>
+          <p className="text-orange-200 text-[10px] mt-0.5">Chicken · Mutton · Fish · Seafood · Ready to Cook</p>
         </div>
-        <span className="inline-flex items-center gap-1 text-white text-[11px] font-bold mt-2">
+        <span className="inline-flex items-center gap-1 bg-white/20 border border-white/30 text-white text-[11px] font-bold px-3 py-2 rounded-xl shrink-0 ml-3">
           Order Now <FiArrowRight size={10} />
-        </span>
-      </Link>
-      <Link to="/uzhavar"
-        className="relative flex flex-col justify-between rounded-2xl p-4 overflow-hidden min-h-[115px] active:scale-95 transition-transform shadow-sm"
-        style={{ background: 'linear-gradient(135deg,#134e4a 0%,#0f766e 60%,#2dd4bf 100%)' }}>
-        <div className="absolute -bottom-3 -right-3 text-5xl opacity-20 select-none pointer-events-none">🌾</div>
-        <div>
-          <span className="bg-lime-400 text-teal-900 text-[9px] font-black px-1.5 py-0.5 rounded-full">FARM DIRECT</span>
-          <p className="text-white font-black text-sm mt-1.5 leading-tight">Uzhavar<br/>Fresh</p>
-          <p className="text-teal-200 text-[10px] mt-0.5">உழவர் சந்தை · No middlemen</p>
-        </div>
-        <span className="inline-flex items-center gap-1 text-white text-[11px] font-bold mt-2">
-          Explore <FiArrowRight size={10} />
         </span>
       </Link>
     </div>
@@ -345,6 +364,14 @@ const HERO_SLIDES = [
     cta: 'Explore', to: '/uzhavar',
     cats: ['Farm Fresh', 'Homemade & Organic', 'Farm Produce'],
   },
+  {
+    gradient: 'linear-gradient(135deg, #1a0a00 0%, #7c2d12 40%, #c2410c 75%, #f97316 100%)',
+    tag: '🥩 Hyperlocal · GPS-Based · Fresh Daily',
+    title: 'EptoFresh\nProteins',
+    sub: 'Chicken · Mutton · Fish · Seafood · Ready to Cook',
+    cta: 'Order Now', to: '/eptofresh',
+    cats: ['Chicken', 'Mutton', 'Fish', 'Seafood', 'Ready to Cook'],
+  },
 ];
 
 function DesktopHero() {
@@ -359,8 +386,9 @@ function DesktopHero() {
 
   const s = HERO_SLIDES[active];
   const catItems = EPTOMART_CATS.concat([
-    { name: 'Koyambedu Daily', slug: null, emoji: '🥬', color: '#16a34a', from: 'Fresh' },
-    { name: 'Uzhavar Fresh',   slug: null, emoji: '🌾', color: '#0d9488', from: 'Farm' },
+    { name: 'Koyambedu Daily',    slug: null, emoji: '🥬', color: '#16a34a', from: 'Fresh' },
+    { name: 'Uzhavar Fresh',      slug: null, emoji: '🌾', color: '#0d9488', from: 'Farm' },
+    { name: 'EptoFresh Proteins', slug: null, emoji: '🥩', color: '#c2410c', from: 'Nearby' },
   ]);
 
   return (
@@ -473,6 +501,13 @@ function DesktopPromoGrid({ onScrollTo }) {
       title: 'Uzhavar Fresh',
       sub: 'உழவர் சந்தை · No middlemen',
       cta: 'Explore', action: () => navigate('/uzhavar'),
+    },
+    {
+      gradient: 'linear-gradient(135deg,#1a0a00,#7c2d12,#f97316)',
+      tag: 'GPS · HYPERLOCAL', emoji: '🥩',
+      title: 'EptoFresh Proteins',
+      sub: 'Chicken · Mutton · Fish · Seafood',
+      cta: 'Order Now', action: () => navigate('/eptofresh'),
     },
     {
       gradient: 'linear-gradient(135deg,#7f1d1d,#dc2626,#fb923c)',
