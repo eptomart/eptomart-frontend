@@ -1,5 +1,5 @@
-import React, { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
@@ -128,6 +128,31 @@ const SellerRoute = ({ children }) => {
   return children;
 };
 
+// Redirect to home on fresh app open so the app never lands on login
+// sessionStorage is wiped when the app/tab is closed — perfect for detecting fresh opens
+function FreshStartRedirect() {
+  const navigate  = useNavigate();
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    if (sessionStorage.getItem('_app_active')) return; // already navigating this session
+    sessionStorage.setItem('_app_active', '1');
+
+    // If the stored URL is a protected page, send user home instead
+    const protectedPrefixes = [
+      '/orders', '/profile', '/checkout', '/wishlist',
+      '/eptofresh/orders', '/eptofresh/checkout',
+      '/koyambedu/orders', '/koyambedu/checkout',
+      '/uzhavar/my-orders',
+      '/seller', '/admin',
+    ];
+    const isProtected = protectedPrefixes.some(p => pathname.startsWith(p));
+    if (isProtected) navigate('/', { replace: true });
+  }, []);
+
+  return null;
+}
+
 function GlobalBottomNav() {
   const { pathname } = useLocation();
   // Hide on admin, seller portal, koyambedu seller/admin, and eptofresh seller pages
@@ -144,6 +169,7 @@ function GlobalBottomNav() {
 function AppRoutes() {
   return (
     <>
+      <FreshStartRedirect />
       <Suspense fallback={<Loader />}>
         <Routes>
           {/* Public */}
