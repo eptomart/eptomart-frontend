@@ -116,13 +116,10 @@ export function EptoFreshLocationPicker() {
     };
   }, []);
 
-  // ── Auto-request GPS once map is ready ───────────────────
-  useEffect(() => {
-    if (!mapReady) return;
-    // Don't auto-request if user previously denied
-    const wasDenied = localStorage.getItem('epf_gps_denied');
-    if (!wasDenied) detectLocation();
-  }, [mapReady]);
+  // ── iOS PWA note: GPS must be triggered by user gesture ──
+  // Do NOT auto-call getCurrentPosition on mount — iOS PWA
+  // silently blocks it unless it comes from a tap event.
+  // The "Use my location" button below provides the gesture.
 
   // ── GPS detect — iOS-safe (synchronous callback) ─────────
   const detectLocation = useCallback(() => {
@@ -336,7 +333,7 @@ export function EptoFreshLocationPicker() {
         {/* Handle */}
         <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: '#e5e7eb' }} />
 
-        {/* Use my location row */}
+        {/* Use my location — tap required on iOS PWA */}
         <button
           onClick={() => {
             localStorage.removeItem('epf_gps_denied');
@@ -344,29 +341,37 @@ export function EptoFreshLocationPicker() {
           }}
           disabled={gpsState === 'requesting' || !mapReady}
           className="w-full flex items-center gap-3 rounded-2xl p-3.5 mb-3 transition-all active:scale-[0.98] disabled:opacity-50"
-          style={{ background: gpsState === 'success' ? 'rgba(34,197,94,0.08)' : 'rgba(244,148,28,0.08)', border: `1px solid ${gpsState === 'success' ? 'rgba(34,197,94,0.2)' : 'rgba(244,148,28,0.2)'}` }}
+          style={{
+            background: gpsState === 'success'
+              ? 'rgba(34,197,94,0.08)'
+              : 'rgba(244,148,28,0.1)',
+            border: `1.5px solid ${gpsState === 'success' ? 'rgba(34,197,94,0.3)' : 'rgba(244,148,28,0.35)'}`,
+          }}
         >
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: gpsState === 'success' ? '#22c55e' : '#f4941c' }}>
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: gpsState === 'success' ? '#22c55e' : '#f4941c' }}
+          >
             {gpsState === 'requesting'
               ? <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-              : <FiNavigation className="text-white" size={16} />
+              : <FiNavigation className="text-white" size={18} />
             }
           </div>
           <div className="text-left flex-1 min-w-0">
-            <p className="font-semibold text-sm text-gray-800">
+            <p className="font-bold text-sm text-gray-800">
               {gpsState === 'requesting' ? 'Detecting your location…'
-               : gpsState === 'success'  ? 'Location detected'
-               : gpsState === 'denied'   ? 'Use my current location'
+               : gpsState === 'success'  ? '✓ Location detected'
                : 'Use my current location'}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs mt-0.5" style={{ color: gpsState === 'denied' ? '#f87171' : '#9ca3af' }}>
               {gpsState === 'denied'
-                ? 'Tap to try again or search above'
-                : 'Using device GPS'}
+                ? 'Tap to try again — or search manually above'
+                : gpsState === 'success'
+                  ? 'Tap to re-detect'
+                  : 'Tap to detect via GPS'}
             </p>
           </div>
-          {gpsState === 'denied' && <FiAlertCircle className="text-gray-400 shrink-0" size={16} />}
+          {gpsState === 'denied' && <FiAlertCircle className="text-red-400 shrink-0" size={16} />}
         </button>
 
         {/* Divider */}
