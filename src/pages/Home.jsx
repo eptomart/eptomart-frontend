@@ -210,102 +210,68 @@ function FlashDeals({ products }) {
   );
 }
 
-// ── Sub-app banners ────────────────────────────────────────────
+// ── Sub-app banners — compact image icon cards ─────────────────
+const SUB_APPS = [
+  {
+    to: '/koyambedu',
+    img: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop&q=80',
+    overlay: 'linear-gradient(to top, rgba(15,61,31,0.92) 0%, rgba(15,61,31,0.45) 55%, rgba(15,61,31,0.15) 100%)',
+    badge: 'BY 10 AM', badgeBg: '#facc15', badgeText: '#14532d',
+    title: 'Koyambedu', sub: 'Veggies & Fruits',
+  },
+  {
+    to: '/uzhavar',
+    img: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=400&h=400&fit=crop&q=80',
+    overlay: 'linear-gradient(to top, rgba(10,46,43,0.92) 0%, rgba(10,46,43,0.45) 55%, rgba(10,46,43,0.15) 100%)',
+    badge: 'FARM', badgeBg: '#a3e635', badgeText: '#134e4a',
+    title: 'Uzhavar', sub: 'Farm Direct',
+  },
+  {
+    to: '/eptofresh',
+    img: 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=400&h=400&fit=crop&q=80',
+    overlay: 'linear-gradient(to top, rgba(26,10,0,0.93) 0%, rgba(124,45,18,0.55) 55%, rgba(124,45,18,0.15) 100%)',
+    badge: 'LOCAL', badgeBg: '#fb923c', badgeText: '#fff',
+    title: 'Proteins', sub: 'Fresh Daily',
+  },
+];
+
 function SubAppBanners() {
   return (
-    <div className="px-4 space-y-2.5">
+    <div className="px-4">
+      <div className="grid grid-cols-3 gap-2.5">
+        {SUB_APPS.map(app => (
+          <Link
+            key={app.to}
+            to={app.to}
+            className="relative rounded-2xl overflow-hidden active:scale-[0.96] transition-transform shadow-sm"
+            style={{ height: 120 }}
+          >
+            {/* Food image */}
+            <img
+              src={app.img}
+              alt={app.title}
+              className="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+            />
+            {/* Gradient overlay */}
+            <div className="absolute inset-0" style={{ background: app.overlay }} />
 
-      {/* Row 1: Koyambedu + Uzhavar side by side */}
-      <div className="grid grid-cols-2 gap-2.5">
-
-        {/* Koyambedu Daily */}
-        <Link to="/koyambedu"
-          className="relative rounded-2xl overflow-hidden active:scale-95 transition-transform"
-          style={{ background: 'linear-gradient(145deg,#0f3d1f 0%,#15803d 55%,#22c55e 100%)', minHeight: 175 }}>
-          {/* Scattered food bg */}
-          <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
-            <span className="absolute text-[60px] opacity-[0.18]" style={{ top: -12, right: -12, transform: 'rotate(15deg)' }}>🥬</span>
-            <span className="absolute text-[32px] opacity-[0.14]" style={{ bottom: 22, right: 6, transform: 'rotate(-10deg)' }}>🥕</span>
-            <span className="absolute text-[22px] opacity-[0.12]" style={{ top: 58, right: 20, transform: 'rotate(5deg)' }}>🥦</span>
-            <span className="absolute text-[18px] opacity-[0.13]" style={{ bottom: 8, left: 50, transform: 'rotate(-5deg)' }}>🌸</span>
-            <span className="absolute text-[16px] opacity-[0.10]" style={{ top: 28, right: 36 }}>🍅</span>
-            <div className="absolute rounded-full" style={{ width: 90, height: 90, background: 'rgba(74,222,128,0.12)', top: -25, right: -25 }} />
-          </div>
-          <div className="relative z-10 p-3.5 flex flex-col" style={{ minHeight: 175 }}>
-            <span className="inline-block text-[8px] font-black px-2 py-1 rounded-full w-fit"
-              style={{ background: '#facc15', color: '#14532d' }}>ORDER BY 10 AM</span>
-            <div className="mt-2 flex-1">
-              <p className="text-white font-black text-[13px] leading-tight">Koyambedu Daily</p>
-              <p className="text-[10px] mt-1 leading-relaxed" style={{ color: '#bbf7d0' }}>
-                Veggies · Fruits<br />Flowers · Temple
-              </p>
+            {/* Content */}
+            <div className="absolute inset-0 p-2.5 flex flex-col justify-between">
+              {/* Badge top */}
+              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded-full w-fit leading-tight"
+                style={{ background: app.badgeBg, color: app.badgeText }}>
+                {app.badge}
+              </span>
+              {/* Title bottom */}
+              <div>
+                <p className="text-white font-black text-[13px] leading-tight drop-shadow-sm">{app.title}</p>
+                <p className="text-white/70 text-[10px] mt-0.5 leading-tight">{app.sub}</p>
+              </div>
             </div>
-            <span className="inline-flex items-center gap-1 text-white text-[11px] font-bold mt-2">
-              Order Now <FiArrowRight size={9} />
-            </span>
-          </div>
-        </Link>
-
-        {/* Uzhavar Fresh */}
-        <Link to="/uzhavar"
-          className="relative rounded-2xl overflow-hidden active:scale-95 transition-transform"
-          style={{ background: 'linear-gradient(145deg,#0a2e2b 0%,#0d766e 55%,#14b8a6 100%)', minHeight: 175 }}>
-          <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
-            <span className="absolute text-[56px] opacity-[0.18]" style={{ top: -10, right: -10, transform: 'rotate(-10deg)' }}>🌾</span>
-            <span className="absolute text-[30px] opacity-[0.14]" style={{ bottom: 20, right: 8, transform: 'rotate(8deg)' }}>🌽</span>
-            <span className="absolute text-[20px] opacity-[0.12]" style={{ top: 55, right: 22 }}>🌿</span>
-            <span className="absolute text-[18px] opacity-[0.11]" style={{ bottom: 10, left: 44 }}>🥬</span>
-            <span className="absolute text-[15px] opacity-[0.10]" style={{ top: 30, right: 38 }}>🍋</span>
-            <div className="absolute rounded-full" style={{ width: 90, height: 90, background: 'rgba(45,212,191,0.12)', top: -25, right: -25 }} />
-          </div>
-          <div className="relative z-10 p-3.5 flex flex-col" style={{ minHeight: 175 }}>
-            <span className="inline-block text-[8px] font-black px-2 py-1 rounded-full w-fit"
-              style={{ background: '#a3e635', color: '#134e4a' }}>FARM DIRECT</span>
-            <div className="mt-2 flex-1">
-              <p className="text-white font-black text-[13px] leading-tight">Uzhavar Fresh</p>
-              <p className="text-[10px] mt-1 leading-relaxed" style={{ color: '#99f6e4' }}>
-                உழவர் சந்தை<br />No middlemen
-              </p>
-            </div>
-            <span className="inline-flex items-center gap-1 text-white text-[11px] font-bold mt-2">
-              Explore <FiArrowRight size={9} />
-            </span>
-          </div>
-        </Link>
-
+          </Link>
+        ))}
       </div>
-
-      {/* Row 2: EptoFresh Proteins — full width hero */}
-      <Link to="/eptofresh"
-        className="relative rounded-2xl overflow-hidden active:scale-95 transition-transform flex"
-        style={{ background: 'linear-gradient(135deg,#1a0a00 0%,#7c2d12 38%,#c2410c 72%,#f97316 100%)', minHeight: 120 }}>
-        <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
-          <span className="absolute text-[80px] opacity-[0.14]" style={{ top: -18, right: -18, transform: 'rotate(10deg)' }}>🥩</span>
-          <span className="absolute text-[44px] opacity-[0.12]" style={{ bottom: -6, right: 55, transform: 'rotate(-8deg)' }}>🍗</span>
-          <span className="absolute text-[34px] opacity-[0.10]" style={{ top: 8, right: 88, transform: 'rotate(5deg)' }}>🐟</span>
-          <span className="absolute text-[26px] opacity-[0.10]" style={{ bottom: 4, right: 108, transform: 'rotate(-5deg)' }}>🦐</span>
-          <span className="absolute text-[20px] opacity-[0.08]" style={{ top: 18, right: 138 }}>🥚</span>
-          <div className="absolute rounded-full" style={{ width: 130, height: 130, background: 'rgba(249,115,22,0.14)', top: -45, right: -25 }} />
-          <div className="absolute rounded-full" style={{ width: 70, height: 70, background: 'rgba(194,65,12,0.18)', bottom: -25, left: 25 }} />
-        </div>
-        <div className="relative z-10 p-4 flex flex-col justify-between w-full" style={{ minHeight: 120 }}>
-          <div className="flex items-center gap-2">
-            <span className="inline-block text-[8px] font-black px-2 py-1 rounded-full"
-              style={{ background: '#fb923c', color: '#fff' }}>HYPERLOCAL</span>
-            <span className="text-white/55 text-[9px] font-semibold tracking-wide">GPS-Based · Fresh Daily</span>
-          </div>
-          <div>
-            <p className="text-white font-black text-xl leading-tight">EptoFresh Proteins</p>
-            <p className="text-[11px] mt-0.5" style={{ color: '#fed7aa' }}>
-              Chicken · Mutton · Fish · Seafood · Ready to Cook
-            </p>
-          </div>
-          <span className="inline-flex items-center gap-1 text-white text-xs font-bold">
-            Order Now <FiArrowRight size={10} />
-          </span>
-        </div>
-      </Link>
-
     </div>
   );
 }
@@ -807,9 +773,8 @@ export default function Home() {
             MOBILE LAYOUT (below md)
         ══════════════════════════════════════════ */}
         <div className="md:hidden">
-          <div className="pb-4 pt-3"><SubAppBanners /></div>
+          <div className="pb-3 pt-3"><SubAppBanners /></div>
           <div className="pb-4"><PromoBanner /></div>
-          <div className="pb-4"><TrustStrip /></div>
         </div>
 
         {/* ── FEATURED PRODUCTS — shown on both ── */}
