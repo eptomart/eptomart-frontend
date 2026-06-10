@@ -158,7 +158,6 @@ export function EptoFreshLocationPicker() {
         setCenter({ lat: loc.lat(), lng: loc.lng() });
         setShortAddr(pred.structured_formatting?.main_text || place.name);
         setFullAddr(pred.description || place.formatted_address);
-        setGpsState('idle');
       }
     );
   }, []);
@@ -287,23 +286,19 @@ export function EptoFreshLocationPicker() {
         {/* Handle */}
         <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: '#e5e7eb' }} />
 
-        {/* Divider */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex-1 h-px" style={{ background: '#e5e7eb' }} />
-          <span className="text-xs text-gray-400">or pan map to select</span>
-          <div className="flex-1 h-px" style={{ background: '#e5e7eb' }} />
-        </div>
-
         {/* Selected address */}
         <div className="flex items-start gap-3 mb-4">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style={{ background: '#fff7ed' }}>
             <FiMapPin style={{ color: '#f4941c' }} size={16} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-bold text-base leading-tight text-gray-900">
-              {mapMoving ? 'Moving…' : (shortAddr || 'Pan the map to select')}
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">
+              {mapMoving ? 'Adjusting…' : 'Selected location'}
             </p>
-            {!mapMoving && fullAddr && <p className="text-sm mt-0.5 line-clamp-2 text-gray-500">{fullAddr}</p>}
+            <p className="font-bold text-base leading-tight text-gray-900">
+              {mapMoving ? 'Move the pin to your spot' : (shortAddr || 'Search or drag the map')}
+            </p>
+            {!mapMoving && fullAddr && <p className="text-xs mt-0.5 line-clamp-2 text-gray-500">{fullAddr}</p>}
           </div>
         </div>
 

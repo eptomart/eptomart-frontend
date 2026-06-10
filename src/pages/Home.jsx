@@ -1,7 +1,7 @@
 // ============================================
 // HOME PAGE — Eptomart Premium
 // ============================================
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { FiArrowRight, FiSearch, FiZap, FiChevronRight, FiMic, FiX } from 'react-icons/fi';
@@ -120,54 +120,32 @@ function DesktopProductGrid({ products, accent }) {
   );
 }
 
-// ── Mobile: smooth CSS-transform slider (no "train" scroll) ────
+// ── Mobile: touch-swipe horizontal scroll ──────────────────────
 function MobileProductSlider({ products, accent }) {
-  const [idx, setIdx] = useState(0);
-  const timerRef = useRef(null);
-  const total = products.length;
-  // Show 2 cards per "frame" on mobile
-  const VISIBLE = 2;
-  const maxIdx = Math.max(0, total - VISIBLE);
-
-  const advance = useCallback(() => {
-    setIdx(i => (i >= maxIdx ? 0 : i + 1));
-  }, [maxIdx]);
-
-  useEffect(() => {
-    timerRef.current = setInterval(advance, 3000);
-    return () => clearInterval(timerRef.current);
-  }, [advance]);
-
-  const resetTimer = () => {
-    clearInterval(timerRef.current);
-    timerRef.current = setInterval(advance, 3000);
-  };
-
   return (
-    <div className="px-4 overflow-hidden">
-      <div
-        className="flex gap-3"
-        style={{
-          transform: `translateX(calc(-${idx} * (50% + 6px)))`,
-          transition: idx === 0 && products.length > 0 ? 'none' : 'transform 500ms cubic-bezier(0.4, 0, 0.2, 1)',
-          willChange: 'transform',
-        }}
-      >
-        {products.map((p, i) => (
-          <div key={`${p._id}-${i}`} className="flex-shrink-0" style={{ width: 'calc(50% - 6px)' }}>
-            <ProductGridCard product={p} accent={accent} />
-          </div>
-        ))}
-      </div>
-      {/* Dot indicators */}
-      {total > VISIBLE && (
-        <div className="flex justify-center gap-1 mt-3">
-          {[...Array(maxIdx + 1)].map((_, i) => (
-            <button key={i} onClick={() => { setIdx(i); resetTimer(); }}
-              className={`h-1 rounded-full transition-all ${i === idx ? 'w-4 bg-orange-500' : 'w-1 bg-gray-300'}`} />
-          ))}
+    <div
+      className="flex gap-3 px-4 pb-1"
+      style={{
+        overflowX: 'auto',
+        scrollSnapType: 'x mandatory',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+        cursor: 'grab',
+      }}
+      onMouseDown={e => { e.currentTarget.style.cursor = 'grabbing'; }}
+      onMouseUp={e => { e.currentTarget.style.cursor = 'grab'; }}
+      onMouseLeave={e => { e.currentTarget.style.cursor = 'grab'; }}
+    >
+      {products.map((p, i) => (
+        <div
+          key={`${p._id}-${i}`}
+          className="flex-shrink-0"
+          style={{ width: 'calc(50% - 6px)', scrollSnapAlign: 'start' }}
+        >
+          <ProductGridCard product={p} accent={accent} />
         </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -214,24 +192,24 @@ function FlashDeals({ products }) {
 const SUB_APPS = [
   {
     to: '/koyambedu',
-    img: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop&q=80',
-    overlay: 'linear-gradient(to top, rgba(15,61,31,0.92) 0%, rgba(15,61,31,0.45) 55%, rgba(15,61,31,0.15) 100%)',
+    img: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&h=600&fit=crop&q=85',
+    overlay: 'linear-gradient(to top, rgba(10,46,18,0.96) 0%, rgba(15,61,31,0.55) 50%, rgba(15,61,31,0.10) 100%)',
     badge: 'BY 10 AM', badgeBg: '#facc15', badgeText: '#14532d',
-    title: 'Koyambedu', sub: 'Veggies & Fruits',
+    title: 'Koyambedu Daily', sub: 'Veggies & Fruits',
   },
   {
     to: '/uzhavar',
-    img: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=400&h=400&fit=crop&q=80',
-    overlay: 'linear-gradient(to top, rgba(10,46,43,0.92) 0%, rgba(10,46,43,0.45) 55%, rgba(10,46,43,0.15) 100%)',
-    badge: 'FARM', badgeBg: '#a3e635', badgeText: '#134e4a',
-    title: 'Uzhavar', sub: 'Farm Direct',
+    img: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&h=600&fit=crop&q=85',
+    overlay: 'linear-gradient(to top, rgba(5,30,26,0.96) 0%, rgba(10,46,43,0.55) 50%, rgba(10,46,43,0.10) 100%)',
+    badge: 'FARM FRESH', badgeBg: '#a3e635', badgeText: '#134e4a',
+    title: 'Farmer Fresh', sub: 'Farm Direct',
   },
   {
     to: '/eptofresh',
-    img: 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=400&h=400&fit=crop&q=80',
-    overlay: 'linear-gradient(to top, rgba(26,10,0,0.93) 0%, rgba(124,45,18,0.55) 55%, rgba(124,45,18,0.15) 100%)',
-    badge: 'LOCAL', badgeBg: '#fb923c', badgeText: '#fff',
-    title: 'Proteins', sub: 'Fresh Daily',
+    img: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c8?w=600&h=600&fit=crop&q=85',
+    overlay: 'linear-gradient(to top, rgba(26,10,0,0.96) 0%, rgba(124,45,18,0.60) 50%, rgba(124,45,18,0.10) 100%)',
+    badge: 'HYPERLOCAL', badgeBg: '#fb923c', badgeText: '#fff',
+    title: 'EptoFresh Proteins', sub: 'Fresh Daily',
   },
 ];
 
@@ -243,8 +221,11 @@ function SubAppBanners() {
           <Link
             key={app.to}
             to={app.to}
-            className="relative rounded-2xl overflow-hidden active:scale-[0.96] transition-transform shadow-sm"
-            style={{ height: 120 }}
+            className="relative rounded-2xl overflow-hidden active:scale-[0.96] transition-transform"
+            style={{
+              height: 150,
+              boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+            }}
           >
             {/* Food image */}
             <img
@@ -259,14 +240,18 @@ function SubAppBanners() {
             {/* Content */}
             <div className="absolute inset-0 p-2.5 flex flex-col justify-between">
               {/* Badge top */}
-              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded-full w-fit leading-tight"
-                style={{ background: app.badgeBg, color: app.badgeText }}>
+              <span
+                className="inline-block font-black px-1.5 py-0.5 rounded-full w-fit leading-tight"
+                style={{ background: app.badgeBg, color: app.badgeText, fontSize: 7 }}
+              >
                 {app.badge}
               </span>
               {/* Title bottom */}
               <div>
-                <p className="text-white font-black text-[13px] leading-tight drop-shadow-sm">{app.title}</p>
-                <p className="text-white/70 text-[10px] mt-0.5 leading-tight">{app.sub}</p>
+                <p className="text-white font-black leading-tight drop-shadow-sm" style={{ fontSize: 11 }}>
+                  {app.title}
+                </p>
+                <p className="text-white/70 mt-0.5 leading-tight" style={{ fontSize: 9 }}>{app.sub}</p>
               </div>
             </div>
           </Link>
@@ -670,6 +655,57 @@ function MobileSearchBar() {
   );
 }
 
+// ── Mobile hero banner ─────────────────────────────────────────
+function MobileHero() {
+  const { user } = useAuth();
+  const h = new Date().getHours();
+  const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const first = user?.name?.split(' ')[0];
+  return (
+    <div className="px-4 pt-3 pb-0">
+      <div
+        className="relative rounded-3xl overflow-hidden"
+        style={{
+          background: 'linear-gradient(135deg, #0B1729 0%, #162438 55%, #1e3348 100%)',
+          minHeight: 118,
+        }}
+      >
+        {/* Decorative orbs */}
+        <div className="absolute pointer-events-none" style={{ width: 200, height: 200, borderRadius: '50%', background: 'rgba(244,148,28,0.10)', top: -70, right: -50 }} />
+        <div className="absolute pointer-events-none" style={{ width: 100, height: 100, borderRadius: '50%', background: 'rgba(244,148,28,0.07)', bottom: -25, left: -15 }} />
+        <div className="absolute pointer-events-none" style={{ width: 50, height: 50, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', bottom: 15, right: 40 }} />
+        {/* Text */}
+        <div className="relative z-10 px-5 py-4">
+          <p className="text-gray-400 text-xs font-semibold">
+            {greeting}{first ? `, ${first}` : ''} 👋
+          </p>
+          <p className="text-white font-black leading-snug mt-0.5" style={{ fontSize: 22 }}>
+            What would you<br />like today?
+          </p>
+          {/* Quick-link chips */}
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            <Link to="/koyambedu"
+              className="text-white font-bold rounded-full flex-shrink-0"
+              style={{ fontSize: 10, padding: '4px 10px', background: 'rgba(22,163,74,0.30)', border: '1px solid rgba(22,163,74,0.50)' }}>
+              🥬 Koyambedu
+            </Link>
+            <Link to="/uzhavar"
+              className="text-white font-bold rounded-full flex-shrink-0"
+              style={{ fontSize: 10, padding: '4px 10px', background: 'rgba(15,118,110,0.28)', border: '1px solid rgba(15,118,110,0.45)' }}>
+              🌾 Farmer Fresh
+            </Link>
+            <Link to="/eptofresh"
+              className="text-white font-bold rounded-full flex-shrink-0"
+              style={{ fontSize: 10, padding: '4px 10px', background: 'rgba(194,65,12,0.30)', border: '1px solid rgba(194,65,12,0.50)' }}>
+              🥩 Proteins
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Section divider ────────────────────────────────────────────
 const Divider = () => (
   <div className="px-4 my-1">
@@ -773,6 +809,7 @@ export default function Home() {
             MOBILE LAYOUT (below md)
         ══════════════════════════════════════════ */}
         <div className="md:hidden">
+          <MobileHero />
           <div className="pb-3 pt-3"><SubAppBanners /></div>
           <div className="pb-4"><PromoBanner /></div>
         </div>
