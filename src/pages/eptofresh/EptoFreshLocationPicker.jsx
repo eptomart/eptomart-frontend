@@ -230,7 +230,7 @@ export function EptoFreshLocationPicker() {
         <div className="text-4xl">🗺️</div>
         <p className="text-white font-semibold">Google Maps key not configured</p>
         <p className="text-gray-500 text-sm">
-          Add <code className="text-orange-400 bg-white/10 px-1 rounded">VITE_GOOGLE_MAPS_API_KEY</code> to your Vercel environment variables.
+          Add <code className="text-orange-400 bg-white/10 px-1 rounded">VITE_GOOGLE_MAPS_API_KEY</code> to your Cloudflare Pages environment variables.
         </p>
         <button onClick={() => navigate(-1)} className="mt-2 px-5 py-2.5 rounded-2xl text-white font-semibold" style={{ background: '#f4941c' }}>
           Go Back
