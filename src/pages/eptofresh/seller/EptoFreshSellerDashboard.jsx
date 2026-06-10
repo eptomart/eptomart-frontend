@@ -5,12 +5,136 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, Outlet, useLocation } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
-import { FiGrid, FiPackage, FiShoppingBag, FiDollarSign, FiToggleLeft, FiToggleRight, FiLogOut } from 'react-icons/fi';
+import { FiGrid, FiPackage, FiShoppingBag, FiDollarSign, FiToggleLeft, FiToggleRight, FiLogOut, FiTag, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 
 const STATUS_COLORS = {
   placed: '#60a5fa', accepted: '#34d399', preparing: '#f59e0b',
   packed: '#a78bfa', delivered: '#34d399', cancelled: '#f87171',
 };
+
+// ── Seller Promo Request Section ─────────────────────────
+function PromoRequestSection() {
+  const [open, setOpen] = useState(false);
+  const [myRequests, setMyRequests] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    code: '', description: '', discountValue: '', minOrderValue: '',
+    maxUsage: '50', validFrom: '', validTo: '', requestReason: '',
+  });
+
+  useEffect(() => {
+    if (open) {
+      api.get('/eptofresh/seller/promo-requests').then(r => { if (r.data.success) setMyRequests(r.data.coupons); }).catch(() => {});
+    }
+  }, [open]);
+
+  const submit = async () => {
+    if (!form.code || !form.discountValue || !form.validFrom || !form.validTo) {
+      toast.error('Fill in all required fields'); return;
+    }
+    setSubmitting(true);
+    try {
+      const { data } = await api.post('/eptofresh/seller/promo-request', form);
+      if (data.success) {
+        toast.success('Promo request submitted to admin!');
+        setMyRequests(r => [data.coupon, ...r]);
+        setShowForm(false);
+        setForm({ code: '', description: '', discountValue: '', minOrderValue: '', maxUsage: '50', validFrom: '', validTo: '', requestReason: '' });
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to submit request');
+    } finally { setSubmitting(false); }
+  };
+
+  const inputStyle = { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' };
+  const statusColor = { pending: '#fbbf24', approved: '#34d399', rejected: '#f87171' };
+
+  return (
+    <div className="px-4 mt-4">
+      <button onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between rounded-2xl px-4 py-3"
+        style={{ background: 'rgba(244,148,28,0.08)', border: '1px solid rgba(244,148,28,0.2)' }}>
+        <div className="flex items-center gap-2">
+          <FiTag style={{ color: '#f4941c' }} size={16} />
+          <span className="text-white font-semibold text-sm">Promo Codes</span>
+          {myRequests.some(r => r.requestStatus === 'pending') && (
+            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background: 'rgba(251,191,36,0.2)', color: '#fbbf24' }}>PENDING</span>
+          )}
+        </div>
+        {open ? <FiChevronUp size={16} style={{ color: '#f4941c' }} /> : <FiChevronDown size={16} style={{ color: '#f4941c' }} />}
+      </button>
+
+      {open && (
+        <div className="mt-2 rounded-2xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="flex items-center justify-between">
+            <p className="text-gray-400 text-xs">Request a % discount promo from admin (shipping excluded)</p>
+            <button onClick={() => setShowForm(v => !v)}
+              className="px-3 py-1 rounded-xl text-xs font-bold text-white"
+              style={{ background: '#f4941c' }}>
+              + Request
+            </button>
+          </div>
+
+          {showForm && (
+            <div className="space-y-3 pt-1">
+              {[
+                { key: 'code',          label: 'Promo Code *',              type: 'text',   placeholder: 'MYSHOP20' },
+                { key: 'discountValue', label: 'Discount % (excl. shipping) *', type: 'number', placeholder: '10' },
+                { key: 'minOrderValue', label: 'Min Order Value (₹)',       type: 'number', placeholder: '0' },
+                { key: 'maxUsage',      label: 'Max Uses',                  type: 'number', placeholder: '50' },
+                { key: 'validFrom',     label: 'Valid From *',              type: 'date' },
+                { key: 'validTo',       label: 'Valid To *',                type: 'date' },
+                { key: 'description',   label: 'Description',               type: 'text',   placeholder: 'e.g. Weekend offer' },
+                { key: 'requestReason', label: 'Reason for request',        type: 'text',   placeholder: 'e.g. Festival promotion' },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="text-gray-400 text-xs">{f.label}</label>
+                  <input type={f.type} value={form[f.key]} onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))}
+                    placeholder={f.placeholder}
+                    className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-white outline-none"
+                    style={inputStyle} />
+                </div>
+              ))}
+              <div className="flex gap-2">
+                <button onClick={submit} disabled={submitting}
+                  className="flex-1 py-2.5 rounded-xl font-bold text-white text-sm disabled:opacity-50"
+                  style={{ background: '#f4941c' }}>
+                  {submitting ? 'Submitting…' : 'Submit Request'}
+                </button>
+                <button onClick={() => setShowForm(false)}
+                  className="px-4 py-2.5 rounded-xl text-sm text-gray-400"
+                  style={{ background: 'rgba(255,255,255,0.05)' }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* My existing requests */}
+          {myRequests.length > 0 && (
+            <div className="space-y-2 pt-1">
+              <p className="text-gray-600 text-[10px] uppercase tracking-wider">My Requests</p>
+              {myRequests.map(c => (
+                <div key={c._id} className="flex items-center justify-between rounded-xl px-3 py-2"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div>
+                    <p className="text-white text-xs font-bold">{c.code}</p>
+                    <p className="text-gray-500 text-[10px]">{c.discountValue}% off • Max {c.maxUsage} uses</p>
+                  </div>
+                  <span className="text-[10px] font-bold capitalize px-2 py-0.5 rounded-full"
+                    style={{ background: `${statusColor[c.requestStatus] || '#94a3b8'}20`, color: statusColor[c.requestStatus] || '#94a3b8' }}>
+                    {c.requestStatus}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function EptoFreshSellerDashboard() {
   const navigate   = useNavigate();
@@ -105,6 +229,9 @@ export default function EptoFreshSellerDashboard() {
           ))}
         </div>
       </div>
+
+      {/* Promo Code Request */}
+      <PromoRequestSection />
 
       {/* Recent orders */}
       <div className="px-4 mt-4">

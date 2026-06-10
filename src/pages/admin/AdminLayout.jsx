@@ -61,6 +61,7 @@ const NAV_GROUPS = [
       { path: '/admin/visitors',     label: 'Visitors',      icon: FiGlobe,     permission: 'analytics' },
       { path: '/admin/uzhavar',      label: 'Uzhavar Fresh',     icon: FiPackage,   permission: 'uzhavar'   },
       { path: '/admin/koyambedu',   label: 'Koyambedu Daily',  icon: FiShoppingBag, permission: 'koyambedu' },
+      { path: '/admin/eptofresh',   label: 'EptoFresh Proteins', icon: FiShoppingBag, permission: 'sellers' },
       { path: '/admin/notifications',label: 'Notifications', icon: FiBell,      permission: null        },
       { path: '/admin/activity-log', label: 'Activity Log',  icon: FiActivity,  permission: null        },
       { path: '/admin/admins',       label: 'Admin Accounts',icon: FiShield,    permission: 'admins'    },

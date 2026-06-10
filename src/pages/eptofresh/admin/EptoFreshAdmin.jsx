@@ -559,12 +559,18 @@ function PayoutsTab() {
 
 // ── Coupons ───────────────────────────────────────────────
 function CouponsTab() {
+  const [subTab, setSubTab]   = useState('coupons');
   const [coupons, setCoupons] = useState([]);
+  const [requests, setRequests] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ code: '', description: '', discountType: 'flat', discountValue: '', minOrderValue: 0, maxUsage: 100, validFrom: '', validTo: '' });
+  const [form, setForm] = useState({
+    code: '', description: '', discountType: 'percent', discountValue: '',
+    minOrderValue: 0, maxUsage: 100, validFrom: '', validTo: '',
+  });
 
   useEffect(() => {
     api.get('/eptofresh/admin/coupons').then(r => { if (r.data.success) setCoupons(r.data.coupons); }).catch(() => {});
+    api.get('/eptofresh/admin/promo-requests?status=pending').then(r => { if (r.data.success) setRequests(r.data.coupons); }).catch(() => {});
   }, []);
 
   const createCoupon = async () => {
@@ -578,57 +584,137 @@ function CouponsTab() {
     await api.patch(`/eptofresh/admin/coupons/${id}/toggle`).then(r => { if (r.data.success) setCoupons(c => c.map(x => x._id === id ? r.data.coupon : x)); }).catch(() => {});
   };
 
+  const approveRequest = async (id) => {
+    try {
+      const { data } = await api.post(`/eptofresh/admin/promo-requests/${id}/approve`);
+      if (data.success) {
+        toast.success('Promo approved & activated');
+        setRequests(r => r.filter(x => x._id !== id));
+        setCoupons(c => [data.coupon, ...c]);
+      }
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+  };
+
+  const rejectRequest = async (id) => {
+    const reason = window.prompt('Reject reason (optional):') || '';
+    try {
+      const { data } = await api.post(`/eptofresh/admin/promo-requests/${id}/reject`, { reason });
+      if (data.success) { toast.success('Request rejected'); setRequests(r => r.filter(x => x._id !== id)); }
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+  };
+
+  const inputStyle = { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' };
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-white font-semibold">Coupons</p>
-        <button onClick={() => setShowAdd(!showAdd)} className="px-3 py-1.5 rounded-xl text-xs font-bold text-white" style={{ background: '#f4941c' }}>+ New</button>
+      {/* Sub-tabs */}
+      <div className="flex gap-2 mb-4">
+        {[
+          { key: 'coupons',  label: 'Admin Coupons' },
+          { key: 'requests', label: `Seller Requests${requests.length ? ` (${requests.length})` : ''}` },
+        ].map(t => (
+          <button key={t.key} onClick={() => setSubTab(t.key)}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+            style={{ background: subTab === t.key ? '#f4941c' : 'rgba(255,255,255,0.07)', color: '#fff' }}>
+            {t.label}
+          </button>
+        ))}
+        {subTab === 'coupons' && (
+          <button onClick={() => setShowAdd(!showAdd)} className="ml-auto px-3 py-1.5 rounded-xl text-xs font-bold text-white" style={{ background: 'rgba(255,255,255,0.1)' }}>+ New</button>
+        )}
       </div>
 
-      {showAdd && (
-        <div className="rounded-2xl p-4 mb-4 space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          {[
-            { key: 'code', label: 'Coupon Code', type: 'text', placeholder: 'FRESH50' },
-            { key: 'description', label: 'Description', type: 'text' },
-            { key: 'discountValue', label: 'Discount Value (₹ or %)', type: 'number' },
-            { key: 'minOrderValue', label: 'Min Order Value', type: 'number' },
-            { key: 'validFrom', label: 'Valid From', type: 'date' },
-            { key: 'validTo', label: 'Valid To', type: 'date' },
-          ].map(f => (
-            <div key={f.key}>
-              <label className="text-gray-400 text-xs">{f.label}</label>
-              <input type={f.type} value={form[f.key]} onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))}
-                placeholder={f.placeholder}
-                className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-white outline-none"
-                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }} />
+      {/* ── Admin Coupons sub-tab ── */}
+      {subTab === 'coupons' && (
+        <>
+          {showAdd && (
+            <div className="rounded-2xl p-4 mb-4 space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <p className="text-white text-sm font-semibold mb-1">New Coupon</p>
+
+              {/* Discount type selector */}
+              <div>
+                <label className="text-gray-400 text-xs">Discount Type</label>
+                <select value={form.discountType} onChange={e => setForm(v => ({ ...v, discountType: e.target.value }))}
+                  className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-white outline-none" style={inputStyle}>
+                  <option value="percent" className="bg-gray-900">% Percent (excludes shipping)</option>
+                  <option value="flat"    className="bg-gray-900">₹ Flat amount</option>
+                </select>
+              </div>
+
+              {[
+                { key: 'code',          label: 'Coupon Code',                   type: 'text',   placeholder: 'FRESH20' },
+                { key: 'description',   label: 'Description',                   type: 'text',   placeholder: 'e.g. 20% off on proteins' },
+                { key: 'discountValue', label: form.discountType === 'percent' ? 'Discount % (excl. shipping)' : 'Discount ₹', type: 'number', placeholder: '20' },
+                { key: 'minOrderValue', label: 'Min Order Value (₹)',           type: 'number', placeholder: '0' },
+                { key: 'maxUsage',      label: 'Max Uses (total times)',         type: 'number', placeholder: '100' },
+                { key: 'validFrom',     label: 'Valid From',                    type: 'date' },
+                { key: 'validTo',       label: 'Valid To / Expiry',             type: 'date' },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="text-gray-400 text-xs">{f.label}</label>
+                  <input type={f.type} value={form[f.key]} onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))}
+                    placeholder={f.placeholder}
+                    className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-white outline-none"
+                    style={inputStyle} />
+                </div>
+              ))}
+              <div className="flex gap-2">
+                <button onClick={createCoupon} className="flex-1 py-2.5 rounded-xl font-bold text-white text-sm" style={{ background: '#f4941c' }}>Create Coupon</button>
+                <button onClick={() => setShowAdd(false)} className="px-4 py-2.5 rounded-xl text-sm text-gray-400" style={{ background: 'rgba(255,255,255,0.05)' }}>Cancel</button>
+              </div>
             </div>
-          ))}
-          <div className="flex gap-2">
-            <select value={form.discountType} onChange={e => setForm(v => ({ ...v, discountType: e.target.value }))}
-              className="flex-1 px-3 py-2 rounded-xl text-sm text-white outline-none" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <option value="flat" className="bg-gray-900">Flat ₹</option>
-              <option value="percent" className="bg-gray-900">Percent %</option>
-            </select>
+          )}
+
+          <div className="space-y-2">
+            {coupons.filter(c => c.requestStatus !== 'pending').map(c => (
+              <div key={c._id} className="flex items-center justify-between rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div>
+                  <p className="text-white font-bold text-sm">{c.code}</p>
+                  <p className="text-gray-400 text-xs">
+                    {c.discountType === 'flat' ? `₹${c.discountValue} off` : `${c.discountValue}% off (excl. shipping)`}
+                    {' • '} Min ₹{c.minOrderValue}
+                  </p>
+                  <p className="text-gray-600 text-[10px]">Used: {c.usedCount}/{c.maxUsage} • Expires: {new Date(c.validTo).toLocaleDateString('en-IN')}</p>
+                </div>
+                <button onClick={() => toggle(c._id)} className="px-2.5 py-1 rounded-lg text-xs font-semibold"
+                  style={{ background: c.isActive ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)', color: c.isActive ? '#34d399' : '#f87171' }}>
+                  {c.isActive ? 'Active' : 'Inactive'}
+                </button>
+              </div>
+            ))}
+            {coupons.filter(c => c.requestStatus !== 'pending').length === 0 && (
+              <p className="text-gray-600 text-sm text-center py-6">No coupons yet</p>
+            )}
           </div>
-          <button onClick={createCoupon} className="w-full py-2.5 rounded-xl font-bold text-white text-sm" style={{ background: '#f4941c' }}>Create Coupon</button>
-        </div>
+        </>
       )}
 
-      <div className="space-y-2">
-        {coupons.map(c => (
-          <div key={c._id} className="flex items-center justify-between rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <div>
-              <p className="text-white font-bold text-sm">{c.code}</p>
-              <p className="text-gray-400 text-xs">{c.discountType === 'flat' ? `₹${c.discountValue} off` : `${c.discountValue}% off`} • Min ₹{c.minOrderValue}</p>
-              <p className="text-gray-600 text-[10px]">Used: {c.usedCount}/{c.maxUsage}</p>
+      {/* ── Seller Requests sub-tab ── */}
+      {subTab === 'requests' && (
+        <div className="space-y-3">
+          {requests.length === 0 && (
+            <p className="text-gray-600 text-sm text-center py-8">No pending promo requests from sellers</p>
+          )}
+          {requests.map(c => (
+            <div key={c._id} className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-white font-bold text-sm">{c.code}</p>
+                  <p className="text-orange-400 text-xs font-semibold">{c.requestedBy?.shopName || 'Seller'}</p>
+                </div>
+                <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>PENDING</span>
+              </div>
+              <p className="text-gray-300 text-xs">{c.discountValue}% off (excl. shipping) • Min ₹{c.minOrderValue} • Max {c.maxUsage} uses</p>
+              <p className="text-gray-500 text-xs">Valid: {new Date(c.validFrom).toLocaleDateString('en-IN')} – {new Date(c.validTo).toLocaleDateString('en-IN')}</p>
+              {c.requestReason && <p className="text-gray-400 text-xs italic">"{c.requestReason}"</p>}
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => approveRequest(c._id)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}>✓ Approve</button>
+                <button onClick={() => rejectRequest(c._id)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: 'rgba(248,113,113,0.15)', color: '#f87171' }}>✕ Reject</button>
+              </div>
             </div>
-            <button onClick={() => toggle(c._id)} className="px-2.5 py-1 rounded-lg text-xs font-semibold"
-              style={{ background: c.isActive ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)', color: c.isActive ? '#34d399' : '#f87171' }}>
-              {c.isActive ? 'Active' : 'Inactive'}
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
