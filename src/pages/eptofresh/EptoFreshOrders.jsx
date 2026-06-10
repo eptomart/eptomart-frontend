@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 import { FiArrowLeft, FiPackage, FiMapPin, FiStar } from 'react-icons/fi';
+import Navbar from '../../components/common/Navbar';
 
 const STATUS_LABELS = {
   payment_pending:  { label: 'Awaiting Payment', color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' },
@@ -37,7 +38,8 @@ export default function EptoFreshOrders() {
   if (loading) {
     return (
       <div className="min-h-screen" style={{ background: '#0B1729' }}>
-        <div className="flex items-center gap-3 px-4 pt-12 pb-4">
+        <Navbar />
+        <div className="flex items-center gap-3 px-4 pt-4 pb-4">
           <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}><FiArrowLeft className="text-white" /></button>
           <h1 className="text-white font-bold text-lg">My Orders</h1>
         </div>
@@ -50,7 +52,8 @@ export default function EptoFreshOrders() {
 
   return (
     <div className="min-h-screen pb-24" style={{ background: '#0B1729' }}>
-      <div className="flex items-center gap-3 px-4 pt-12 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+      <Navbar />
+      <div className="flex items-center gap-3 px-4 pt-4 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}><FiArrowLeft className="text-white" /></button>
         <h1 className="text-white font-bold text-lg">EptoFresh Orders</h1>
       </div>

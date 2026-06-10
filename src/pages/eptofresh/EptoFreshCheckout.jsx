@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { FiArrowLeft, FiMapPin, FiAlertTriangle, FiCheck, FiTag } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
+import Navbar from '../../components/common/Navbar';
 
 const STEPS = ['Address', 'Delivery', 'Payment'];
 
@@ -175,6 +176,7 @@ export default function EptoFreshCheckout() {
 
   return (
     <div className="min-h-screen pb-32" style={{ background: '#0B1729' }}>
+      <Navbar />
 
       {/* ── Mandatory Long Distance Consent Modal ── */}
       {showConsentModal && (

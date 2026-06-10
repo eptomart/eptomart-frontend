@@ -7,6 +7,7 @@ import api from '../../utils/api';
 import toast from 'react-hot-toast';
 import { FiArrowLeft, FiStar, FiMapPin, FiShoppingCart, FiPlus, FiMinus, FiAlertTriangle } from 'react-icons/fi';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
+import Navbar from '../../components/common/Navbar';
 
 export default function EptoFreshShop() {
   const { sellerId } = useParams();
@@ -55,6 +56,7 @@ export default function EptoFreshShop() {
   if (loading) {
     return (
       <div className="min-h-screen" style={{ background: '#0B1729' }}>
+        <Navbar />
         <div className="h-40 animate-pulse" style={{ background: 'rgba(255,255,255,0.05)' }} />
         <div className="px-4 mt-4 space-y-3">
           {[1,2,3,4].map(i => <div key={i} className="h-24 rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.05)' }} />)}
@@ -65,6 +67,7 @@ export default function EptoFreshShop() {
 
   return (
     <div className="min-h-screen pb-32" style={{ background: '#0B1729' }}>
+      <Navbar />
       {/* Shop header */}
       <div className="relative">
         <div className="h-36 overflow-hidden" style={{ background: 'linear-gradient(135deg, #1a2a4a 0%, #0B1729 100%)' }}>

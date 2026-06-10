@@ -4,6 +4,7 @@
 import { useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiTrash2, FiPlus, FiMinus, FiAlertTriangle } from 'react-icons/fi';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
+import Navbar from '../../components/common/Navbar';
 
 export default function EptoFreshCart() {
   const navigate = useNavigate();
@@ -11,8 +12,10 @@ export default function EptoFreshCart() {
 
   if (!items.length) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center pb-20" style={{ background: '#0B1729' }}>
-        <button onClick={() => navigate('/eptofresh')} className="absolute top-4 left-4 p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
+      <div className="min-h-screen flex flex-col pb-20" style={{ background: '#0B1729' }}>
+        <Navbar />
+        <div className="flex-1 flex flex-col items-center justify-center">
+        <button onClick={() => navigate('/eptofresh')} className="absolute top-20 left-4 p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
           <FiArrowLeft className="text-white" />
         </button>
         <div className="text-center">
@@ -22,6 +25,7 @@ export default function EptoFreshCart() {
           <button onClick={() => navigate('/eptofresh')} className="mt-6 px-6 py-2.5 rounded-2xl font-bold text-white" style={{ background: '#f4941c' }}>
             Browse Sellers
           </button>
+        </div>
         </div>
       </div>
     );
@@ -35,8 +39,9 @@ export default function EptoFreshCart() {
 
   return (
     <div className="min-h-screen pb-40" style={{ background: '#0B1729' }}>
+      <Navbar />
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-12 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+      <div className="flex items-center gap-3 px-4 pt-4 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
           <FiArrowLeft className="text-white" />
         </button>

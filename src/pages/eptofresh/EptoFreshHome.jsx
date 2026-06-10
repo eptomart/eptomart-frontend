@@ -10,6 +10,7 @@ import {
   FiShoppingBag, FiEdit2,
 } from 'react-icons/fi';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
+import Navbar from '../../components/common/Navbar';
 
 const CATEGORIES = [
   { key: 'chicken',       label: 'Chicken',      emoji: '🍗' },
@@ -79,9 +80,10 @@ export default function EptoFreshHome() {
 
   return (
     <div className="min-h-screen pb-24" style={{ background: '#0B1729' }}>
+      <Navbar />
 
       {/* Header */}
-      <div className="px-4 pt-12 pb-3" style={{ background: 'linear-gradient(180deg, #0B1729 0%, #111f35 100%)' }}>
+      <div className="px-4 pt-4 pb-3" style={{ background: 'linear-gradient(180deg, #0B1729 0%, #111f35 100%)' }}>
         <div className="flex items-center justify-between mb-3">
           <div>
             <h1 className="text-white text-xl font-bold">🥩 EptoFresh Proteins</h1>
