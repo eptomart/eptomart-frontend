@@ -5,16 +5,13 @@
 // ============================================
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiSearch, FiMapPin, FiArrowLeft, FiX, FiNavigation, FiAlertCircle } from 'react-icons/fi';
+import { FiSearch, FiMapPin, FiArrowLeft, FiX } from 'react-icons/fi';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 
 const DEFAULT = { lat: 13.0827, lng: 80.2707 }; // Chennai
 
-// Detect platform for permission instructions
-const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-const isAndroid = /android/i.test(navigator.userAgent);
 
 // ── Fetch key from backend → load Google Maps ────────────
 function loadGoogleMaps() {
@@ -71,7 +68,6 @@ export function EptoFreshLocationPicker() {
   const [shortAddr, setShortAddr]       = useState('');
   const [fullAddr, setFullAddr]         = useState('');
   const [mapMoving, setMapMoving]       = useState(false);
-  const [gpsState, setGpsState]         = useState('idle'); // idle | requesting | success | denied
   const [searchQuery, setSearchQuery]   = useState('');
   const [suggestions, setSuggestions]   = useState([]);
   const [searchBusy, setSearchBusy]     = useState(false);
@@ -120,77 +116,6 @@ export function EptoFreshLocationPicker() {
     };
   }, []);
 
-  // ── iOS PWA note: GPS must be triggered by user gesture ──
-  // Do NOT auto-call getCurrentPosition on mount — iOS PWA
-  // silently blocks it unless it comes from a tap event.
-  // Use watchPosition (more reliable than getCurrentPosition on iOS PWA).
-
-  // ── GPS detect — iOS-safe, uses watchPosition ─────────────
-  const detectLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setGpsState('denied');
-      toast.error('GPS not supported on this device');
-      return;
-    }
-    setGpsState('requesting');
-
-    // Clear any lingering watch
-    if (window.__epfWatchId != null) {
-      navigator.geolocation.clearWatch(window.__epfWatchId);
-      window.__epfWatchId = null;
-    }
-
-    // Manual bail-out — iOS PWA sometimes never fires any callback at all
-    const manualTimeout = setTimeout(() => {
-      if (window.__epfWatchId != null) {
-        navigator.geolocation.clearWatch(window.__epfWatchId);
-        window.__epfWatchId = null;
-      }
-      setGpsState('denied');
-      toast(
-        'Location timed out.\nOn iPhone: Settings → Privacy → Location Services → allow this app.',
-        { icon: '📍', duration: 6000 }
-      );
-    }, 12000);
-
-    // watchPosition is more reliable than getCurrentPosition on iOS PWA
-    // — it triggers the permission dialog correctly and returns the position faster.
-    window.__epfWatchId = navigator.geolocation.watchPosition(
-      function(pos) {                          // ← must NOT be async (iOS Safari)
-        clearTimeout(manualTimeout);
-        navigator.geolocation.clearWatch(window.__epfWatchId);
-        window.__epfWatchId = null;
-
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        if (mapRef.current) {
-          mapRef.current.panTo(loc);
-          mapRef.current.setZoom(16);
-        }
-        setCenter(loc);
-        setGpsState('success');
-        reverseGeocode(loc.lat, loc.lng).then(r => {
-          setShortAddr(r.short);
-          setFullAddr(r.full);
-        });
-      },
-      function(err) {
-        clearTimeout(manualTimeout);
-        navigator.geolocation.clearWatch(window.__epfWatchId);
-        window.__epfWatchId = null;
-        setGpsState('denied');
-        localStorage.setItem('epf_gps_denied', '1');
-        if (err.code === 1) {
-          toast(
-            'Location blocked.\niPhone: Settings → Privacy → Location Services → allow for this app.',
-            { icon: '🔒', duration: 6000 }
-          );
-        } else {
-          toast.error('Could not get location. Please search manually.');
-        }
-      },
-      { timeout: 10000, enableHighAccuracy: true, maximumAge: 0 }
-    );
-  }, []);
 
   // ── Search debounce ──────────────────────────────────────
   useEffect(() => {
@@ -267,22 +192,6 @@ export function EptoFreshLocationPicker() {
         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4" style={{ background: '#0B1729' }}>
           <div className="w-12 h-12 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" />
           <p className="text-gray-300 text-sm">Loading map…</p>
-        </div>
-      )}
-
-      {/* ── GPS "Locating you" overlay ────────────────────── */}
-      {gpsState === 'requesting' && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-          <div
-            className="flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl"
-            style={{ background: 'rgba(15,32,53,0.96)', border: '1px solid rgba(244,148,28,0.3)' }}
-          >
-            <div className="w-5 h-5 rounded-full border-2 border-orange-400 border-t-transparent animate-spin shrink-0" />
-            <div>
-              <p className="text-white font-semibold text-sm">Finding your location…</p>
-              <p className="text-gray-400 text-xs">Using device GPS</p>
-            </div>
-          </div>
         </div>
       )}
 
@@ -377,47 +286,6 @@ export function EptoFreshLocationPicker() {
       >
         {/* Handle */}
         <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: '#e5e7eb' }} />
-
-        {/* Use my location — tap required on iOS PWA */}
-        <button
-          onClick={() => {
-            localStorage.removeItem('epf_gps_denied');
-            detectLocation();
-          }}
-          disabled={gpsState === 'requesting' || !mapReady}
-          className="w-full flex items-center gap-3 rounded-2xl p-3.5 mb-3 transition-all active:scale-[0.98] disabled:opacity-50"
-          style={{
-            background: gpsState === 'success'
-              ? 'rgba(34,197,94,0.08)'
-              : 'rgba(244,148,28,0.1)',
-            border: `1.5px solid ${gpsState === 'success' ? 'rgba(34,197,94,0.3)' : 'rgba(244,148,28,0.35)'}`,
-          }}
-        >
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: gpsState === 'success' ? '#22c55e' : '#f4941c' }}
-          >
-            {gpsState === 'requesting'
-              ? <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-              : <FiNavigation className="text-white" size={18} />
-            }
-          </div>
-          <div className="text-left flex-1 min-w-0">
-            <p className="font-bold text-sm text-gray-800">
-              {gpsState === 'requesting' ? 'Detecting your location…'
-               : gpsState === 'success'  ? '✓ Location detected'
-               : 'Use my current location'}
-            </p>
-            <p className="text-xs mt-0.5" style={{ color: gpsState === 'denied' ? '#f87171' : '#9ca3af' }}>
-              {gpsState === 'denied'
-                ? 'Tap to try again — or search manually above'
-                : gpsState === 'success'
-                  ? 'Tap to re-detect'
-                  : 'Tap to detect via GPS'}
-            </p>
-          </div>
-          {gpsState === 'denied' && <FiAlertCircle className="text-red-400 shrink-0" size={16} />}
-        </button>
 
         {/* Divider */}
         <div className="flex items-center gap-2 mb-3">
