@@ -12,6 +12,10 @@ import api from '../../utils/api';
 
 const DEFAULT = { lat: 13.0827, lng: 80.2707 }; // Chennai
 
+// Detect platform for permission instructions
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isAndroid = /android/i.test(navigator.userAgent);
+
 // ── Fetch key from backend → load Google Maps ────────────
 function loadGoogleMaps() {
   return new Promise((resolve, reject) => {
