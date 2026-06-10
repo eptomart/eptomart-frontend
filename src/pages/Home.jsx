@@ -211,54 +211,77 @@ function FlashDeals({ products }) {
 }
 
 // ── Sub-app banners ────────────────────────────────────────────
+const SUB_APPS = [
+  {
+    to: '/koyambedu',
+    bg: 'linear-gradient(135deg,#14532d 0%,#16a34a 60%,#4ade80 100%)',
+    emoji: '🥬',
+    badge: 'ORDER BY 10 AM',
+    badgeBg: '#facc15', badgeText: '#14532d',
+    title: 'Koyambedu Daily',
+    sub: 'Veggies · Fruits · Flowers',
+    subColor: '#bbf7d0',
+    cta: 'Order Now',
+  },
+  {
+    to: '/uzhavar',
+    bg: 'linear-gradient(135deg,#134e4a 0%,#0f766e 60%,#2dd4bf 100%)',
+    emoji: '🌾',
+    badge: 'FARM DIRECT',
+    badgeBg: '#a3e635', badgeText: '#134e4a',
+    title: 'Uzhavar Fresh',
+    sub: 'உழவர் சந்தை · No middlemen',
+    subColor: '#99f6e4',
+    cta: 'Explore',
+  },
+  {
+    to: '/eptofresh',
+    bg: 'linear-gradient(135deg,#1a0a00 0%,#7c2d12 40%,#c2410c 75%,#f97316 100%)',
+    emoji: '🥩',
+    badge: 'HYPERLOCAL',
+    badgeBg: '#fb923c', badgeText: '#fff',
+    title: 'EptoFresh Proteins',
+    sub: 'Chicken · Mutton · Fish · Seafood',
+    subColor: '#fed7aa',
+    cta: 'Order Now',
+  },
+];
+
 function SubAppBanners() {
   return (
-    <div className="px-4 space-y-3">
-      {/* Top row: Koyambedu + Uzhavar */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link to="/koyambedu"
-          className="relative flex flex-col justify-between rounded-2xl p-4 overflow-hidden min-h-[115px] active:scale-95 transition-transform shadow-sm"
-          style={{ background: 'linear-gradient(135deg,#14532d 0%,#16a34a 60%,#4ade80 100%)' }}>
-          <div className="absolute -bottom-3 -right-3 text-5xl opacity-20 select-none pointer-events-none">🥬</div>
-          <div>
-            <span className="bg-yellow-400 text-green-900 text-[9px] font-black px-1.5 py-0.5 rounded-full">ORDER BY 10 AM</span>
-            <p className="text-white font-black text-sm mt-1.5 leading-tight">Koyambedu<br/>Daily</p>
-            <p className="text-green-200 text-[10px] mt-0.5">Veggies · Fruits · Flowers</p>
+    <div className="px-4 grid grid-cols-3 gap-2.5">
+      {SUB_APPS.map(app => (
+        <Link
+          key={app.to}
+          to={app.to}
+          className="relative flex flex-col justify-between rounded-2xl p-3 overflow-hidden active:scale-95 transition-transform shadow-sm"
+          style={{ background: app.bg, minHeight: 130 }}
+        >
+          {/* Background emoji */}
+          <div className="absolute -bottom-2 -right-2 text-4xl opacity-20 select-none pointer-events-none leading-none">
+            {app.emoji}
           </div>
-          <span className="inline-flex items-center gap-1 text-white text-[11px] font-bold mt-2">
-            Order Now <FiArrowRight size={10} />
-          </span>
-        </Link>
-        <Link to="/uzhavar"
-          className="relative flex flex-col justify-between rounded-2xl p-4 overflow-hidden min-h-[115px] active:scale-95 transition-transform shadow-sm"
-          style={{ background: 'linear-gradient(135deg,#134e4a 0%,#0f766e 60%,#2dd4bf 100%)' }}>
-          <div className="absolute -bottom-3 -right-3 text-5xl opacity-20 select-none pointer-events-none">🌾</div>
-          <div>
-            <span className="bg-lime-400 text-teal-900 text-[9px] font-black px-1.5 py-0.5 rounded-full">FARM DIRECT</span>
-            <p className="text-white font-black text-sm mt-1.5 leading-tight">Uzhavar<br/>Fresh</p>
-            <p className="text-teal-200 text-[10px] mt-0.5">உழவர் சந்தை · No middlemen</p>
-          </div>
-          <span className="inline-flex items-center gap-1 text-white text-[11px] font-bold mt-2">
-            Explore <FiArrowRight size={10} />
-          </span>
-        </Link>
-      </div>
 
-      {/* Full-width EptoFresh banner */}
-      <Link to="/eptofresh"
-        className="relative flex items-center justify-between rounded-2xl p-4 overflow-hidden active:scale-95 transition-transform shadow-sm"
-        style={{ background: 'linear-gradient(135deg,#1a0a00 0%,#7c2d12 40%,#c2410c 75%,#f97316 100%)', minHeight: 90 }}>
-        <div className="absolute -bottom-4 -right-4 text-6xl opacity-15 select-none pointer-events-none">🥩</div>
-        <div className="absolute -top-4 right-24 text-4xl opacity-10 select-none pointer-events-none">🍗</div>
-        <div>
-          <span className="bg-orange-400 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">HYPERLOCAL · GPS-BASED</span>
-          <p className="text-white font-black text-base mt-1.5 leading-tight">EptoFresh Proteins</p>
-          <p className="text-orange-200 text-[10px] mt-0.5">Chicken · Mutton · Fish · Seafood · Ready to Cook</p>
-        </div>
-        <span className="inline-flex items-center gap-1 bg-white/20 border border-white/30 text-white text-[11px] font-bold px-3 py-2 rounded-xl shrink-0 ml-3">
-          Order Now <FiArrowRight size={10} />
-        </span>
-      </Link>
+          {/* Badge */}
+          <span
+            className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded-full leading-tight w-fit"
+            style={{ background: app.badgeBg, color: app.badgeText }}
+          >
+            {app.badge}
+          </span>
+
+          {/* Title */}
+          <div className="mt-2 flex-1">
+            <p className="text-white font-black text-[11px] leading-tight">{app.title}</p>
+            <p className="text-[9px] mt-0.5 leading-tight" style={{ color: app.subColor }}>{app.sub}</p>
+          </div>
+
+          {/* CTA */}
+          <span className="inline-flex items-center gap-0.5 text-white text-[10px] font-bold mt-2">
+            {app.cta} <FiArrowRight size={9} />
+          </span>
+        </Link>
+      ))}
     </div>
   );
 }
