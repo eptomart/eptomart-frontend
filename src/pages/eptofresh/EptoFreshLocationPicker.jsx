@@ -9,21 +9,26 @@ import { useNavigate } from 'react-router-dom';
 import { FiSearch, FiMapPin, FiArrowLeft, FiX, FiNavigation } from 'react-icons/fi';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
 import toast from 'react-hot-toast';
+import api from '../../utils/api';
 
-const GOOGLE_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-const DEFAULT    = { lat: 13.0827, lng: 80.2707 }; // Chennai
+const DEFAULT = { lat: 13.0827, lng: 80.2707 }; // Chennai
 
-// ── Load Google Maps JS API (once) ───────────────────────
-function loadGoogleMaps(key) {
+// ── Fetch key from backend then load Google Maps JS API ──
+function loadGoogleMaps() {
   return new Promise((resolve, reject) => {
     if (window.google?.maps) { resolve(); return; }
-    const cbName = '__gmReady_' + Date.now();
-    window[cbName] = () => { resolve(); delete window[cbName]; };
-    const s = document.createElement('script');
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&callback=${cbName}`;
-    s.async = true;
-    s.onerror = reject;
-    document.head.appendChild(s);
+    api.get('/eptofresh/maps/config')
+      .then(({ data }) => {
+        if (!data.key) { reject(new Error('No key')); return; }
+        const cbName = '__gmReady_' + Date.now();
+        window[cbName] = () => { resolve(); delete window[cbName]; };
+        const s = document.createElement('script');
+        s.src = `https://maps.googleapis.com/maps/api/js?key=${data.key}&libraries=places&callback=${cbName}`;
+        s.async = true;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      })
+      .catch(reject);
   });
 }
 
@@ -75,10 +80,9 @@ export function EptoFreshLocationPicker() {
 
   // ── Init Google Maps ────────────────────────────────────
   useEffect(() => {
-    if (!GOOGLE_KEY) { setLoadError(true); return; }
     let mounted = true;
 
-    loadGoogleMaps(GOOGLE_KEY)
+    loadGoogleMaps()
       .then(() => {
         if (!mounted || !mapDivRef.current) return;
 
@@ -230,7 +234,7 @@ export function EptoFreshLocationPicker() {
         <div className="text-4xl">🗺️</div>
         <p className="text-white font-semibold">Google Maps key not configured</p>
         <p className="text-gray-500 text-sm">
-          Add <code className="text-orange-400 bg-white/10 px-1 rounded">VITE_GOOGLE_MAPS_API_KEY</code> to your Cloudflare Pages environment variables.
+          Add <code className="text-orange-400 bg-white/10 px-1 rounded">GOOGLE_PLACES_API_KEY</code> to your Render backend environment variables.
         </p>
         <button onClick={() => navigate(-1)} className="mt-2 px-5 py-2.5 rounded-2xl text-white font-semibold" style={{ background: '#f4941c' }}>
           Go Back
