@@ -2,11 +2,11 @@
 // EPTOFRESH ADMIN PANEL
 // Full control: sellers, products, orders, payouts
 // ============================================
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
-import { FiGrid, FiUsers, FiPackage, FiShoppingBag, FiDollarSign, FiTag, FiCheck, FiX, FiCamera, FiBarChart2, FiSettings } from 'react-icons/fi';
+import { FiGrid, FiUsers, FiPackage, FiShoppingBag, FiDollarSign, FiTag, FiCheck, FiX, FiCamera, FiBarChart2, FiSettings, FiPlus, FiMapPin } from 'react-icons/fi';
 
 export default function EptoFreshAdmin() {
   const location = useLocation();
@@ -111,14 +111,191 @@ function DashboardTab({ dash }) {
 }
 
 // ── Sellers ──────────────────────────────────────────────
+const MEAT_CATEGORIES = [
+  { key: 'chicken',       label: '🍗 Chicken' },
+  { key: 'mutton',        label: '🥩 Mutton' },
+  { key: 'fish',          label: '🐟 Fish' },
+  { key: 'seafood',       label: '🦐 Seafood' },
+  { key: 'beef',          label: '🥩 Beef' },
+  { key: 'pork',          label: '🐖 Pork' },
+  { key: 'ready_to_cook', label: '🍱 Ready to Cook' },
+];
+
+const BLANK_FORM = {
+  shopName: '', ownerName: '', phone: '', email: '',
+  addressLine1: '', city: 'Chennai', state: 'Tamil Nadu', pincode: '',
+  lat: '', lng: '',
+  categories: [],
+  fssaiNumber: '', panNumber: '', gstNumber: '',
+};
+
+function AddSellerModal({ onClose, onCreated }) {
+  const [form, setForm]     = useState(BLANK_FORM);
+  const [saving, setSaving] = useState(false);
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const toggleCat = (k) => setForm(f => ({
+    ...f,
+    categories: f.categories.includes(k)
+      ? f.categories.filter(c => c !== k)
+      : [...f.categories, k],
+  }));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.shopName || !form.ownerName || !form.phone) {
+      toast.error('Shop name, owner name, and phone are required');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data } = await api.post('/eptofresh/admin/sellers', form);
+      if (data.success) {
+        toast.success(`${form.shopName} added as approved seller!`);
+        onCreated(data.seller);
+        onClose();
+      } else {
+        toast.error(data.message || 'Failed to create seller');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create seller');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputStyle = {
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: 12,
+    color: '#fff',
+    padding: '10px 12px',
+    fontSize: 15,
+    width: '100%',
+    outline: 'none',
+  };
+  const labelStyle = { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
+      <div
+        className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl overflow-y-auto"
+        style={{ background: '#0f2035', maxHeight: '92vh', padding: '24px 20px 40px' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-white font-bold text-lg">➕ Add Seller</h2>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
+            <FiX className="text-gray-400" size={16} />
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="space-y-4">
+          {/* Basic Info */}
+          <div>
+            <label style={labelStyle}>Shop Name *</label>
+            <input style={inputStyle} value={form.shopName} onChange={e => set('shopName', e.target.value)} placeholder="e.g. Raja Chicken Shop" required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label style={labelStyle}>Owner Name *</label>
+              <input style={inputStyle} value={form.ownerName} onChange={e => set('ownerName', e.target.value)} placeholder="Full name" required />
+            </div>
+            <div>
+              <label style={labelStyle}>Phone *</label>
+              <input style={inputStyle} type="tel" inputMode="numeric" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="10-digit mobile" required />
+            </div>
+          </div>
+          <div>
+            <label style={labelStyle}>Email</label>
+            <input style={inputStyle} type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="optional" />
+          </div>
+
+          {/* Address */}
+          <div>
+            <label style={labelStyle}>Address Line 1</label>
+            <input style={inputStyle} value={form.addressLine1} onChange={e => set('addressLine1', e.target.value)} placeholder="Street, area" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label style={labelStyle}>City</label>
+              <input style={inputStyle} value={form.city} onChange={e => set('city', e.target.value)} />
+            </div>
+            <div>
+              <label style={labelStyle}>Pincode</label>
+              <input style={inputStyle} type="tel" inputMode="numeric" maxLength={6} value={form.pincode} onChange={e => set('pincode', e.target.value)} placeholder="600001" />
+            </div>
+          </div>
+
+          {/* GPS Coordinates */}
+          <div>
+            <label style={labelStyle}><FiMapPin size={10} style={{ display:'inline', marginRight:3 }} />GPS Coordinates (optional)</label>
+            <div className="grid grid-cols-2 gap-3">
+              <input style={inputStyle} type="text" inputMode="decimal" value={form.lat} onChange={e => set('lat', e.target.value)} placeholder="Latitude e.g. 13.0827" />
+              <input style={inputStyle} type="text" inputMode="decimal" value={form.lng} onChange={e => set('lng', e.target.value)} placeholder="Longitude e.g. 80.2707" />
+            </div>
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 4 }}>Used for distance-based search. Find on Google Maps → right-click location → copy coordinates.</p>
+          </div>
+
+          {/* Categories */}
+          <div>
+            <label style={labelStyle}>Categories</label>
+            <div className="flex flex-wrap gap-2">
+              {MEAT_CATEGORIES.map(c => (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => toggleCat(c.key)}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                  style={{
+                    background: form.categories.includes(c.key) ? '#f4941c' : 'rgba(255,255,255,0.07)',
+                    color:      form.categories.includes(c.key) ? '#fff'    : 'rgba(255,255,255,0.5)',
+                    border:     form.categories.includes(c.key) ? 'none'    : '1px solid rgba(255,255,255,0.1)',
+                  }}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* KYC */}
+          <div>
+            <label style={labelStyle}>KYC / Documents</label>
+            <div className="grid grid-cols-1 gap-3">
+              <input style={inputStyle} value={form.fssaiNumber} onChange={e => set('fssaiNumber', e.target.value)} placeholder="FSSAI Number (optional)" />
+              <input style={inputStyle} value={form.panNumber}   onChange={e => set('panNumber',   e.target.value)} placeholder="PAN Number (optional)" />
+              <input style={inputStyle} value={form.gstNumber}   onChange={e => set('gstNumber',   e.target.value)} placeholder="GST Number (optional)" />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full py-4 rounded-2xl font-bold text-white text-base disabled:opacity-50 mt-2"
+            style={{ background: '#f4941c' }}
+          >
+            {saving ? 'Creating seller…' : '✓  Add as Approved Seller'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function SellersTab() {
   const [sellers, setSellers] = useState([]);
   const [filter, setFilter]   = useState('pending_review');
   const [acting, setActing]   = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
 
-  useEffect(() => {
+  const loadSellers = () => {
     api.get(`/eptofresh/admin/sellers?status=${filter}&limit=50`).then(r => { if (r.data.success) setSellers(r.data.sellers); }).catch(() => {});
-  }, [filter]);
+  };
+
+  useEffect(() => { loadSellers(); }, [filter]);
 
   const approve = async (id) => {
     setActing(id + 'approve');
@@ -131,15 +308,29 @@ function SellersTab() {
     await api.post(`/eptofresh/admin/sellers/${id}/reject`, { reason }).then(r => { if (r.data.success) { toast.success('Seller rejected'); setSellers(s => s.filter(x => x._id !== id)); } }).catch(() => toast.error('Failed'));
   };
 
+  const onCreated = (seller) => {
+    if (filter === 'approved') setSellers(s => [seller, ...s]);
+  };
+
   return (
     <div>
-      <div className="flex gap-2 mb-4 overflow-x-auto">
-        {['pending_review','approved','rejected','suspended'].map(f => (
-          <button key={f} onClick={() => setFilter(f)} className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap capitalize"
-            style={{ background: filter === f ? '#f4941c' : 'rgba(255,255,255,0.07)', color: filter === f ? '#fff' : 'rgba(255,255,255,0.5)' }}>
-            {f.replace('_', ' ')}
-          </button>
-        ))}
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex gap-2 overflow-x-auto">
+          {['pending_review','approved','rejected','suspended'].map(f => (
+            <button key={f} onClick={() => setFilter(f)} className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap capitalize"
+              style={{ background: filter === f ? '#f4941c' : 'rgba(255,255,255,0.07)', color: filter === f ? '#fff' : 'rgba(255,255,255,0.5)' }}>
+              {f.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setShowAdd(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white whitespace-nowrap ml-2 shrink-0"
+          style={{ background: '#f4941c' }}
+        >
+          <FiPlus size={13} /> Add Seller
+        </button>
       </div>
 
       <div className="space-y-3">
@@ -184,6 +375,8 @@ function SellersTab() {
         ))}
         {sellers.length === 0 && <p className="text-gray-600 text-center py-8">No sellers in this status</p>}
       </div>
+
+      {showAdd && <AddSellerModal onClose={() => setShowAdd(false)} onCreated={onCreated} />}
     </div>
   );
 }
