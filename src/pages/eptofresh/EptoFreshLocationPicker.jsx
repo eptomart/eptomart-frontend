@@ -119,9 +119,9 @@ export function EptoFreshLocationPicker() {
   // ── iOS PWA note: GPS must be triggered by user gesture ──
   // Do NOT auto-call getCurrentPosition on mount — iOS PWA
   // silently blocks it unless it comes from a tap event.
-  // The "Use my location" button below provides the gesture.
+  // Use watchPosition (more reliable than getCurrentPosition on iOS PWA).
 
-  // ── GPS detect — iOS-safe (synchronous callback) ─────────
+  // ── GPS detect — iOS-safe, uses watchPosition ─────────────
   const detectLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setGpsState('denied');
@@ -130,15 +130,33 @@ export function EptoFreshLocationPicker() {
     }
     setGpsState('requesting');
 
-    // Manual timeout — iOS PWA sometimes never fires either callback
+    // Clear any lingering watch
+    if (window.__epfWatchId != null) {
+      navigator.geolocation.clearWatch(window.__epfWatchId);
+      window.__epfWatchId = null;
+    }
+
+    // Manual bail-out — iOS PWA sometimes never fires any callback at all
     const manualTimeout = setTimeout(() => {
+      if (window.__epfWatchId != null) {
+        navigator.geolocation.clearWatch(window.__epfWatchId);
+        window.__epfWatchId = null;
+      }
       setGpsState('denied');
-      toast('Location timed out.\nGo to Settings → Privacy → Location Services and allow for this app.', { icon: '📍', duration: 5000 });
+      toast(
+        'Location timed out.\nOn iPhone: Settings → Privacy → Location Services → allow this app.',
+        { icon: '📍', duration: 6000 }
+      );
     }, 12000);
 
-    navigator.geolocation.getCurrentPosition(
+    // watchPosition is more reliable than getCurrentPosition on iOS PWA
+    // — it triggers the permission dialog correctly and returns the position faster.
+    window.__epfWatchId = navigator.geolocation.watchPosition(
       function(pos) {                          // ← must NOT be async (iOS Safari)
         clearTimeout(manualTimeout);
+        navigator.geolocation.clearWatch(window.__epfWatchId);
+        window.__epfWatchId = null;
+
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         if (mapRef.current) {
           mapRef.current.panTo(loc);
@@ -153,16 +171,20 @@ export function EptoFreshLocationPicker() {
       },
       function(err) {
         clearTimeout(manualTimeout);
+        navigator.geolocation.clearWatch(window.__epfWatchId);
+        window.__epfWatchId = null;
         setGpsState('denied');
         localStorage.setItem('epf_gps_denied', '1');
         if (err.code === 1) {
-          // Permission denied
-          toast('Location blocked.\nEnable in Settings → Privacy → Location Services.', { icon: '🔒', duration: 5000 });
+          toast(
+            'Location blocked.\niPhone: Settings → Privacy → Location Services → allow for this app.',
+            { icon: '🔒', duration: 6000 }
+          );
         } else {
-          toast.error('Could not get location. Try searching manually.');
+          toast.error('Could not get location. Please search manually.');
         }
       },
-      { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 }
+      { timeout: 10000, enableHighAccuracy: true, maximumAge: 0 }
     );
   }, []);
 
