@@ -123,10 +123,22 @@ export function EptoFreshLocationPicker() {
 
   // ── GPS detect — iOS-safe (synchronous callback) ─────────
   const detectLocation = useCallback(() => {
-    if (!navigator.geolocation) { setGpsState('denied'); return; }
+    if (!navigator.geolocation) {
+      setGpsState('denied');
+      toast.error('GPS not supported on this device');
+      return;
+    }
     setGpsState('requesting');
+
+    // Manual timeout — iOS PWA sometimes never fires either callback
+    const manualTimeout = setTimeout(() => {
+      setGpsState('denied');
+      toast('Location timed out.\nGo to Settings → Privacy → Location Services and allow for this app.', { icon: '📍', duration: 5000 });
+    }, 12000);
+
     navigator.geolocation.getCurrentPosition(
       function(pos) {                          // ← must NOT be async (iOS Safari)
+        clearTimeout(manualTimeout);
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         if (mapRef.current) {
           mapRef.current.panTo(loc);
@@ -139,9 +151,16 @@ export function EptoFreshLocationPicker() {
           setFullAddr(r.full);
         });
       },
-      function() {
+      function(err) {
+        clearTimeout(manualTimeout);
         setGpsState('denied');
         localStorage.setItem('epf_gps_denied', '1');
+        if (err.code === 1) {
+          // Permission denied
+          toast('Location blocked.\nEnable in Settings → Privacy → Location Services.', { icon: '🔒', duration: 5000 });
+        } else {
+          toast.error('Could not get location. Try searching manually.');
+        }
       },
       { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 }
     );
