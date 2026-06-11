@@ -59,6 +59,7 @@ const AdminVisitors     = lazy(() => import('./pages/admin/Visitors'));
 const AdminMessages     = lazy(() => import('./pages/admin/Messages'));
 const AdminUzhavar      = lazy(() => import('./pages/admin/UzhavarAdmin'));
 const AdminKoyambedu    = lazy(() => import('./pages/admin/KoyambeduAdmin'));
+const AdminCoupons      = lazy(() => import('./pages/admin/Coupons'));
 
 // ── Koyambedu Daily pages ─────────────────────
 const KoyambeduHome         = lazy(() => import('./pages/koyambedu/KoyambeduHome'));
@@ -236,6 +237,7 @@ function AppRoutes() {
             <Route path="messages"         element={<AdminMessages />} />
             <Route path="uzhavar"          element={<AdminUzhavar />} />
             <Route path="koyambedu"        element={<AdminKoyambedu />} />
+            <Route path="coupons"          element={<AdminCoupons />} />
           </Route>
 
           {/* ── Koyambedu Daily ─────────────────── */}
