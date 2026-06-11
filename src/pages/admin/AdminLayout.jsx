@@ -141,7 +141,7 @@ export default function AdminLayout() {
   const userPerms = user?.permissions || [];
   const canAccess = (item) => {
     if (isSuperAdmin) return true;
-    if (item.permission === null) return false;
+    if (item.permission === null) return true; // null = visible to all admins
     return userPerms.includes(item.permission);
   };
 
