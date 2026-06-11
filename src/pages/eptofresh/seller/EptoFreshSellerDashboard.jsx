@@ -173,17 +173,6 @@ export default function EptoFreshSellerDashboard() {
     { path: '/eptofresh/seller/payouts',  label: 'Payouts',   Icon: FiDollarSign },
   ];
 
-  if (dash?.seller?.status === 'pending_review') {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: '#0B1729' }}>
-        <div className="text-5xl mb-4">⏳</div>
-        <h2 className="text-white text-xl font-bold mb-2">Application Under Review</h2>
-        <p className="text-gray-400 text-sm">Your EptoFresh seller application is being reviewed. You'll be notified within 24 hours.</p>
-        <p className="text-gray-600 text-xs mt-4">{dash.seller.shopName} — {dash.seller.sellerCode}</p>
-      </div>
-    );
-  }
-
   if (dash?.seller?.status === 'rejected') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: '#0B1729' }}>
@@ -196,8 +185,22 @@ export default function EptoFreshSellerDashboard() {
 
   return (
     <div className="min-h-screen pb-24" style={{ background: '#0B1729' }}>
+      {/* Pending-review banner */}
+      {dash?.seller?.status === 'pending_review' && (
+        <div className="px-4 pt-4">
+          <div className="rounded-2xl px-4 py-3 flex items-start gap-3"
+            style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)' }}>
+            <span className="text-xl mt-0.5">⏳</span>
+            <div>
+              <p className="text-yellow-300 font-semibold text-sm">Application Under Review</p>
+              <p className="text-yellow-200/60 text-xs mt-0.5">You can set up your products now. Your shop will go live once admin approves your application (usually within 24 hours).</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="px-4 pt-10 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+      <div className="px-4 pt-4 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-white font-bold text-lg">{dash?.seller?.shopName}</h1>
