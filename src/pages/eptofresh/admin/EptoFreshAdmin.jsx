@@ -688,6 +688,7 @@ function CouponsTab() {
                 <select value={form.platformRestriction} onChange={e => setForm(v => ({ ...v, platformRestriction: e.target.value }))}
                   className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-white outline-none" style={inputStyle}>
                   <option value="all"         className="bg-gray-900">🌐 All platforms</option>
+                  <option value="main"        className="bg-gray-900">🛒 Eptomart Main only</option>
                   <option value="koyambedu"   className="bg-gray-900">🥬 Koyambedu Daily only</option>
                   <option value="uzhavar"     className="bg-gray-900">🌾 Uzhavar Fresh only</option>
                   <option value="eptofresh"   className="bg-gray-900">🥩 EptoFresh Proteins only</option>
@@ -730,7 +731,7 @@ function CouponsTab() {
                   <div className="flex gap-1 mt-1 flex-wrap">
                     {c.platformRestriction && c.platformRestriction !== 'all' && (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase" style={{ background: 'rgba(244,148,28,0.15)', color: '#f4941c' }}>
-                        {c.platformRestriction === 'koyambedu' ? '🥬 Koyambedu' : c.platformRestriction === 'uzhavar' ? '🌾 Uzhavar' : '🥩 EptoFresh'}
+                        {c.platformRestriction === 'main' ? '🛒 Eptomart' : c.platformRestriction === 'koyambedu' ? '🥬 Koyambedu' : c.platformRestriction === 'uzhavar' ? '🌾 Uzhavar' : '🥩 EptoFresh'}
                       </span>
                     )}
                     {c.assignedSellerName && (
@@ -773,7 +774,7 @@ function CouponsTab() {
               <div className="flex gap-1 flex-wrap">
                 {c.platformRestriction && c.platformRestriction !== 'all' && (
                   <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase" style={{ background: 'rgba(244,148,28,0.15)', color: '#f4941c' }}>
-                    {c.platformRestriction === 'koyambedu' ? '🥬 Koyambedu' : c.platformRestriction === 'uzhavar' ? '🌾 Uzhavar' : '🥩 EptoFresh'}
+                    {c.platformRestriction === 'main' ? '🛒 Eptomart' : c.platformRestriction === 'koyambedu' ? '🥬 Koyambedu' : c.platformRestriction === 'uzhavar' ? '🌾 Uzhavar' : '🥩 EptoFresh'}
                   </span>
                 )}
                 {c.assignedSellerName && (

@@ -79,6 +79,7 @@ export default function Checkout() {
       const { data } = await api.post('/coupon/validate', {
         code:        couponCode.trim(),
         orderAmount: displaySubtotal + displayGst,
+        platform:    'main',
       });
       if (data.success) {
         setCouponApplied({ code: data.coupon.code, discount: data.discount, description: data.coupon.description });

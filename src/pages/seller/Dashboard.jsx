@@ -1,9 +1,132 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPackage, FiShoppingBag, FiDollarSign, FiClock, FiPlus, FiAlertCircle, FiArrowRight, FiGift, FiZap } from 'react-icons/fi';
+import { FiPackage, FiShoppingBag, FiDollarSign, FiClock, FiPlus, FiAlertCircle, FiArrowRight, FiGift, FiZap, FiTag, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
+import toast from 'react-hot-toast';
+
+// ── Promo Request Section ─────────────────────────────────
+function PromoRequestSection() {
+  const [open, setOpen]           = useState(false);
+  const [requests, setRequests]   = useState([]);
+  const [showForm, setShowForm]   = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    code: '', discountValue: '', minOrderValue: '', maxUsage: '50',
+    validFrom: '', validTo: '', description: '', requestReason: '',
+  });
+
+  useEffect(() => {
+    if (open) {
+      api.get('/coupon/my-requests').then(r => { if (r.data.success) setRequests(r.data.coupons); }).catch(() => {});
+    }
+  }, [open]);
+
+  const submit = async () => {
+    if (!form.code || !form.discountValue || !form.validFrom || !form.validTo) {
+      toast.error('Fill in all required fields'); return;
+    }
+    setSubmitting(true);
+    try {
+      const { data } = await api.post('/coupon/request', { ...form, platform: 'main' });
+      if (data.success) {
+        toast.success('Promo request sent to admin!');
+        setRequests(r => [data.coupon, ...r]);
+        setShowForm(false);
+        setForm({ code: '', discountValue: '', minOrderValue: '', maxUsage: '50', validFrom: '', validTo: '', description: '', requestReason: '' });
+      }
+    } catch (err) { toast.error(err.response?.data?.message || 'Request failed'); }
+    finally { setSubmitting(false); }
+  };
+
+  const statusColor = { pending: '#f59e0b', approved: '#10b981', rejected: '#ef4444', admin_created: '#6366f1' };
+
+  return (
+    <div className="card overflow-hidden">
+      <button onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-orange-100">
+            <FiTag size={14} className="text-orange-600" />
+          </div>
+          <span className="font-semibold text-gray-800 text-sm">Promo Code Requests</span>
+          {requests.some(r => r.requestStatus === 'pending') && (
+            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-yellow-100 text-yellow-700">PENDING</span>
+          )}
+        </div>
+        {open ? <FiChevronUp size={16} className="text-gray-400" /> : <FiChevronDown size={16} className="text-gray-400" />}
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-500">Request a % discount promo from admin (shipping excluded)</p>
+            <button onClick={() => setShowForm(v => !v)}
+              className="text-xs font-bold text-white px-3 py-1.5 rounded-lg"
+              style={{ background: '#f4941c' }}>
+              + Request
+            </button>
+          </div>
+
+          {showForm && (
+            <div className="space-y-3 bg-gray-50 rounded-xl p-3">
+              {[
+                { key: 'code',          label: 'Promo Code *',              type: 'text',   placeholder: 'MYSHOP20' },
+                { key: 'discountValue', label: 'Discount % (excl. shipping) *', type: 'number', placeholder: '10' },
+                { key: 'minOrderValue', label: 'Min Order Value (₹)',       type: 'number', placeholder: '0' },
+                { key: 'maxUsage',      label: 'Max Uses',                  type: 'number', placeholder: '50' },
+                { key: 'validFrom',     label: 'Valid From *',              type: 'date' },
+                { key: 'validTo',       label: 'Valid To *',                type: 'date' },
+                { key: 'description',   label: 'Description',               type: 'text',   placeholder: 'Weekend offer' },
+                { key: 'requestReason', label: 'Reason for request',        type: 'text',   placeholder: 'Festival promotion' },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="text-xs text-gray-500 font-medium">{f.label}</label>
+                  <input type={f.type} value={form[f.key]} onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))}
+                    placeholder={f.placeholder}
+                    className="w-full mt-1 px-3 py-2 rounded-lg text-sm border border-gray-200 focus:outline-none focus:border-orange-400 bg-white" />
+                </div>
+              ))}
+              <div className="flex gap-2">
+                <button onClick={submit} disabled={submitting}
+                  className="flex-1 py-2 rounded-lg font-bold text-white text-sm disabled:opacity-50"
+                  style={{ background: '#f4941c' }}>
+                  {submitting ? 'Submitting…' : 'Submit Request'}
+                </button>
+                <button onClick={() => setShowForm(false)}
+                  className="px-4 py-2 rounded-lg text-sm text-gray-500 border border-gray-200 hover:bg-gray-100">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {requests.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">My Requests</p>
+              {requests.map(c => (
+                <div key={c._id} className="flex items-center justify-between rounded-xl px-3 py-2 bg-gray-50 border border-gray-100">
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">{c.code}</p>
+                    <p className="text-xs text-gray-500">{c.discountValue}% off · Max {c.maxUsage} uses</p>
+                  </div>
+                  <span className="text-[10px] font-bold capitalize px-2 py-0.5 rounded-full"
+                    style={{ background: `${statusColor[c.requestStatus] || '#94a3b8'}18`, color: statusColor[c.requestStatus] || '#94a3b8' }}>
+                    {c.requestStatus?.replace('_', ' ')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {requests.length === 0 && !showForm && (
+            <p className="text-xs text-gray-400 text-center py-3">No promo requests yet</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SellerDashboard() {
   const { user } = useAuth();
@@ -178,6 +301,9 @@ export default function SellerDashboard() {
           </div>
         )}
       </div>
+
+      {/* Promo Code Requests */}
+      <PromoRequestSection />
 
       {/* AI Insights Card */}
       <div className="card overflow-hidden">
