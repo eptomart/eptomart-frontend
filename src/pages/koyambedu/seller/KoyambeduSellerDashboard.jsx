@@ -3,6 +3,117 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
 
+// ── Promo Request Section ──────────────────────────────────
+function PromoRequestSection() {
+  const [open,       setOpen]       = useState(false);
+  const [showForm,   setShowForm]   = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [requests,   setRequests]   = useState([]);
+  const [form, setForm] = useState({
+    code: '', discountValue: '', minOrderValue: '', maxUsage: '50',
+    validFrom: '', validTo: '', description: '', requestReason: '',
+  });
+
+  useEffect(() => {
+    if (open) {
+      api.get('/coupon/my-requests').then(r => { if (r.data.success) setRequests(r.data.coupons); }).catch(() => {});
+    }
+  }, [open]);
+
+  const submit = async () => {
+    if (!form.code || !form.discountValue || !form.validFrom || !form.validTo) {
+      toast.error('Fill in all required fields'); return;
+    }
+    setSubmitting(true);
+    try {
+      const { data } = await api.post('/coupon/request', { ...form, platform: 'Koyambedu' });
+      if (data.success) {
+        toast.success('Promo request sent to admin!');
+        setRequests(r => [data.coupon, ...r]);
+        setShowForm(false);
+        setForm({ code: '', discountValue: '', minOrderValue: '', maxUsage: '50', validFrom: '', validTo: '', description: '', requestReason: '' });
+      }
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed');
+    } finally { setSubmitting(false); }
+  };
+
+  const statusColor = { pending: '#d97706', approved: '#16a34a', rejected: '#dc2626', admin_created: '#16a34a' };
+
+  return (
+    <div className="mx-4 mt-3">
+      <button onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between bg-white rounded-2xl border border-green-100 shadow-sm px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🎟️</span>
+          <span className="text-gray-800 font-semibold text-sm">Promo Code Requests</span>
+          {requests.some(r => r.requestStatus === 'pending') && (
+            <span className="text-[9px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">PENDING</span>
+          )}
+        </div>
+        <span className="text-gray-400 text-xs">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="bg-white border border-green-100 rounded-2xl mt-1 p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-gray-500 text-xs">Request a % discount promo from admin (shipping excluded)</p>
+            <button onClick={() => setShowForm(v => !v)}
+              className="text-xs font-bold text-white px-3 py-1.5 rounded-xl bg-green-600">+ Request</button>
+          </div>
+
+          {showForm && (
+            <div className="space-y-2.5 pt-1">
+              {[
+                { key: 'code',          label: 'Promo Code *',           type: 'text',   placeholder: 'KOYA10' },
+                { key: 'discountValue', label: 'Discount % *',           type: 'number', placeholder: '10' },
+                { key: 'minOrderValue', label: 'Min Order (₹)',          type: 'number', placeholder: '0' },
+                { key: 'maxUsage',      label: 'Max Uses',               type: 'number', placeholder: '50' },
+                { key: 'validFrom',     label: 'Valid From *',           type: 'date' },
+                { key: 'validTo',       label: 'Valid To *',             type: 'date' },
+                { key: 'description',   label: 'Description',            type: 'text',   placeholder: 'Weekend offer' },
+                { key: 'requestReason', label: 'Reason',                 type: 'text',   placeholder: 'Festival promo' },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="text-xs text-gray-500">{f.label}</label>
+                  <input type={f.type} value={form[f.key]} onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))}
+                    placeholder={f.placeholder}
+                    className="w-full mt-0.5 px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-green-500" />
+                </div>
+              ))}
+              <div className="flex gap-2">
+                <button onClick={submit} disabled={submitting}
+                  className="flex-1 py-2.5 rounded-xl font-bold text-white text-sm bg-green-600 hover:bg-green-700 disabled:opacity-50">
+                  {submitting ? 'Sending…' : 'Submit Request'}
+                </button>
+                <button onClick={() => setShowForm(false)}
+                  className="px-4 py-2.5 rounded-xl text-sm text-gray-500 bg-gray-100">Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {requests.length > 0 && (
+            <div className="space-y-2 pt-1">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">My Requests</p>
+              {requests.map(c => (
+                <div key={c._id} className="flex items-center justify-between border border-gray-100 rounded-xl px-3 py-2">
+                  <div>
+                    <p className="text-gray-800 text-xs font-bold">{c.code}</p>
+                    <p className="text-gray-400 text-[10px]">{c.discountValue}% off · max {c.maxUsage} uses</p>
+                  </div>
+                  <span className="text-[10px] font-bold capitalize px-2 py-0.5 rounded-full"
+                    style={{ background: `${statusColor[c.requestStatus] || '#6b7280'}15`, color: statusColor[c.requestStatus] || '#6b7280' }}>
+                    {c.requestStatus === 'admin_created' ? 'Active' : c.requestStatus}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const STATUS_COLOR = {
   pending_confirmation:   'bg-yellow-100 text-yellow-700',
   price_revision_pending: 'bg-orange-100 text-orange-700',
@@ -120,6 +231,9 @@ export default function KoyambeduSellerDashboard() {
           🔒 Buyer details are managed exclusively by Eptomart. You will never see buyer address or phone number.
         </p>
       </div>
+
+      {/* Promo Code Requests */}
+      <PromoRequestSection />
 
       {/* Tabs */}
       <div className="flex border-b border-green-100 bg-white mt-4 px-4">

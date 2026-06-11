@@ -7,9 +7,10 @@ import api from '../../utils/api';
 import toast from 'react-hot-toast';
 import {
   FiMapPin, FiStar, FiClock, FiChevronRight,
-  FiShoppingBag, FiEdit2,
+  FiShoppingBag, FiEdit2, FiGrid,
 } from 'react-icons/fi';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
+import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/common/Navbar';
 
 const CATEGORIES = [
@@ -25,10 +26,12 @@ const CATEGORIES = [
 export default function EptoFreshHome() {
   const navigate = useNavigate();
   const { userLocation } = useEptoFreshCart();
+  const { user } = useAuth();
 
   const [sellers, setSellers]               = useState([]);
   const [loading, setLoading]               = useState(false);
   const [activeCategory, setActiveCategory] = useState('');
+  const [sellerAccount, setSellerAccount]   = useState(null); // null=unchecked, false=not-seller, object=seller
 
   // Read area name saved by the map picker
   const [locationLabel, setLocationLabel] = useState(
@@ -52,10 +55,15 @@ export default function EptoFreshHome() {
     fetchSellers(userLocation, activeCategory);
   }, [userLocation]);
 
-  // On mount
+  // On mount — fetch sellers and check if user is an EptoFresh seller
   useEffect(() => {
     fetchSellers(userLocation, '');
-  }, []);
+    if (user) {
+      api.get('/eptofresh/seller/profile')
+        .then(r => { if (r.data.success) setSellerAccount(r.data.seller); })
+        .catch(() => setSellerAccount(false));
+    }
+  }, [user]);
 
   const fetchSellers = useCallback(async (loc, category) => {
     setLoading(true);
@@ -109,6 +117,30 @@ export default function EptoFreshHome() {
             <FiShoppingBag className="text-orange-400" size={22} />
           </button>
         </div>
+
+        {/* Seller portal banner — shown when logged-in user has an EptoFresh seller account */}
+        {sellerAccount && (
+          <button
+            onClick={() => navigate('/eptofresh/seller')}
+            className="w-full flex items-center justify-between rounded-2xl px-4 py-3 mb-3"
+            style={{ background: 'rgba(244,148,28,0.12)', border: '1px solid rgba(244,148,28,0.25)' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(244,148,28,0.20)' }}>
+                <FiGrid size={15} style={{ color: '#f4941c' }} />
+              </div>
+              <div className="text-left">
+                <p className="text-white text-sm font-bold leading-tight">{sellerAccount.shopName}</p>
+                <p className="text-xs font-medium" style={{ color: sellerAccount.status === 'approved' ? '#34d399' : '#fbbf24' }}>
+                  {sellerAccount.status === 'approved' ? '● Active Seller' : sellerAccount.status === 'pending_review' ? '⏳ Under Review' : sellerAccount.status}
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-bold px-3 py-1.5 rounded-xl text-white" style={{ background: '#f4941c' }}>
+              Seller Dashboard →
+            </span>
+          </button>
+        )}
 
         {/* Category filter pills */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">

@@ -56,6 +56,99 @@ const ORDER_STATUS_COLOR = {
 
 const emptyProduct = { name: '', nameTa: '', category: 'vegetable', unit: 'kg', pricePerUnit: '', availableQuantity: '', harvestFrom: '', harvestTo: '', deliveryType: 'both', productType: 'fresh', canShip: false };
 
+// ── Farmer Promo Request Section ────────────────────────────────
+function FarmerPromoSection() {
+  const [requests,   setRequests]   = useState([]);
+  const [showForm,   setShowForm]   = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    code: '', discountValue: '', minOrderValue: '', maxUsage: '50',
+    validFrom: '', validTo: '', description: '', requestReason: '',
+  });
+
+  useEffect(() => {
+    api.get('/coupon/my-requests').then(r => { if (r.data.success) setRequests(r.data.coupons); }).catch(() => {});
+  }, []);
+
+  const submit = async () => {
+    if (!form.code || !form.discountValue || !form.validFrom || !form.validTo) {
+      toast.error('Fill in all required fields'); return;
+    }
+    setSubmitting(true);
+    try {
+      const { data } = await api.post('/coupon/request', { ...form, platform: 'Uzhavar' });
+      if (data.success) {
+        toast.success('Promo request sent to admin!');
+        setRequests(r => [data.coupon, ...r]);
+        setShowForm(false);
+        setForm({ code: '', discountValue: '', minOrderValue: '', maxUsage: '50', validFrom: '', validTo: '', description: '', requestReason: '' });
+      }
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed');
+    } finally { setSubmitting(false); }
+  };
+
+  const statusColor = { pending: '#d97706', approved: '#16a34a', rejected: '#dc2626', admin_created: '#16a34a' };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500">Request a % discount promo code from admin</p>
+        <button onClick={() => setShowForm(v => !v)}
+          className="text-xs font-bold text-white px-3 py-1.5 rounded-xl bg-green-600">
+          {showForm ? 'Cancel' : '+ New Request'}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3 shadow-sm">
+          {[
+            { key: 'code',          label: 'Promo Code *',    type: 'text',   placeholder: 'FARM10' },
+            { key: 'discountValue', label: 'Discount % *',    type: 'number', placeholder: '10' },
+            { key: 'minOrderValue', label: 'Min Order (₹)',   type: 'number', placeholder: '0' },
+            { key: 'maxUsage',      label: 'Max Uses',        type: 'number', placeholder: '50' },
+            { key: 'validFrom',     label: 'Valid From *',    type: 'date' },
+            { key: 'validTo',       label: 'Valid To *',      type: 'date' },
+            { key: 'description',   label: 'Description',     type: 'text',   placeholder: 'Harvest season offer' },
+            { key: 'requestReason', label: 'Reason',          type: 'text',   placeholder: 'Festival promo' },
+          ].map(f => (
+            <div key={f.key}>
+              <label className="text-xs text-gray-500 font-medium">{f.label}</label>
+              <input type={f.type} value={form[f.key]} onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))}
+                placeholder={f.placeholder}
+                className="w-full mt-0.5 px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-green-500" />
+            </div>
+          ))}
+          <div className="flex gap-2 pt-1">
+            <button onClick={submit} disabled={submitting}
+              className="flex-1 py-3 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 text-sm">
+              {submitting ? 'Submitting…' : 'Submit to Admin'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {requests.length === 0 ? (
+        <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-2xl">
+          <p className="text-2xl mb-2">🎟️</p>
+          <p className="text-sm">No promo requests yet</p>
+          <p className="text-xs mt-1">Request a discount code to offer your buyers</p>
+        </div>
+      ) : requests.map(c => (
+        <div key={c._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center justify-between">
+          <div>
+            <p className="font-bold text-gray-800">{c.code}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{c.discountValue}% off · max {c.maxUsage} uses · {c.description || '—'}</p>
+          </div>
+          <span className="text-xs font-bold capitalize px-2.5 py-1 rounded-full"
+            style={{ background: `${statusColor[c.requestStatus] || '#6b7280'}18`, color: statusColor[c.requestStatus] || '#6b7280' }}>
+            {c.requestStatus === 'admin_created' ? 'Active' : c.requestStatus}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function FarmerDashboard() {
   const navigate   = useNavigate();
   const { isLoggedIn } = useAuth();
@@ -244,6 +337,7 @@ export default function FarmerDashboard() {
           {[
             { key: 'products', label: `🥬 Products (${products.length})` },
             { key: 'orders',   label: `📦 Orders (${orders.length})` },
+            { key: 'promos',   label: `🎟️ Promos` },
             { key: 'profile',  label: `👤 My Profile` },
           ].map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
@@ -347,6 +441,9 @@ export default function FarmerDashboard() {
             ))}
           </div>
         )}
+        {/* Promos tab */}
+        {tab === 'promos' && <FarmerPromoSection />}
+
         {/* Profile tab */}
         {tab === 'profile' && (
           <div className="space-y-4">
