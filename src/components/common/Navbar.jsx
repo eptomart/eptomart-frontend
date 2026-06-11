@@ -195,6 +195,15 @@ export default function Navbar() {
   const [showUserMenu,     setShowUserMenu]      = useState(false);
   const [listening,        setListening]        = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [isEpfSeller,      setIsEpfSeller]      = useState(false);
+
+  // Check if logged-in user has an EptoFresh seller account
+  useEffect(() => {
+    if (!isLoggedIn) { setIsEpfSeller(false); return; }
+    api.get('/eptofresh/seller/profile')
+      .then(r => setIsEpfSeller(r.data?.success === true))
+      .catch(() => setIsEpfSeller(false));
+  }, [isLoggedIn]);
 
   const navigate      = useNavigate();
   const { pathname }  = useLocation();
@@ -377,6 +386,9 @@ export default function Navbar() {
                         <Link to="/seller/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm font-semibold" style={{ color: '#f4941c' }} onClick={() => setShowUserMenu(false)}>
                           <FiGrid size={15} /> Seller Portal
                         </Link>
+                      )}
+                      {isEpfSeller && (
+                        <Link to="/eptofresh/seller" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm font-semibold" style={{ color: '#f4941c' }} onClick={() => setShowUserMenu(false)}><span>🥩</span> Protein Seller Portal</Link>
                       )}
                       {isKoyambeduSeller && (
                         <Link to="/koyambedu/seller" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-green-50 text-sm font-semibold text-green-700" onClick={() => setShowUserMenu(false)}><span>🥬</span> Koyambedu Seller</Link>

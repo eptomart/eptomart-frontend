@@ -54,7 +54,7 @@ export default function KoyambeduCheckout() {
     if (!couponCode.trim()) return;
     setCouponLoading(true);
     try {
-      const { data } = await api.post('/coupon/validate', { code: couponCode.trim(), orderAmount: subtotal });
+      const { data } = await api.post('/coupon/validate', { code: couponCode.trim(), orderAmount: subtotal, platform: 'koyambedu' });
       if (data.success) {
         setCouponApplied({ code: data.coupon.code, discount: data.discount, description: data.coupon.description });
         toast.success(`Coupon applied! ₹${data.discount.toFixed(2)} off`);

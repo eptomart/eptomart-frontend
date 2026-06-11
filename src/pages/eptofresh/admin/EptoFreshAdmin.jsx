@@ -6,10 +6,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
-import { FiGrid, FiUsers, FiPackage, FiShoppingBag, FiDollarSign, FiTag, FiCheck, FiX, FiCamera, FiBarChart2, FiSettings, FiPlus, FiMapPin } from 'react-icons/fi';
+import { FiGrid, FiUsers, FiPackage, FiShoppingBag, FiDollarSign, FiTag, FiCheck, FiX, FiCamera, FiBarChart2, FiSettings, FiPlus, FiMapPin, FiArrowLeft } from 'react-icons/fi';
 
 export default function EptoFreshAdmin() {
-  const location = useLocation();
+  const navigate  = useNavigate();
+  const location  = useLocation();
   const [tab, setTab] = useState('dashboard');
   const [dash, setDash] = useState(null);
 
@@ -30,9 +31,14 @@ export default function EptoFreshAdmin() {
   return (
     <div className="min-h-screen pb-24" style={{ background: '#0B1729' }}>
       {/* Header */}
-      <div className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <h1 className="text-white font-bold text-xl">🥩 EptoFresh Admin</h1>
-        <p className="text-gray-500 text-xs mt-0.5">Hyperlocal Proteins Marketplace</p>
+      <div className="px-4 pt-6 pb-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <button onClick={() => navigate(-1)} className="p-2 rounded-xl flex-shrink-0" style={{ background: 'rgba(255,255,255,0.07)' }}>
+          <FiArrowLeft className="text-white" size={18} />
+        </button>
+        <div>
+          <h1 className="text-white font-bold text-xl">🥩 EptoFresh Admin</h1>
+          <p className="text-gray-500 text-xs mt-0.5">Hyperlocal Proteins Marketplace</p>
+        </div>
       </div>
 
       {/* Tab nav */}
@@ -566,6 +572,7 @@ function CouponsTab() {
   const [form, setForm] = useState({
     code: '', description: '', discountType: 'percent', discountValue: '',
     minOrderValue: 0, maxUsage: 100, validFrom: '', validTo: '',
+    platformRestriction: 'all', assignedSellerId: '', assignedSellerName: '',
   });
 
   useEffect(() => {
@@ -658,6 +665,34 @@ function CouponsTab() {
                     style={inputStyle} />
                 </div>
               ))}
+              {/* Platform restriction */}
+              <div>
+                <label className="text-gray-400 text-xs">Applies To (Platform)</label>
+                <select value={form.platformRestriction} onChange={e => setForm(v => ({ ...v, platformRestriction: e.target.value }))}
+                  className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-white outline-none" style={inputStyle}>
+                  <option value="all"         className="bg-gray-900">🌐 All platforms</option>
+                  <option value="koyambedu"   className="bg-gray-900">🥬 Koyambedu Daily only</option>
+                  <option value="uzhavar"     className="bg-gray-900">🌾 Uzhavar Fresh only</option>
+                  <option value="eptofresh"   className="bg-gray-900">🥩 EptoFresh Proteins only</option>
+                </select>
+              </div>
+              {/* Optional: restrict to one seller */}
+              {form.platformRestriction !== 'all' && (
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-gray-400 text-xs">Seller ID (optional — leave blank for all sellers on this platform)</label>
+                    <input type="text" value={form.assignedSellerId} onChange={e => setForm(v => ({ ...v, assignedSellerId: e.target.value }))}
+                      placeholder="MongoDB ObjectId of the seller"
+                      className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-white outline-none" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-xs">Seller Name (for display)</label>
+                    <input type="text" value={form.assignedSellerName} onChange={e => setForm(v => ({ ...v, assignedSellerName: e.target.value }))}
+                      placeholder="e.g. Fresh Meats by Kumar"
+                      className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-white outline-none" style={inputStyle} />
+                  </div>
+                </div>
+              )}
               <div className="flex gap-2">
                 <button onClick={createCoupon} className="flex-1 py-2.5 rounded-xl font-bold text-white text-sm" style={{ background: '#f4941c' }}>Create Coupon</button>
                 <button onClick={() => setShowAdd(false)} className="px-4 py-2.5 rounded-xl text-sm text-gray-400" style={{ background: 'rgba(255,255,255,0.05)' }}>Cancel</button>
@@ -675,6 +710,18 @@ function CouponsTab() {
                     {' • '} Min ₹{c.minOrderValue}
                   </p>
                   <p className="text-gray-600 text-[10px]">Used: {c.usedCount}/{c.maxUsage} • Expires: {new Date(c.validTo).toLocaleDateString('en-IN')}</p>
+                  <div className="flex gap-1 mt-1 flex-wrap">
+                    {c.platformRestriction && c.platformRestriction !== 'all' && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase" style={{ background: 'rgba(244,148,28,0.15)', color: '#f4941c' }}>
+                        {c.platformRestriction === 'koyambedu' ? '🥬 Koyambedu' : c.platformRestriction === 'uzhavar' ? '🌾 Uzhavar' : '🥩 EptoFresh'}
+                      </span>
+                    )}
+                    {c.assignedSellerName && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px]" style={{ background: 'rgba(255,255,255,0.06)', color: '#9ca3af' }}>
+                        👤 {c.assignedSellerName}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <button onClick={() => toggle(c._id)} className="px-2.5 py-1 rounded-lg text-xs font-semibold"
                   style={{ background: c.isActive ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)', color: c.isActive ? '#34d399' : '#f87171' }}>
@@ -706,6 +753,16 @@ function CouponsTab() {
               </div>
               <p className="text-gray-300 text-xs">{c.discountValue}% off (excl. shipping) • Min ₹{c.minOrderValue} • Max {c.maxUsage} uses</p>
               <p className="text-gray-500 text-xs">Valid: {new Date(c.validFrom).toLocaleDateString('en-IN')} – {new Date(c.validTo).toLocaleDateString('en-IN')}</p>
+              <div className="flex gap-1 flex-wrap">
+                {c.platformRestriction && c.platformRestriction !== 'all' && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase" style={{ background: 'rgba(244,148,28,0.15)', color: '#f4941c' }}>
+                    {c.platformRestriction === 'koyambedu' ? '🥬 Koyambedu' : c.platformRestriction === 'uzhavar' ? '🌾 Uzhavar' : '🥩 EptoFresh'}
+                  </span>
+                )}
+                {c.assignedSellerName && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px]" style={{ background: 'rgba(255,255,255,0.06)', color: '#9ca3af' }}>👤 {c.assignedSellerName}</span>
+                )}
+              </div>
               {c.requestReason && <p className="text-gray-400 text-xs italic">"{c.requestReason}"</p>}
               <div className="flex gap-2 pt-1">
                 <button onClick={() => approveRequest(c._id)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}>✓ Approve</button>

@@ -81,15 +81,18 @@ export default function EptoFreshCheckout() {
   const validateCoupon = async () => {
     if (!couponCode.trim()) return;
     try {
-      const { data } = await api.post('/eptofresh/coupon/validate', {
-        code: couponCode, orderAmount: cartTotal,
+      const { data } = await api.post('/coupon/validate', {
+        code: couponCode.trim(),
+        orderAmount: cartTotal,
+        platform: 'eptofresh',
+        sellerId: cart?.seller?._id || cart?.seller || undefined,
       });
       if (data.success) {
         setCouponDiscount(data.discount);
-        toast.success(`Coupon applied! ₹${data.discount} off`);
+        toast.success(`Promo applied! ₹${data.discount} off`);
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Invalid coupon');
+      toast.error(err.response?.data?.message || 'Invalid promo code');
       setCouponDiscount(0);
     }
   };
@@ -330,25 +333,6 @@ export default function EptoFreshCheckout() {
               </div>
             )}
 
-            {/* Coupon */}
-            <div>
-              <label className="text-gray-400 text-xs mb-1 block flex items-center gap-1"><FiTag size={11} /> Coupon Code</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={couponCode}
-                  onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponDiscount(0); }}
-                  placeholder="Enter coupon"
-                  className="flex-1 px-3 py-2.5 rounded-xl text-sm text-white outline-none"
-                  style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }}
-                />
-                <button onClick={validateCoupon} className="px-3 py-2 rounded-xl text-xs font-bold" style={{ background: 'rgba(244,148,28,0.15)', color: '#f4941c' }}>
-                  Apply
-                </button>
-              </div>
-              {couponDiscount > 0 && <p className="text-green-400 text-xs mt-1">✓ ₹{couponDiscount} discount applied</p>}
-            </div>
-
             {/* Wallet */}
             {walletBalance > 0 && (
               <label className="flex items-center justify-between cursor-pointer rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
@@ -371,10 +355,35 @@ export default function EptoFreshCheckout() {
           <div className="space-y-4">
             <h2 className="text-white font-semibold">Payment</h2>
 
+            {/* Coupon input */}
+            <div>
+              <label className="text-gray-400 text-xs mb-1 block flex items-center gap-1"><FiTag size={11} /> Promo Code</label>
+              {couponDiscount > 0 ? (
+                <div className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)' }}>
+                  <span className="text-green-400 text-sm font-bold">🎉 {couponCode} — ₹{couponDiscount} off</span>
+                  <button onClick={() => { setCouponCode(''); setCouponDiscount(0); }} className="text-xs text-red-400 font-semibold">Remove</button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponDiscount(0); }}
+                    placeholder="Enter promo code"
+                    className="flex-1 px-3 py-2.5 rounded-xl text-sm text-white outline-none"
+                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }}
+                  />
+                  <button onClick={validateCoupon} className="px-4 py-2 rounded-xl text-sm font-bold text-white" style={{ background: '#f4941c' }}>
+                    Apply
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Order summary */}
             <div className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
               <div className="flex justify-between text-sm"><span className="text-gray-400">Subtotal</span><span className="text-white">₹{cartTotal.toFixed(2)}</span></div>
-              {couponDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-gray-400">Coupon</span><span className="text-green-400">-₹{couponDiscount.toFixed(2)}</span></div>}
+              {couponDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-gray-400">Promo</span><span className="text-green-400">-₹{couponDiscount.toFixed(2)}</span></div>}
               <div className="flex justify-between text-sm"><span className="text-gray-400">Delivery</span><span className={deliveryInfo?.isFreeDelivery ? 'text-green-400' : 'text-white'}>{deliveryInfo?.isFreeDelivery ? 'FREE' : `₹${deliveryInfo?.charge || 0}`}</span></div>
               {useWallet && <div className="flex justify-between text-sm"><span className="text-gray-400">Wallet</span><span className="text-green-400">-₹{Math.min(walletBalance, cartTotal - couponDiscount + (deliveryInfo?.charge || 0)).toFixed(2)}</span></div>}
               <div className="border-t border-gray-700 pt-2 flex justify-between font-bold text-lg">
