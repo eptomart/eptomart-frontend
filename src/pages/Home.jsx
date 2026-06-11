@@ -192,22 +192,22 @@ function FlashDeals({ products }) {
 const SUB_APPS = [
   {
     to: '/koyambedu',
-    img: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&h=600&fit=crop&q=85',
-    overlay: 'linear-gradient(to top, rgba(10,46,18,0.96) 0%, rgba(15,61,31,0.55) 50%, rgba(15,61,31,0.10) 100%)',
+    img: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&h=600&fit=crop&q=85',
+    overlay: 'linear-gradient(to top, rgba(5,30,10,0.97) 0%, rgba(10,46,18,0.60) 45%, rgba(10,46,18,0.05) 100%)',
     badge: 'BY 10 AM', badgeBg: '#facc15', badgeText: '#14532d',
     title: 'Koyambedu Daily', sub: 'Veggies & Fruits',
   },
   {
     to: '/uzhavar',
-    img: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&h=600&fit=crop&q=85',
-    overlay: 'linear-gradient(to top, rgba(5,30,26,0.96) 0%, rgba(10,46,43,0.55) 50%, rgba(10,46,43,0.10) 100%)',
+    img: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&h=600&fit=crop&q=85',
+    overlay: 'linear-gradient(to top, rgba(2,20,16,0.97) 0%, rgba(8,40,35,0.60) 45%, rgba(8,40,35,0.05) 100%)',
     badge: 'FARM FRESH', badgeBg: '#a3e635', badgeText: '#134e4a',
     title: 'Farmer Fresh', sub: 'Farm Direct',
   },
   {
     to: '/eptofresh',
-    img: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c8?w=600&h=600&fit=crop&q=85',
-    overlay: 'linear-gradient(to top, rgba(26,10,0,0.96) 0%, rgba(124,45,18,0.60) 50%, rgba(124,45,18,0.10) 100%)',
+    img: 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=600&h=600&fit=crop&q=85',
+    overlay: 'linear-gradient(to top, rgba(20,5,0,0.97) 0%, rgba(120,30,10,0.60) 45%, rgba(120,30,10,0.05) 100%)',
     badge: 'HYPERLOCAL', badgeBg: '#fb923c', badgeText: '#fff',
     title: 'EptoFresh Proteins', sub: 'Fresh Daily',
   },
@@ -248,10 +248,10 @@ function SubAppBanners() {
               </span>
               {/* Title bottom */}
               <div>
-                <p className="text-white font-black leading-tight drop-shadow-sm" style={{ fontSize: 11 }}>
+                <p className="text-white font-black leading-tight" style={{ fontSize: 13.5, textShadow: '0 2px 10px rgba(0,0,0,0.95), 0 1px 4px rgba(0,0,0,0.9)' }}>
                   {app.title}
                 </p>
-                <p className="text-white/70 mt-0.5 leading-tight" style={{ fontSize: 9 }}>{app.sub}</p>
+                <p className="font-semibold mt-0.5 leading-tight" style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)', textShadow: '0 1px 6px rgba(0,0,0,0.8)' }}>{app.sub}</p>
               </div>
             </div>
           </Link>
@@ -666,37 +666,42 @@ function MobileHero() {
       <div
         className="relative rounded-3xl overflow-hidden"
         style={{
-          background: 'linear-gradient(135deg, #0B1729 0%, #162438 55%, #1e3348 100%)',
-          minHeight: 118,
+          background: 'linear-gradient(135deg, #f97316 0%, #ef4444 45%, #b91c1c 100%)',
+          minHeight: 158,
         }}
       >
-        {/* Decorative orbs */}
-        <div className="absolute pointer-events-none" style={{ width: 200, height: 200, borderRadius: '50%', background: 'rgba(244,148,28,0.10)', top: -70, right: -50 }} />
-        <div className="absolute pointer-events-none" style={{ width: 100, height: 100, borderRadius: '50%', background: 'rgba(244,148,28,0.07)', bottom: -25, left: -15 }} />
-        <div className="absolute pointer-events-none" style={{ width: 50, height: 50, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', bottom: 15, right: 40 }} />
+        {/* Decorative circles */}
+        <div className="absolute pointer-events-none" style={{ width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.10)', top: -70, right: -50 }} />
+        <div className="absolute pointer-events-none" style={{ width: 120, height: 120, borderRadius: '50%', background: 'rgba(0,0,0,0.12)', bottom: -45, left: -25 }} />
+        <div className="absolute pointer-events-none" style={{ width: 60, height: 60, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', bottom: 18, right: 55 }} />
+        {/* Big faded emoji */}
+        <div className="absolute pointer-events-none select-none" style={{ right: 14, top: 14, fontSize: 72, opacity: 0.18, lineHeight: 1 }}>🛒</div>
         {/* Text */}
-        <div className="relative z-10 px-5 py-4">
-          <p className="text-gray-400 text-xs font-semibold">
+        <div className="relative z-10 px-5 py-5">
+          <p className="font-semibold mb-1" style={{ color: 'rgba(255,255,255,0.80)', fontSize: 12 }}>
             {greeting}{first ? `, ${first}` : ''} 👋
           </p>
-          <p className="text-white font-black leading-snug mt-0.5" style={{ fontSize: 22 }}>
-            What would you<br />like today?
+          <p className="text-white font-black leading-tight" style={{ fontSize: 27, lineHeight: 1.18, textShadow: '0 2px 12px rgba(0,0,0,0.25)' }}>
+            Shop Fresh,<br />Delivered Fast 🚀
+          </p>
+          <p style={{ color: 'rgba(255,255,255,0.70)', fontSize: 11 }} className="mt-1.5 font-medium">
+            Groceries · Veggies · Proteins · More
           </p>
           {/* Quick-link chips */}
           <div className="flex items-center gap-2 mt-3 flex-wrap">
             <Link to="/koyambedu"
-              className="text-white font-bold rounded-full flex-shrink-0"
-              style={{ fontSize: 10, padding: '4px 10px', background: 'rgba(22,163,74,0.30)', border: '1px solid rgba(22,163,74,0.50)' }}>
+              className="text-white font-bold rounded-xl flex-shrink-0"
+              style={{ fontSize: 11, padding: '5px 12px', background: 'rgba(0,0,0,0.22)', border: '1px solid rgba(255,255,255,0.28)', backdropFilter: 'blur(4px)' }}>
               🥬 Koyambedu
             </Link>
             <Link to="/uzhavar"
-              className="text-white font-bold rounded-full flex-shrink-0"
-              style={{ fontSize: 10, padding: '4px 10px', background: 'rgba(15,118,110,0.28)', border: '1px solid rgba(15,118,110,0.45)' }}>
-              🌾 Farmer Fresh
+              className="text-white font-bold rounded-xl flex-shrink-0"
+              style={{ fontSize: 11, padding: '5px 12px', background: 'rgba(0,0,0,0.22)', border: '1px solid rgba(255,255,255,0.28)', backdropFilter: 'blur(4px)' }}>
+              🌾 Uzhavar
             </Link>
             <Link to="/eptofresh"
-              className="text-white font-bold rounded-full flex-shrink-0"
-              style={{ fontSize: 10, padding: '4px 10px', background: 'rgba(194,65,12,0.30)', border: '1px solid rgba(194,65,12,0.50)' }}>
+              className="text-white font-bold rounded-xl flex-shrink-0"
+              style={{ fontSize: 11, padding: '5px 12px', background: 'rgba(0,0,0,0.22)', border: '1px solid rgba(255,255,255,0.28)', backdropFilter: 'blur(4px)' }}>
               🥩 Proteins
             </Link>
           </div>

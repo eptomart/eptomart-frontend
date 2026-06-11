@@ -41,7 +41,29 @@ export default function KoyambeduCheckout() {
   // Delivery charge comes from location check
   const deliveryCharge = locationData?.deliveryCharge ?? 149;
   const serviceFee     = 10;
-  const total          = subtotal + deliveryCharge + serviceFee;
+
+  // Coupon state
+  const [couponCode,    setCouponCode]    = useState('');
+  const [couponApplied, setCouponApplied] = useState(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  const couponDiscount = couponApplied?.discount || 0;
+  const total          = parseFloat((subtotal + deliveryCharge + serviceFee - couponDiscount).toFixed(2));
+
+  const handleValidateCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    try {
+      const { data } = await api.post('/coupon/validate', { code: couponCode.trim(), orderAmount: subtotal });
+      if (data.success) {
+        setCouponApplied({ code: data.coupon.code, discount: data.discount, description: data.coupon.description });
+        toast.success(`Coupon applied! ₹${data.discount.toFixed(2)} off`);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Invalid coupon code');
+      setCouponApplied(null);
+    } finally { setCouponLoading(false); }
+  };
 
   useEffect(() => {
     api.get('/koyambedu/slots').then(r => {
@@ -126,6 +148,7 @@ export default function KoyambeduCheckout() {
           city:    locationData.city   || addr.city,
           pincode: locationData.pincode || addr.pincode,
         },
+        couponCode: couponApplied?.code || undefined,
       });
 
       if (paymentMethod === 'cod') {
@@ -450,9 +473,47 @@ export default function KoyambeduCheckout() {
                 </p>
               )}
               <div className="flex justify-between text-gray-600"><span>Service fee</span><span>₹{serviceFee}</span></div>
+              {couponDiscount > 0 && (
+                <div className="flex justify-between text-green-600 font-semibold">
+                  <span>Promo Discount</span>
+                  <span>−₹{couponDiscount.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-gray-800 pt-2 border-t border-green-50">
                 <span>Total</span>
                 <span className="text-green-700">₹{total.toFixed(2)}</span>
+              </div>
+
+              {/* Coupon input */}
+              <div className="pt-2">
+                {couponApplied ? (
+                  <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-600 font-bold text-sm">🎉 {couponApplied.code}</span>
+                      <span className="text-green-600 text-xs">−₹{couponApplied.discount.toFixed(2)} off</span>
+                    </div>
+                    <button onClick={() => { setCouponApplied(null); setCouponCode(''); }}
+                      className="text-xs text-red-400 hover:text-red-600 font-semibold">Remove</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                      onKeyDown={e => e.key === 'Enter' && handleValidateCoupon()}
+                      placeholder="Promo code"
+                      className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500"
+                    />
+                    <button
+                      onClick={handleValidateCoupon}
+                      disabled={couponLoading || !couponCode.trim()}
+                      className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                    >
+                      {couponLoading ? '...' : 'Apply'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 

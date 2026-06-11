@@ -63,7 +63,34 @@ export default function Checkout() {
   const displaySubtotal = buyNow ? parseFloat(bnExGst.toFixed(2)) : subtotalExGst;
   const displayGst      = buyNow ? bnGst : gstTotal;
   const displayShipping = buyNow ? bnFlatShipping : shipping;
-  const displayTotal    = parseFloat((displaySubtotal + displayGst + displayShipping).toFixed(2));
+
+  // Coupon state
+  const [couponCode,    setCouponCode]    = useState('');
+  const [couponApplied, setCouponApplied] = useState(null); // { code, discount, description }
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  const couponDiscount = couponApplied?.discount || 0;
+  const displayTotal   = parseFloat((displaySubtotal + displayGst + displayShipping - couponDiscount).toFixed(2));
+
+  const handleValidateCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    try {
+      const { data } = await api.post('/coupon/validate', {
+        code:        couponCode.trim(),
+        orderAmount: displaySubtotal + displayGst,
+      });
+      if (data.success) {
+        setCouponApplied({ code: data.coupon.code, discount: data.discount, description: data.coupon.description });
+        toast.success(`Coupon applied! ₹${data.discount.toFixed(2)} off`);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Invalid coupon code');
+      setCouponApplied(null);
+    } finally { setCouponLoading(false); }
+  };
+
+  const handleRemoveCoupon = () => { setCouponApplied(null); setCouponCode(''); };
 
   const [address, setAddress] = useState({
     fullName: '', phone: '', addressLine1: '', addressLine2: '',
@@ -317,7 +344,8 @@ export default function Checkout() {
         })),
         shippingAddress: address,
         paymentMethod,
-        shipping: displayShipping,  // flat rate shipping
+        shipping:    displayShipping,  // flat rate shipping
+        couponCode:  couponApplied?.code || undefined,
       });
 
       const order = data.order;
@@ -711,6 +739,37 @@ export default function Checkout() {
                 )
               ))}
 
+              {/* Coupon input */}
+              <div className="mb-3">
+                {couponApplied ? (
+                  <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-600 font-bold text-sm">🎉 {couponApplied.code}</span>
+                      <span className="text-green-600 text-xs">−{formatINR(couponApplied.discount)} off</span>
+                    </div>
+                    <button onClick={handleRemoveCoupon} className="text-xs text-red-400 hover:text-red-600 font-semibold">Remove</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                      onKeyDown={e => e.key === 'Enter' && handleValidateCoupon()}
+                      placeholder="Promo code"
+                      className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-400"
+                    />
+                    <button
+                      onClick={handleValidateCoupon}
+                      disabled={couponLoading || !couponCode.trim()}
+                      className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+                    >
+                      {couponLoading ? '...' : 'Apply'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="border-t pt-3 space-y-2 text-sm mb-4">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal (excl. GST)</span>
@@ -726,6 +785,12 @@ export default function Checkout() {
                     {displayShipping === 0 ? 'FREE 🎉' : formatINR(displayShipping)}
                   </span>
                 </div>
+                {couponDiscount > 0 && (
+                  <div className="flex justify-between text-green-600 font-semibold">
+                    <span>Promo Discount</span>
+                    <span>−{formatINR(couponDiscount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-bold text-base pt-2 border-t">
                   <span>Grand Total</span>
                   <span className="text-primary-600">{formatINR(displayTotal)}</span>
