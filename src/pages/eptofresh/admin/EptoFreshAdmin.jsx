@@ -298,6 +298,7 @@ function SellersTab() {
   const [showAdd, setShowAdd]       = useState(false);
   const [linkingId, setLinkingId]   = useState(null); // sellerId currently being linked
   const [linkPhone, setLinkPhone]   = useState('');
+  const [linkEmail, setLinkEmail]   = useState('');
   const [linkBusy, setLinkBusy]     = useState(false);
   const [rejectId, setRejectId]     = useState(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -322,17 +323,22 @@ function SellersTab() {
   const startLink = (s) => {
     setLinkingId(String(s._id));
     setLinkPhone(s.contact?.phone || '');
+    setLinkEmail(s.contact?.email || '');
   };
   const confirmLink = async (sellerId) => {
-    if (!linkPhone.trim()) { toast.error('Enter a phone number'); return; }
+    if (!linkPhone.trim() && !linkEmail.trim()) { toast.error('Enter phone or email'); return; }
     setLinkBusy(true);
     try {
-      const { data } = await api.post(`/eptofresh/admin/sellers/${sellerId}/link-user`, { phone: linkPhone.trim() });
+      const payload = {};
+      if (linkPhone.trim()) payload.phone = linkPhone.trim();
+      if (linkEmail.trim()) payload.email = linkEmail.trim();
+      const { data } = await api.post(`/eptofresh/admin/sellers/${sellerId}/link-user`, payload);
       if (data.success) {
         toast.success(data.message);
         setSellers(prev => prev.map(x => x._id === sellerId ? { ...x, user: true } : x));
         setLinkingId(null);
         setLinkPhone('');
+        setLinkEmail('');
       }
     } catch (err) { toast.error(err.response?.data?.message || 'Link failed'); }
     finally { setLinkBusy(false); }
@@ -398,11 +404,20 @@ function SellersTab() {
             {linkingId === String(s._id) && (
               <div className="mt-2 mb-2 rounded-xl p-3 space-y-2" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
                 <p className="text-yellow-300 text-xs font-semibold">Link to Eptomart login account</p>
+                <p className="text-yellow-200/50 text-[10px]">Enter the phone OR email the seller used to sign up on Eptomart</p>
                 <input
                   type="tel"
                   value={linkPhone}
                   onChange={e => setLinkPhone(e.target.value)}
-                  placeholder="10-digit phone number"
+                  placeholder="Phone (10 digits)"
+                  className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(251,191,36,0.3)' }}
+                />
+                <input
+                  type="email"
+                  value={linkEmail}
+                  onChange={e => setLinkEmail(e.target.value)}
+                  placeholder="Or email address"
                   className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
                   style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(251,191,36,0.3)' }}
                 />
@@ -412,7 +427,7 @@ function SellersTab() {
                     style={{ background: '#f4941c' }}>
                     {linkBusy ? 'Linking…' : 'Confirm Link'}
                   </button>
-                  <button onClick={() => { setLinkingId(null); setLinkPhone(''); }}
+                  <button onClick={() => { setLinkingId(null); setLinkPhone(''); setLinkEmail(''); }}
                     className="px-3 py-2 rounded-lg text-xs text-gray-400"
                     style={{ background: 'rgba(255,255,255,0.05)' }}>
                     Cancel
