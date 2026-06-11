@@ -320,7 +320,7 @@ function SellersTab() {
       .catch(() => toast.error('Failed'));
   };
   const startLink = (s) => {
-    setLinkingId(s._id);
+    setLinkingId(String(s._id));
     setLinkPhone(s.contact?.phone || '');
   };
   const confirmLink = async (sellerId) => {
@@ -372,7 +372,7 @@ function SellersTab() {
                   <p className="text-white font-semibold">{s.shopName}</p>
                   {s.user
                     ? <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}>✓ linked</span>
-                    : <button onClick={() => startLink(s)} className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>⚠ link user</button>
+                    : <button onClick={() => startLink(s)} className="text-[9px] px-1.5 py-0.5 rounded-full font-bold cursor-pointer" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>⚠ link user</button>
                   }
                 </div>
                 <p className="text-gray-400 text-xs">{s.ownerName} • {s.contact?.phone}</p>
@@ -395,7 +395,7 @@ function SellersTab() {
             </div>
 
             {/* Inline link-user form */}
-            {linkingId === s._id && (
+            {linkingId === String(s._id) && (
               <div className="mt-2 mb-2 rounded-xl p-3 space-y-2" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
                 <p className="text-yellow-300 text-xs font-semibold">Link to Eptomart login account</p>
                 <input
@@ -422,7 +422,7 @@ function SellersTab() {
             )}
 
             {/* Inline reject form */}
-            {rejectId === s._id && (
+            {rejectId === String(s._id) && (
               <div className="mt-2 mb-2 rounded-xl p-3 space-y-2" style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)' }}>
                 <p className="text-red-400 text-xs font-semibold">Rejection reason</p>
                 <input
@@ -455,7 +455,7 @@ function SellersTab() {
                   style={{ background: '#34d399' }}>
                   <FiCheck size={13} /> Approve
                 </button>
-                <button onClick={() => { setRejectId(s._id); setRejectReason(''); }} className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
+                <button onClick={() => { setRejectId(String(s._id)); setRejectReason(''); }} className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
                   style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171' }}>
                   <FiX size={13} /> Reject
                 </button>
