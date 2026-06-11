@@ -292,10 +292,15 @@ function AddSellerModal({ onClose, onCreated }) {
 }
 
 function SellersTab() {
-  const [sellers, setSellers] = useState([]);
-  const [filter, setFilter]   = useState('pending_review');
-  const [acting, setActing]   = useState(null);
-  const [showAdd, setShowAdd] = useState(false);
+  const [sellers, setSellers]       = useState([]);
+  const [filter, setFilter]         = useState('pending_review');
+  const [acting, setActing]         = useState(null);
+  const [showAdd, setShowAdd]       = useState(false);
+  const [linkingId, setLinkingId]   = useState(null); // sellerId currently being linked
+  const [linkPhone, setLinkPhone]   = useState('');
+  const [linkBusy, setLinkBusy]     = useState(false);
+  const [rejectId, setRejectId]     = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   const loadSellers = () => {
     api.get(`/eptofresh/admin/sellers?status=${filter}&limit=50`).then(r => { if (r.data.success) setSellers(r.data.sellers); }).catch(() => {});
@@ -309,20 +314,28 @@ function SellersTab() {
     setActing(null);
   };
   const reject = async (id) => {
-    const reason = window.prompt('Rejection reason?');
-    if (!reason) return;
-    await api.post(`/eptofresh/admin/sellers/${id}/reject`, { reason }).then(r => { if (r.data.success) { toast.success('Seller rejected'); setSellers(s => s.filter(x => x._id !== id)); } }).catch(() => toast.error('Failed'));
+    if (!rejectReason.trim()) { toast.error('Enter a rejection reason'); return; }
+    await api.post(`/eptofresh/admin/sellers/${id}/reject`, { reason: rejectReason })
+      .then(r => { if (r.data.success) { toast.success('Seller rejected'); setSellers(s => s.filter(x => x._id !== id)); setRejectId(null); setRejectReason(''); } })
+      .catch(() => toast.error('Failed'));
   };
-  const linkUser = async (s) => {
-    const phone = window.prompt(`Link seller "${s.shopName}" to which login phone?\n(Pre-filled from registration)`, s.contact?.phone || '');
-    if (!phone) return;
+  const startLink = (s) => {
+    setLinkingId(s._id);
+    setLinkPhone(s.contact?.phone || '');
+  };
+  const confirmLink = async (sellerId) => {
+    if (!linkPhone.trim()) { toast.error('Enter a phone number'); return; }
+    setLinkBusy(true);
     try {
-      const { data } = await api.post(`/eptofresh/admin/sellers/${s._id}/link-user`, { phone });
+      const { data } = await api.post(`/eptofresh/admin/sellers/${sellerId}/link-user`, { phone: linkPhone.trim() });
       if (data.success) {
         toast.success(data.message);
-        setSellers(prev => prev.map(x => x._id === s._id ? { ...x, user: true } : x));
+        setSellers(prev => prev.map(x => x._id === sellerId ? { ...x, user: true } : x));
+        setLinkingId(null);
+        setLinkPhone('');
       }
     } catch (err) { toast.error(err.response?.data?.message || 'Link failed'); }
+    finally { setLinkBusy(false); }
   };
 
   const onCreated = (seller) => {
@@ -359,7 +372,7 @@ function SellersTab() {
                   <p className="text-white font-semibold">{s.shopName}</p>
                   {s.user
                     ? <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}>✓ linked</span>
-                    : <button onClick={() => linkUser(s)} className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>⚠ link user</button>
+                    : <button onClick={() => startLink(s)} className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>⚠ link user</button>
                   }
                 </div>
                 <p className="text-gray-400 text-xs">{s.ownerName} • {s.contact?.phone}</p>
@@ -381,6 +394,60 @@ function SellersTab() {
               <span>Aadhaar: {s.kyc?.aadhaarNumber ? '✓' : '—'}</span>
             </div>
 
+            {/* Inline link-user form */}
+            {linkingId === s._id && (
+              <div className="mt-2 mb-2 rounded-xl p-3 space-y-2" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
+                <p className="text-yellow-300 text-xs font-semibold">Link to Eptomart login account</p>
+                <input
+                  type="tel"
+                  value={linkPhone}
+                  onChange={e => setLinkPhone(e.target.value)}
+                  placeholder="10-digit phone number"
+                  className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(251,191,36,0.3)' }}
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => confirmLink(s._id)} disabled={linkBusy}
+                    className="flex-1 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-50"
+                    style={{ background: '#f4941c' }}>
+                    {linkBusy ? 'Linking…' : 'Confirm Link'}
+                  </button>
+                  <button onClick={() => { setLinkingId(null); setLinkPhone(''); }}
+                    className="px-3 py-2 rounded-lg text-xs text-gray-400"
+                    style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Inline reject form */}
+            {rejectId === s._id && (
+              <div className="mt-2 mb-2 rounded-xl p-3 space-y-2" style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)' }}>
+                <p className="text-red-400 text-xs font-semibold">Rejection reason</p>
+                <input
+                  type="text"
+                  value={rejectReason}
+                  onChange={e => setRejectReason(e.target.value)}
+                  placeholder="e.g. Incomplete KYC documents"
+                  className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(248,113,113,0.3)' }}
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => reject(s._id)}
+                    className="flex-1 py-2 rounded-lg text-xs font-bold"
+                    style={{ background: 'rgba(248,113,113,0.2)', color: '#f87171' }}>
+                    Confirm Reject
+                  </button>
+                  <button onClick={() => { setRejectId(null); setRejectReason(''); }}
+                    className="px-3 py-2 rounded-lg text-xs text-gray-400"
+                    style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
             {s.status === 'pending_review' && (
               <div className="flex gap-2">
                 <button onClick={() => approve(s._id)} disabled={acting === s._id + 'approve'}
@@ -388,7 +455,7 @@ function SellersTab() {
                   style={{ background: '#34d399' }}>
                   <FiCheck size={13} /> Approve
                 </button>
-                <button onClick={() => reject(s._id)} className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
+                <button onClick={() => { setRejectId(s._id); setRejectReason(''); }} className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
                   style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171' }}>
                   <FiX size={13} /> Reject
                 </button>
