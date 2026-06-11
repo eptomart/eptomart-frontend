@@ -76,7 +76,7 @@ function FarmerPromoSection() {
     }
     setSubmitting(true);
     try {
-      const { data } = await api.post('/coupon/request', { ...form, platform: 'Uzhavar' });
+      const { data } = await api.post('/coupon/request', { ...form, platform: 'uzhavar' });
       if (data.success) {
         toast.success('Promo request sent to admin!');
         setRequests(r => [data.coupon, ...r]);

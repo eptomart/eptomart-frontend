@@ -26,7 +26,7 @@ function PromoRequestSection() {
     }
     setSubmitting(true);
     try {
-      const { data } = await api.post('/coupon/request', { ...form, platform: 'Koyambedu' });
+      const { data } = await api.post('/coupon/request', { ...form, platform: 'koyambedu' });
       if (data.success) {
         toast.success('Promo request sent to admin!');
         setRequests(r => [data.coupon, ...r]);
