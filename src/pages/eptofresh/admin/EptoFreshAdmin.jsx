@@ -313,6 +313,17 @@ function SellersTab() {
     if (!reason) return;
     await api.post(`/eptofresh/admin/sellers/${id}/reject`, { reason }).then(r => { if (r.data.success) { toast.success('Seller rejected'); setSellers(s => s.filter(x => x._id !== id)); } }).catch(() => toast.error('Failed'));
   };
+  const linkUser = async (s) => {
+    const phone = window.prompt(`Link seller "${s.shopName}" to which login phone?\n(Pre-filled from registration)`, s.contact?.phone || '');
+    if (!phone) return;
+    try {
+      const { data } = await api.post(`/eptofresh/admin/sellers/${s._id}/link-user`, { phone });
+      if (data.success) {
+        toast.success(data.message);
+        setSellers(prev => prev.map(x => x._id === s._id ? { ...x, user: true } : x));
+      }
+    } catch (err) { toast.error(err.response?.data?.message || 'Link failed'); }
+  };
 
   const onCreated = (seller) => {
     if (filter === 'approved') setSellers(s => [seller, ...s]);
@@ -344,7 +355,13 @@ function SellersTab() {
           <div key={s._id} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <div className="flex items-start justify-between mb-2">
               <div>
-                <p className="text-white font-semibold">{s.shopName}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-white font-semibold">{s.shopName}</p>
+                  {s.user
+                    ? <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}>✓ linked</span>
+                    : <button onClick={() => linkUser(s)} className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>⚠ link user</button>
+                  }
+                </div>
                 <p className="text-gray-400 text-xs">{s.ownerName} • {s.contact?.phone}</p>
                 <p className="text-gray-600 text-xs">{s.address?.city} • {s.address?.pincode}</p>
                 <div className="flex flex-wrap gap-1 mt-1">
