@@ -636,6 +636,39 @@ export default function Checkout() {
                 🔒 All online payments are processed securely via Razorpay
               </p>
             </div>
+
+            {/* Promo Code — prominent card in left column, visible on mobile */}
+            <div className="card p-4">
+              <h2 className="text-sm font-bold text-gray-700 mb-3">🏷️ Have a promo code?</h2>
+              {couponApplied ? (
+                <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600 font-bold">🎉 {couponApplied.code}</span>
+                    <span className="text-green-600 text-sm">−{formatINR(couponApplied.discount)} off</span>
+                  </div>
+                  <button onClick={() => { setCouponApplied(null); setCouponCode(''); }}
+                    className="text-xs text-red-400 hover:text-red-600 font-semibold">Remove</button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                    onKeyDown={e => e.key === 'Enter' && handleValidateCoupon()}
+                    placeholder="Enter promo code"
+                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-400"
+                  />
+                  <button
+                    onClick={handleValidateCoupon}
+                    disabled={couponLoading || !couponCode.trim()}
+                    className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                  >
+                    {couponLoading ? '...' : 'Apply'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Order Summary */}
