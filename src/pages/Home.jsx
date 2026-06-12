@@ -199,14 +199,14 @@ const SUB_APPS = [
   },
   {
     to: '/uzhavar',
-    img: 'https://images.unsplash.com/photo-1595789153668-a7cfda2dc437?w=600&h=600&fit=crop&q=85',
+    img: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=600&h=600&fit=crop&q=85',
     overlay: 'linear-gradient(to top, rgba(2,20,16,0.97) 0%, rgba(8,40,35,0.60) 45%, rgba(8,40,35,0.05) 100%)',
     badge: 'FARM FRESH', badgeBg: '#a3e635', badgeText: '#134e4a',
     title: 'Farmer Fresh', sub: 'Farm Direct',
   },
   {
     to: '/eptofresh',
-    img: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=600&fit=crop&q=85',
+    img: 'https://images.unsplash.com/photo-1615937657715-bc7b4b7962c1?w=600&h=600&fit=crop&q=85',
     overlay: 'linear-gradient(to top, rgba(20,5,0,0.97) 0%, rgba(120,30,10,0.60) 45%, rgba(120,30,10,0.05) 100%)',
     badge: 'HYPERLOCAL', badgeBg: '#fb923c', badgeText: '#fff',
     title: 'EptoFresh Proteins', sub: 'Fresh Daily',
