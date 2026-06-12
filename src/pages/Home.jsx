@@ -192,7 +192,7 @@ function FlashDeals({ products }) {
 const SUB_APPS = [
   {
     to: '/koyambedu',
-    img: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&h=600&fit=crop&q=85',
+    img: 'https://res.cloudinary.com/dlyaal4px/image/upload/v1781293088/koyambedu_market_gapajd.jpg',
     overlay: 'linear-gradient(to top, rgba(5,30,10,0.97) 0%, rgba(10,46,18,0.60) 45%, rgba(10,46,18,0.05) 100%)',
     badge: 'BY 10 AM', badgeBg: '#facc15', badgeText: '#14532d',
     title: 'Koyambedu Daily', sub: 'Veggies & Fruits',
@@ -200,7 +200,7 @@ const SUB_APPS = [
   },
   {
     to: '/uzhavar',
-    img: 'https://images.unsplash.com/photo-1589923188651-268a9765e432?w=600&h=800&fit=crop&q=85',
+    img: 'https://res.cloudinary.com/dlyaal4px/image/upload/v1781293061/Framer_r1buun.jpg',
     overlay: 'linear-gradient(to top, rgba(2,20,16,0.97) 0%, rgba(8,40,35,0.60) 45%, rgba(8,40,35,0.05) 100%)',
     badge: 'FARM FRESH', badgeBg: '#a3e635', badgeText: '#134e4a',
     title: 'Farmer Fresh', sub: 'Farm Direct',
@@ -208,7 +208,7 @@ const SUB_APPS = [
   },
   {
     to: '/eptofresh',
-    img: 'https://images.unsplash.com/photo-1553461923-832e8d5ecc87?w=600&h=400&fit=crop&q=85',
+    img: 'https://res.cloudinary.com/dlyaal4px/image/upload/v1781293088/eptofresh_protiens_ba0j1p.jpg',
     overlay: 'linear-gradient(to top, rgba(20,5,0,0.97) 0%, rgba(120,30,10,0.60) 45%, rgba(120,30,10,0.05) 100%)',
     badge: 'HYPERLOCAL', badgeBg: '#fb923c', badgeText: '#fff',
     title: 'EptoFresh Proteins', sub: 'Fresh Daily',
