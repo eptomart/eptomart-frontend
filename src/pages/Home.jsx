@@ -327,17 +327,41 @@ function PromoBanner() {
   );
 }
 
-// ── Desktop category data ──────────────────────────────────────
+// ── Category data (desktop strip + mobile circles) ─────────────
 const EPTOMART_CATS = [
-  { name: 'Grocery & Staples',   slug: 'grocery-staples',    emoji: '🛒', color: '#3b82f6', from: '₹49' },
-  { name: 'Masalas & Spices',    slug: 'masalas-spices',     emoji: '🌶️', color: '#ef4444', from: '₹29' },
-  { name: 'Snacks & Namkeen',    slug: 'snacks-namkeen',     emoji: '🍿', color: '#ec4899', from: '₹39' },
-  { name: 'Dry Fruits & Nuts',   slug: 'dry-fruits-nuts',    emoji: '🥜', color: '#92400e', from: '₹99' },
-  { name: 'Oils & Ghee',         slug: 'oils-ghee',          emoji: '🫙', color: '#d97706', from: '₹89' },
-  { name: 'Pickles & Condiments',slug: 'pickles-condiments', emoji: '🥒', color: '#16a34a', from: '₹59' },
-  { name: 'Bakery & Dairy',      slug: 'bakery-dairy',       emoji: '🥖', color: '#f59e0b', from: '₹29' },
-  { name: 'Health & Organic',    slug: 'health-organic',     emoji: '🌿', color: '#059669', from: '₹79' },
+  { name: 'Grocery & Staples',   short: 'Grocery',    slug: 'grocery-staples',    emoji: '🛒', color: '#3b82f6', from: '₹49' },
+  { name: 'Masalas & Spices',    short: 'Masalas',    slug: 'masalas-spices',     emoji: '🌶️', color: '#ef4444', from: '₹29' },
+  { name: 'Snacks & Namkeen',    short: 'Snacks',     slug: 'snacks-namkeen',     emoji: '🍿', color: '#ec4899', from: '₹39' },
+  { name: 'Dry Fruits & Nuts',   short: 'Dry Fruits', slug: 'dry-fruits-nuts',    emoji: '🥜', color: '#92400e', from: '₹99' },
+  { name: 'Oils & Ghee',         short: 'Oils & Ghee',slug: 'oils-ghee',          emoji: '🫙', color: '#d97706', from: '₹89' },
+  { name: 'Pickles & Condiments',short: 'Pickles',    slug: 'pickles-condiments', emoji: '🥒', color: '#16a34a', from: '₹59' },
+  { name: 'Bakery & Dairy',      short: 'Bakery',     slug: 'bakery-dairy',       emoji: '🥖', color: '#f59e0b', from: '₹29' },
+  { name: 'Health & Organic',    short: 'Organic',    slug: 'health-organic',     emoji: '🌿', color: '#059669', from: '₹79' },
 ];
+
+// ── Mobile category circles — instant navigation (Blinkit/Zepto pattern) ──
+function MobileCategoryStrip() {
+  const cats = [
+    ...EPTOMART_CATS.map(c => ({ key: c.slug, label: c.short, emoji: c.emoji, color: c.color, to: `/shop/${c.slug}` })),
+    { key: 'koyambedu', label: 'Koyambedu', emoji: '🥬', color: '#16a34a', to: '/koyambedu' },
+    { key: 'uzhavar',   label: 'Uzhavar',   emoji: '🌾', color: '#0d9488', to: '/uzhavar' },
+    { key: 'eptofresh', label: 'Proteins',  emoji: '🥩', color: '#c2410c', to: '/eptofresh' },
+  ];
+  return (
+    <div className="flex gap-2.5 overflow-x-auto scrollbar-hide px-4 pt-3 pb-0.5">
+      {cats.map(c => (
+        <Link key={c.key} to={c.to}
+          className="flex-shrink-0 flex flex-col items-center gap-1 w-[58px] active:scale-95 transition-transform">
+          <div className="w-[50px] h-[50px] rounded-2xl flex items-center justify-center text-2xl border shadow-card"
+            style={{ background: `${c.color}14`, borderColor: `${c.color}28` }}>
+            {c.emoji}
+          </div>
+          <span className="text-[9.5px] font-bold text-gray-700 text-center leading-tight whitespace-nowrap">{c.label}</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
 
 // ── Desktop Hero (JioMart-style, hidden on mobile) ─────────────
 const HERO_SLIDES = [
@@ -393,25 +417,25 @@ function DesktopHero() {
   ]);
 
   return (
-    <div className="relative overflow-hidden rounded-3xl mb-5" style={{ background: s.gradient, minHeight: 300 }}>
+    <div className="relative overflow-hidden rounded-3xl mb-4" style={{ background: s.gradient, minHeight: 250 }}>
       {/* BG decoration */}
       <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-white/10" />
       <div className="absolute -left-10 -bottom-16 w-56 h-56 rounded-full bg-black/10" />
       <div className="absolute right-64 -bottom-10 w-36 h-36 rounded-full bg-white/8" />
 
-      <div className="relative z-10 flex items-stretch min-h-[300px]">
+      <div className="relative z-10 flex items-stretch min-h-[250px]">
         {/* Left: text + CTA */}
-        <div key={active} className="flex flex-col justify-center pl-10 pr-6 py-8 w-[42%] animate-fade-in-up">
+        <div key={active} className="flex flex-col justify-center pl-9 pr-6 py-6 w-[42%] animate-fade-in-up">
           <span className="inline-block bg-white/25 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full w-fit mb-3 border border-white/30">
             {s.tag}
           </span>
-          <h1 className="text-4xl font-black text-white leading-tight whitespace-pre-line drop-shadow-sm">
+          <h1 className="text-[34px] font-black text-white leading-tight whitespace-pre-line drop-shadow-sm">
             {s.title}
           </h1>
-          <p className="text-white/75 text-sm mt-2.5 font-medium">{s.sub}</p>
+          <p className="text-white/75 text-sm mt-2 font-medium">{s.sub}</p>
           <button
             onClick={() => navigate(s.to)}
-            className="mt-5 inline-flex items-center gap-2 bg-white font-black text-sm px-7 py-3 rounded-2xl w-fit hover:shadow-xl hover:scale-105 transition-all active:scale-95"
+            className="mt-4 inline-flex items-center gap-2 bg-white font-black text-sm px-6 py-2.5 rounded-2xl w-fit hover:shadow-xl hover:scale-105 transition-all active:scale-95"
             style={{ color: '#f4941c' }}
           >
             {s.cta} <FiArrowRight size={15} />
@@ -453,8 +477,8 @@ function DesktopHero() {
 // ── Desktop Category Strip (JioMart-style row, hidden mobile) ──
 function DesktopCategoryStrip() {
   return (
-    <div className="mb-5">
-      <div className="flex items-center justify-between mb-3">
+    <div className="mb-4">
+      <div className="flex items-center justify-between mb-2.5">
         <h2 className="text-lg font-extrabold text-gray-900">Shop by Category</h2>
         <Link to="/categories" className="text-sm font-bold text-orange-500 flex items-center gap-1 hover:gap-2 transition-all">
           All categories <FiChevronRight size={14} />
@@ -463,7 +487,7 @@ function DesktopCategoryStrip() {
       <div className="grid grid-cols-8 gap-3">
         {EPTOMART_CATS.map(cat => (
           <Link key={cat.slug} to={`/shop/${cat.slug}`}
-            className="relative flex flex-col items-center gap-2.5 rounded-2xl pt-5 pb-4 px-2 overflow-hidden active:scale-95 transition-all group text-center hover:shadow-lg hover:-translate-y-0.5"
+            className="relative flex flex-col items-center gap-2 rounded-2xl pt-4 pb-3 px-2 overflow-hidden active:scale-95 transition-all group text-center hover:shadow-lg hover:-translate-y-0.5"
             style={{ background: `linear-gradient(145deg, ${cat.color}12 0%, ${cat.color}06 100%)`, border: `1.5px solid ${cat.color}20` }}>
             {/* Hover glow */}
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
@@ -526,11 +550,11 @@ function DesktopPromoGrid({ onScrollTo }) {
     },
   ];
   return (
-    <div className="grid grid-cols-4 gap-4 mb-5">
+    <div className="grid grid-cols-5 gap-3 mb-4">
       {banners.map(b => (
         <button key={b.title} onClick={b.action}
-          className="relative flex flex-col justify-between rounded-2xl p-5 overflow-hidden text-left active:scale-95 transition-transform hover:shadow-xl group"
-          style={{ background: b.gradient, minHeight: 130 }}>
+          className="relative flex flex-col justify-between rounded-2xl p-4 overflow-hidden text-left active:scale-95 transition-all hover:shadow-card-hover hover:-translate-y-0.5 group"
+          style={{ background: b.gradient, minHeight: 116 }}>
           <div className="absolute -bottom-4 -right-4 text-6xl opacity-15 select-none pointer-events-none transition-transform group-hover:scale-125 group-hover:opacity-25">
             {b.emoji}
           </div>
@@ -666,50 +690,33 @@ function MobileHero() {
   const first = user?.name?.split(' ')[0];
   return (
     <div className="px-4 pt-3 pb-0">
-      <div
-        className="relative rounded-3xl overflow-hidden"
-        style={{
-          background: 'linear-gradient(135deg, #f97316 0%, #ef4444 45%, #b91c1c 100%)',
-          minHeight: 158,
-        }}
+      <Link to="/shop"
+        className="relative rounded-2xl overflow-hidden block active:scale-[0.99] transition-transform"
+        style={{ background: 'linear-gradient(120deg, #f97316 0%, #ef4444 60%, #b91c1c 100%)' }}
       >
         {/* Decorative circles */}
-        <div className="absolute pointer-events-none" style={{ width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.10)', top: -70, right: -50 }} />
-        <div className="absolute pointer-events-none" style={{ width: 120, height: 120, borderRadius: '50%', background: 'rgba(0,0,0,0.12)', bottom: -45, left: -25 }} />
-        <div className="absolute pointer-events-none" style={{ width: 60, height: 60, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', bottom: 18, right: 55 }} />
-        {/* Big faded emoji */}
-        <div className="absolute pointer-events-none select-none" style={{ right: 14, top: 14, fontSize: 72, opacity: 0.18, lineHeight: 1 }}>🛒</div>
-        {/* Text */}
-        <div className="relative z-10 px-5 py-5">
-          <p className="font-semibold mb-1" style={{ color: 'rgba(255,255,255,0.80)', fontSize: 12 }}>
-            {greeting}{first ? `, ${first}` : ''} 👋
-          </p>
-          <p className="text-white font-black leading-tight" style={{ fontSize: 27, lineHeight: 1.18, textShadow: '0 2px 12px rgba(0,0,0,0.25)' }}>
-            Shop Fresh,<br />Delivered Fast 🚀
-          </p>
-          <p style={{ color: 'rgba(255,255,255,0.70)', fontSize: 11 }} className="mt-1.5 font-medium">
-            Groceries · Veggies · Proteins · More
-          </p>
-          {/* Quick-link chips */}
-          <div className="flex items-center gap-2 mt-3 flex-wrap">
-            <Link to="/koyambedu"
-              className="text-white font-bold rounded-xl flex-shrink-0"
-              style={{ fontSize: 11, padding: '5px 12px', background: 'rgba(0,0,0,0.22)', border: '1px solid rgba(255,255,255,0.28)', backdropFilter: 'blur(4px)' }}>
-              🥬 Koyambedu
-            </Link>
-            <Link to="/uzhavar"
-              className="text-white font-bold rounded-xl flex-shrink-0"
-              style={{ fontSize: 11, padding: '5px 12px', background: 'rgba(0,0,0,0.22)', border: '1px solid rgba(255,255,255,0.28)', backdropFilter: 'blur(4px)' }}>
-              🌾 Uzhavar
-            </Link>
-            <Link to="/eptofresh"
-              className="text-white font-bold rounded-xl flex-shrink-0"
-              style={{ fontSize: 11, padding: '5px 12px', background: 'rgba(0,0,0,0.22)', border: '1px solid rgba(255,255,255,0.28)', backdropFilter: 'blur(4px)' }}>
-              🥩 Proteins
-            </Link>
+        <div className="absolute pointer-events-none" style={{ width: 150, height: 150, borderRadius: '50%', background: 'rgba(255,255,255,0.10)', top: -60, right: -40 }} />
+        <div className="absolute pointer-events-none" style={{ width: 90, height: 90, borderRadius: '50%', background: 'rgba(0,0,0,0.12)', bottom: -35, left: -20 }} />
+        {/* Faded emoji */}
+        <div className="absolute pointer-events-none select-none" style={{ right: 12, bottom: 6, fontSize: 52, opacity: 0.2, lineHeight: 1 }}>🛒</div>
+        {/* Text — compact: greeting + headline + CTA in one slim band */}
+        <div className="relative z-10 px-4 py-3.5 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-semibold" style={{ color: 'rgba(255,255,255,0.80)', fontSize: 11 }}>
+              {greeting}{first ? `, ${first}` : ''} 👋
+            </p>
+            <p className="text-white font-black leading-tight" style={{ fontSize: 19, textShadow: '0 2px 10px rgba(0,0,0,0.25)' }}>
+              Shop Fresh, Delivered Fast 🚀
+            </p>
+            <p style={{ color: 'rgba(255,255,255,0.70)', fontSize: 10.5 }} className="mt-0.5 font-medium truncate">
+              Groceries · Veggies · Proteins · Free delivery above ₹999
+            </p>
           </div>
+          <span className="flex-shrink-0 bg-white/20 backdrop-blur-sm text-white text-[11px] font-bold px-3 py-2 rounded-xl border border-white/30 whitespace-nowrap">
+            Shop →
+          </span>
         </div>
-      </div>
+      </Link>
     </div>
   );
 }
@@ -793,22 +800,22 @@ export default function Home() {
           {/* 3. Promo 4-col banners */}
           <DesktopPromoGrid onScrollTo={(id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })} />
 
-          {/* 4. Trust strip */}
-          <div className="flex gap-3 mb-5">
+          {/* 4. Trust strip — single slim line */}
+          <div className="flex items-center justify-between gap-2 bg-white rounded-2xl px-5 py-2.5 border border-gray-100 shadow-card mb-4">
             {[
-              { icon: '⚡', label: 'Fast Delivery', sub: 'Pan-India via Shiprocket' },
-              { icon: '✅', label: 'Verified Sellers', sub: 'GST & FSSAI checked' },
-              { icon: '🔄', label: 'Easy Returns', sub: '7-day return policy' },
-              { icon: '💸', label: 'Best Prices', sub: 'Direct from seller' },
-              { icon: '🛡️', label: 'Secure Pay', sub: 'Razorpay encrypted' },
-            ].map(b => (
-              <div key={b.label} className="flex-1 flex items-center gap-3 bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm">
-                <span className="text-2xl leading-none">{b.icon}</span>
-                <div>
-                  <p className="text-xs font-bold text-gray-800">{b.label}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">{b.sub}</p>
+              { icon: '⚡', label: 'Fast Pan-India Delivery' },
+              { icon: '✅', label: 'Verified Sellers' },
+              { icon: '🔄', label: '7-Day Easy Returns' },
+              { icon: '💸', label: 'Direct Seller Prices' },
+              { icon: '🛡️', label: 'Secure Razorpay Checkout' },
+            ].map((b, i) => (
+              <React.Fragment key={b.label}>
+                {i > 0 && <span className="w-px h-5 bg-gray-100 flex-shrink-0" />}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-lg leading-none flex-shrink-0">{b.icon}</span>
+                  <p className="text-xs font-bold text-gray-700 truncate">{b.label}</p>
                 </div>
-              </div>
+              </React.Fragment>
             ))}
           </div>
         </div>
@@ -818,14 +825,15 @@ export default function Home() {
         ══════════════════════════════════════════ */}
         <div className="md:hidden">
           <MobileHero />
-          <div className="pb-3 pt-3"><SubAppBanners /></div>
-          <div className="pb-4"><PromoBanner /></div>
+          <MobileCategoryStrip />
+          <div className="pb-2.5 pt-2.5"><SubAppBanners /></div>
+          <div className="pb-3"><PromoBanner /></div>
         </div>
 
         {/* ── FEATURED PRODUCTS — shown on both ── */}
         <div className="md:max-w-7xl md:mx-auto">
           <Divider />
-          <section id="section-featured" className="pt-4 pb-5">
+          <section id="section-featured" className="pt-3 pb-4">
             <div className="flex items-center justify-between mb-3 px-4">
               <div className="flex items-center gap-2">
                 <span className="w-1 h-5 rounded-full bg-orange-500 flex-shrink-0" />
@@ -862,7 +870,7 @@ export default function Home() {
           <Divider />
 
           {/* ── FLASH DEALS ── */}
-          <section className="pt-4 pb-5">
+          <section className="pt-3 pb-4">
             {loading
               ? <div className="flex gap-2.5 px-4 overflow-hidden">
                   {[...Array(4)].map((_, i) => (
@@ -879,7 +887,7 @@ export default function Home() {
           <Divider />
 
           {/* ── NEW ARRIVALS ── */}
-          <section id="section-new" className="pt-4 pb-6">
+          <section id="section-new" className="pt-3 pb-5">
             <SectionHeader emoji="🆕" title="New Arrivals" link="/shop?sort=-createdAt" />
             {loading ? (
               <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
