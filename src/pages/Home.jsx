@@ -193,68 +193,67 @@ const SUB_APPS = [
   {
     to: '/koyambedu',
     img: 'https://res.cloudinary.com/dlyaal4px/image/upload/v1781293088/koyambedu_market_gapajd.jpg',
-    overlay: 'linear-gradient(to top, rgba(5,30,10,0.97) 0%, rgba(10,46,18,0.60) 45%, rgba(10,46,18,0.05) 100%)',
-    badge: 'BY 10 AM', badgeBg: '#facc15', badgeText: '#14532d',
-    title: 'Koyambedu Daily', sub: 'Veggies & Fruits',
-    height: 150,
+    accent: '#34d399',
+    badge: '⏰ BY 10 AM',
+    title: 'Koyambedu', sub: 'Veggies & Fruits',
   },
   {
     to: '/uzhavar',
     img: 'https://res.cloudinary.com/dlyaal4px/image/upload/v1781293061/Framer_r1buun.jpg',
-    overlay: 'linear-gradient(to top, rgba(2,20,16,0.97) 0%, rgba(8,40,35,0.60) 45%, rgba(8,40,35,0.05) 100%)',
-    badge: 'FARM FRESH', badgeBg: '#a3e635', badgeText: '#134e4a',
-    title: 'Farmer Fresh', sub: 'Farm Direct',
-    height: 150,
+    accent: '#a3e635',
+    badge: '🌾 FARM DIRECT',
+    title: 'Uzhavar Fresh', sub: 'From Farmers',
   },
   {
     to: '/eptofresh',
     img: 'https://res.cloudinary.com/dlyaal4px/image/upload/v1781293088/eptofresh_protiens_ba0j1p.jpg',
-    overlay: 'linear-gradient(to top, rgba(20,5,0,0.97) 0%, rgba(120,30,10,0.60) 45%, rgba(120,30,10,0.05) 100%)',
-    badge: 'HYPERLOCAL', badgeBg: '#fb923c', badgeText: '#fff',
-    title: 'EptoFresh Proteins', sub: 'Fresh Daily',
-    height: 110,
+    accent: '#fb923c',
+    badge: '📍 NEARBY',
+    title: 'Proteins', sub: 'Meat & Seafood',
   },
 ];
 
 function SubAppBanners() {
   return (
     <div className="px-4">
-      <div className="grid grid-cols-3 gap-2.5 items-end">
+      <div className="grid grid-cols-3 gap-2.5">
         {SUB_APPS.map(app => (
           <Link
             key={app.to}
             to={app.to}
             className="relative rounded-2xl overflow-hidden active:scale-[0.96] transition-transform"
-            style={{
-              height: app.height || 150,
-              boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
-            }}
+            style={{ height: 148, boxShadow: '0 4px 16px rgba(11,25,40,0.16)' }}
           >
-            {/* Food image */}
+            {/* Image */}
             <img
               src={app.img}
               alt={app.title}
               className="absolute inset-0 w-full h-full object-cover"
               loading="lazy"
             />
-            {/* Gradient overlay */}
-            <div className="absolute inset-0" style={{ background: app.overlay }} />
+            {/* Uniform dark scrim — clean and consistent across all three */}
+            <div className="absolute inset-0"
+              style={{ background: 'linear-gradient(to top, rgba(7,16,26,0.96) 0%, rgba(7,16,26,0.55) 42%, rgba(7,16,26,0.10) 75%, rgba(7,16,26,0.18) 100%)' }} />
+            {/* Accent line at bottom */}
+            <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ background: app.accent }} />
 
             {/* Content */}
             <div className="absolute inset-0 p-2.5 flex flex-col justify-between">
-              {/* Badge top */}
+              {/* Badge — frosted glass, consistent style */}
               <span
-                className="inline-block font-black px-1.5 py-0.5 rounded-full w-fit leading-tight"
-                style={{ background: app.badgeBg, color: app.badgeText, fontSize: 7 }}
+                className="inline-block font-extrabold px-2 py-[3px] rounded-full w-fit leading-none text-white"
+                style={{ fontSize: 8.5, letterSpacing: 0.4, background: 'rgba(7,16,26,0.55)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.22)' }}
               >
                 {app.badge}
               </span>
               {/* Title bottom */}
               <div>
-                <p className="text-white font-black leading-tight" style={{ fontSize: 13.5, textShadow: '0 2px 10px rgba(0,0,0,0.95), 0 1px 4px rgba(0,0,0,0.9)' }}>
+                <p className="text-white font-extrabold leading-tight" style={{ fontSize: 14, textShadow: '0 1px 8px rgba(0,0,0,0.8)' }}>
                   {app.title}
                 </p>
-                <p className="font-semibold mt-0.5 leading-tight" style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)', textShadow: '0 1px 6px rgba(0,0,0,0.8)' }}>{app.sub}</p>
+                <p className="font-semibold mt-0.5 leading-tight flex items-center gap-1" style={{ fontSize: 10, color: app.accent }}>
+                  {app.sub} <span style={{ color: 'rgba(255,255,255,0.7)' }}>→</span>
+                </p>
               </div>
             </div>
           </Link>

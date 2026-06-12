@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, interactive-widget=resizes-visual" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
-    <meta name="theme-color" content="#0D1B3E" />
+    <meta name="theme-color" content="#0B1729" />
     <meta name="description" content="Eptomart — India's trusted online shopping destination. Buy electronics, fashion, groceries, fresh produce & more. Fast pan-India delivery, GST invoices, verified sellers." />
     <meta name="keywords" content="eptomart, online shopping india, buy online india, ecommerce india, fresh groceries online, koyambedu market online, farmer fresh, indian online store, shop electronics india, fashion online india" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
@@ -122,29 +122,32 @@
     <!-- Splash outside #root so React never destroys it -->
     <div id="app-splash">
       <style>
-        #app-splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0B1729;overflow:hidden;}
-        .sp-logo{animation:spBreathe 2s ease-in-out infinite;filter:drop-shadow(0 4px 24px rgba(244,148,28,0.4));}
-        .sp-logo img{width:220px;height:auto;display:block;}
-        .sp-dots{display:flex;gap:10px;margin-top:52px;}
-        .sp-dot{width:8px;height:8px;border-radius:50%;background:#f4941c;animation:spDot 1.2s ease-in-out infinite;}
-        .sp-dot:nth-child(1){animation-delay:0s;}
-        .sp-dot:nth-child(2){animation-delay:0.2s;background:#f4941c;}
-        .sp-dot:nth-child(3){animation-delay:0.4s;background:#6DB651;}
-        .sp-bar-track{position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.07);}
-        .sp-bar{height:100%;width:0;background:linear-gradient(90deg,#6DB651,#f4941c);animation:spLoad 2.8s ease-in-out forwards;}
-        @keyframes spBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
-        @keyframes spDot{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}
-        @keyframes spLoad{0%{width:0}55%{width:68%}88%{width:90%}100%{width:100%}}
+        #app-splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;
+          background:radial-gradient(ellipse 90% 60% at 50% -10%, #16304f 0%, #0B1729 55%, #060d18 100%);}
+        /* Ambient brand glows — subtle depth */
+        #app-splash::before{content:'';position:absolute;width:340px;height:340px;border-radius:50%;top:-120px;right:-100px;
+          background:radial-gradient(circle, rgba(244,148,28,0.14) 0%, transparent 65%);pointer-events:none;}
+        #app-splash::after{content:'';position:absolute;width:300px;height:300px;border-radius:50%;bottom:-110px;left:-90px;
+          background:radial-gradient(circle, rgba(109,182,81,0.12) 0%, transparent 65%);pointer-events:none;}
+        .sp-logo{animation:spReveal 0.9s cubic-bezier(0.16,1,0.3,1) both, spBreathe 2.6s ease-in-out 0.9s infinite;
+          filter:drop-shadow(0 8px 32px rgba(244,148,28,0.35));}
+        .sp-logo img{width:210px;height:auto;display:block;}
+        .sp-tagline{margin-top:14px;font-family:Inter,system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:3px;
+          text-transform:uppercase;color:rgba(255,255,255,0.45);animation:spReveal 0.9s cubic-bezier(0.16,1,0.3,1) 0.25s both;}
+        .sp-tagline b{color:#f4941c;font-weight:700;}
+        .sp-loader{margin-top:44px;width:148px;height:3px;border-radius:99px;background:rgba(255,255,255,0.08);overflow:hidden;
+          animation:spReveal 0.9s ease 0.4s both;}
+        .sp-loader i{display:block;height:100%;width:40%;border-radius:99px;
+          background:linear-gradient(90deg,#6DB651,#f4941c);animation:spSlide 1.1s ease-in-out infinite;}
+        @keyframes spReveal{0%{opacity:0;transform:translateY(14px) scale(0.97)}100%{opacity:1;transform:translateY(0) scale(1)}}
+        @keyframes spBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+        @keyframes spSlide{0%{transform:translateX(-110%)}100%{transform:translateX(380%)}}
       </style>
       <div class="sp-logo">
         <img src="/logo-wide.png" alt="Eptomart" onerror="this.src='/logo-v3.png'"/>
       </div>
-      <div class="sp-dots">
-        <div class="sp-dot"></div>
-        <div class="sp-dot"></div>
-        <div class="sp-dot"></div>
-      </div>
-      <div class="sp-bar-track"><div class="sp-bar"></div></div>
+      <div class="sp-tagline">Premium Products <b>·</b> Trusted Quality</div>
+      <div class="sp-loader"><i></i></div>
     </div>
     <div id="root"></div>
 
