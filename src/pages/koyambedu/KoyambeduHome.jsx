@@ -31,15 +31,15 @@ function ProductCard({ product }) {
   const step = product.qtyStep || 1;
 
   return (
-    <div className="bg-white rounded-2xl border border-green-100 overflow-hidden hover:shadow-md hover:border-green-300 transition-all">
+    <div className="bg-white rounded-2xl border border-green-100 overflow-hidden shadow-card hover:shadow-card-hover hover:border-green-300 hover:-translate-y-0.5 transition-all duration-300 group">
       <Link to={`/koyambedu/product/${product._id}`} className="block">
-        <div className="relative">
-          <img src={img} alt={product.name} className="w-full h-32 object-cover" />
+        <div className="relative overflow-hidden">
+          <img src={img} alt={product.name} className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-500" />
           {product.badges?.includes('fresh_arrival') && (
-            <span className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">🌿 Fresh</span>
+            <span className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm">🌿 Fresh</span>
           )}
           {product.badges?.includes('low_stock') && (
-            <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Low Stock</span>
+            <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm animate-pulse">Low Stock</span>
           )}
         </div>
       </Link>
@@ -84,11 +84,12 @@ function SectionRow({ title, icon, products, viewAllLink }) {
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-3 px-4">
-        <h2 className="font-bold text-gray-800 text-base flex items-center gap-2">
+        <h2 className="font-extrabold text-gray-900 text-base md:text-lg flex items-center gap-2 tracking-tight">
+          <span className="w-1 h-5 rounded-full bg-emerald-500 flex-shrink-0" />
           <span>{icon}</span>{title}
         </h2>
         {viewAllLink && (
-          <Link to={viewAllLink} className="flex items-center gap-0.5 text-emerald-600 text-xs font-semibold">
+          <Link to={viewAllLink} className="flex items-center gap-0.5 text-emerald-600 text-xs font-bold hover:gap-1.5 transition-all">
             See all <FiChevronRight size={12} />
           </Link>
         )}
@@ -140,9 +141,9 @@ export default function KoyambeduHome() {
         >
           <div className="absolute -right-16 -top-16 w-48 h-48 rounded-full bg-white/5" />
           <div className="absolute -left-10 bottom-0 w-32 h-32 rounded-full bg-black/10" />
-          <div className="max-w-7xl mx-auto px-4 relative z-10">
+          <div className="max-w-7xl mx-auto px-4 relative z-10 animate-fade-in-up">
             <div className="text-4xl mb-2">🥬</div>
-            <h1 className="text-2xl font-black tracking-tight mb-0.5">KOYAMBEDU DAILY</h1>
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-0.5">KOYAMBEDU DAILY</h1>
             <p className="text-emerald-200 text-xs">கோயம்பேடு சந்தை · Wholesale Market · Direct Delivery</p>
             <div className="mt-3 flex gap-2 justify-center flex-wrap">
               <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30">🌅 Market Open</span>
@@ -238,7 +239,7 @@ export default function KoyambeduHome() {
               { label: 'Morning Fresh',  icon: '🌄', q: 'fresh arrivals morning'   },
             ].map(b => (
               <Link key={b.label} to={`/koyambedu/shop?search=${encodeURIComponent(b.q)}`}
-                className="bg-white border border-emerald-100 rounded-xl p-3 flex items-center gap-2 hover:border-emerald-400 hover:shadow-sm transition active:scale-95">
+                className="bg-white border border-emerald-100 rounded-xl p-3 flex items-center gap-2 shadow-card hover:border-emerald-400 hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-300 active:scale-95">
                 <span className="text-2xl">{b.icon}</span>
                 <span className="text-xs font-semibold text-gray-700">{b.label}</span>
               </Link>
@@ -313,8 +314,9 @@ export default function KoyambeduHome() {
       {/* ── Cart bar — sits above bottom nav ─ */}
       {itemCount > 0 && (
         <div className="fixed bottom-[72px] md:bottom-4 left-0 right-0 px-4 z-[9985] pointer-events-none">
-          <div className="max-w-2xl mx-auto pointer-events-auto">
-            <div className="bg-emerald-600 text-white px-4 py-3 rounded-2xl flex items-center justify-between shadow-2xl shadow-emerald-900/30">
+          <div className="max-w-2xl mx-auto pointer-events-auto animate-slide-up">
+            <div className="text-white px-4 py-3 rounded-2xl flex items-center justify-between shadow-2xl shadow-emerald-900/30"
+              style={{ background: 'linear-gradient(135deg,#059669,#047857)', backdropFilter: 'blur(8px)' }}>
               <div>
                 <p className="text-xs font-semibold opacity-80">{itemCount} item{itemCount !== 1 ? 's' : ''} · Today's order</p>
                 <p className="font-black text-base leading-tight">₹{subtotal.toLocaleString('en-IN')}</p>

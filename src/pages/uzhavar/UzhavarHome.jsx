@@ -188,10 +188,16 @@ export default function UzhavarHome() {
       <main className="min-h-screen bg-[#f5f5f7] pb-24 md:pb-8">
         {/* Hero — full-bleed, content constrained */}
         <div className="bg-gradient-to-br from-green-800 via-green-700 to-lime-600 text-white pt-8 pb-14 text-center relative overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 relative z-10">
+          <div className="absolute -right-16 -top-16 w-48 h-48 rounded-full bg-white/5" />
+          <div className="absolute -left-10 bottom-0 w-32 h-32 rounded-full bg-black/10" />
+          <div className="max-w-7xl mx-auto px-4 relative z-10 animate-fade-in-up">
             <div className="text-4xl mb-2">🌾</div>
-            <h1 className="text-2xl font-black tracking-tight mb-0.5">FARMER FRESH</h1>
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-0.5">FARMER FRESH</h1>
             <p className="text-green-100 text-xs">உழவர் சந்தை · Farm to Home · Direct from Farmers</p>
+            <div className="mt-3 flex gap-2 justify-center flex-wrap">
+              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30">🌿 Harvested Today</span>
+              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30">🤝 No Middlemen</span>
+            </div>
           </div>
         </div>
 
@@ -267,8 +273,8 @@ export default function UzhavarHome() {
         {/* ── Farmers section ─────────────────── */}
         <div className="px-4 mb-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-extrabold text-gray-800 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-500" />
+            <h2 className="text-sm md:text-lg font-extrabold text-gray-900 flex items-center gap-2 tracking-tight">
+              <span className="w-1 h-5 rounded-full bg-green-500" />
               🧑‍🌾 Farmers near you
               {!loading && farmers.length > 0 && (
                 <span className="text-xs font-semibold text-gray-400">({farmers.length})</span>
@@ -305,8 +311,8 @@ export default function UzhavarHome() {
         {/* ── Products section ─────────────────── */}
         <div className="px-4 pb-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-extrabold text-gray-800 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-lime-500" />
+            <h2 className="text-sm md:text-lg font-extrabold text-gray-900 flex items-center gap-2 tracking-tight">
+              <span className="w-1 h-5 rounded-full bg-lime-500" />
               🥬 Fresh Harvest
               {!loading && products.length > 0 && (
                 <span className="text-xs font-semibold text-gray-400">({products.length})</span>
@@ -404,7 +410,7 @@ function FarmerCard({ farmer, onClick }) {
   const avg = farmer.ratings?.average || 0;
   return (
     <div onClick={onClick}
-      className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md hover:border-green-200 transition-all">
+      className="bg-white rounded-2xl shadow-card border border-gray-100 p-4 cursor-pointer hover:shadow-card-hover hover:border-green-300 hover:-translate-y-0.5 transition-all duration-300">
       <div className="flex items-start justify-between mb-3">
         <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center text-2xl">🧑‍🌾</div>
         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${farmer.availableNow ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -431,7 +437,7 @@ function FarmerCard({ farmer, onClick }) {
 function ProductCard({ product, onClick }) {
   return (
     <div onClick={onClick}
-      className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 cursor-pointer hover:shadow-md hover:border-green-200 transition-all">
+      className="bg-white rounded-2xl shadow-card border border-gray-100 p-3 cursor-pointer hover:shadow-card-hover hover:border-green-300 hover:-translate-y-0.5 transition-all duration-300">
       {product.image
         ? <img src={product.image} alt={product.name} className="w-full h-24 object-cover rounded-xl mb-2 bg-gray-100" />
         : <div className="w-full h-24 rounded-xl bg-green-50 flex items-center justify-center text-3xl mb-2">🥬</div>

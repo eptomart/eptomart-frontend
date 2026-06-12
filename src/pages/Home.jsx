@@ -44,12 +44,12 @@ function SectionHeader({ emoji, title, link, linkLabel = 'See all', dotColor = '
   return (
     <div className="flex items-center justify-between mb-3 px-4">
       <div className="flex items-center gap-2">
-        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} />
-        <span className="text-base leading-none">{emoji}</span>
-        <h2 className="text-sm font-extrabold text-gray-900 tracking-tight">{title}</h2>
+        <span className={`w-1 h-5 rounded-full flex-shrink-0 ${dotColor}`} />
+        <span className="text-base md:text-lg leading-none">{emoji}</span>
+        <h2 className="text-sm md:text-lg font-extrabold text-gray-900 tracking-tight">{title}</h2>
       </div>
       {link && (
-        <Link to={link} className="text-xs font-bold text-orange-500 flex items-center gap-0.5">
+        <Link to={link} className="text-xs font-bold text-orange-500 flex items-center gap-0.5 hover:gap-1.5 transition-all">
           {linkLabel} <FiChevronRight size={12} />
         </Link>
       )}
@@ -65,7 +65,7 @@ function ProductGridCard({ product: p, accent = '#f4941c' }) {
   const img  = p.images?.find(i => i.isDefault)?.url || p.images?.[0]?.url || '';
   return (
     <Link to={`/product/${p.slug || p._id}`}
-      className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 active:scale-95 group flex flex-col">
+      className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-card hover:shadow-card-hover hover:-translate-y-1 hover:border-gray-200 transition-all duration-300 active:scale-95 group flex flex-col">
       <div className="relative bg-gray-50 overflow-hidden" style={{ aspectRatio: '1/1' }}>
         {img
           ? <img src={img} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
@@ -305,10 +305,10 @@ function PromoBanner() {
   return (
     <div className="px-4">
       <Link to={p.to}
-        className={`relative flex items-center justify-between bg-gradient-to-r ${p.bg} rounded-2xl px-5 py-4 overflow-hidden active:scale-[0.98] transition-transform`}>
+        className={`relative flex items-center justify-between bg-gradient-to-r ${p.bg} rounded-2xl px-5 py-4 overflow-hidden active:scale-[0.98] transition-all duration-500 shadow-float`}>
         <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full bg-white/10" />
         <div className="absolute -left-5 -bottom-8 w-24 h-24 rounded-full bg-black/10" />
-        <div className="relative z-10">
+        <div key={active} className="relative z-10 animate-fade-in-up">
           <span className="text-white/80 text-[10px] font-bold tracking-widest uppercase">{p.tag}</span>
           <p className="text-white font-black text-xl leading-tight">{p.title}</p>
           <p className="text-white/70 text-xs mt-0.5">{p.sub}</p>
@@ -401,7 +401,7 @@ function DesktopHero() {
 
       <div className="relative z-10 flex items-stretch min-h-[300px]">
         {/* Left: text + CTA */}
-        <div className="flex flex-col justify-center pl-10 pr-6 py-8 w-[42%]">
+        <div key={active} className="flex flex-col justify-center pl-10 pr-6 py-8 w-[42%] animate-fade-in-up">
           <span className="inline-block bg-white/25 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full w-fit mb-3 border border-white/30">
             {s.tag}
           </span>
@@ -828,11 +828,11 @@ export default function Home() {
           <section id="section-featured" className="pt-4 pb-5">
             <div className="flex items-center justify-between mb-3 px-4">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" />
-                <span className="text-base leading-none">⭐</span>
-                <h2 className="text-sm font-extrabold text-gray-900 tracking-tight">Featured Products</h2>
+                <span className="w-1 h-5 rounded-full bg-orange-500 flex-shrink-0" />
+                <span className="text-base md:text-lg leading-none">⭐</span>
+                <h2 className="text-sm md:text-lg font-extrabold text-gray-900 tracking-tight">Featured Products</h2>
               </div>
-              <Link to="/shop" className="text-xs font-bold text-orange-500 flex items-center gap-0.5">
+              <Link to="/shop" className="text-xs font-bold text-orange-500 flex items-center gap-0.5 hover:gap-1.5 transition-all">
                 See all <FiChevronRight size={12} />
               </Link>
             </div>

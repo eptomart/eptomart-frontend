@@ -10,6 +10,8 @@ import EptomartLogo from './EptomartLogo';
 export default function Footer() {
   return (
     <footer className="text-gray-400 mt-auto" style={{background:'#0B1729'}}>
+      {/* Brand accent line */}
+      <div className="h-0.5" style={{ background: 'linear-gradient(90deg, transparent, #f4941c 30%, #6db651 70%, transparent)' }} />
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
 

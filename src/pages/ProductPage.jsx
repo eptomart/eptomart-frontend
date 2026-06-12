@@ -214,7 +214,7 @@ export default function ProductPage() {
       </Helmet>
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="max-w-7xl mx-auto px-4 py-6 pb-28 md:pb-6">
         {/* Back button */}
         <button
           onClick={() => navigate(-1)}
@@ -247,24 +247,26 @@ export default function ProductPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
           {/* ── Images ──────────────────────────────── */}
-          <div>
-            <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden mb-3 relative">
+          <div className="md:sticky md:top-32 md:self-start">
+            <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden mb-3 relative border border-gray-100 shadow-card group">
               <img
+                key={selectedImage}
                 src={product.images?.[selectedImage]?.url || 'https://via.placeholder.com/500'}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover animate-fade-in md:group-hover:scale-105 transition-transform duration-500"
               />
               {discount > 0 && (
-                <span className="absolute top-3 left-3 bg-green-500 text-white text-sm font-bold px-2 py-0.5 rounded-full">
+                <span className="absolute top-3 left-3 bg-green-500 text-white text-sm font-extrabold px-2.5 py-0.5 rounded-lg shadow-sm">
                   {discount}% OFF
                 </span>
               )}
             </div>
             {product.images?.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                 {product.images.map((img, i) => (
                   <button key={i} onClick={() => setSelectedImage(i)}
-                    className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors ${selectedImage === i ? 'border-primary-500' : 'border-gray-200'}`}>
+                    className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all
+                      ${selectedImage === i ? 'border-primary-500 ring-2 ring-primary-200 scale-[1.03]' : 'border-gray-200 hover:border-primary-300 opacity-80 hover:opacity-100'}`}>
                     <img src={img.url} alt="" className="w-full h-full object-cover" />
                   </button>
                 ))}
@@ -489,12 +491,26 @@ export default function ProductPage() {
             </div>
 
             {/* Trust badges */}
-            <div className="flex gap-2">
-              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl flex-1">
-                <FiShield className="text-primary-500 flex-shrink-0" size={16} />
+            <div className="grid grid-cols-3 gap-2">
+              <div className="flex flex-col items-center gap-1.5 p-3 bg-gray-50 rounded-xl text-center">
+                <FiShield className="text-primary-500" size={18} />
                 <div>
-                  <p className="text-xs font-semibold text-gray-800">Secure Payment</p>
-                  <p className="text-xs text-gray-500">100% safe checkout</p>
+                  <p className="text-[11px] font-bold text-gray-800 leading-tight">Secure Payment</p>
+                  <p className="text-[10px] text-gray-500">Razorpay encrypted</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-1.5 p-3 bg-gray-50 rounded-xl text-center">
+                <FiRepeat className="text-primary-500" size={18} />
+                <div>
+                  <p className="text-[11px] font-bold text-gray-800 leading-tight">Easy Returns</p>
+                  <p className="text-[10px] text-gray-500">7-day policy</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-1.5 p-3 bg-gray-50 rounded-xl text-center">
+                <FiTruck className="text-primary-500" size={18} />
+                <div>
+                  <p className="text-[11px] font-bold text-gray-800 leading-tight">GST Invoice</p>
+                  <p className="text-[10px] text-gray-500">On every order</p>
                 </div>
               </div>
             </div>
@@ -600,6 +616,46 @@ export default function ProductPage() {
           </section>
         )}
       </main>
+
+      {/* ── Sticky mobile buy bar (sits above BottomNav) ── */}
+      {!isUnavailable && (
+        <div
+          className="md:hidden fixed left-0 right-0 z-[9970] px-3 py-2.5 flex items-center gap-3 animate-slide-up"
+          style={{
+            bottom: 'calc(58px + env(safe-area-inset-bottom))',
+            background: 'rgba(255,255,255,0.96)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            boxShadow: '0 -6px 24px rgba(11,25,40,0.10)',
+            borderTop: '1px solid rgba(0,0,0,0.05)',
+          }}
+        >
+          <div className="flex-shrink-0 min-w-0">
+            {requireVariantSelect && !selectedVariant ? (
+              <p className="text-base font-extrabold text-gray-900 leading-tight">From {formatINR(lowestVariantPrice)}</p>
+            ) : (
+              <>
+                <p className="text-base font-extrabold text-gray-900 leading-tight">{formatINR(activePrice)}</p>
+                {discount > 0 && <p className="text-[10px] text-gray-400 line-through leading-tight">{formatINR(product.price)}</p>}
+              </>
+            )}
+          </div>
+          <button
+            onClick={handleAddToCart}
+            disabled={activeStock === 0}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-bold border-2 border-primary-500 text-primary-600 active:scale-95 transition-all disabled:opacity-50">
+            <FiShoppingCart size={15} /> Add
+          </button>
+          <button
+            onClick={handleBuyNow}
+            disabled={activeStock === 0}
+            className="flex-[1.4] py-2.5 rounded-xl text-sm font-bold text-white active:scale-95 transition-all disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg,#ff9d30,#f4941c)' }}>
+            {activeStock === 0 ? 'Out of Stock' : (requireVariantSelect && !selectedVariant) ? 'Select Variant' : '⚡ Buy Now'}
+          </button>
+        </div>
+      )}
+
       <Footer />
     </>
   );

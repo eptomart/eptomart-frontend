@@ -47,10 +47,11 @@ export default function Cart() {
         <Helmet><title>Cart — Eptomart</title></Helmet>
         <Navbar />
         <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
-          <div className="text-7xl mb-4">🛒</div>
-          <h2 className="text-2xl font-bold text-gray-700 mb-2">Your cart is empty</h2>
+          <div className="w-28 h-28 rounded-full flex items-center justify-center text-6xl mb-5 animate-fade-in-up"
+            style={{ background: 'linear-gradient(135deg,#fff8ee,#ffecd0)' }}>🛒</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Your cart is empty</h2>
           <p className="text-gray-400 mb-6">Looks like you haven't added anything yet.</p>
-          <Link to="/shop" className="btn-primary">Start Shopping</Link>
+          <Link to="/shop" className="btn-primary">Start Shopping →</Link>
         </div>
         <Footer />
       </>
@@ -63,9 +64,12 @@ export default function Cart() {
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">
-          My Cart <span className="text-primary-500">({cartCount} items)</span>
-        </h1>
+        <div className="flex items-center gap-2.5 mb-6">
+          <span className="w-1 h-8 rounded-full bg-primary-500" />
+          <h1 className="text-2xl font-bold text-gray-800">
+            My Cart <span className="text-primary-500">({cartCount} item{cartCount !== 1 ? 's' : ''})</span>
+          </h1>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* ── Cart Items (grouped by seller) ─────────────── */}

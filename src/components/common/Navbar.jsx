@@ -315,7 +315,7 @@ export default function Navbar() {
                 }
               </form>
               {dropOpen && results.length > 0 && (
-                <div className="absolute top-full left-0 right-0 bg-white shadow-2xl rounded-xl mt-1 border z-50 overflow-hidden">
+                <div className="absolute top-full left-0 right-0 bg-white shadow-2xl rounded-xl mt-1 border z-50 overflow-hidden pop-in" style={{ transformOrigin: 'top center' }}>
                   {results.map(p => (
                     <Link key={p._id} to={`/product/${p.slug || p._id}`}
                       className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 transition-colors border-b border-gray-50 last:border-0"
@@ -374,7 +374,12 @@ export default function Navbar() {
                   </button>
 
                   {showUserMenu && (
-                    <div className="absolute right-0 top-12 bg-white shadow-2xl rounded-2xl p-2 w-52 border z-50">
+                    <div className="absolute right-0 top-12 bg-white shadow-2xl rounded-2xl p-2 w-56 border z-50 pop-in">
+                      {/* User header */}
+                      <div className="px-4 py-3 mb-1 rounded-xl" style={{ background: 'linear-gradient(135deg,#fff8ee,#ffecd0)' }}>
+                        <p className="text-sm font-bold text-gray-800 truncate">{user?.name}</p>
+                        {user?.email && <p className="text-xs text-gray-500 truncate mt-0.5">{user.email}</p>}
+                      </div>
                       <Link to="/profile" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}><FiUser size={15} /> My Profile</Link>
                       <Link to="/orders" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}><FiPackage size={15} /> My Orders</Link>
                       <Link to="/cart" className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}>
@@ -415,6 +420,39 @@ export default function Navbar() {
               )}
             </div>
 
+          </div>
+        </div>
+
+        {/* ── Desktop category strip — premium marketplace second row ── */}
+        <div className="hidden md:block border-t border-white/[0.07]" style={{ background: 'rgba(255,255,255,0.03)' }}>
+          <div className="max-w-7xl mx-auto px-3">
+            <nav className="flex items-center gap-1 h-10 overflow-x-auto scrollbar-hide">
+              {[
+                { label: '🛍️ All Products',   to: '/shop' },
+                { label: '🗂️ Categories',     to: '/categories' },
+                { label: '🥬 Koyambedu Daily', to: '/koyambedu' },
+                { label: '🌾 Uzhavar Fresh',   to: '/uzhavar' },
+                { label: '🥩 EptoFresh',       to: '/eptofresh' },
+              ].map(item => {
+                const active = pathname === item.to || (item.to !== '/shop' && pathname.startsWith(item.to));
+                return (
+                  <Link key={item.to} to={item.to}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors
+                      ${active ? 'text-white bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/[0.06]'}`}>
+                    {item.label}
+                  </Link>
+                );
+              })}
+              <div className="flex-1" />
+              <Link to="/seller/profile"
+                className="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all hover:brightness-110"
+                style={{ color: '#f4941c', background: 'rgba(244,148,28,0.10)', border: '1px solid rgba(244,148,28,0.25)' }}>
+                🏪 Sell on Eptomart
+              </Link>
+              <span className="text-[11px] text-gray-500 font-medium whitespace-nowrap pl-2">
+                🚚 Free delivery above ₹999
+              </span>
+            </nav>
           </div>
         </div>
       </header>

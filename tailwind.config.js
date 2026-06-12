@@ -51,6 +51,38 @@ export default {
       screens: {
         xs: '375px',
       },
+      boxShadow: {
+        // Layered, soft "premium marketplace" shadows
+        card:        '0 1px 2px rgba(11,25,40,0.04), 0 2px 8px rgba(11,25,40,0.04)',
+        'card-hover':'0 4px 12px rgba(11,25,40,0.08), 0 12px 32px rgba(11,25,40,0.10)',
+        float:       '0 8px 30px rgba(11,25,40,0.12)',
+        glow:        '0 0 0 3px rgba(244,148,28,0.15)',
+        'top-bar':   '0 -8px 24px rgba(11,25,40,0.10)',
+      },
+      keyframes: {
+        'fade-in-up': {
+          '0%':   { opacity: 0, transform: 'translateY(12px)' },
+          '100%': { opacity: 1, transform: 'translateY(0)' },
+        },
+        'fade-in': {
+          '0%':   { opacity: 0 },
+          '100%': { opacity: 1 },
+        },
+        'scale-in': {
+          '0%':   { opacity: 0, transform: 'scale(0.96)' },
+          '100%': { opacity: 1, transform: 'scale(1)' },
+        },
+        'slide-up': {
+          '0%':   { transform: 'translateY(100%)' },
+          '100%': { transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'fade-in-up': 'fade-in-up 0.45s cubic-bezier(0.16,1,0.3,1) both',
+        'fade-in':    'fade-in 0.35s ease both',
+        'scale-in':   'scale-in 0.25s cubic-bezier(0.16,1,0.3,1) both',
+        'slide-up':   'slide-up 0.35s cubic-bezier(0.16,1,0.3,1) both',
+      },
     },
   },
   plugins: [],

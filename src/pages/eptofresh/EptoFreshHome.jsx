@@ -93,8 +93,9 @@ export default function EptoFreshHome() {
       {/* Header */}
       <div className="px-4 pt-4 pb-3" style={{ background: 'linear-gradient(180deg, #0B1729 0%, #111f35 100%)' }}>
         <div className="flex items-center justify-between mb-3">
-          <div>
-            <h1 className="text-white text-xl font-bold">🥩 EptoFresh Proteins</h1>
+          <div className="animate-fade-in-up">
+            <h1 className="text-white text-xl font-extrabold tracking-tight">🥩 EptoFresh Proteins</h1>
+            <p className="text-gray-500 text-[10px] font-medium mt-0.5">Hyperlocal · GPS-based · Fresh daily</p>
 
             {/* Location bar — tap to open map picker */}
             <button
@@ -148,11 +149,12 @@ export default function EptoFreshHome() {
             <button
               key={c.key}
               onClick={() => handleCategoryFilter(c.key)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all active:scale-95"
               style={{
-                background: activeCategory === c.key ? '#f4941c' : 'rgba(255,255,255,0.07)',
+                background: activeCategory === c.key ? 'linear-gradient(135deg,#ff9d30,#f4941c)' : 'rgba(255,255,255,0.07)',
                 color:      activeCategory === c.key ? '#fff' : 'rgba(255,255,255,0.6)',
-                border:     activeCategory === c.key ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                border:     activeCategory === c.key ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(255,255,255,0.1)',
+                boxShadow:  activeCategory === c.key ? '0 2px 12px rgba(244,148,28,0.35)' : 'none',
               }}
             >
               <span>{c.emoji}</span> {c.label}
@@ -237,16 +239,18 @@ function SellerCard({ seller, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left rounded-2xl overflow-hidden transition-all active:scale-[0.98]"
+      className="w-full text-left rounded-2xl overflow-hidden transition-all duration-300 active:scale-[0.98] hover:-translate-y-0.5 group animate-fade-in-up"
       style={{
         background: 'rgba(255,255,255,0.04)',
         border: `1px solid ${isLong ? 'rgba(248,113,113,0.2)' : 'rgba(255,255,255,0.07)'}`,
       }}
+      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor = 'rgba(244,148,28,0.35)'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = isLong ? 'rgba(248,113,113,0.2)' : 'rgba(255,255,255,0.07)'; }}
     >
       <div className="p-4 flex items-center gap-3">
         <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-gray-700 flex items-center justify-center">
           {seller.shopImage
-            ? <img src={seller.shopImage} alt={seller.shopName} className="w-full h-full object-cover" />
+            ? <img src={seller.shopImage} alt={seller.shopName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
             : <span className="text-2xl">🥩</span>}
         </div>
 

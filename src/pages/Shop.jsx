@@ -167,10 +167,13 @@ export default function Shop() {
         )}
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-xl font-bold text-gray-800 capitalize">{pageTitle}</h1>
-            <p className="text-sm text-gray-500">{total} product{total !== 1 ? 's' : ''} found</p>
+        <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+          <div className="flex items-center gap-2.5">
+            <span className="w-1 h-8 rounded-full bg-primary-500 hidden sm:block" />
+            <div>
+              <h1 className="text-xl font-bold text-gray-800 capitalize">{pageTitle}</h1>
+              <p className="text-sm text-gray-500">{total} product{total !== 1 ? 's' : ''} found</p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -347,10 +350,15 @@ export default function Shop() {
             {loading ? (
               <ProductGridSkeleton count={12} />
             ) : products.length === 0 ? (
-              <div className="text-center py-16">
-                <p className="text-4xl mb-3">🔍</p>
-                <h3 className="text-lg font-semibold text-gray-600">No products found</h3>
-                <p className="text-gray-400">Try adjusting your filters</p>
+              <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+                <p className="text-5xl mb-3">🔍</p>
+                <h3 className="text-lg font-semibold text-gray-700">No products found</h3>
+                <p className="text-gray-400 text-sm mb-4">Try adjusting your filters or search</p>
+                <button
+                  onClick={() => { setFilters({ sort: '-createdAt', minPrice: '', maxPrice: '', inStock: '' }); setSubFilter(''); setCurrentPage(1); }}
+                  className="btn-primary btn-sm">
+                  Clear all filters
+                </button>
               </div>
             ) : (
               <>
@@ -361,14 +369,38 @@ export default function Shop() {
                 </div>
 
                 {totalPages > 1 && (
-                  <div className="flex justify-center gap-2 mt-8">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                      <button key={page} onClick={() => setCurrentPage(page)}
-                        className={`w-10 h-10 rounded-xl font-semibold text-sm transition-colors
-                          ${currentPage === page ? 'bg-primary-500 text-white' : 'bg-white text-gray-600 hover:bg-orange-50'}`}>
-                        {page}
-                      </button>
-                    ))}
+                  <div className="flex justify-center items-center gap-1.5 mt-8 flex-wrap">
+                    <button
+                      onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      disabled={currentPage === 1}
+                      className="h-10 px-3 rounded-xl font-semibold text-sm bg-white border border-gray-200 text-gray-600 hover:border-primary-300 hover:text-primary-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                      ← Prev
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                      .reduce((acc, page, i, arr) => {
+                        if (i > 0 && page - arr[i - 1] > 1) acc.push('…');
+                        acc.push(page);
+                        return acc;
+                      }, [])
+                      .map((page, i) => page === '…'
+                        ? <span key={`dots-${i}`} className="px-1 text-gray-400 text-sm">…</span>
+                        : (
+                          <button key={page}
+                            onClick={() => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                            className={`w-10 h-10 rounded-xl font-semibold text-sm transition-all
+                              ${currentPage === page
+                                ? 'bg-primary-500 text-white shadow-md shadow-orange-200'
+                                : 'bg-white border border-gray-200 text-gray-600 hover:border-primary-300 hover:text-primary-600'}`}>
+                            {page}
+                          </button>
+                        ))}
+                    <button
+                      onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      disabled={currentPage === totalPages}
+                      className="h-10 px-3 rounded-xl font-semibold text-sm bg-white border border-gray-200 text-gray-600 hover:border-primary-300 hover:text-primary-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                      Next →
+                    </button>
                   </div>
                 )}
               </>

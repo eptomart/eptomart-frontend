@@ -77,37 +77,41 @@ export default function ProductCard({ product }) {
   };
 
   return (
-    <div className={`card group overflow-hidden relative flex flex-col ${isUnavailable ? 'opacity-60 grayscale' : ''}`}>
-      <Link to={`/product/${slug}`} className="block relative overflow-hidden">
+    <div className={`card-lift group overflow-hidden relative flex flex-col ${isUnavailable ? 'opacity-60 grayscale' : ''}`}>
+      <Link to={`/product/${slug}`} className="block relative overflow-hidden rounded-t-2xl">
         <div className="aspect-square bg-gray-50 overflow-hidden">
           <img
             src={mainImage}
             alt={name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover group-hover:scale-[1.06] transition-transform duration-500 ease-out"
             loading="lazy"
           />
         </div>
+        {/* Subtle bottom fade for image legibility */}
+        <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-black/[0.04] to-transparent pointer-events-none" />
 
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {discount > 0 && <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-green-500 text-white">{discount}% OFF</span>}
-          {isUnavailable && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-700 text-white">Unavailable</span>}
-          {!isUnavailable && stock === 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500 text-white">Out of Stock</span>}
-          {stock > 0 && stock <= 5 && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500 text-white">Only {stock} left!</span>}
-          {codAvailable === false && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500 text-white">Online only</span>}
+          {discount > 0 && <span className="text-[10px] px-2 py-0.5 rounded-md font-extrabold bg-green-500 text-white shadow-sm tracking-wide">{discount}% OFF</span>}
+          {isUnavailable && <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-gray-700 text-white shadow-sm">Unavailable</span>}
+          {!isUnavailable && stock === 0 && <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-gray-500 text-white shadow-sm">Out of Stock</span>}
+          {stock > 0 && stock <= 5 && <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-red-500 text-white shadow-sm animate-pulse">Only {stock} left</span>}
+          {codAvailable === false && <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-blue-500 text-white shadow-sm">Online only</span>}
         </div>
 
-        {/* Hover action buttons */}
-        <div className="absolute top-2 right-2 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-2 group-hover:translate-x-0">
-          <button
-            onClick={handleWishlist}
-            title={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
-            className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all
-              ${heartAnim ? 'scale-125' : 'scale-100'}
-              ${inWishlist ? 'bg-red-500 text-white' : 'bg-white text-gray-500 hover:text-red-500'}`}
-          >
-            <FiHeart size={15} style={{ fill: inWishlist ? 'currentColor' : 'none' }} />
-          </button>
+        {/* Wishlist — always visible (touch devices can't hover) */}
+        <button
+          onClick={handleWishlist}
+          title={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+          className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md backdrop-blur-sm transition-all duration-200
+            ${heartAnim ? 'scale-125' : 'scale-100'}
+            ${inWishlist ? 'bg-red-500 text-white' : 'bg-white/90 text-gray-500 hover:text-red-500 hover:bg-white'}`}
+        >
+          <FiHeart size={15} style={{ fill: inWishlist ? 'currentColor' : 'none' }} />
+        </button>
+
+        {/* Compare + Quick view — desktop hover only */}
+        <div className="absolute top-12 right-2 hidden md:flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-2 group-hover:translate-x-0">
           <button
             onClick={handleCompare}
             title="Compare product"
@@ -146,18 +150,24 @@ export default function ProductCard({ product }) {
           </div>
         )}
 
-        <div className="flex items-baseline gap-2 mb-2">
+        <div className="flex items-baseline gap-2 mb-1">
           {hasVariantPrices ? (
-            <span className="font-bold text-gray-900 text-base">
+            <span className="font-extrabold text-gray-900 text-base">
               From {formatINR(lowestVariantPrice)}
             </span>
           ) : (
             <>
-              <span className="font-bold text-gray-900 text-base">{formatINR(effectivePrice)}</span>
+              <span className="font-extrabold text-gray-900 text-base">{formatINR(effectivePrice)}</span>
               {discount > 0 && <span className="text-xs text-gray-400 line-through">{formatINR(price)}</span>}
+              {discount > 0 && <span className="text-[10px] font-bold text-green-600">Save {formatINR(price - effectivePrice)}</span>}
             </>
           )}
         </div>
+
+        {/* Free delivery hint — matches ₹999 threshold */}
+        {!hasVariantPrices && effectivePrice > 999 && (
+          <p className="text-[10px] font-semibold text-green-600 mb-1.5 flex items-center gap-1">🚚 Free Delivery</p>
+        )}
 
         {/* Variant chips */}
         {product.variants?.length > 0 && (
