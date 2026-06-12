@@ -196,34 +196,37 @@ const SUB_APPS = [
     overlay: 'linear-gradient(to top, rgba(5,30,10,0.97) 0%, rgba(10,46,18,0.60) 45%, rgba(10,46,18,0.05) 100%)',
     badge: 'BY 10 AM', badgeBg: '#facc15', badgeText: '#14532d',
     title: 'Koyambedu Daily', sub: 'Veggies & Fruits',
+    height: 150,
   },
   {
     to: '/uzhavar',
-    img: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=600&h=600&fit=crop&q=85',
+    img: 'https://images.unsplash.com/photo-1589923188651-268a9765e432?w=600&h=800&fit=crop&q=85',
     overlay: 'linear-gradient(to top, rgba(2,20,16,0.97) 0%, rgba(8,40,35,0.60) 45%, rgba(8,40,35,0.05) 100%)',
     badge: 'FARM FRESH', badgeBg: '#a3e635', badgeText: '#134e4a',
     title: 'Farmer Fresh', sub: 'Farm Direct',
+    height: 150,
   },
   {
     to: '/eptofresh',
-    img: 'https://images.unsplash.com/photo-1615937657715-bc7b4b7962c1?w=600&h=600&fit=crop&q=85',
+    img: 'https://images.unsplash.com/photo-1553461923-832e8d5ecc87?w=600&h=400&fit=crop&q=85',
     overlay: 'linear-gradient(to top, rgba(20,5,0,0.97) 0%, rgba(120,30,10,0.60) 45%, rgba(120,30,10,0.05) 100%)',
     badge: 'HYPERLOCAL', badgeBg: '#fb923c', badgeText: '#fff',
     title: 'EptoFresh Proteins', sub: 'Fresh Daily',
+    height: 110,
   },
 ];
 
 function SubAppBanners() {
   return (
     <div className="px-4">
-      <div className="grid grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-3 gap-2.5 items-end">
         {SUB_APPS.map(app => (
           <Link
             key={app.to}
             to={app.to}
             className="relative rounded-2xl overflow-hidden active:scale-[0.96] transition-transform"
             style={{
-              height: 150,
+              height: app.height || 150,
               boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
             }}
           >
