@@ -38,8 +38,18 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401) {
       localStorage.removeItem('eptomart_token');
-      // Redirect to login if not already there
-      if (!window.location.pathname.includes('/login')) {
+      // Only force login on protected pages — public pages (home, shop,
+      // product, etc.) should keep working as a logged-out visitor.
+      const PROTECTED_PREFIXES = [
+        '/orders', '/profile', '/checkout', '/wishlist',
+        '/eptofresh/orders', '/eptofresh/checkout',
+        '/koyambedu/orders', '/koyambedu/checkout',
+        '/uzhavar/my-orders',
+        '/seller', '/admin',
+      ];
+      const path = window.location.pathname;
+      const onProtectedPage = PROTECTED_PREFIXES.some(p => path.startsWith(p));
+      if (onProtectedPage && !path.includes('/login')) {
         window.location.href = '/login';
       }
     } else if (error.response?.status === 429) {
