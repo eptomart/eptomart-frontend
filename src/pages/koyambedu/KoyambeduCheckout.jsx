@@ -699,10 +699,17 @@ export default function KoyambeduCheckout() {
             <div className="flex gap-3">
               <button onClick={() => setStep(2)}
                 className="flex-1 border-2 border-green-600 text-green-600 font-bold py-3 rounded-xl text-sm">← Back</button>
-              <button onClick={handlePlaceOrder} disabled={loading}
-                className="flex-1 bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 disabled:opacity-60 transition text-sm">
-                {loading ? 'Placing...' : `Place Order ₹${total.toFixed(2)}`}
-              </button>
+              {user ? (
+                <button onClick={handlePlaceOrder} disabled={loading}
+                  className="flex-1 bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 disabled:opacity-60 transition text-sm">
+                  {loading ? 'Placing...' : `Place Order ₹${total.toFixed(2)}`}
+                </button>
+              ) : (
+                <button onClick={() => navigate('/login', { state: { from: '/koyambedu/checkout' } })}
+                  className="flex-1 bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition text-sm">
+                  Login to Place Order
+                </button>
+              )}
             </div>
           </div>
         )}

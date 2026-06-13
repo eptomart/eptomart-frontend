@@ -403,7 +403,7 @@ export default function UzhavarHome() {
             </button>
           </div>
         </div>
-        </div>{/* end max-w-7xl wrapper */}
+        </div>
       </main>
       <Footer className="hidden md:block" />
       <BottomNav />

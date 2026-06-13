@@ -137,10 +137,7 @@ export default function KoyambeduCart() {
       {/* Proceed button */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-green-100 px-4 py-3 z-[9990]">
         <button
-          onClick={() => {
-            if (!user) { navigate('/login', { state: { from: '/koyambedu/checkout' } }); return; }
-            navigate('/koyambedu/checkout');
-          }}
+          onClick={() => navigate('/koyambedu/checkout')}
           className="w-full bg-green-600 text-white font-bold py-3.5 rounded-xl hover:bg-green-700 transition text-sm">
           Proceed to Checkout · ₹{total.toFixed(2)}
         </button>

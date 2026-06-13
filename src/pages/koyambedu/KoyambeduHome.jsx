@@ -7,8 +7,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { FiSearch, FiChevronRight, FiMapPin, FiShoppingCart, FiSun, FiTruck, FiPackage, FiCheckCircle, FiZap, FiUsers, FiGrid } from 'react-icons/fi';
 import { FaLeaf, FaCarrot } from 'react-icons/fa';
-import Navbar from '../../components/common/Navbar';
-import Footer from '../../components/common/Footer';
 import BottomNav from '../../components/common/BottomNav';
 import api from '../../utils/api';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
@@ -134,25 +132,39 @@ export default function KoyambeduHome() {
   }, []);
 
   return (
-    <>
+    <div className="min-h-screen bg-[#f5f5f7] pb-24">
       <Helmet>
         <title>Koyambedu Daily — Fresh from the Market | Eptomart</title>
         <meta name="description" content="Order fresh vegetables, fruits and flowers directly from Koyambedu wholesale market. Delivered to your Chennai doorstep." />
       </Helmet>
 
-      <Navbar />
-
-      {/* Same page body structure as Home — pb-24 for mobile bottom nav */}
-      <main className="min-h-screen bg-[#f5f5f7] pb-24 md:pb-8">
-
-        {/* ── Hero — full-bleed, content max-width-constrained ── */}
-        <div
-          className="text-white pt-8 pb-14 text-center relative overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, #064e3b 0%, #065f46 40%, #059669 80%, #34d399 100%)' }}
-        >
+      {/* ── Hero / sticky header ── */}
+      <div
+        className="text-white pb-14 text-center relative overflow-hidden"
+        style={{
+          background: 'linear-gradient(135deg, #064e3b 0%, #065f46 40%, #059669 80%, #34d399 100%)',
+          paddingTop: 'calc(env(safe-area-inset-top) + 24px)',
+        }}
+      >
           <div className="absolute -right-16 -top-16 w-48 h-48 rounded-full bg-white/5" />
           <div className="absolute -left-10 bottom-0 w-32 h-32 rounded-full bg-black/10" />
           <div className="max-w-7xl mx-auto px-4 relative z-10 animate-fade-in-up">
+            <div className="flex items-center justify-between mb-3 px-2">
+              <button onClick={() => navigate('/')}
+                className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                style={{ background: 'rgba(255,255,255,0.18)' }}>
+                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
+                </svg>
+              </button>
+              <Link to="/koyambedu/cart" className="w-9 h-9 rounded-full flex items-center justify-center relative"
+                style={{ background: 'rgba(255,255,255,0.18)' }}>
+                <FiShoppingCart size={15} className="text-white" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-orange-500 rounded-full text-white text-[9px] font-black flex items-center justify-center">{itemCount}</span>
+                )}
+              </Link>
+            </div>
             <div className="mb-2 flex justify-center"><FaLeaf size={40} className="text-emerald-200" /></div>
             <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-0.5">KOYAMBEDU DAILY</h1>
             <p className="text-emerald-200 text-xs">கோயம்பேடு சந்தை · Wholesale Market · Direct Delivery</p>
@@ -241,7 +253,7 @@ export default function KoyambeduHome() {
           )}
         </div>
 
-        </div>{/* end max-w-7xl content wrapper */}
+        </div>
 
         {/* ── Smart Baskets ─────────────────── */}
         <div className="max-w-7xl mx-auto px-4 mb-6">
@@ -329,31 +341,22 @@ export default function KoyambeduHome() {
           </div>
         </div>
 
-      </main>
-
-      <Footer className="hidden md:block" />
-
-      {/* ── Fixed glass bottom nav ─────────── */}
       <BottomNav />
 
-      {/* ── Cart bar — sits above bottom nav ─ */}
       {itemCount > 0 && (
-        <div className="fixed bottom-[72px] md:bottom-4 left-0 right-0 px-4 z-[9985] pointer-events-none">
-          <div className="max-w-2xl mx-auto pointer-events-auto animate-slide-up">
-            <div className="text-white px-4 py-3 rounded-2xl flex items-center justify-between shadow-2xl shadow-emerald-900/30"
-              style={{ background: 'linear-gradient(135deg,#059669,#047857)', backdropFilter: 'blur(8px)' }}>
-              <div>
-                <p className="text-xs font-semibold opacity-80">{itemCount} item{itemCount !== 1 ? 's' : ''} · Today's order</p>
-                <p className="font-black text-base leading-tight">₹{subtotal.toLocaleString('en-IN')}</p>
-              </div>
-              <Link to="/koyambedu/cart"
-                className="bg-white text-emerald-700 font-black text-sm px-5 py-2 rounded-xl hover:bg-emerald-50 active:scale-95 transition flex-shrink-0">
-                View Cart →
-              </Link>
+        <div className="fixed bottom-16 left-4 right-4 max-w-lg mx-auto z-40">
+          <div className="bg-green-600 text-white px-4 py-3 rounded-2xl flex items-center justify-between shadow-xl">
+            <div>
+              <p className="text-xs opacity-80">{itemCount} item{itemCount !== 1 ? 's' : ''}</p>
+              <p className="font-black text-sm">₹{subtotal.toLocaleString('en-IN')}</p>
             </div>
+            <Link to="/koyambedu/cart"
+              className="bg-white text-emerald-700 font-black text-sm px-5 py-2 rounded-xl">
+              View Cart →
+            </Link>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
