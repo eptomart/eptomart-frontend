@@ -4,8 +4,6 @@
 import { useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiTrash2, FiPlus, FiMinus, FiAlertTriangle, FiLogIn } from 'react-icons/fi';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
-import Navbar from '../../components/common/Navbar';
-
 const isLoggedIn = () => !!localStorage.getItem('eptomart_token');
 
 export default function EptoFreshCart() {
@@ -15,8 +13,7 @@ export default function EptoFreshCart() {
   /* ── Empty state ── */
   if (!items.length) {
     return (
-      <div className="min-h-screen bg-white flex flex-col">
-        <Navbar />
+      <div className="min-h-screen bg-white flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
           <div className="text-6xl mb-4">🛒</div>
           <p className="text-gray-900 font-bold text-lg">Your cart is empty</p>
@@ -48,8 +45,7 @@ export default function EptoFreshCart() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: '#F5F4F2' }}>
-      <Navbar />
+    <div className="min-h-screen" style={{ background: '#F5F4F2', paddingTop: 'env(safe-area-inset-top)' }}>
 
       {/* Header */}
       <div className="bg-white px-4 py-3 flex items-center gap-3"

@@ -5,7 +5,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { FiArrowLeft, FiMapPin, FiClock, FiUser, FiRefreshCw } from 'react-icons/fi';
-import Navbar from '../../components/common/Navbar';
 
 const STATUS_STEPS = [
   { key: 'placed',           label: 'Order Placed',        icon: '📋' },
@@ -51,8 +50,7 @@ export default function EptoFreshTracking() {
   const currentStatusIdx = STATUS_ORDER.indexOf(tracking?.orderStatus);
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#F5F4F2' }}>
-      <Navbar />
+    <div className="min-h-screen pb-24" style={{ background: '#F5F4F2', paddingTop: 'env(safe-area-inset-top)' }}>
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
         <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(0,0,0,0.05)' }}>

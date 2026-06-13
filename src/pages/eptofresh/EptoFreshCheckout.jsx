@@ -9,7 +9,6 @@ import toast from 'react-hot-toast';
 import { FiArrowLeft, FiMapPin, FiAlertTriangle, FiCheck, FiTag } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
-import Navbar from '../../components/common/Navbar';
 
 const STEPS = ['Address', 'Delivery', 'Payment'];
 
@@ -178,8 +177,7 @@ export default function EptoFreshCheckout() {
   const INDIAN_MOBILE = /^[6-9]\d{9}$/;
 
   return (
-    <div className="min-h-screen pb-32" style={{ background: '#F5F4F2' }}>
-      <Navbar />
+    <div className="min-h-screen pb-32" style={{ background: '#F5F4F2', paddingTop: 'env(safe-area-inset-top)' }}>
 
       {/* ── Mandatory Long Distance Consent Modal ── */}
       {showConsentModal && (
