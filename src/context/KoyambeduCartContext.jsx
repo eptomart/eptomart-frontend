@@ -1,12 +1,59 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+// ============================================
+// KOYAMBEDU CART CONTEXT
+// Adds userLocation with localStorage persistence (same pattern as EptoFresh)
+// ============================================
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+
+const KBD_COORDS_KEY = 'kbd_coords';
+const KBD_AREA_KEY   = 'kbd_area';
 
 const KoyambeduCartContext = createContext(null);
 
 export const KoyambeduCartProvider = ({ children }) => {
   const [cart, setCart]       = useState({ items: [] });
   const [loading, setLoading] = useState(false);
+
+  // Restore persisted location (survives refresh)
+  const [userLocation, setUserLocationRaw] = useState(() => {
+    try {
+      const saved = localStorage.getItem(KBD_COORDS_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+  const [locationLabel, setLocationLabelRaw] = useState(() => {
+    return localStorage.getItem(KBD_AREA_KEY) || '';
+  });
+
+  const setUserLocation = useCallback((loc) => {
+    setUserLocationRaw(loc);
+    if (loc) {
+      try { localStorage.setItem(KBD_COORDS_KEY, JSON.stringify(loc)); } catch {}
+    } else {
+      localStorage.removeItem(KBD_COORDS_KEY);
+    }
+  }, []);
+
+  const setLocationLabel = useCallback((label) => {
+    setLocationLabelRaw(label);
+    if (label) {
+      try { localStorage.setItem(KBD_AREA_KEY, label); } catch {}
+    } else {
+      localStorage.removeItem(KBD_AREA_KEY);
+    }
+  }, []);
+
+  // Request GPS once — only if no saved location
+  useEffect(() => {
+    if (userLocation) return;
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {}
+      );
+    }
+  }, []);
 
   const fetchCart = useCallback(async () => {
     try {
@@ -36,12 +83,17 @@ export const KoyambeduCartProvider = ({ children }) => {
     } catch {}
   }, []);
 
-  const itemCount  = cart.items?.reduce((s, i) => s + 1, 0) || 0;
-  const subtotal   = cart.items?.reduce((s, i) => s + (i.unitPrice || 0) * (i.quantity || 0), 0) || 0;
-  const getQty     = (productId) => cart.items?.find(i => String(i.product?._id || i.product) === String(productId))?.quantity || 0;
+  const itemCount = cart.items?.reduce((s, i) => s + 1, 0) || 0;
+  const subtotal  = cart.items?.reduce((s, i) => s + (i.unitPrice || 0) * (i.quantity || 0), 0) || 0;
+  const getQty    = (productId) => cart.items?.find(i => String(i.product?._id || i.product) === String(productId))?.quantity || 0;
 
   return (
-    <KoyambeduCartContext.Provider value={{ cart, loading, fetchCart, updateItem, clearCart, itemCount, subtotal, getQty }}>
+    <KoyambeduCartContext.Provider value={{
+      cart, loading, fetchCart, updateItem, clearCart,
+      itemCount, subtotal, getQty,
+      userLocation, setUserLocation,
+      locationLabel, setLocationLabel,
+    }}>
       {children}
     </KoyambeduCartContext.Provider>
   );

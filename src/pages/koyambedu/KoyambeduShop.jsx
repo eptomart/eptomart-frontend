@@ -6,6 +6,15 @@ import Navbar from '../../components/common/Navbar';
 import BottomNav from '../../components/common/BottomNav';
 import toast from 'react-hot-toast';
 
+const KOYAMBEDU_LAT = 13.0748;
+const KOYAMBEDU_LNG = 80.2136;
+
+const haversineKm = (lat1, lon1, lat2, lon2) => {
+  const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+};
+
 const IMG_PLACEHOLDER = 'https://placehold.co/300x200/dcfce7/166534?text=Fresh';
 
 const ProductCard = ({ product }) => {
@@ -75,7 +84,12 @@ const ProductCard = ({ product }) => {
 
 export default function KoyambeduShop() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { fetchCart, itemCount, subtotal } = useKoyambeduCart();
+  const { fetchCart, itemCount, subtotal, userLocation, locationLabel } = useKoyambeduCart();
+
+  // Distance from user's saved location to Koyambedu market
+  const distToMarket = userLocation
+    ? Math.round(haversineKm(userLocation.lat, userLocation.lng, KOYAMBEDU_LAT, KOYAMBEDU_LNG) * 10) / 10
+    : null;
   const navigate = useNavigate();
 
   const [products,   setProducts]   = useState([]);
@@ -137,10 +151,22 @@ export default function KoyambeduShop() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
                 </svg>
               </button>
-              <h1 className="font-black text-lg">
-                {activeCategory ? `${activeCategory.icon || '🌿'} ${activeCategory.name}` : 'Shop Fresh Market'}
-              </h1>
-              <Link to="/koyambedu/cart" className="ml-auto relative p-1">
+              <div className="flex-1">
+                <h1 className="font-black text-lg">
+                  {activeCategory ? `${activeCategory.icon || '🌿'} ${activeCategory.name}` : 'Shop Fresh Market'}
+                </h1>
+                {/* Distance from Koyambedu market */}
+                {distToMarket != null && (
+                  <p className="text-white/80 text-xs mt-0.5 flex items-center gap-1">
+                    <span>📍</span>
+                    <span>
+                      {locationLabel ? `${locationLabel} · ` : ''}{distToMarket} km from Koyambedu market
+                      {distToMarket <= 7 ? ' · Delivery available' : ' · Outside zone'}
+                    </span>
+                  </p>
+                )}
+              </div>
+              <Link to="/koyambedu/cart" className="relative p-1">
                 <span className="text-xl">🛍️</span>
                 {itemCount > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center">{itemCount}</span>

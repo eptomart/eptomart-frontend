@@ -104,7 +104,17 @@ function SectionRow({ title, icon, products, viewAllLink }) {
 
 // ── Main ────────────────────────────────────
 export default function KoyambeduHome() {
-  const { fetchCart, itemCount, subtotal } = useKoyambeduCart();
+  const { fetchCart, itemCount, subtotal, userLocation, locationLabel } = useKoyambeduCart();
+
+  const KOYAMBEDU_LAT = 13.0748, KOYAMBEDU_LNG = 80.2136;
+  const haversineKm = (lat1, lon1, lat2, lon2) => {
+    const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+    const a = Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+    return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  };
+  const distToMarket = userLocation
+    ? Math.round(haversineKm(userLocation.lat, userLocation.lng, KOYAMBEDU_LAT, KOYAMBEDU_LNG) * 10) / 10
+    : null;
   const navigate = useNavigate();
 
   const [categories, setCategories] = useState([]);
@@ -150,6 +160,12 @@ export default function KoyambeduHome() {
               <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30 inline-flex items-center gap-1"><FiSun size={11} /> Market Open</span>
               <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30 inline-flex items-center gap-1"><FiTruck size={11} /> ₹149 (up to 20 kg) · ₹249 (20–90 kg)</span>
               <span className="bg-yellow-400/90 text-emerald-900 text-[11px] font-bold px-3 py-1 rounded-full inline-flex items-center gap-1"><FiPackage size={11} /> &gt;90 kg? Contact us</span>
+              {distToMarket != null && (
+                <span className={`text-[11px] font-bold px-3 py-1 rounded-full inline-flex items-center gap-1 ${distToMarket <= 7 ? 'bg-green-400/90 text-green-900' : 'bg-red-400/90 text-white'}`}>
+                  <FiMapPin size={11} />
+                  {locationLabel ? `${locationLabel} · ` : ''}{distToMarket} km from market
+                </span>
+              )}
             </div>
           </div>
         </div>
