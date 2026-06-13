@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
-import { FiGrid, FiUsers, FiPackage, FiShoppingBag, FiDollarSign, FiTag, FiCheck, FiX, FiCamera, FiBarChart2, FiSettings, FiPlus, FiMapPin, FiArrowLeft, FiEdit2, FiSave, FiSearch } from 'react-icons/fi';
+import { FiGrid, FiUsers, FiPackage, FiShoppingBag, FiDollarSign, FiTag, FiCheck, FiX, FiCamera, FiBarChart2, FiSettings, FiPlus, FiMapPin, FiArrowLeft, FiEdit2, FiSave, FiSearch, FiTrash2 } from 'react-icons/fi';
 
 export default function EptoFreshAdmin() {
   const navigate  = useNavigate();
@@ -752,6 +752,17 @@ function SellersTab() {
     setSellers(s => s.map(x => x._id === updated._id ? { ...x, ...updated } : x));
   };
 
+  const deleteSeller = async (id, name) => {
+    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    try {
+      const { data } = await api.delete(`/eptofresh/admin/sellers/${id}`);
+      if (data.success) {
+        toast.success(data.message || 'Seller deleted');
+        setSellers(s => s.filter(x => x._id !== id));
+      }
+    } catch (err) { toast.error(err.response?.data?.message || 'Delete failed'); }
+  };
+
   return (
     <div>
       {/* Header row */}
@@ -804,6 +815,13 @@ function SellersTab() {
                   style={{ background: 'rgba(244,148,28,0.1)', color: '#f4941c', border: '1px solid rgba(244,148,28,0.2)' }}
                 >
                   <FiEdit2 size={11} /> Edit
+                </button>
+                <button
+                  onClick={() => deleteSeller(s._id, s.shopName)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold"
+                  style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)' }}
+                >
+                  <FiTrash2 size={11} /> Delete
                 </button>
                 {s.kyc?.panUrl && (
                   <a href={s.kyc.panUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-[10px] underline">{s.kyc.panNumber}</a>
