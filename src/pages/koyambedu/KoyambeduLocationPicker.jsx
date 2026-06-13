@@ -1,387 +1,277 @@
 // ============================================
-// KOYAMBEDU LOCATION PICKER — Google Maps
+// KOYAMBEDU LOCATION PICKER
+// Search-based — uses backend Places proxy
+// No Google Maps JS SDK needed
 // Guest-accessible — no login required
-// Same Google Maps approach as EptoFreshLocationPicker
-// Key fetched securely from backend /eptofresh/maps/config
 // ============================================
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiSearch, FiMapPin, FiArrowLeft, FiX } from 'react-icons/fi';
+import { FiSearch, FiMapPin, FiArrowLeft, FiX, FiChevronRight, FiCheck } from 'react-icons/fi';
+import { FaLeaf } from 'react-icons/fa';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 
-const DEFAULT       = { lat: 13.0827, lng: 80.2707 }; // Chennai centre
-const MARKET_LAT    = 13.0748;
-const MARKET_LNG    = 80.2136;
+// Popular Chennai delivery areas with known coordinates
+const POPULAR_AREAS = [
+  { name: 'Anna Nagar',        lat: 13.0850, lng: 80.2101 },
+  { name: 'T. Nagar',          lat: 13.0418, lng: 80.2341 },
+  { name: 'Velachery',         lat: 12.9815, lng: 80.2180 },
+  { name: 'Adyar',             lat: 13.0012, lng: 80.2565 },
+  { name: 'Porur',             lat: 13.0358, lng: 80.1572 },
+  { name: 'Tambaram',          lat: 12.9249, lng: 80.1000 },
+  { name: 'Perambur',          lat: 13.1152, lng: 80.2452 },
+  { name: 'Mogappair',         lat: 13.0827, lng: 80.1700 },
+  { name: 'Chromepet',         lat: 12.9516, lng: 80.1462 },
+  { name: 'Sholinganallur',    lat: 12.9010, lng: 80.2279 },
+  { name: 'Ambattur',          lat: 13.1143, lng: 80.1548 },
+  { name: 'Kodambakkam',       lat: 13.0519, lng: 80.2213 },
+  { name: 'Pallavaram',        lat: 12.9675, lng: 80.1491 },
+  { name: 'Avadi',             lat: 13.1152, lng: 80.1014 },
+  { name: 'Madhavaram',        lat: 13.1489, lng: 80.2329 },
+  { name: 'Virugambakkam',     lat: 13.0538, lng: 80.1945 },
+  { name: 'Nungambakkam',      lat: 13.0569, lng: 80.2425 },
+  { name: 'Mylapore',          lat: 13.0339, lng: 80.2619 },
+  { name: 'West Mambalam',     lat: 13.0388, lng: 80.2197 },
+  { name: 'Guindy',            lat: 13.0067, lng: 80.2206 },
+];
+
+const MARKET_LAT = 13.0748;
+const MARKET_LNG = 80.2136;
 
 const haversineKm = (lat1, lon1, lat2, lon2) => {
-  const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 };
 
-// ── Load Google Maps JS SDK (key from backend) ──────────
-function loadGoogleMaps() {
-  return new Promise((resolve, reject) => {
-    if (window.google?.maps) { resolve(); return; }
-    api.get('/eptofresh/maps/config')
-      .then(({ data }) => {
-        if (!data.key) { reject(new Error('No Maps key configured')); return; }
-        const cbName = '__gmReady_kbd_' + Date.now();
-        window[cbName] = () => { resolve(); delete window[cbName]; };
-        const s = document.createElement('script');
-        s.src = `https://maps.googleapis.com/maps/api/js?key=${data.key}&libraries=places&callback=${cbName}`;
-        s.async = true;
-        s.onerror = reject;
-        document.head.appendChild(s);
-      })
-      .catch(reject);
-  });
-}
-
-// ── Google Geocoder reverse lookup ──────────────────────
-function reverseGeocode(lat, lng) {
-  return new Promise(resolve => {
-    const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-      if (status !== 'OK' || !results?.length) { resolve({ short: 'Unknown area', full: '' }); return; }
-      const r     = results[0];
-      const comps = r.address_components || [];
-      const get   = t => comps.find(c => c.types.includes(t))?.long_name || '';
-      const neighbourhood =
-        get('sublocality_level_2') || get('sublocality_level_1') ||
-        get('sublocality') || get('neighborhood');
-      const locality = get('locality') || get('postal_town');
-      const short = neighbourhood
-        ? `${neighbourhood}, ${locality}`.replace(/^, |, $/, '').trim()
-        : locality || r.formatted_address.split(',')[0];
-      resolve({ short, full: r.formatted_address });
-    });
-  });
-}
-
 export default function KoyambeduLocationPicker() {
-  const navigate = useNavigate();
-  const { setUserLocation, setLocationLabel } = useKoyambeduCart();
+  const navigate  = useNavigate();
+  const { setUserLocation, setLocationLabel, locationLabel } = useKoyambeduCart();
 
-  const mapDivRef    = useRef(null);
-  const mapRef       = useRef(null);
-  const geocodeTimer = useRef(null);
-  const autocomplete = useRef(null);
-  const sessionToken = useRef(null);
-
-  const [mapReady,    setMapReady]    = useState(false);
-  const [loadError,   setLoadError]   = useState(false);
-  const [center,      setCenter]      = useState(DEFAULT);
-  const [shortAddr,   setShortAddr]   = useState('');
-  const [fullAddr,    setFullAddr]    = useState('');
-  const [mapMoving,   setMapMoving]   = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [query,       setQuery]       = useState('');
   const [suggestions, setSuggestions] = useState([]);
-  const [searchBusy,  setSearchBusy]  = useState(false);
-  const [showSugg,    setShowSugg]    = useState(false);
+  const [searching,   setSearching]   = useState(false);
+  const [selected,    setSelected]    = useState(locationLabel ? { name: locationLabel } : null);
   const [confirming,  setConfirming]  = useState(false);
-  const [distKm,      setDistKm]      = useState(null);
+  const debounceRef = useRef(null);
+  const inputRef    = useRef(null);
 
-  // ── Init Google Map ──────────────────────────────────
-  useEffect(() => {
-    let mounted = true;
-    loadGoogleMaps()
-      .then(() => {
-        if (!mounted || !mapDivRef.current) return;
-        const map = new window.google.maps.Map(mapDivRef.current, {
-          center:           DEFAULT,
-          zoom:             14,
-          disableDefaultUI: true,
-          gestureHandling:  'greedy',
-          clickableIcons:   false,
-          styles: [
-            { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-          ],
-        });
-
-        map.addListener('dragstart', () => { setMapMoving(true); setShowSugg(false); });
-        map.addListener('idle', () => {
-          setMapMoving(false);
-          const c   = map.getCenter();
-          const pos = { lat: c.lat(), lng: c.lng() };
-          setCenter(pos);
-          setDistKm(Math.round(haversineKm(pos.lat, pos.lng, MARKET_LAT, MARKET_LNG) * 10) / 10);
-          clearTimeout(geocodeTimer.current);
-          geocodeTimer.current = setTimeout(() => {
-            reverseGeocode(pos.lat, pos.lng).then(r => {
-              if (mounted) { setShortAddr(r.short); setFullAddr(r.full); }
-            });
-          }, 400);
-        });
-
-        mapRef.current       = map;
-        autocomplete.current = new window.google.maps.places.AutocompleteService();
-        sessionToken.current = new window.google.maps.places.AutocompleteSessionToken();
-
-        reverseGeocode(DEFAULT.lat, DEFAULT.lng).then(r => {
-          if (mounted) { setShortAddr(r.short); setFullAddr(r.full); }
-        });
-        setDistKm(Math.round(haversineKm(DEFAULT.lat, DEFAULT.lng, MARKET_LAT, MARKET_LNG) * 10) / 10);
-        setMapReady(true);
-      })
-      .catch(() => { if (mounted) setLoadError(true); });
-    return () => { mounted = false; clearTimeout(geocodeTimer.current); };
-  }, []);
-
-  // ── Search debounce ──────────────────────────────────
-  useEffect(() => {
-    if (!searchQuery || searchQuery.length < 2 || !autocomplete.current) {
-      setSuggestions([]); setSearchBusy(false); return;
-    }
-    setSearchBusy(true);
-    const t = setTimeout(() => {
-      autocomplete.current.getPlacePredictions(
-        {
-          input:                  searchQuery,
-          sessionToken:           sessionToken.current,
-          componentRestrictions:  { country: 'in' },
-          types:                  ['geocode', 'establishment'],
-        },
-        (preds, status) => {
-          setSearchBusy(false);
-          if (status === window.google.maps.places.PlacesServiceStatus.OK && preds?.length) {
-            setSuggestions(preds); setShowSugg(true);
-          } else {
-            setSuggestions([]);
-          }
-        }
-      );
-    }, 350);
-    return () => clearTimeout(t);
-  }, [searchQuery]);
-
-  // ── Pick suggestion ──────────────────────────────────
-  const pickSuggestion = useCallback((pred) => {
-    setSearchQuery(pred.structured_formatting?.main_text || pred.description);
-    setSuggestions([]); setShowSugg(false); setSearchBusy(true);
-    const service = new window.google.maps.places.PlacesService(mapRef.current);
-    service.getDetails(
-      { placeId: pred.place_id, fields: ['geometry', 'name', 'formatted_address'], sessionToken: sessionToken.current },
-      (place, status) => {
-        sessionToken.current = new window.google.maps.places.AutocompleteSessionToken();
-        setSearchBusy(false);
-        if (status !== window.google.maps.places.PlacesServiceStatus.OK || !place?.geometry) {
-          toast.error('Could not get location.'); return;
-        }
-        const loc = place.geometry.location;
-        mapRef.current.panTo(loc);
-        mapRef.current.setZoom(16);
-        setCenter({ lat: loc.lat(), lng: loc.lng() });
-        setDistKm(Math.round(haversineKm(loc.lat(), loc.lng(), MARKET_LAT, MARKET_LNG) * 10) / 10);
-        setShortAddr(pred.structured_formatting?.main_text || place.name);
-        setFullAddr(pred.description || place.formatted_address);
+  // ── Search via backend proxy (Google Places) ──────────
+  const handleSearch = useCallback((q) => {
+    setQuery(q);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!q || q.length < 2) { setSuggestions([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const { data } = await api.get(`/eptofresh/places/autocomplete?q=${encodeURIComponent(q)}`);
+        setSuggestions(data.predictions || []);
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setSearching(false);
       }
-    );
+    }, 350);
   }, []);
 
-  // ── Confirm ─────────────────────────────────────────
+  // ── Pick a Google Places suggestion ───────────────────
+  const pickSuggestion = async (pred) => {
+    const name = pred.structured_formatting?.main_text || pred.description.split(',')[0];
+    setQuery(name);
+    setSuggestions([]);
+    setSearching(true);
+    try {
+      const { data } = await api.get(`/eptofresh/places/details?place_id=${pred.place_id}`);
+      if (data.result?.geometry?.location) {
+        const { lat, lng } = data.result.geometry.location;
+        setSelected({ name, lat, lng });
+      } else {
+        setSelected({ name });
+      }
+    } catch {
+      setSelected({ name });
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // ── Pick a popular area ───────────────────────────────
+  const pickPopular = (area) => {
+    setQuery(area.name);
+    setSuggestions([]);
+    setSelected(area);
+  };
+
+  // ── Confirm ───────────────────────────────────────────
   const confirm = () => {
-    if (!shortAddr || mapMoving || confirming) return;
+    if (!selected || confirming) return;
     setConfirming(true);
-    setUserLocation(center);
-    setLocationLabel(shortAddr);
-    toast.success(`Delivery area set to ${shortAddr}`);
+    if (selected.lat && selected.lng) {
+      setUserLocation({ lat: selected.lat, lng: selected.lng });
+    }
+    setLocationLabel(selected.name);
+    toast.success(`Delivery area set to ${selected.name}`);
     navigate(-1);
   };
 
-  // ── Error screen ─────────────────────────────────────
-  if (loadError) return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 px-8 text-center"
-      style={{ background: '#F5F4F2' }}>
-      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-2"
-        style={{ background: '#f0fdf4' }}>
-        <FiMapPin size={30} className="text-green-400" />
-      </div>
-      <p className="text-gray-800 font-bold text-lg">Map unavailable</p>
-      <p className="text-gray-400 text-sm leading-relaxed">
-        Please add <code className="text-green-600 bg-green-50 px-1.5 py-0.5 rounded text-xs">GOOGLE_PLACES_API_KEY</code>{' '}
-        to your Render backend environment variables and redeploy.
-      </p>
-      <button onClick={() => navigate(-1)}
-        className="mt-2 px-5 py-2.5 rounded-2xl text-white font-semibold text-sm active:scale-95 transition"
-        style={{ background: '#16a34a' }}>
-        Go Back
-      </button>
-    </div>
-  );
+  const distKm = selected?.lat
+    ? Math.round(haversineKm(selected.lat, selected.lng, MARKET_LAT, MARKET_LNG) * 10) / 10
+    : null;
+
+  const filteredPopular = query.length >= 2
+    ? POPULAR_AREAS.filter(a => a.name.toLowerCase().includes(query.toLowerCase()))
+    : POPULAR_AREAS;
 
   return (
-    <div className="fixed inset-0 z-[100]" style={{ background: '#e8e8e8' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: '#F5F4F2' }}>
 
-      {/* ── Map ── */}
-      <div ref={mapDivRef} className="absolute inset-0" />
-
-      {/* ── Loading overlay ── */}
-      {!mapReady && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4"
-          style={{ background: '#F5F4F2' }}>
-          <div className="w-12 h-12 rounded-full border-4 border-green-500 border-t-transparent animate-spin" />
-          <p className="text-gray-400 text-sm">Loading map…</p>
-        </div>
-      )}
-
-      {/* ── Top bar ── */}
-      <div className="absolute left-0 right-0 z-10 px-3"
-        style={{ top: 0, paddingTop: 'env(safe-area-inset-top, 44px)' }}>
-        <div className="flex items-center gap-2 pb-2">
-          {/* Back */}
+      {/* ── Header ── */}
+      <div className="shrink-0" style={{
+        background: 'linear-gradient(135deg, #064e3b 0%, #065f46 50%, #059669 100%)',
+        paddingTop: 'env(safe-area-inset-top)',
+        boxShadow: '0 4px 24px rgba(6,95,70,0.3)',
+      }}>
+        <div className="px-4 py-3.5 flex items-center gap-3">
           <button onClick={() => navigate(-1)}
-            className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-            style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.18)' }}>
-            <FiArrowLeft size={18} className="text-gray-700" />
+            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition"
+            style={{ background: 'rgba(255,255,255,0.2)' }}>
+            <FiArrowLeft size={16} className="text-white" />
           </button>
+          <div className="flex-1">
+            <h1 className="text-white font-extrabold text-base leading-tight">Set Delivery Area</h1>
+            <p className="text-emerald-100 text-[10px] opacity-80">Search your area or pick from the list</p>
+          </div>
+          <FaLeaf size={18} className="text-emerald-200 opacity-70 shrink-0" />
+        </div>
 
-          {/* Search input */}
-          <div className="flex-1 relative">
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" size={16} />
+        {/* Search bar */}
+        <div className="px-4 pb-4">
+          <div className="flex items-center gap-2 rounded-2xl px-3 py-3 bg-white"
+            style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
+            <FiSearch size={15} className="text-green-600 shrink-0" />
             <input
-              type="text"
-              value={searchQuery}
-              onChange={e => { setSearchQuery(e.target.value); setShowSugg(true); }}
-              onFocus={() => suggestions.length && setShowSugg(true)}
-              placeholder="Search area, street or landmark…"
-              className="w-full py-3 pl-10 pr-9 rounded-2xl text-gray-800 placeholder-gray-400 outline-none"
-              style={{ background: '#fff', fontSize: '16px', boxShadow: '0 2px 10px rgba(0,0,0,0.18)' }}
+              ref={inputRef}
+              value={query}
+              onChange={e => handleSearch(e.target.value)}
+              placeholder="Search area, locality, pincode…"
+              className="flex-1 text-gray-800 text-sm outline-none placeholder-gray-400 bg-transparent"
+              style={{ fontSize: 16 }}
+              autoFocus
             />
-            {searchQuery
-              ? <button onClick={() => { setSearchQuery(''); setSuggestions([]); setShowSugg(false); }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <FiX size={16} className="text-gray-400" />
-                </button>
-              : searchBusy
-                ? <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-green-500 border-t-transparent animate-spin" />
-                : null}
-          </div>
-
-        </div>
-
-        {/* Search suggestions */}
-        {showSugg && suggestions.length > 0 && (
-          <div className="rounded-2xl overflow-hidden mt-0.5"
-            style={{ background: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.18)' }}>
-            {suggestions.map((pred, i) => {
-              const main = pred.structured_formatting?.main_text || pred.description.split(',')[0];
-              const sub  = pred.structured_formatting?.secondary_text || '';
-              return (
-                <button key={pred.place_id} onClick={() => pickSuggestion(pred)}
-                  className="w-full flex items-start gap-3 px-4 py-3 text-left active:bg-gray-50"
-                  style={{ borderBottom: i < suggestions.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                    style={{ background: '#f0fdf4' }}>
-                    <FiMapPin size={14} className="text-green-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-gray-800 text-sm font-semibold truncate">{main}</p>
-                    {sub && <p className="text-gray-400 text-xs truncate mt-0.5">{sub}</p>}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* ── Fixed centre pin (same as EptoFresh) ── */}
-      <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"
-        style={{ paddingBottom: 200 }}>
-        <div className="flex flex-col items-center">
-          <div className="flex flex-col items-center transition-all duration-200 ease-out"
-            style={{ transform: mapMoving ? 'translateY(-14px) scale(1.1)' : 'translateY(0) scale(1)' }}>
-            <div className="w-12 h-12 rounded-full flex items-center justify-center"
-              style={{
-                background: '#16a34a',
-                border: '3px solid #fff',
-                boxShadow: mapMoving
-                  ? '0 8px 28px rgba(22,163,74,0.55), 0 3px 10px rgba(0,0,0,0.3)'
-                  : '0 4px 16px rgba(22,163,74,0.45), 0 2px 6px rgba(0,0,0,0.2)',
-              }}>
-              <FiMapPin className="text-white" size={20} />
-            </div>
-            <div className="w-0.5 h-4 transition-all duration-200"
-              style={{ background: 'linear-gradient(#16a34a, transparent)' }} />
-          </div>
-          <div className="rounded-full transition-all duration-200"
-            style={{
-              width:      mapMoving ? 6 : 14,
-              height:     mapMoving ? 3 : 5,
-              background: 'rgba(0,0,0,0.2)',
-              filter:     'blur(2px)',
-              marginTop:  -2,
-            }} />
-        </div>
-      </div>
-
-      {/* ── Bottom panel ── */}
-      <div className="absolute left-0 right-0 bottom-0 z-10"
-        style={{
-          background:    '#fff',
-          borderRadius:  '24px 24px 0 0',
-          boxShadow:     '0 -4px 30px rgba(0,0,0,0.15)',
-          padding:       '16px 16px',
-          paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-        }}>
-        {/* Handle */}
-        <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: '#e5e7eb' }} />
-
-        {/* Selected address */}
-        <div className="flex items-start gap-3 mb-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-            style={{ background: '#f0fdf4' }}>
-            <FiMapPin size={16} className="text-green-600" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">
-              {mapMoving ? 'Adjusting…' : 'Selected delivery area'}
-            </p>
-            <p className="font-bold text-base leading-tight text-gray-900">
-              {mapMoving ? 'Move the pin to your location' : (shortAddr || 'Drag the map to your area')}
-            </p>
-            {!mapMoving && fullAddr && (
-              <p className="text-xs mt-0.5 line-clamp-1 text-gray-400">{fullAddr}</p>
+            {searching && (
+              <span className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin shrink-0" />
+            )}
+            {query && !searching && (
+              <button onClick={() => { setQuery(''); setSuggestions([]); setSelected(null); inputRef.current?.focus(); }}>
+                <FiX size={15} className="text-gray-400" />
+              </button>
             )}
           </div>
         </div>
+      </div>
 
-        {/* Distance from market */}
-        {distKm !== null && !mapMoving && shortAddr && (
-          <div className="mb-3 px-3 py-2 rounded-xl flex items-center gap-2"
-            style={{
-              background: distKm <= 30 ? '#f0fdf4' : '#fff7ed',
-              border:     `1px solid ${distKm <= 30 ? 'rgba(22,163,74,0.2)' : 'rgba(234,88,12,0.2)'}`,
-            }}>
-            <span className="text-lg">{distKm <= 30 ? '✅' : '⚠️'}</span>
-            <div>
-              <p className="text-xs font-bold" style={{ color: distKm <= 30 ? '#16a34a' : '#ea580c' }}>
-                {distKm} km from Koyambedu market
-              </p>
-              {distKm > 30 && (
-                <p className="text-[10px] text-orange-500 mt-0.5">Long distance — extra delivery charges may apply</p>
+      {/* ── Content ── */}
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-32">
+
+        {/* Google Places suggestions */}
+        {suggestions.length > 0 && (
+          <div className="mb-4">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Search Results</p>
+            <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }}>
+              {suggestions.map((pred, i) => {
+                const main = pred.structured_formatting?.main_text || pred.description.split(',')[0];
+                const sub  = pred.structured_formatting?.secondary_text || '';
+                return (
+                  <button key={pred.place_id} onClick={() => pickSuggestion(pred)}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-green-50 transition"
+                    style={{ borderBottom: i < suggestions.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: '#f0fdf4' }}>
+                      <FiMapPin size={15} className="text-green-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-gray-800 text-sm truncate">{main}</p>
+                      {sub && <p className="text-gray-400 text-xs truncate mt-0.5">{sub}</p>}
+                    </div>
+                    <FiChevronRight size={14} className="text-gray-300 shrink-0" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Selected area card */}
+        {selected && (
+          <div className="mb-4 p-4 bg-white rounded-2xl flex items-start gap-3"
+            style={{ boxShadow: '0 2px 16px rgba(22,163,74,0.15)', border: '1.5px solid rgba(22,163,74,0.25)' }}>
+            <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
+              <FiCheck size={18} className="text-green-700" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider mb-0.5">Selected area</p>
+              <p className="font-extrabold text-gray-900 text-base leading-tight">{selected.name}</p>
+              {distKm !== null && (
+                <p className={`text-xs mt-1 font-medium ${distKm <= 30 ? 'text-green-600' : 'text-orange-500'}`}>
+                  {distKm} km from Koyambedu market
+                  {distKm > 30 && ' · Long distance charges may apply'}
+                </p>
               )}
             </div>
           </div>
         )}
 
-        {/* Confirm button */}
+        {/* Popular areas */}
+        {(!suggestions.length) && (
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+              {query.length >= 2 ? 'Matching Areas' : 'Popular Delivery Areas'}
+            </p>
+            {filteredPopular.length === 0 ? (
+              <div className="text-center py-10 text-gray-400">
+                <FiMapPin size={28} className="mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No matching areas — try a different search</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {filteredPopular.map(area => (
+                  <button key={area.name} onClick={() => pickPopular(area)}
+                    className="flex items-center gap-2 p-3 bg-white rounded-xl text-left active:scale-[0.97] transition"
+                    style={{
+                      boxShadow: selected?.name === area.name
+                        ? '0 2px 12px rgba(22,163,74,0.25)'
+                        : '0 1px 6px rgba(0,0,0,0.07)',
+                      border: selected?.name === area.name
+                        ? '1.5px solid #16a34a'
+                        : '1px solid rgba(0,0,0,0.05)',
+                    }}>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: selected?.name === area.name ? '#dcfce7' : '#f0fdf4' }}>
+                      <FiMapPin size={13} className={selected?.name === area.name ? 'text-green-700' : 'text-green-500'} />
+                    </div>
+                    <span className="text-xs font-semibold text-gray-700 leading-tight">{area.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Sticky confirm button ── */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white px-4 py-3"
+        style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.08)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}>
         <button
           onClick={confirm}
-          disabled={!shortAddr || mapMoving || confirming || !mapReady}
-          className="w-full py-4 rounded-2xl font-extrabold text-white text-base disabled:opacity-40 transition-all active:scale-[0.98]"
+          disabled={!selected || confirming}
+          className="w-full py-3.5 rounded-2xl font-extrabold text-sm text-white flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-40"
           style={{
-            background: (!shortAddr || mapMoving || !mapReady)
-              ? '#d1d5db'
-              : 'linear-gradient(135deg, #16a34a, #059669)',
-            boxShadow: (!shortAddr || mapMoving || !mapReady)
-              ? 'none'
-              : '0 4px 16px rgba(22,163,74,0.4)',
+            background: selected ? 'linear-gradient(135deg, #16a34a, #059669)' : '#d1d5db',
+            boxShadow: selected ? '0 4px 16px rgba(22,163,74,0.4)' : 'none',
           }}>
-          {confirming ? 'Setting area…' : 'Confirm Delivery Area'}
+          <FiCheck size={17} />
+          {confirming ? 'Setting area…' : selected ? `Confirm — ${selected.name}` : 'Select an area above'}
         </button>
       </div>
     </div>
