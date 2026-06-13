@@ -11,7 +11,8 @@ import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 
-const DEFAULT    = { lat: 13.0836, lng: 80.2785 }; // Chennai Central Railway Station
+const DEFAULT         = { lat: 13.0836, lng: 80.2785 }; // Chennai Central Railway Station
+const DEFAULT_LABEL   = 'Chennai Central Railway Station';
 const MARKET_LAT = 13.0748;
 const MARKET_LNG = 80.2136;
 
@@ -69,7 +70,7 @@ export default function KoyambeduLocationPicker() {
   const [mapReady,    setMapReady]    = useState(false);
   const [loadError,   setLoadError]   = useState(false);
   const [center,      setCenter]      = useState(DEFAULT);
-  const [shortAddr,   setShortAddr]   = useState('');
+  const [shortAddr,   setShortAddr]   = useState(DEFAULT_LABEL);
   const [fullAddr,    setFullAddr]    = useState('');
   const [mapMoving,   setMapMoving]   = useState(false);
   const [query,       setQuery]       = useState('');
@@ -208,7 +209,7 @@ export default function KoyambeduLocationPicker() {
       )}
 
       {/* ── Top bar (back + search) ── */}
-      <div className="absolute left-0 right-0 z-10 px-3"
+      <div className="absolute left-0 right-0 z-40 px-3"
         style={{ top: 0, paddingTop: 'env(safe-area-inset-top, 44px)' }}>
         <div className="flex items-center gap-2 pb-2">
           <button onClick={() => navigate(-1)}
@@ -286,7 +287,7 @@ export default function KoyambeduLocationPicker() {
       </div>
 
       {/* ── Bottom panel with Confirm button ── */}
-      <div className="absolute left-0 right-0 bottom-0 z-10 bg-white"
+      <div className="absolute left-0 right-0 bottom-0 z-40 bg-white"
         style={{
           borderRadius: '24px 24px 0 0',
           boxShadow: '0 -4px 30px rgba(0,0,0,0.15)',

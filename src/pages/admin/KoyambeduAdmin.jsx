@@ -11,7 +11,7 @@ const BADGES_KBD = ['fresh_arrival','low_stock','best_seller','seasonal','organi
 const EMPTY_KBD_PRODUCT = {
   categoryId:'', name:'', nameTamil:'', unit:'kg', unitLabel:'kg',
   currentPrice:'', stockQty:0, minQty:0.5, maxQty:50, weightKg:1,
-  sameDayCutoff:'10:00', isSameDay:true, isNextDay:true, isAvailable:true,
+  sameDayCutoff:'08:00', isSameDay:true, isNextDay:true, isAvailable:true,
   badges:[], description:'',
 };
 

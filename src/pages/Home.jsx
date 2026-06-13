@@ -298,7 +298,7 @@ const SUB_APPS = [
     to: '/koyambedu',
     img: '/categories/koyambedu.jpg',
     accent: '#34d399',
-    BadgeIcon: FiClock, badge: 'BY 10 AM',
+    BadgeIcon: FiClock, badge: 'BY 8 AM',
     title: 'Koyambedu', sub: 'Veggies & Fruits',
   },
   {
@@ -571,7 +571,7 @@ const HERO_SLIDES = [
   },
   {
     gradient: 'linear-gradient(135deg, #15803d 0%, #16a34a 55%, #4ade80 100%)',
-    tag: 'Order by 10 AM, Get Today',
+    tag: 'Order by 8 AM, Get Today',
     title: 'Koyambedu\nDaily Fresh',
     sub: 'Vegetables · Fruits · Flowers · Temple',
     cta: 'Order Now', to: '/koyambedu',
@@ -706,7 +706,7 @@ function DesktopPromoGrid({ onScrollTo }) {
   const banners = [
     {
       gradient: 'linear-gradient(135deg,#14532d,#16a34a,#4ade80)',
-      tag: 'ORDER BY 10 AM', Icon: FaCarrot,
+      tag: 'ORDER BY 8 AM', Icon: FaCarrot,
       title: 'Koyambedu Daily',
       sub: 'Fresh Veggies · Fruits · Flowers',
       cta: 'Order Now', action: () => navigate('/koyambedu'),
