@@ -264,7 +264,7 @@ export default function KoyambeduLocationPicker() {
 
       {/* ── Fixed centre pin ── */}
       <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"
-        style={{ paddingBottom: 200 }}>
+        style={{ paddingBottom: 220 }}>
         <div className="flex flex-col items-center">
           <div className="transition-all duration-200 ease-out"
             style={{ transform: mapMoving ? 'translateY(-14px) scale(1.1)' : 'translateY(0) scale(1)' }}>
@@ -290,15 +290,18 @@ export default function KoyambeduLocationPicker() {
         style={{
           borderRadius: '24px 24px 0 0',
           boxShadow: '0 -4px 30px rgba(0,0,0,0.15)',
-          padding: '16px 16px',
-          paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+          paddingTop: 16,
+          paddingLeft: 16,
+          paddingRight: 16,
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 28px)',
         }}>
         {/* Handle */}
         <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: '#e5e7eb' }} />
 
         {/* Address label */}
         <div className="flex items-start gap-3 mb-4">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style={{ background: '#f0fdf4' }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+            style={{ background: '#f0fdf4' }}>
             <FiMapPin size={16} className="text-green-600" />
           </div>
           <div className="flex-1 min-w-0">
@@ -311,9 +314,11 @@ export default function KoyambeduLocationPicker() {
             {!mapMoving && fullAddr && (
               <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{fullAddr}</p>
             )}
-            {distKm !== null && !mapMoving && shortAddr && (
-              <p className={`text-xs mt-1 font-semibold ${distKm <= 30 ? 'text-green-600' : 'text-orange-500'}`}>
-                {distKm} km from Koyambedu market{distKm > 30 ? ' · Long distance charges apply' : ''}
+            {/* Distance — always shown once we have a centre, regardless of geocoder */}
+            {distKm !== null && (
+              <p className={`text-xs mt-1.5 font-semibold ${distKm <= 30 ? 'text-green-600' : 'text-orange-500'}`}>
+                📍 {distKm} km from Koyambedu market
+                {distKm > 30 && ' · Long distance charges may apply'}
               </p>
             )}
           </div>
