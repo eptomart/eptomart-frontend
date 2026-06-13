@@ -2,11 +2,11 @@
 // EPTOFRESH ADMIN PANEL
 // Full control: sellers, products, orders, payouts
 // ============================================
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
-import { FiGrid, FiUsers, FiPackage, FiShoppingBag, FiDollarSign, FiTag, FiCheck, FiX, FiCamera, FiBarChart2, FiSettings, FiPlus, FiMapPin, FiArrowLeft, FiEdit2, FiSave } from 'react-icons/fi';
+import { FiGrid, FiUsers, FiPackage, FiShoppingBag, FiDollarSign, FiTag, FiCheck, FiX, FiCamera, FiBarChart2, FiSettings, FiPlus, FiMapPin, FiArrowLeft, FiEdit2, FiSave, FiSearch } from 'react-icons/fi';
 
 export default function EptoFreshAdmin() {
   const navigate  = useNavigate();
@@ -127,17 +127,224 @@ const MEAT_CATEGORIES = [
   { key: 'ready_to_cook', label: '🍱 Ready to Cook' },
 ];
 
+// ── Shared Google Maps loader ──────────────────────────────
+function loadGMaps() {
+  return new Promise((resolve, reject) => {
+    if (window.google?.maps) { resolve(); return; }
+    api.get('/eptofresh/maps/config')
+      .then(({ data }) => {
+        if (!data.key) { reject(new Error('No key')); return; }
+        const cb = '__gmAdmin_' + Date.now();
+        window[cb] = () => { resolve(); delete window[cb]; };
+        const s = document.createElement('script');
+        s.src = `https://maps.googleapis.com/maps/api/js?key=${data.key}&libraries=places&callback=${cb}`;
+        s.async = true; s.onerror = reject;
+        document.head.appendChild(s);
+      }).catch(reject);
+  });
+}
+function revGeocode(lat, lng) {
+  return new Promise(resolve => {
+    new window.google.maps.Geocoder().geocode({ location: { lat, lng } }, (res, st) => {
+      if (st !== 'OK' || !res?.length) { resolve({ short: 'Unknown', full: '' }); return; }
+      const comps = res[0].address_components || [];
+      const get = t => comps.find(c => c.types.includes(t))?.long_name || '';
+      const nb = get('sublocality_level_2') || get('sublocality_level_1') || get('sublocality') || get('neighborhood');
+      const loc = get('locality') || get('postal_town');
+      resolve({ short: nb ? `${nb}, ${loc}`.replace(/^, |, $/, '') : loc || res[0].formatted_address.split(',')[0], full: res[0].formatted_address });
+    });
+  });
+}
+
+// ── Embedded full-screen map picker (no navigation needed) ─
+function AdminMapPicker({ onConfirm, onClose }) {
+  const DEFAULT = { lat: 13.0827, lng: 80.2707 };
+  const mapDiv  = useRef(null);
+  const mapRef  = useRef(null);
+  const acRef   = useRef(null);
+  const stRef   = useRef(null);
+  const timer   = useRef(null);
+
+  const [ready, setReady]         = useState(false);
+  const [error, setError]         = useState(false);
+  const [center, setCenter]       = useState(DEFAULT);
+  const [short, setShort]         = useState('');
+  const [full, setFull]           = useState('');
+  const [moving, setMoving]       = useState(false);
+  const [query, setQuery]         = useState('');
+  const [sugg, setSugg]           = useState([]);
+  const [busy, setBusy]           = useState(false);
+  const [showSugg, setShowSugg]   = useState(false);
+  const [saving, setSaving]       = useState(false);
+
+  useEffect(() => {
+    let m = true;
+    loadGMaps().then(() => {
+      if (!m || !mapDiv.current) return;
+      const map = new window.google.maps.Map(mapDiv.current, { center: DEFAULT, zoom: 15, disableDefaultUI: true, gestureHandling: 'greedy', clickableIcons: false });
+      map.addListener('dragstart', () => { setMoving(true); setShowSugg(false); });
+      map.addListener('idle', () => {
+        setMoving(false);
+        const c = map.getCenter();
+        const pos = { lat: c.lat(), lng: c.lng() };
+        setCenter(pos);
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => revGeocode(pos.lat, pos.lng).then(r => { if (m) { setShort(r.short); setFull(r.full); } }), 400);
+      });
+      mapRef.current = map;
+      acRef.current  = new window.google.maps.places.AutocompleteService();
+      stRef.current  = new window.google.maps.places.AutocompleteSessionToken();
+      revGeocode(DEFAULT.lat, DEFAULT.lng).then(r => { if (m) { setShort(r.short); setFull(r.full); } });
+      setReady(true);
+    }).catch(() => { if (m) setError(true); });
+    return () => { m = false; clearTimeout(timer.current); };
+  }, []);
+
+  useEffect(() => {
+    if (!query || query.length < 2 || !acRef.current) { setSugg([]); setBusy(false); return; }
+    setBusy(true);
+    const t = setTimeout(() => {
+      acRef.current.getPlacePredictions({ input: query, sessionToken: stRef.current, componentRestrictions: { country: 'in' }, types: ['geocode', 'establishment'] }, (preds, st) => {
+        setBusy(false);
+        if (st === window.google.maps.places.PlacesServiceStatus.OK && preds?.length) { setSugg(preds); setShowSugg(true); } else { setSugg([]); }
+      });
+    }, 350);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const pick = useCallback((pred) => {
+    setQuery(pred.structured_formatting?.main_text || pred.description);
+    setSugg([]); setShowSugg(false); setBusy(true);
+    new window.google.maps.places.PlacesService(mapRef.current).getDetails(
+      { placeId: pred.place_id, fields: ['geometry', 'name', 'formatted_address'], sessionToken: stRef.current },
+      (place, st) => {
+        stRef.current = new window.google.maps.places.AutocompleteSessionToken();
+        setBusy(false);
+        if (st !== window.google.maps.places.PlacesServiceStatus.OK || !place?.geometry) { toast.error('Could not locate'); return; }
+        const loc = place.geometry.location;
+        mapRef.current.panTo(loc); mapRef.current.setZoom(17);
+        setCenter({ lat: loc.lat(), lng: loc.lng() });
+        setShort(pred.structured_formatting?.main_text || place.name);
+        setFull(pred.description || place.formatted_address);
+      }
+    );
+  }, []);
+
+  const confirm = () => {
+    if (!short || moving || saving || !ready) return;
+    setSaving(true);
+    onConfirm({ lat: center.lat.toFixed(6), lng: center.lng.toFixed(6), label: short, full });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999]" style={{ background: '#e8e8e8' }}>
+      {/* Map */}
+      <div ref={mapDiv} className="absolute inset-0" />
+
+      {/* Loading */}
+      {!ready && !error && (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3" style={{ background: '#0B1729' }}>
+          <div className="w-10 h-10 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" />
+          <p className="text-gray-300 text-sm">Loading map…</p>
+        </div>
+      )}
+      {error && (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ background: '#0B1729' }}>
+          <FiMapPin size={36} className="text-orange-400" />
+          <p className="text-white font-semibold">Map unavailable — check GOOGLE_PLACES_API_KEY on backend</p>
+          <button onClick={onClose} className="px-5 py-2.5 rounded-2xl text-white font-semibold text-sm" style={{ background: '#f4941c' }}>Go Back</button>
+        </div>
+      )}
+
+      {/* Hint chip */}
+      <div className="absolute left-0 right-0 z-10 flex justify-center" style={{ top: 'env(safe-area-inset-top, 8px)', paddingTop: 8 }}>
+        <span className="px-3 py-1 rounded-full text-xs font-bold text-white" style={{ background: 'rgba(244,148,28,0.9)', backdropFilter: 'blur(6px)' }}>
+          Pin the seller's shop location
+        </span>
+      </div>
+
+      {/* Search bar */}
+      <div className="absolute left-3 right-3 z-10" style={{ top: 44 }}>
+        <div className="flex items-center gap-2 mt-2">
+          <button onClick={onClose} className="w-11 h-11 rounded-full shrink-0 flex items-center justify-center" style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.18)' }}>
+            <FiX className="text-gray-700" size={18} />
+          </button>
+          <div className="flex-1 relative">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" size={15} />
+            <input type="text" value={query} onChange={e => { setQuery(e.target.value); setShowSugg(true); }}
+              placeholder="Search street, area, landmark…"
+              className="w-full py-3 pl-10 pr-4 rounded-2xl text-gray-800 outline-none"
+              style={{ background: '#fff', fontSize: '16px', boxShadow: '0 2px 10px rgba(0,0,0,0.18)' }} />
+            {busy && <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" />}
+          </div>
+        </div>
+        {showSugg && sugg.length > 0 && (
+          <div className="rounded-2xl overflow-hidden mt-1" style={{ background: '#fff', boxShadow: '0 4px 20px rgba(0,0,0,0.18)' }}>
+            {sugg.map((pred, i) => (
+              <button key={pred.place_id} onClick={() => pick(pred)}
+                className="w-full flex items-start gap-3 px-4 py-3 text-left active:bg-gray-50"
+                style={{ borderBottom: i < sugg.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center mt-0.5" style={{ background: '#fff7ed' }}>
+                  <FiMapPin style={{ color: '#f4941c' }} size={13} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-gray-800 text-sm font-semibold truncate">{pred.structured_formatting?.main_text || pred.description.split(',')[0]}</p>
+                  {pred.structured_formatting?.secondary_text && <p className="text-gray-400 text-xs truncate mt-0.5">{pred.structured_formatting.secondary_text}</p>}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Center pin */}
+      <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none" style={{ paddingBottom: 160 }}>
+        <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center transition-all duration-200" style={{ transform: moving ? 'translateY(-14px) scale(1.1)' : 'none' }}>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#f4941c', border: '3px solid #fff', boxShadow: moving ? '0 8px 28px rgba(244,148,28,0.55)' : '0 4px 16px rgba(244,148,28,0.45)' }}>
+              <FiMapPin className="text-white" size={20} />
+            </div>
+            <div className="w-0.5 h-4" style={{ background: 'linear-gradient(#f4941c, transparent)' }} />
+          </div>
+          <div className="rounded-full" style={{ width: moving ? 6 : 14, height: moving ? 3 : 5, background: 'rgba(0,0,0,0.2)', filter: 'blur(2px)', marginTop: -2 }} />
+        </div>
+      </div>
+
+      {/* Bottom panel */}
+      <div className="absolute left-0 right-0 bottom-0 z-10" style={{ background: '#fff', borderRadius: '24px 24px 0 0', boxShadow: '0 -4px 30px rgba(0,0,0,0.15)', padding: '16px 16px', paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
+        <div className="w-10 h-1 rounded-full mx-auto mb-3" style={{ background: '#e5e7eb' }} />
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#fff7ed' }}>
+            <FiMapPin style={{ color: '#f4941c' }} size={16} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">{moving ? 'Adjusting…' : 'Selected location'}</p>
+            <p className="font-bold text-base leading-tight text-gray-900">{moving ? 'Drag to exact spot' : (short || 'Search or drag map')}</p>
+            {!moving && full && <p className="text-xs mt-0.5 line-clamp-2 text-gray-500">{full}</p>}
+          </div>
+        </div>
+        <button onClick={confirm} disabled={!short || moving || saving || !ready}
+          className="w-full py-4 rounded-2xl font-bold text-white text-base disabled:opacity-40 flex items-center justify-center gap-2"
+          style={{ background: '#f4941c' }}>
+          {saving ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> Setting…</> : <><FiCheck size={18} /> Confirm Location</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const BLANK_FORM = {
   shopName: '', ownerName: '', phone: '', email: '',
   addressLine1: '', city: 'Chennai', state: 'Tamil Nadu', pincode: '',
-  lat: '', lng: '',
+  lat: '', lng: '', locationLabel: '',
   categories: [],
   fssaiNumber: '', panNumber: '', gstNumber: '',
 };
 
 function AddSellerModal({ onClose, onCreated }) {
-  const [form, setForm]     = useState(BLANK_FORM);
-  const [saving, setSaving] = useState(false);
+  const [form, setForm]         = useState(BLANK_FORM);
+  const [saving, setSaving]     = useState(false);
+  const [showMap, setShowMap]   = useState(false);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -235,15 +442,37 @@ function AddSellerModal({ onClose, onCreated }) {
             </div>
           </div>
 
-          {/* GPS Coordinates */}
+          {/* Map location picker */}
           <div>
-            <label style={labelStyle}><FiMapPin size={10} style={{ display:'inline', marginRight:3 }} />GPS Coordinates (optional)</label>
-            <div className="grid grid-cols-2 gap-3">
-              <input style={inputStyle} type="text" inputMode="decimal" value={form.lat} onChange={e => set('lat', e.target.value)} placeholder="Latitude e.g. 13.0827" />
-              <input style={inputStyle} type="text" inputMode="decimal" value={form.lng} onChange={e => set('lng', e.target.value)} placeholder="Longitude e.g. 80.2707" />
-            </div>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginTop: 4 }}>Used for distance-based search. Find on Google Maps → right-click location → copy coordinates.</p>
+            <label style={labelStyle}><FiMapPin size={10} style={{ display:'inline', marginRight:3 }} />Shop Location</label>
+            <button type="button" onClick={() => setShowMap(true)}
+              className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 transition-all active:scale-[0.98]"
+              style={{
+                background: form.lat ? 'rgba(52,211,153,0.10)' : 'rgba(244,148,28,0.10)',
+                border: `1px solid ${form.lat ? 'rgba(52,211,153,0.25)' : 'rgba(244,148,28,0.25)'}`,
+                color: form.lat ? '#34d399' : '#f4941c',
+              }}>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: form.lat ? 'rgba(52,211,153,0.15)' : 'rgba(244,148,28,0.15)' }}>
+                <FiMapPin size={15} />
+              </div>
+              <div className="flex-1 text-left">
+                {form.lat
+                  ? <><p className="font-bold text-sm leading-tight">{form.locationLabel || 'Location pinned'}</p>
+                      <p style={{ fontSize: 10, opacity: 0.7 }} className="mt-0.5">Tap to change on map</p></>
+                  : <><p className="font-bold text-sm leading-tight">Set on Map</p>
+                      <p style={{ fontSize: 10, opacity: 0.6 }} className="mt-0.5">Drag pin to exact shop location</p></>
+                }
+              </div>
+              {form.lat && <FiEdit2 size={13} style={{ opacity: 0.5 }} className="shrink-0" />}
+            </button>
           </div>
+          {showMap && (
+            <AdminMapPicker
+              onConfirm={({ lat, lng, label }) => { set('lat', lat); set('lng', lng); set('locationLabel', label); setShowMap(false); }}
+              onClose={() => setShowMap(false)}
+            />
+          )}
 
           {/* Categories */}
           <div>
@@ -293,23 +522,24 @@ function AddSellerModal({ onClose, onCreated }) {
 
 function EditSellerModal({ seller, onClose, onUpdated }) {
   const [form, setForm] = useState({
-    shopName:    seller.shopName    || '',
-    ownerName:   seller.ownerName   || '',
-    phone:       seller.contact?.phone || '',
-    email:       seller.contact?.email || '',
+    shopName:     seller.shopName    || '',
+    ownerName:    seller.ownerName   || '',
+    phone:        seller.contact?.phone || '',
+    email:        seller.contact?.email || '',
     addressLine1: seller.address?.addressLine1 || '',
-    city:        seller.address?.city  || 'Chennai',
-    state:       seller.address?.state || 'Tamil Nadu',
-    pincode:     seller.address?.pincode || '',
-    lat:         seller.location?.coordinates ? String(seller.location.coordinates[1]) : '',
-    lng:         seller.location?.coordinates ? String(seller.location.coordinates[0]) : '',
-    categories:  seller.categories  || [],
-    fssaiNumber: seller.kyc?.fssaiNumber || '',
-    panNumber:   seller.kyc?.panNumber   || '',
-    gstNumber:   seller.kyc?.gstNumber   || '',
+    city:         seller.address?.city  || 'Chennai',
+    state:        seller.address?.state || 'Tamil Nadu',
+    pincode:      seller.address?.pincode || '',
+    lat:          seller.location?.coordinates ? String(seller.location.coordinates[1]) : '',
+    lng:          seller.location?.coordinates ? String(seller.location.coordinates[0]) : '',
+    locationLabel: '',
+    categories:   seller.categories  || [],
+    fssaiNumber:  seller.kyc?.fssaiNumber || '',
+    panNumber:    seller.kyc?.panNumber   || '',
+    gstNumber:    seller.kyc?.gstNumber   || '',
   });
-  const [saving, setSaving]       = useState(false);
-  const [gpsLoading, setGpsLoading] = useState(false);
+  const [saving, setSaving]   = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -317,20 +547,6 @@ function EditSellerModal({ seller, onClose, onUpdated }) {
     ...f,
     categories: f.categories.includes(k) ? f.categories.filter(c => c !== k) : [...f.categories, k],
   }));
-
-  const getGPS = () => {
-    if (!navigator.geolocation) return toast.error('GPS not supported');
-    setGpsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        set('lat', pos.coords.latitude.toFixed(6));
-        set('lng', pos.coords.longitude.toFixed(6));
-        toast.success('GPS captured!');
-        setGpsLoading(false);
-      },
-      () => { toast.error('GPS denied'); setGpsLoading(false); }
-    );
-  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -403,19 +619,37 @@ function EditSellerModal({ seller, onClose, onUpdated }) {
             </div>
           </div>
 
-          {/* GPS */}
+          {/* Map location picker */}
           <div>
-            <label style={labelStyle}><FiMapPin size={10} style={{ display:'inline', marginRight:3 }} />GPS Coordinates</label>
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <input style={inputStyle} type="text" value={form.lat} onChange={e => set('lat', e.target.value)} placeholder="Latitude" />
-              <input style={inputStyle} type="text" value={form.lng} onChange={e => set('lng', e.target.value)} placeholder="Longitude" />
-            </div>
-            <button type="button" onClick={getGPS} disabled={gpsLoading}
-              className="w-full py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
-              style={{ background: 'rgba(244,148,28,0.1)', color: '#f4941c', border: '1px solid rgba(244,148,28,0.2)' }}>
-              <FiMapPin size={12} /> {gpsLoading ? 'Getting GPS…' : 'Auto-fill GPS from current location'}
+            <label style={labelStyle}><FiMapPin size={10} style={{ display:'inline', marginRight:3 }} />Shop Location</label>
+            <button type="button" onClick={() => setShowMap(true)}
+              className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 transition-all active:scale-[0.98]"
+              style={{
+                background: form.lat ? 'rgba(52,211,153,0.10)' : 'rgba(244,148,28,0.10)',
+                border: `1px solid ${form.lat ? 'rgba(52,211,153,0.25)' : 'rgba(244,148,28,0.25)'}`,
+                color: form.lat ? '#34d399' : '#f4941c',
+              }}>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: form.lat ? 'rgba(52,211,153,0.15)' : 'rgba(244,148,28,0.15)' }}>
+                <FiMapPin size={15} />
+              </div>
+              <div className="flex-1 text-left">
+                {form.lat
+                  ? <><p className="font-bold text-sm leading-tight">{form.locationLabel || 'Location pinned — tap to update'}</p>
+                      <p style={{ fontSize: 10, opacity: 0.7 }} className="mt-0.5">Tap to change on map</p></>
+                  : <><p className="font-bold text-sm leading-tight">Set on Map</p>
+                      <p style={{ fontSize: 10, opacity: 0.6 }} className="mt-0.5">Drag pin to exact shop location</p></>
+                }
+              </div>
+              {form.lat && <FiEdit2 size={13} style={{ opacity: 0.5 }} className="shrink-0" />}
             </button>
           </div>
+          {showMap && (
+            <AdminMapPicker
+              onConfirm={({ lat, lng, label }) => { set('lat', lat); set('lng', lng); set('locationLabel', label); setShowMap(false); }}
+              onClose={() => setShowMap(false)}
+            />
+          )}
 
           {/* Categories */}
           <div>

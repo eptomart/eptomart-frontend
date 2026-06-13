@@ -9,19 +9,19 @@ import {
   FiMapPin, FiStar, FiClock, FiChevronRight,
   FiShoppingBag, FiEdit2, FiGrid, FiSearch, FiAlertTriangle,
 } from 'react-icons/fi';
-import { FaDrumstickBite, FaFish } from 'react-icons/fa';
+import { FaDrumstickBite, FaFish, FaBone, FaBacon, FaFireAlt } from 'react-icons/fa';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/common/Navbar';
 
 const CATEGORIES = [
   { key: 'chicken',       label: 'Chicken',       Icon: FaDrumstickBite, color: '#f97316' },
-  { key: 'mutton',        label: 'Mutton',         Icon: FaDrumstickBite, color: '#ef4444' },
+  { key: 'mutton',        label: 'Mutton',         Icon: FaBone,          color: '#ef4444' },
   { key: 'fish',          label: 'Fish',           Icon: FaFish,          color: '#3b82f6' },
   { key: 'seafood',       label: 'Seafood',        Icon: FaFish,          color: '#0d9488' },
-  { key: 'beef',          label: 'Beef',           Icon: FaDrumstickBite, color: '#dc2626' },
-  { key: 'pork',          label: 'Pork',           Icon: FaDrumstickBite, color: '#9333ea' },
-  { key: 'ready_to_cook', label: 'Ready to Cook',  Icon: FiGrid,          color: '#f59e0b' },
+  { key: 'beef',          label: 'Beef',           Icon: FaDrumstickBite, color: '#b91c1c' },
+  { key: 'pork',          label: 'Pork',           Icon: FaBacon,         color: '#9333ea' },
+  { key: 'ready_to_cook', label: 'Ready to Cook',  Icon: FaFireAlt,       color: '#f59e0b' },
 ];
 
 export default function EptoFreshHome() {
@@ -146,23 +146,44 @@ export default function EptoFreshHome() {
           </button>
         )}
 
-        {/* Category filter pills */}
+        {/* Category filter pills — premium gradient icon + label */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {CATEGORIES.map(c => (
-            <button
-              key={c.key}
-              onClick={() => handleCategoryFilter(c.key)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all active:scale-95"
-              style={{
-                background: activeCategory === c.key ? 'linear-gradient(135deg,#ff9d30,#f4941c)' : 'rgba(255,255,255,0.07)',
-                color:      activeCategory === c.key ? '#fff' : 'rgba(255,255,255,0.6)',
-                border:     activeCategory === c.key ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(255,255,255,0.1)',
-                boxShadow:  activeCategory === c.key ? '0 2px 12px rgba(244,148,28,0.35)' : 'none',
-              }}
-            >
-              <c.Icon size={11} style={{ color: activeCategory === c.key ? '#fff' : c.color }} /> {c.label}
-            </button>
-          ))}
+          {CATEGORIES.map(c => {
+            const active = activeCategory === c.key;
+            return (
+              <button
+                key={c.key}
+                onClick={() => handleCategoryFilter(c.key)}
+                className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full whitespace-nowrap transition-all active:scale-95"
+                style={{
+                  background: active ? 'linear-gradient(135deg,#ff9d30,#f4941c)' : 'rgba(255,255,255,0.07)',
+                  border:     active ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(255,255,255,0.10)',
+                  boxShadow:  active ? `0 2px 14px rgba(244,148,28,0.40)` : 'none',
+                }}
+              >
+                {/* Gradient icon circle */}
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center relative overflow-hidden shrink-0"
+                  style={{
+                    background: active
+                      ? 'rgba(255,255,255,0.22)'
+                      : `linear-gradient(145deg, ${c.color}cc 0%, ${c.color} 100%)`,
+                    boxShadow: active ? 'none' : `0 2px 8px ${c.color}55`,
+                  }}
+                >
+                  {!active && (
+                    <div className="absolute inset-0 pointer-events-none"
+                      style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.28) 0%, transparent 55%)' }} />
+                  )}
+                  <c.Icon size={13} className="relative z-10"
+                    style={{ color: '#fff', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.30))' }} />
+                </div>
+                <span className="text-xs font-semibold" style={{ color: active ? '#fff' : 'rgba(255,255,255,0.65)' }}>
+                  {c.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -23,14 +23,13 @@ export default function EptoFreshSellerRegister() {
   const [form, setForm]       = useState({
     shopName: '', ownerName: '', contactPhone: '', contactEmail: '',
     address: { addressLine1: '', addressLine2: '', city: 'Chennai', state: 'Tamil Nadu', pincode: '', landmark: '' },
-    locationLat: '', locationLng: '',
+    locationLat: '', locationLng: '', locationLabel: '',
     categories: [],
     panNumber: '', aadhaarNumber: '', gstNumber: '', fssaiNumber: '',
     openingTime: '06:00', closingTime: '21:00', deliveryRadius: 10,
   });
   const [files, setFiles]     = useState({ meatLicense: null, aadhaar: null, pan: null, fssai: null });
   const [submitting, setSubmitting] = useState(false);
-  const [gpsLoading, setGpsLoading] = useState(false);
 
   const update = (key, val) => setForm(f => ({ ...f, [key]: val }));
   const updateAddress = (key, val) => setForm(f => ({ ...f, address: { ...f.address, [key]: val } }));
@@ -47,9 +46,8 @@ export default function EptoFreshSellerRegister() {
     const saved = localStorage.getItem('eptofresh_seller_reg_location');
     if (saved) {
       try {
-        const { lat, lng, label } = JSON.parse(saved);
-        update('locationLat', lat);
-        update('locationLng', lng);
+        const { lat, lng, label, full } = JSON.parse(saved);
+        setForm(f => ({ ...f, locationLat: lat, locationLng: lng, locationLabel: label || full || '' }));
         localStorage.removeItem('eptofresh_seller_reg_location');
       } catch { /* ignore */ }
     }
@@ -138,22 +136,31 @@ export default function EptoFreshSellerRegister() {
             </div>
 
             <div>
-              <label className="text-gray-400 text-xs mb-1 block">Shop Location on Map <span className="text-red-400">*</span></label>
+              <label className="text-gray-400 text-xs mb-1 block">Shop Location <span className="text-red-400">*</span></label>
               <button
                 onClick={() => navigate('/eptofresh/seller/location?source=register')}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+                className="w-full py-3 rounded-xl text-sm font-semibold flex items-center gap-2.5 transition-all active:scale-[0.98]"
                 style={{
-                  background: form.locationLat ? 'rgba(52,211,153,0.12)' : 'rgba(244,148,28,0.12)',
+                  background: form.locationLat ? 'rgba(52,211,153,0.10)' : 'rgba(244,148,28,0.10)',
                   color:      form.locationLat ? '#34d399' : '#f4941c',
-                  border:     `1px solid ${form.locationLat ? 'rgba(52,211,153,0.2)' : 'rgba(244,148,28,0.2)'}`,
+                  border:     `1px solid ${form.locationLat ? 'rgba(52,211,153,0.25)' : 'rgba(244,148,28,0.25)'}`,
+                  paddingLeft: 14, paddingRight: 14,
                 }}
               >
-                {form.locationLat
-                  ? <><FiMapPin size={14} /> ✓ Location pinned ({parseFloat(form.locationLat).toFixed(4)}, {parseFloat(form.locationLng).toFixed(4)}) — Tap to change</>
-                  : <><FiMapPin size={14} /> Pin Shop Location on Map</>
-                }
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: form.locationLat ? 'rgba(52,211,153,0.15)' : 'rgba(244,148,28,0.15)' }}>
+                  <FiMapPin size={14} />
+                </div>
+                <div className="flex-1 text-left">
+                  {form.locationLat
+                    ? <><p className="font-bold leading-tight">{form.locationLabel || 'Location set'}</p><p className="text-[10px] opacity-70 mt-0.5">Tap to change on map</p></>
+                    : <><p className="font-bold leading-tight">Select on Map</p><p className="text-[10px] opacity-60 mt-0.5">Drag pin to your exact shop location</p></>
+                  }
+                </div>
+                {form.locationLat && (
+                  <FiEdit2 size={13} style={{ opacity: 0.5 }} className="shrink-0" />
+                )}
               </button>
-              <p className="text-gray-600 text-[11px] mt-1 ml-1">Opens a map — drag the pin to your exact shop.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
