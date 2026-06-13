@@ -42,7 +42,7 @@ const EMPTY_FORM = {
   unit:'kg', unitLabel:'kg', minQty:0.5, maxQty:50, qtyStep:0.5,
   weightKg:1,
   marketPriceMin:0, marketPriceMax:0, currentPrice:'', stockQty:0,
-  freshArrivalTime:'', isSameDay:true, isNextDay:true, sameDayCutoff:'10:00',
+  freshArrivalTime:'', isSameDay:true, isNextDay:true, sameDayCutoff:'08:00',
   badges:[], tags:'', isBulkAvailable:false, bulkMinQty:'', bulkPricePerUnit:'',
   isActive:true, isAvailable:true, images:[],
 };

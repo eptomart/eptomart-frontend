@@ -57,7 +57,7 @@ const EMPTY_PRODUCT = {
   categoryId: '', name: '', nameTamil: '', unit: 'kg', unitLabel: 'kg',
   currentPrice: '', stockQty: 0, minQty: 0.5, maxQty: 50,
   weightKg: 1, marketPriceMin: '', marketPriceMax: '',
-  freshArrivalTime: '', sameDayCutoff: '10:00',
+  freshArrivalTime: '', sameDayCutoff: '08:00',
   isSameDay: true, isNextDay: true, isAvailable: true,
   badges: [], description: '', images: [],
 };
@@ -240,7 +240,7 @@ export default function KoyambeduSellerAdminDashboard() {
       isAvailable:   p.isAvailable,
       isSameDay:     p.isSameDay,
       isNextDay:     p.isNextDay,
-      sameDayCutoff: p.sameDayCutoff || '10:00',
+      sameDayCutoff: p.sameDayCutoff || '08:00',
     });
   };
 
