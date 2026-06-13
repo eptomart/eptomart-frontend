@@ -296,21 +296,21 @@ function FlashDeals({ products }) {
 const SUB_APPS = [
   {
     to: '/koyambedu',
-    img: 'https://res.cloudinary.com/dlyaal4px/image/upload/v1781293088/koyambedu_market_gapajd.jpg',
+    img: '/categories/koyambedu.jpg',
     accent: '#34d399',
     BadgeIcon: FiClock, badge: 'BY 10 AM',
     title: 'Koyambedu', sub: 'Veggies & Fruits',
   },
   {
     to: '/uzhavar',
-    img: 'https://res.cloudinary.com/dlyaal4px/image/upload/v1781293061/Framer_r1buun.jpg',
+    img: '/categories/uzhavar.jpg',
     accent: '#a3e635',
     BadgeIcon: FiCheckCircle, badge: 'FARM DIRECT',
     title: 'Uzhavar Fresh', sub: 'From Farmers',
   },
   {
     to: '/eptofresh',
-    img: 'https://res.cloudinary.com/dlyaal4px/image/upload/v1781293088/eptofresh_protiens_ba0j1p.jpg',
+    img: '/categories/proteins.jpg',
     accent: '#fb923c',
     BadgeIcon: FiMapPin, badge: 'NEARBY',
     title: 'Proteins', sub: 'Meat & Seafood',
@@ -477,21 +477,21 @@ function PromoBanner() {
 // ── Category data (desktop strip + mobile circles) ─────────────
 const EPTOMART_CATS = [
   { name: 'Grocery & Staples',   short: 'Grocery',    slug: 'grocery-staples',    Icon: FaShoppingBasket, color: '#3b82f6', from: '₹49',
-    img: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=120&h=120&fit=crop&q=80' },
+    img: '/categories/grocery.jpg' },
   { name: 'Masalas & Spices',    short: 'Masalas',    slug: 'masalas-spices',     Icon: FaPepperHot,      color: '#ef4444', from: '₹29',
-    img: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=120&h=120&fit=crop&q=80' },
+    img: '/categories/masalas.jpg' },
   { name: 'Snacks & Namkeen',    short: 'Snacks',     slug: 'snacks-namkeen',     Icon: FaCookieBite,     color: '#ec4899', from: '₹39',
-    img: 'https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=120&h=120&fit=crop&q=80' },
+    img: '/categories/snacks.jpg' },
   { name: 'Dry Fruits & Nuts',   short: 'Dry Fruits', slug: 'dry-fruits-nuts',    Icon: FaSeedling,       color: '#92400e', from: '₹99',
-    img: 'https://images.unsplash.com/photo-1604928141064-207cea6f571f?w=120&h=120&fit=crop&q=80' },
+    img: '/categories/dryfruits.jpg' },
   { name: 'Oils & Ghee',         short: 'Oils & Ghee',slug: 'oils-ghee',          Icon: FaWineBottle,     color: '#d97706', from: '₹89',
-    img: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=120&h=120&fit=crop&q=80' },
+    img: '/categories/oils.jpg' },
   { name: 'Pickles & Condiments',short: 'Pickles',    slug: 'pickles-condiments', Icon: FaLemon,          color: '#16a34a', from: '₹59',
-    img: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=120&h=120&fit=crop&q=80' },
+    img: '/categories/pickles.jpg' },
   { name: 'Bakery & Dairy',      short: 'Bakery',     slug: 'bakery-dairy',       Icon: FaBreadSlice,     color: '#f59e0b', from: '₹29',
-    img: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=120&h=120&fit=crop&q=80' },
+    img: '/categories/bakery.jpg' },
   { name: 'Health & Organic',    short: 'Organic',    slug: 'health-organic',     Icon: FaLeaf,           color: '#059669', from: '₹79',
-    img: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=120&h=120&fit=crop&q=80' },
+    img: '/categories/organic.jpg' },
 ];
 
 // ── Mobile category strip — Blinkit-style image thumbnails ────────
@@ -507,13 +507,13 @@ function MobileCategoryStrip() {
     })),
     // Sub-apps
     { key: 'koyambedu', label: 'Koyambedu\nMarket',
-      img: 'https://res.cloudinary.com/dlyaal4px/image/upload/w_120,h_120,c_fill,q_80/v1781293088/koyambedu_market_gapajd.jpg',
+      img: '/categories/koyambedu.jpg',
       Icon: FaCarrot, color: '#16a34a', to: '/koyambedu' },
     { key: 'uzhavar',   label: 'Uzhavar\nFresh',
-      img: 'https://res.cloudinary.com/dlyaal4px/image/upload/w_120,h_120,c_fill,q_80/v1781293061/Framer_r1buun.jpg',
+      img: '/categories/uzhavar.jpg',
       Icon: FaTractor, color: '#0d9488', to: '/uzhavar' },
     { key: 'eptofresh', label: 'Proteins\n& Meat',
-      img: 'https://res.cloudinary.com/dlyaal4px/image/upload/w_120,h_120,c_fill,q_80/v1781293088/eptofresh_protiens_ba0j1p.jpg',
+      img: '/categories/proteins.jpg',
       Icon: FaDrumstickBite, color: '#c2410c', to: '/eptofresh' },
   ];
 
