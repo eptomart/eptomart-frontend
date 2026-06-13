@@ -70,8 +70,28 @@ function SectionHeader({ Icon, iconColor = '#f4941c', title, link, linkLabel = '
 }
 
 // ── Product Card — Blinkit style ───────────────────────────────
-function ProductGridCard({ product: p, accent = '#f4941c' }) {
+/* ── Product card entrance animation ── */
+const CARD_ANIM_STYLE = `
+@keyframes cardFadeUp {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+@keyframes imgZoomIn {
+  from { transform: scale(1.08); }
+  to   { transform: scale(1);    }
+}
+`;
+if (typeof document !== 'undefined' && !document.getElementById('card-anim-css')) {
+  const s = document.createElement('style');
+  s.id = 'card-anim-css';
+  s.textContent = CARD_ANIM_STYLE;
+  document.head.appendChild(s);
+}
+
+function ProductGridCard({ product: p, accent = '#f4941c', index = 0 }) {
   const navigate = useNavigate();
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
   const orig = p.price || 0;
   const disc = p.discountPrice && p.discountPrice < orig ? p.discountPrice : null;
   const pct  = disc ? Math.round(((orig - disc) / orig) * 100) : 0;
@@ -79,41 +99,76 @@ function ProductGridCard({ product: p, accent = '#f4941c' }) {
   const unit = p.unit || p.weight || p.size || '';
   const href = `/product/${p.slug || p._id}`;
 
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col"
-      style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.07)' }}>
+  // Intersection Observer — trigger once card enters viewport
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold: 0.1 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
+  return (
+    <div
+      ref={ref}
+      className="bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col group"
+      style={{
+        boxShadow: '0 1px 5px rgba(0,0,0,0.06)',
+        opacity: visible ? 1 : 0,
+        animation: visible ? `cardFadeUp 0.38s cubic-bezier(0.22,1,0.36,1) ${index * 55}ms both` : 'none',
+        transition: 'box-shadow 0.2s',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 6px 20px rgba(0,0,0,0.10), 0 0 0 1.5px ${accent}33`; }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 5px rgba(0,0,0,0.06)'; }}
+    >
       {/* Image area */}
       <Link to={href} className="relative bg-gray-50 block overflow-hidden" style={{ aspectRatio: '1/1' }}>
         {img
-          ? <img src={img} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
-          : <div className="w-full h-full flex items-center justify-center"><FiPackage size={36} className="text-gray-200" /></div>}
+          ? <img
+              src={img} alt={p.name} loading="lazy"
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.07]"
+              style={{ animation: visible ? 'imgZoomIn 0.5s ease both' : 'none' }}
+            />
+          : <div className="w-full h-full flex items-center justify-center"><FiPackage size={30} className="text-gray-200" /></div>}
 
         {/* Stacked % OFF badge — top left */}
         {pct >= 5 && (
-          <div className="absolute top-2 left-2 text-white text-center leading-none font-black rounded-md px-1.5 py-1"
-            style={{ background: accent, fontSize: 9, minWidth: 32 }}>
-            <div style={{ fontSize: 11 }}>{pct}%</div>
+          <div
+            className="absolute top-1.5 left-1.5 text-white text-center leading-none font-black rounded-md px-1 py-0.5"
+            style={{
+              background: accent, fontSize: 8, minWidth: 28,
+              boxShadow: `0 2px 6px ${accent}70`,
+              animation: visible ? `cardFadeUp 0.3s ease ${index * 55 + 150}ms both` : 'none',
+            }}
+          >
+            <div style={{ fontSize: 10 }}>{pct}%</div>
             <div>OFF</div>
           </div>
         )}
+
+        {/* Subtle gradient overlay at bottom */}
+        <div className="absolute inset-x-0 bottom-0 h-6 pointer-events-none"
+          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.06), transparent)' }} />
       </Link>
 
       {/* Info + add button */}
-      <div className="p-2.5 flex flex-col gap-0.5 flex-1">
+      <div className="p-2 flex flex-col gap-0.5 flex-1">
         <Link to={href}>
-          <p className="text-[11.5px] font-bold text-gray-800 line-clamp-2 leading-snug">{p.name}</p>
-          {unit && <p className="text-[10px] text-gray-400 mt-0.5">{unit}</p>}
+          <p className="text-[11px] font-bold text-gray-800 line-clamp-2 leading-snug">{p.name}</p>
+          {unit && <p className="text-[9.5px] text-gray-400 mt-0.5">{unit}</p>}
         </Link>
 
         {/* Price row + add button */}
-        <div className="flex items-end justify-between mt-auto pt-1.5">
+        <div className="flex items-end justify-between mt-auto pt-1">
           <div>
-            <span className="text-sm font-extrabold text-gray-900">
+            <span className="text-[12px] font-extrabold text-gray-900">
               ₹{(disc || orig).toLocaleString('en-IN')}
             </span>
             {disc && (
-              <span className="text-[10px] text-gray-400 line-through ml-1">
+              <span className="text-[9.5px] text-gray-400 line-through ml-1">
                 ₹{orig.toLocaleString('en-IN')}
               </span>
             )}
@@ -122,8 +177,15 @@ function ProductGridCard({ product: p, accent = '#f4941c' }) {
           {/* Round + button */}
           <button
             onClick={() => navigate(href)}
-            className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0 active:scale-90 transition-transform"
-            style={{ background: accent, boxShadow: `0 3px 10px ${accent}60`, lineHeight: 1 }}
+            className="w-[30px] h-[30px] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 active:scale-90"
+            style={{
+              background: accent,
+              boxShadow: `0 3px 8px ${accent}55`,
+              fontSize: 20, lineHeight: 1,
+              transition: 'transform 0.15s, box-shadow 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.15)'; e.currentTarget.style.boxShadow = `0 5px 14px ${accent}80`; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `0 3px 8px ${accent}55`; }}
             aria-label="Add to cart"
           >
             +
@@ -143,8 +205,8 @@ function DesktopProductGrid({ products, accent }) {
 
   return (
     <div>
-      <div className="grid grid-cols-5 gap-4 px-4">
-        {visible.map((p, i) => <ProductGridCard key={`${p._id}-${i}`} product={p} accent={accent} />)}
+      <div className="grid grid-cols-5 gap-3 px-4">
+        {visible.map((p, i) => <ProductGridCard key={`${p._id}-${i}`} product={p} accent={accent} index={i} />)}
         {/* Fill empty slots */}
         {visible.length < PER_PAGE && [...Array(PER_PAGE - visible.length)].map((_, i) => (
           <div key={`empty-${i}`} />
@@ -183,9 +245,9 @@ function MobileProductSlider({ products, accent }) {
         <div
           key={`${p._id}-${i}`}
           className="flex-shrink-0"
-          style={{ width: 'calc(47% - 4px)', scrollSnapAlign: 'start' }}
+          style={{ width: 'calc(42% - 4px)', scrollSnapAlign: 'start' }}
         >
-          <ProductGridCard product={p} accent={accent} />
+          <ProductGridCard product={p} accent={accent} index={i} />
         </div>
       ))}
     </div>
