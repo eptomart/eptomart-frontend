@@ -1488,7 +1488,7 @@ function CouponsTab() {
                   <option value="all"         className="bg-gray-900">🌐 All platforms</option>
                   <option value="main"        className="bg-gray-900">🛒 Eptomart Main only</option>
                   <option value="koyambedu"   className="bg-gray-900">🥬 Koyambedu Daily only</option>
-                  <option value="uzhavar"     className="bg-gray-900">🌾 Uzhavar Fresh only</option>
+                  <option value="uzhavar"     className="bg-gray-900">🌾 Farmer Fresh only</option>
                   <option value="eptofresh"   className="bg-gray-900">🥩 EptoFresh Proteins only</option>
                 </select>
               </div>

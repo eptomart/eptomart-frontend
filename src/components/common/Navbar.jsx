@@ -22,7 +22,7 @@ const PAGE_TITLES = {
   '/login':     'Login',
   '/checkout':  'Checkout',
   '/koyambedu': 'Koyambedu Daily',
-  '/uzhavar':   'Uzhavar Fresh',
+  '/uzhavar':   'Farmer Fresh',
   '/product':   'Product',
   '/seller':    'Seller Portal',
   '/admin':     'Admin Panel',
@@ -432,7 +432,7 @@ export default function Navbar() {
                 { label: 'All Products',    to: '/shop',       dot: null },
                 { label: 'Categories',      to: '/categories', dot: null },
                 { label: 'Koyambedu Daily', to: '/koyambedu',  dot: '#34d399' },
-                { label: 'Uzhavar Fresh',   to: '/uzhavar',    dot: '#a3e635' },
+                { label: 'Farmer Fresh',   to: '/uzhavar',    dot: '#a3e635' },
                 { label: 'EptoFresh',       to: '/eptofresh',  dot: '#fb923c' },
               ].map(item => {
                 const active = pathname === item.to || (item.to !== '/shop' && pathname.startsWith(item.to));

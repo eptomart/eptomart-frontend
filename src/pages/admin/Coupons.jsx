@@ -13,7 +13,7 @@ const PLATFORMS = [
   { value: 'all',       label: '🌐 All Platforms' },
   { value: 'main',      label: '🛒 Eptomart Main' },
   { value: 'koyambedu', label: '🥬 Koyambedu Daily' },
-  { value: 'uzhavar',   label: '🌾 Uzhavar Fresh' },
+  { value: 'uzhavar',   label: '🌾 Farmer Fresh' },
   { value: 'eptofresh', label: '🥩 EptoFresh Proteins' },
 ];
 

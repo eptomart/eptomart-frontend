@@ -306,7 +306,7 @@ const SUB_APPS = [
     img: '/categories/uzhavar.jpg',
     accent: '#a3e635',
     BadgeIcon: FiCheckCircle, badge: 'FARM DIRECT',
-    title: 'Uzhavar Fresh', sub: 'From Farmers',
+    title: 'Farmer Fresh', sub: 'From Farmers',
   },
   {
     to: '/eptofresh',
@@ -580,7 +580,7 @@ const HERO_SLIDES = [
   {
     gradient: 'linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #2dd4bf 100%)',
     tag: 'Farm-to-Door in Tamil Nadu',
-    title: 'Uzhavar Fresh\nஉழவர் சந்தை',
+    title: 'Farmer Fresh\nஉழவர் சந்தை',
     sub: 'Farm direct · No middlemen · Pure & Natural',
     cta: 'Explore', to: '/uzhavar',
     cats: ['Farm Fresh', 'Homemade & Organic', 'Farm Produce'],
@@ -714,7 +714,7 @@ function DesktopPromoGrid({ onScrollTo }) {
     {
       gradient: 'linear-gradient(135deg,#134e4a,#0f766e,#2dd4bf)',
       tag: 'FARM DIRECT', Icon: FaTractor,
-      title: 'Uzhavar Fresh',
+      title: 'Farmer Fresh',
       sub: 'உழவர் சந்தை · No middlemen',
       cta: 'Explore', action: () => navigate('/uzhavar'),
     },
@@ -1203,7 +1203,7 @@ export default function Home() {
                   { label: 'Privacy Policy',   path: '/privacy-policy'  },
                   { label: 'Terms of Service', path: '/terms'           },
                   { label: 'GST Invoices',     path: '/faq#gst'         },
-                  { label: 'Uzhavar Fresh',    path: '/uzhavar'         },
+                  { label: 'Farmer Fresh',    path: '/uzhavar'         },
                   { label: 'Koyambedu Daily',  path: '/koyambedu'       },
                 ].map(({ label, path }) => (
                   <li key={path}>

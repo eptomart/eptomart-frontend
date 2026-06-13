@@ -223,7 +223,7 @@ export default function FarmerRegister() {
             </div>
             <button onClick={() => navigate('/uzhavar')}
               className="w-full bg-green-600 text-white font-bold py-3 rounded-xl">
-              Back to Uzhavar Fresh
+              Back to Farmer Fresh
             </button>
           </div>
         </div>
@@ -236,7 +236,7 @@ export default function FarmerRegister() {
 
   return (
     <>
-      <Helmet><title>Register as Farmer — Uzhavar Fresh</title></Helmet>
+      <Helmet><title>Register as Farmer — Farmer Fresh</title></Helmet>
       <Navbar />
 
       <main className="max-w-xl mx-auto px-4 py-8 pb-16 min-h-screen">
@@ -549,7 +549,7 @@ export default function FarmerRegister() {
               ))}
 
               <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-xs text-green-700">
-                By submitting, you agree to Uzhavar Fresh's terms. Your application will be reviewed within 24–48 hours.
+                By submitting, you agree to Farmer Fresh's terms. Your application will be reviewed within 24–48 hours.
               </div>
             </div>
           )}
