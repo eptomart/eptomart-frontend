@@ -96,19 +96,13 @@ export default function EptoFreshHome() {
   const closedSellers = filtered.filter(s => s.isOpen === false);
 
   return (
-    <div className="min-h-screen pb-28" style={{ background: '#080f1c' }}>
+    <div className="min-h-screen pb-28 w-full overflow-x-hidden" style={{ background: '#080f1c' }}>
       <Navbar />
 
       {/* ── HERO HEADER ── */}
-      <div style={{ background: 'linear-gradient(160deg,#0f1f35 0%,#1a0e06 55%,#0f1208 100%)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-        <div className="relative overflow-hidden">
-          {/* Ambient glows */}
-          <div className="absolute top-0 right-0 w-64 h-64 rounded-full pointer-events-none"
-            style={{ background:'radial-gradient(circle,rgba(244,148,28,0.13) 0%,transparent 70%)', transform:'translate(30%,-30%)' }} />
-          <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full pointer-events-none"
-            style={{ background:'radial-gradient(circle,rgba(239,68,68,0.08) 0%,transparent 70%)', transform:'translate(-20%,30%)' }} />
-
-          <div className="relative px-4 pt-4 pb-4">
+      <div style={{ background: 'linear-gradient(180deg,#111b2e 0%,#180d05 70%,#080f1c 100%)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+        <div>
+          <div className="px-4 pt-4 pb-4">
             {/* Top row */}
             <div className="flex items-start justify-between mb-4">
               <div>

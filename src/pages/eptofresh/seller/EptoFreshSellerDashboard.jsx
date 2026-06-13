@@ -191,14 +191,11 @@ export default function EptoFreshSellerDashboard() {
   const isPending = seller?.status === 'pending_review';
 
   return (
-    <div className="min-h-screen pb-28" style={{ background:'#080f1c' }}>
+    <div className="min-h-screen pb-28 w-full overflow-x-hidden" style={{ background:'#080f1c' }}>
 
       {/* ── HERO HEADER ── */}
-      <div style={{ background:'linear-gradient(160deg,#0f1f35 0%,#1a0e06 60%,#080f1c 100%)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-        <div className="relative overflow-hidden px-4 pt-12 pb-5">
-          {/* Ambient glow */}
-          <div className="absolute top-0 right-0 w-56 h-56 pointer-events-none rounded-full"
-            style={{ background:'radial-gradient(circle,rgba(244,148,28,0.12) 0%,transparent 70%)', transform:'translate(30%,-20%)' }} />
+      <div style={{ background:'linear-gradient(180deg,#111b2e 0%,#180d05 70%,#080f1c 100%)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+        <div className="px-4 pt-12 pb-5">
 
           {/* Back link */}
           <button onClick={() => navigate('/eptofresh')}
