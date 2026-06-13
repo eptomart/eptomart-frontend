@@ -4,7 +4,15 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiArrowRight, FiSearch, FiZap, FiChevronRight, FiMic, FiX } from 'react-icons/fi';
+import {
+  FiArrowRight, FiSearch, FiZap, FiChevronRight, FiMic, FiX,
+  FiStar, FiClock, FiTruck, FiShield, FiCheckCircle, FiRefreshCw,
+  FiTag, FiPhone, FiPackage, FiMapPin, FiShoppingBag, FiGrid,
+} from 'react-icons/fi';
+import {
+  FaShoppingBasket, FaPepperHot, FaCookieBite, FaSeedling, FaWineBottle,
+  FaLemon, FaBreadSlice, FaLeaf, FaCarrot, FaTractor, FaDrumstickBite,
+} from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/common/Navbar';
@@ -40,12 +48,16 @@ const SkeletonCard = () => (
 );
 
 // ── Section Header ─────────────────────────────────────────────
-function SectionHeader({ emoji, title, link, linkLabel = 'See all', dotColor = 'bg-orange-500' }) {
+function SectionHeader({ Icon, iconColor = '#f4941c', title, link, linkLabel = 'See all', dotColor = 'bg-orange-500' }) {
   return (
     <div className="flex items-center justify-between mb-3 px-4">
       <div className="flex items-center gap-2">
         <span className={`w-1 h-5 rounded-full flex-shrink-0 ${dotColor}`} />
-        <span className="text-base md:text-lg leading-none">{emoji}</span>
+        {Icon && (
+          <span className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${iconColor}16` }}>
+            <Icon size={13} style={{ color: iconColor }} />
+          </span>
+        )}
         <h2 className="text-sm md:text-lg font-extrabold text-gray-900 tracking-tight">{title}</h2>
       </div>
       {link && (
@@ -69,7 +81,7 @@ function ProductGridCard({ product: p, accent = '#f4941c' }) {
       <div className="relative bg-gray-50 overflow-hidden" style={{ aspectRatio: '1/1' }}>
         {img
           ? <img src={img} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-          : <div className="w-full h-full flex items-center justify-center text-4xl">📦</div>
+          : <div className="w-full h-full flex items-center justify-center"><FiPackage size={36} className="text-gray-300" /></div>
         }
         {pct >= 5 && (
           <div className="absolute top-2 left-2 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md"
@@ -85,7 +97,9 @@ function ProductGridCard({ product: p, accent = '#f4941c' }) {
           {disc && <span className="text-[10px] text-gray-400 line-through">₹{orig.toLocaleString('en-IN')}</span>}
         </div>
         {p.ratings?.average > 0 && (
-          <span className="text-[10px] text-amber-500 font-semibold">⭐ {p.ratings.average.toFixed(1)}</span>
+          <span className="text-[10px] text-amber-500 font-semibold inline-flex items-center gap-0.5">
+            <FiStar size={9} style={{ fill: 'currentColor' }} /> {p.ratings.average.toFixed(1)}
+          </span>
         )}
       </div>
     </Link>
@@ -194,21 +208,21 @@ const SUB_APPS = [
     to: '/koyambedu',
     img: 'https://res.cloudinary.com/dlyaal4px/image/upload/v1781293088/koyambedu_market_gapajd.jpg',
     accent: '#34d399',
-    badge: '⏰ BY 10 AM',
+    BadgeIcon: FiClock, badge: 'BY 10 AM',
     title: 'Koyambedu', sub: 'Veggies & Fruits',
   },
   {
     to: '/uzhavar',
     img: 'https://res.cloudinary.com/dlyaal4px/image/upload/v1781293061/Framer_r1buun.jpg',
     accent: '#a3e635',
-    badge: '🌾 FARM DIRECT',
+    BadgeIcon: FiCheckCircle, badge: 'FARM DIRECT',
     title: 'Uzhavar Fresh', sub: 'From Farmers',
   },
   {
     to: '/eptofresh',
     img: 'https://res.cloudinary.com/dlyaal4px/image/upload/v1781293088/eptofresh_protiens_ba0j1p.jpg',
     accent: '#fb923c',
-    badge: '📍 NEARBY',
+    BadgeIcon: FiMapPin, badge: 'NEARBY',
     title: 'Proteins', sub: 'Meat & Seafood',
   },
 ];
@@ -241,10 +255,10 @@ function SubAppBanners() {
             <div className="absolute inset-0 p-2.5 flex flex-col justify-between">
               {/* Badge — frosted glass, consistent style */}
               <span
-                className="inline-block font-extrabold px-2 py-[3px] rounded-full w-fit leading-none text-white"
+                className="inline-flex items-center gap-1 font-extrabold px-2 py-[3px] rounded-full w-fit leading-none text-white"
                 style={{ fontSize: 8.5, letterSpacing: 0.4, background: 'rgba(7,16,26,0.55)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.22)' }}
               >
-                {app.badge}
+                <app.BadgeIcon size={9} style={{ color: app.accent }} /> {app.badge}
               </span>
               {/* Title bottom */}
               <div>
@@ -266,11 +280,11 @@ function SubAppBanners() {
 // ── Trust badges ───────────────────────────────────────────────
 function TrustStrip() {
   const badges = [
-    { icon: '⚡', label: 'Fast Delivery' },
-    { icon: '✅', label: 'Verified Sellers' },
-    { icon: '🔄', label: 'Easy Returns' },
-    { icon: '💸', label: 'Best Prices' },
-    { icon: '🛡️', label: 'Secure Pay' },
+    { Icon: FiZap,         color: '#f59e0b', label: 'Fast Delivery' },
+    { Icon: FiCheckCircle, color: '#16a34a', label: 'Verified Sellers' },
+    { Icon: FiRefreshCw,   color: '#3b82f6', label: 'Easy Returns' },
+    { Icon: FiTag,         color: '#9333ea', label: 'Best Prices' },
+    { Icon: FiShield,      color: '#0d9488', label: 'Secure Pay' },
   ];
   return (
     <div className="px-4">
@@ -278,7 +292,7 @@ function TrustStrip() {
         {badges.map(b => (
           <div key={b.label}
             className="flex-shrink-0 flex items-center gap-1.5 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm">
-            <span className="text-base leading-none">{b.icon}</span>
+            <b.Icon size={14} style={{ color: b.color }} />
             <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">{b.label}</span>
           </div>
         ))}
@@ -287,39 +301,78 @@ function TrustStrip() {
   );
 }
 
-// ── Promo banner auto-carousel ─────────────────────────────────
+// ── Promo banner auto-carousel — vibrant premium gradients ───────
 const PROMOS = [
-  { bg: 'from-violet-600 to-indigo-600', tag: '⚡ Limited Time', title: 'Up to 70% OFF', sub: 'Shop top deals now',    to: '/shop?sort=-discount',  cta: 'Grab Deals' },
-  { bg: 'from-orange-500 to-pink-500',   tag: '🆕 Just Arrived', title: 'New Arrivals',  sub: 'Fresh products daily', to: '/shop?sort=-createdAt', cta: 'Shop Now'   },
-  { bg: 'from-teal-600 to-emerald-500',  tag: '⭐ Handpicked',   title: 'Top Picks',     sub: 'Curated for quality',  to: '/shop',                 cta: 'Explore'    },
+  {
+    bg:    'linear-gradient(130deg, #f97316 0%, #ef4444 60%, #dc2626 100%)',
+    glow:  'rgba(251,146,60,0.55)',
+    accent:'#fff',
+    tagBg: 'rgba(255,255,255,0.22)',
+    Icon: FiTag, tag: 'Flash Offer', title: 'Up to 70% OFF', sub: 'Hot deals across the store',
+    to: '/shop?sort=-discount', cta: 'Grab Deals',
+  },
+  {
+    bg:    'linear-gradient(130deg, #1d4ed8 0%, #4f46e5 60%, #7c3aed 100%)',
+    glow:  'rgba(129,140,248,0.55)',
+    accent:'#fff',
+    tagBg: 'rgba(255,255,255,0.20)',
+    Icon: FiClock, tag: 'Just Dropped', title: 'New Arrivals', sub: 'Fresh products added daily',
+    to: '/shop?sort=-createdAt', cta: 'Shop New',
+  },
+  {
+    bg:    'linear-gradient(130deg, #059669 0%, #16a34a 60%, #4ade80 100%)',
+    glow:  'rgba(74,222,128,0.45)',
+    accent:'#fff',
+    tagBg: 'rgba(255,255,255,0.20)',
+    Icon: FiStar, tag: 'Handpicked', title: 'Top Picks', sub: 'Curated for quality & value',
+    to: '/shop', cta: 'Explore',
+  },
 ];
 function PromoBanner() {
   const [active, setActive] = useState(0);
   const timer = useRef(null);
-  useEffect(() => {
-    timer.current = setInterval(() => setActive(a => (a + 1) % PROMOS.length), 4000);
-    return () => clearInterval(timer.current);
-  }, []);
+  const restart = () => {
+    clearInterval(timer.current);
+    timer.current = setInterval(() => setActive(a => (a + 1) % PROMOS.length), 4200);
+  };
+  useEffect(() => { restart(); return () => clearInterval(timer.current); }, []);
   const p = PROMOS[active];
   return (
     <div className="px-4">
       <Link to={p.to}
-        className={`relative flex items-center justify-between bg-gradient-to-r ${p.bg} rounded-2xl px-5 py-4 overflow-hidden active:scale-[0.98] transition-all duration-500 shadow-float`}>
-        <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full bg-white/10" />
-        <div className="absolute -left-5 -bottom-8 w-24 h-24 rounded-full bg-black/10" />
-        <div key={active} className="relative z-10 animate-fade-in-up">
-          <span className="text-white/80 text-[10px] font-bold tracking-widest uppercase">{p.tag}</span>
-          <p className="text-white font-black text-xl leading-tight">{p.title}</p>
-          <p className="text-white/70 text-xs mt-0.5">{p.sub}</p>
+        className="relative flex items-center justify-between rounded-2xl px-5 py-5 overflow-hidden active:scale-[0.98] transition-all duration-500"
+        style={{ background: p.bg, boxShadow: `0 10px 32px ${p.glow}` }}>
+
+        {/* Top-right glow blob */}
+        <div className="absolute pointer-events-none" style={{ width: 200, height: 200, borderRadius: '50%', top: -80, right: -60, background: `radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 65%)` }} />
+        {/* Decorative circles */}
+        <div className="absolute pointer-events-none" style={{ width: 120, height: 120, borderRadius: '50%', bottom: -40, right: 90, border: '1.5px solid rgba(255,255,255,0.14)' }} />
+        <div className="absolute pointer-events-none" style={{ width: 70,  height: 70,  borderRadius: '50%', top: -20, right: 40, border: '1.5px solid rgba(255,255,255,0.10)' }} />
+        {/* Large ghost icon */}
+        <p.Icon className="absolute pointer-events-none" size={108} style={{ right: -16, bottom: -26, color: 'rgba(255,255,255,0.10)' }} />
+
+        <div key={active} className="relative z-10 animate-fade-in-up min-w-0">
+          {/* Tag pill */}
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold tracking-widest uppercase px-2.5 py-1 rounded-full mb-2"
+            style={{ color: 'rgba(255,255,255,0.95)', background: p.tagBg, border: '1px solid rgba(255,255,255,0.25)', backdropFilter: 'blur(4px)' }}>
+            <p.Icon size={9} /> {p.tag}
+          </span>
+          <p className="text-white font-black text-[22px] leading-tight tracking-tight drop-shadow-sm">{p.title}</p>
+          <p className="text-[11px] mt-1 font-semibold" style={{ color: 'rgba(255,255,255,0.72)' }}>{p.sub}</p>
         </div>
-        <span className="relative z-10 bg-white/20 backdrop-blur-sm text-white text-xs font-bold px-4 py-2.5 rounded-xl whitespace-nowrap border border-white/30 flex-shrink-0 ml-3">
-          {p.cta} →
-        </span>
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-20">
-          {PROMOS.map((_, i) => (
-            <button key={i} onClick={e => { e.preventDefault(); setActive(i); }}
-              className={`h-1 rounded-full transition-all ${i === active ? 'w-4 bg-white' : 'w-1 bg-white/50'}`} />
-          ))}
+
+        <div className="relative z-10 flex flex-col items-end gap-2.5 flex-shrink-0 ml-3">
+          <span className="bg-white text-xs font-black pl-4 pr-3 py-2.5 rounded-xl whitespace-nowrap inline-flex items-center gap-1 shadow-lg"
+            style={{ color: '#111827' }}>
+            {p.cta} <FiArrowRight size={12} />
+          </span>
+          {/* Dot indicators */}
+          <div className="flex gap-1">
+            {PROMOS.map((_, i) => (
+              <button key={i} onClick={e => { e.preventDefault(); setActive(i); restart(); }}
+                className={`h-1.5 rounded-full transition-all ${i === active ? 'w-5 bg-white' : 'w-1.5 bg-white/40'}`} />
+            ))}
+          </div>
         </div>
       </Link>
     </div>
@@ -328,32 +381,32 @@ function PromoBanner() {
 
 // ── Category data (desktop strip + mobile circles) ─────────────
 const EPTOMART_CATS = [
-  { name: 'Grocery & Staples',   short: 'Grocery',    slug: 'grocery-staples',    emoji: '🛒', color: '#3b82f6', from: '₹49' },
-  { name: 'Masalas & Spices',    short: 'Masalas',    slug: 'masalas-spices',     emoji: '🌶️', color: '#ef4444', from: '₹29' },
-  { name: 'Snacks & Namkeen',    short: 'Snacks',     slug: 'snacks-namkeen',     emoji: '🍿', color: '#ec4899', from: '₹39' },
-  { name: 'Dry Fruits & Nuts',   short: 'Dry Fruits', slug: 'dry-fruits-nuts',    emoji: '🥜', color: '#92400e', from: '₹99' },
-  { name: 'Oils & Ghee',         short: 'Oils & Ghee',slug: 'oils-ghee',          emoji: '🫙', color: '#d97706', from: '₹89' },
-  { name: 'Pickles & Condiments',short: 'Pickles',    slug: 'pickles-condiments', emoji: '🥒', color: '#16a34a', from: '₹59' },
-  { name: 'Bakery & Dairy',      short: 'Bakery',     slug: 'bakery-dairy',       emoji: '🥖', color: '#f59e0b', from: '₹29' },
-  { name: 'Health & Organic',    short: 'Organic',    slug: 'health-organic',     emoji: '🌿', color: '#059669', from: '₹79' },
+  { name: 'Grocery & Staples',   short: 'Grocery',    slug: 'grocery-staples',    Icon: FaShoppingBasket, color: '#3b82f6', from: '₹49' },
+  { name: 'Masalas & Spices',    short: 'Masalas',    slug: 'masalas-spices',     Icon: FaPepperHot,      color: '#ef4444', from: '₹29' },
+  { name: 'Snacks & Namkeen',    short: 'Snacks',     slug: 'snacks-namkeen',     Icon: FaCookieBite,     color: '#ec4899', from: '₹39' },
+  { name: 'Dry Fruits & Nuts',   short: 'Dry Fruits', slug: 'dry-fruits-nuts',    Icon: FaSeedling,       color: '#92400e', from: '₹99' },
+  { name: 'Oils & Ghee',         short: 'Oils & Ghee',slug: 'oils-ghee',          Icon: FaWineBottle,     color: '#d97706', from: '₹89' },
+  { name: 'Pickles & Condiments',short: 'Pickles',    slug: 'pickles-condiments', Icon: FaLemon,          color: '#16a34a', from: '₹59' },
+  { name: 'Bakery & Dairy',      short: 'Bakery',     slug: 'bakery-dairy',       Icon: FaBreadSlice,     color: '#f59e0b', from: '₹29' },
+  { name: 'Health & Organic',    short: 'Organic',    slug: 'health-organic',     Icon: FaLeaf,           color: '#059669', from: '₹79' },
 ];
 
 // ── Mobile category circles — instant navigation (Blinkit/Zepto pattern) ──
 function MobileCategoryStrip() {
   const cats = [
-    ...EPTOMART_CATS.map(c => ({ key: c.slug, label: c.short, emoji: c.emoji, color: c.color, to: `/shop/${c.slug}` })),
-    { key: 'koyambedu', label: 'Koyambedu', emoji: '🥬', color: '#16a34a', to: '/koyambedu' },
-    { key: 'uzhavar',   label: 'Uzhavar',   emoji: '🌾', color: '#0d9488', to: '/uzhavar' },
-    { key: 'eptofresh', label: 'Proteins',  emoji: '🥩', color: '#c2410c', to: '/eptofresh' },
+    ...EPTOMART_CATS.map(c => ({ key: c.slug, label: c.short, Icon: c.Icon, color: c.color, to: `/shop/${c.slug}` })),
+    { key: 'koyambedu', label: 'Koyambedu', Icon: FaCarrot,         color: '#16a34a', to: '/koyambedu' },
+    { key: 'uzhavar',   label: 'Uzhavar',   Icon: FaTractor,        color: '#0d9488', to: '/uzhavar' },
+    { key: 'eptofresh', label: 'Proteins',  Icon: FaDrumstickBite,  color: '#c2410c', to: '/eptofresh' },
   ];
   return (
     <div className="flex gap-2.5 overflow-x-auto scrollbar-hide px-4 pt-3 pb-0.5">
       {cats.map(c => (
         <Link key={c.key} to={c.to}
           className="flex-shrink-0 flex flex-col items-center gap-1 w-[58px] active:scale-95 transition-transform">
-          <div className="w-[50px] h-[50px] rounded-2xl flex items-center justify-center text-2xl border shadow-card"
-            style={{ background: `${c.color}14`, borderColor: `${c.color}28` }}>
-            {c.emoji}
+          <div className="w-[50px] h-[50px] rounded-2xl flex items-center justify-center border shadow-card"
+            style={{ background: `${c.color}12`, borderColor: `${c.color}26` }}>
+            <c.Icon size={20} style={{ color: c.color }} />
           </div>
           <span className="text-[9.5px] font-bold text-gray-700 text-center leading-tight whitespace-nowrap">{c.label}</span>
         </Link>
@@ -366,7 +419,7 @@ function MobileCategoryStrip() {
 const HERO_SLIDES = [
   {
     gradient: 'linear-gradient(135deg, #f97316 0%, #ef4444 55%, #dc2626 100%)',
-    tag: '🔥 Hot Deals This Week',
+    tag: 'Hot Deals This Week',
     title: 'Shop Fresh,\nSave Big!',
     sub: 'Groceries · Masalas · Organic Foods',
     cta: 'Shop Now', to: '/shop',
@@ -374,7 +427,7 @@ const HERO_SLIDES = [
   },
   {
     gradient: 'linear-gradient(135deg, #15803d 0%, #16a34a 55%, #4ade80 100%)',
-    tag: '🥬 Order by 10 AM, Get Today',
+    tag: 'Order by 10 AM, Get Today',
     title: 'Koyambedu\nDaily Fresh',
     sub: 'Vegetables · Fruits · Flowers · Temple',
     cta: 'Order Now', to: '/koyambedu',
@@ -382,7 +435,7 @@ const HERO_SLIDES = [
   },
   {
     gradient: 'linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #2dd4bf 100%)',
-    tag: '🌾 Farm-to-Door in Tamil Nadu',
+    tag: 'Farm-to-Door in Tamil Nadu',
     title: 'Uzhavar Fresh\nஉழவர் சந்தை',
     sub: 'Farm direct · No middlemen · Pure & Natural',
     cta: 'Explore', to: '/uzhavar',
@@ -390,7 +443,7 @@ const HERO_SLIDES = [
   },
   {
     gradient: 'linear-gradient(135deg, #1a0a00 0%, #7c2d12 40%, #c2410c 75%, #f97316 100%)',
-    tag: '🥩 Hyperlocal · GPS-Based · Fresh Daily',
+    tag: 'Hyperlocal · GPS-Based · Fresh Daily',
     title: 'EptoFresh\nProteins',
     sub: 'Chicken · Mutton · Fish · Seafood · Ready to Cook',
     cta: 'Order Now', to: '/eptofresh',
@@ -409,11 +462,6 @@ function DesktopHero() {
   }, []);
 
   const s = HERO_SLIDES[active];
-  const catItems = EPTOMART_CATS.concat([
-    { name: 'Koyambedu Daily',    slug: null, emoji: '🥬', color: '#16a34a', from: 'Fresh' },
-    { name: 'Uzhavar Fresh',      slug: null, emoji: '🌾', color: '#0d9488', from: 'Farm' },
-    { name: 'EptoFresh Proteins', slug: null, emoji: '🥩', color: '#c2410c', from: 'Nearby' },
-  ]);
 
   return (
     <div className="relative overflow-hidden rounded-3xl mb-4" style={{ background: s.gradient, minHeight: 250 }}>
@@ -449,9 +497,9 @@ function DesktopHero() {
               to={`/shop/${cat.slug}`}
               className="flex-shrink-0 flex flex-col items-center bg-white/95 backdrop-blur-sm rounded-2xl px-4 pt-4 pb-3.5 w-[108px] hover:scale-105 hover:shadow-xl transition-all active:scale-95 group"
             >
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl mb-2 transition-transform group-hover:scale-110"
-                style={{ background: `${cat.color}18` }}>
-                {cat.emoji}
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-2 transition-transform group-hover:scale-110"
+                style={{ background: `${cat.color}16` }}>
+                <cat.Icon size={24} style={{ color: cat.color }} />
               </div>
               <p className="text-[11px] font-bold text-gray-800 text-center leading-tight line-clamp-2">{cat.name}</p>
               <p className="text-[10px] font-semibold mt-1" style={{ color: '#f4941c' }}>From {cat.from}</p>
@@ -491,9 +539,9 @@ function DesktopCategoryStrip() {
             {/* Hover glow */}
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
               style={{ background: `linear-gradient(145deg, ${cat.color}22 0%, ${cat.color}10 100%)` }} />
-            <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center text-3xl transition-transform group-hover:scale-115 flex-shrink-0 shadow-sm"
-              style={{ background: `${cat.color}20` }}>
-              {cat.emoji}
+            <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 flex-shrink-0 shadow-sm"
+              style={{ background: `${cat.color}1c` }}>
+              <cat.Icon size={24} style={{ color: cat.color }} />
             </div>
             <div className="relative">
               <p className="text-[11px] font-extrabold leading-snug line-clamp-2" style={{ color: cat.color }}>
@@ -514,35 +562,35 @@ function DesktopPromoGrid({ onScrollTo }) {
   const banners = [
     {
       gradient: 'linear-gradient(135deg,#14532d,#16a34a,#4ade80)',
-      tag: 'ORDER BY 10 AM', emoji: '🥬',
+      tag: 'ORDER BY 10 AM', Icon: FaCarrot,
       title: 'Koyambedu Daily',
       sub: 'Fresh Veggies · Fruits · Flowers',
       cta: 'Order Now', action: () => navigate('/koyambedu'),
     },
     {
       gradient: 'linear-gradient(135deg,#134e4a,#0f766e,#2dd4bf)',
-      tag: 'FARM DIRECT', emoji: '🌾',
+      tag: 'FARM DIRECT', Icon: FaTractor,
       title: 'Uzhavar Fresh',
       sub: 'உழவர் சந்தை · No middlemen',
       cta: 'Explore', action: () => navigate('/uzhavar'),
     },
     {
       gradient: 'linear-gradient(135deg,#1a0a00,#7c2d12,#f97316)',
-      tag: 'GPS · HYPERLOCAL', emoji: '🥩',
+      tag: 'GPS · HYPERLOCAL', Icon: FaDrumstickBite,
       title: 'EptoFresh Proteins',
       sub: 'Chicken · Mutton · Fish · Seafood',
       cta: 'Order Now', action: () => navigate('/eptofresh'),
     },
     {
       gradient: 'linear-gradient(135deg,#7f1d1d,#dc2626,#fb923c)',
-      tag: '⚡ ENDS SOON', emoji: '🔥',
+      tag: 'ENDS SOON', Icon: FiZap,
       title: 'Flash Deals',
       sub: 'Up to 60% off · Today only',
       cta: 'Grab Now', action: () => onScrollTo('section-flash'),
     },
     {
       gradient: 'linear-gradient(135deg,#312e81,#4f46e5,#818cf8)',
-      tag: '⭐ HANDPICKED', emoji: '✨',
+      tag: 'HANDPICKED', Icon: FiStar,
       title: 'Featured Products',
       sub: 'Curated · Premium Quality',
       cta: 'Shop Now', action: () => onScrollTo('section-featured'),
@@ -554,9 +602,8 @@ function DesktopPromoGrid({ onScrollTo }) {
         <button key={b.title} onClick={b.action}
           className="relative flex flex-col justify-between rounded-2xl p-4 overflow-hidden text-left active:scale-95 transition-all hover:shadow-card-hover hover:-translate-y-0.5 group"
           style={{ background: b.gradient, minHeight: 116 }}>
-          <div className="absolute -bottom-4 -right-4 text-6xl opacity-15 select-none pointer-events-none transition-transform group-hover:scale-125 group-hover:opacity-25">
-            {b.emoji}
-          </div>
+          <b.Icon className="absolute -bottom-3 -right-3 select-none pointer-events-none transition-transform group-hover:scale-110"
+            size={64} style={{ color: 'rgba(255,255,255,0.13)' }} />
           <div className="relative z-10">
             <span className="bg-white/25 text-white text-[9px] font-black px-2 py-0.5 rounded-full tracking-wide">
               {b.tag}
@@ -654,7 +701,7 @@ function MobileSearchBar() {
                     <button key={p._id} onClick={() => { setOpen(false); navigate(`/product/${p.slug || p._id}`); }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 transition-colors text-left group">
                       <div className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
-                        {p.images?.[0]?.url ? <img src={p.images[0].url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-lg">📦</div>}
+                        {p.images?.[0]?.url ? <img src={p.images[0].url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><FiPackage size={18} className="text-gray-400" /></div>}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-gray-800 line-clamp-1 group-hover:text-orange-600">{p.name}</p>
@@ -671,7 +718,7 @@ function MobileSearchBar() {
                 ? <div className="px-4 py-4 text-center">
                     <p className="text-sm font-semibold text-gray-700 mb-0.5">No results for "{query}"</p>
                     <p className="text-xs text-gray-400 mb-3">We don't have it yet — but we can source it!</p>
-                    <button onClick={() => submit(query)} className="bg-orange-500 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-orange-600 transition-colors">📬 Notify Team & Search</button>
+                    <button onClick={() => submit(query)} className="bg-orange-500 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-orange-600 transition-colors inline-flex items-center gap-1.5"><FiSearch size={12} /> Notify Team & Search</button>
                   </div>
                 : null
           }
@@ -691,28 +738,31 @@ function MobileHero() {
     <div className="px-4 pt-3 pb-0">
       <Link to="/shop"
         className="relative rounded-2xl overflow-hidden block active:scale-[0.99] transition-transform"
-        style={{ background: 'linear-gradient(120deg, #f97316 0%, #ef4444 60%, #b91c1c 100%)' }}
+        style={{
+          background: 'radial-gradient(ellipse 120% 140% at 100% 0%, #1b4a7a 0%, #123660 38%, #0B1729 100%)',
+          border: '1px solid rgba(255,255,255,0.06)',
+        }}
       >
-        {/* Decorative circles */}
-        <div className="absolute pointer-events-none" style={{ width: 150, height: 150, borderRadius: '50%', background: 'rgba(255,255,255,0.10)', top: -60, right: -40 }} />
-        <div className="absolute pointer-events-none" style={{ width: 90, height: 90, borderRadius: '50%', background: 'rgba(0,0,0,0.12)', bottom: -35, left: -20 }} />
-        {/* Faded emoji */}
-        <div className="absolute pointer-events-none select-none" style={{ right: 12, bottom: 6, fontSize: 52, opacity: 0.2, lineHeight: 1 }}>🛒</div>
+        {/* Brand ambient glows — same language as the splash screen */}
+        <div className="absolute pointer-events-none" style={{ width: 180, height: 180, borderRadius: '50%', top: -80, right: -50, background: 'radial-gradient(circle, rgba(244,148,28,0.22) 0%, transparent 65%)' }} />
+        <div className="absolute pointer-events-none" style={{ width: 140, height: 140, borderRadius: '50%', bottom: -70, left: -40, background: 'radial-gradient(circle, rgba(109,182,81,0.16) 0%, transparent 65%)' }} />
         {/* Text — compact: greeting + headline + CTA in one slim band */}
-        <div className="relative z-10 px-4 py-3.5 flex items-center justify-between gap-3">
+        <div className="relative z-10 px-4 py-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-semibold" style={{ color: 'rgba(255,255,255,0.80)', fontSize: 11 }}>
-              {greeting}{first ? `, ${first}` : ''} 👋
+            <p className="font-semibold" style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11 }}>
+              {greeting}{first ? `, ${first}` : ''}
             </p>
-            <p className="text-white font-black leading-tight" style={{ fontSize: 19, textShadow: '0 2px 10px rgba(0,0,0,0.25)' }}>
-              Shop Fresh, Delivered Fast 🚀
+            <p className="text-white font-extrabold leading-tight tracking-tight" style={{ fontSize: 19 }}>
+              Fresh groceries, <span style={{ color: '#f4941c' }}>delivered fast</span>
             </p>
-            <p style={{ color: 'rgba(255,255,255,0.70)', fontSize: 10.5 }} className="mt-0.5 font-medium truncate">
-              Groceries · Veggies · Proteins · Free delivery above ₹999
+            <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 10.5 }} className="mt-1 font-medium flex items-center gap-1.5 truncate">
+              <FiTruck size={11} style={{ color: '#6DB651' }} className="flex-shrink-0" />
+              Free delivery above ₹999 · Verified sellers
             </p>
           </div>
-          <span className="flex-shrink-0 bg-white/20 backdrop-blur-sm text-white text-[11px] font-bold px-3 py-2 rounded-xl border border-white/30 whitespace-nowrap">
-            Shop →
+          <span className="flex-shrink-0 text-white text-[11px] font-bold pl-3.5 pr-3 py-2 rounded-xl whitespace-nowrap inline-flex items-center gap-1"
+            style={{ background: 'linear-gradient(135deg,#ff9d30,#f4941c)', boxShadow: '0 4px 14px rgba(244,148,28,0.35)' }}>
+            Shop now <FiArrowRight size={12} />
           </span>
         </div>
       </Link>
@@ -802,16 +852,16 @@ export default function Home() {
           {/* 4. Trust strip — single slim line */}
           <div className="flex items-center justify-between gap-2 bg-white rounded-2xl px-5 py-2.5 border border-gray-100 shadow-card mb-4">
             {[
-              { icon: '⚡', label: 'Fast Pan-India Delivery' },
-              { icon: '✅', label: 'Verified Sellers' },
-              { icon: '🔄', label: '7-Day Easy Returns' },
-              { icon: '💸', label: 'Direct Seller Prices' },
-              { icon: '🛡️', label: 'Secure Razorpay Checkout' },
+              { Icon: FiTruck,       color: '#f4941c', label: 'Fast Pan-India Delivery' },
+              { Icon: FiCheckCircle, color: '#16a34a', label: 'Verified Sellers' },
+              { Icon: FiRefreshCw,   color: '#3b82f6', label: '7-Day Easy Returns' },
+              { Icon: FiTag,         color: '#9333ea', label: 'Direct Seller Prices' },
+              { Icon: FiShield,      color: '#0d9488', label: 'Secure Razorpay Checkout' },
             ].map((b, i) => (
               <React.Fragment key={b.label}>
                 {i > 0 && <span className="w-px h-5 bg-gray-100 flex-shrink-0" />}
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-lg leading-none flex-shrink-0">{b.icon}</span>
+                  <b.Icon size={15} style={{ color: b.color }} className="flex-shrink-0" />
                   <p className="text-xs font-bold text-gray-700 truncate">{b.label}</p>
                 </div>
               </React.Fragment>
@@ -836,7 +886,9 @@ export default function Home() {
             <div className="flex items-center justify-between mb-3 px-4">
               <div className="flex items-center gap-2">
                 <span className="w-1 h-5 rounded-full bg-orange-500 flex-shrink-0" />
-                <span className="text-base md:text-lg leading-none">⭐</span>
+                <span className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(244,148,28,0.10)' }}>
+                  <FiStar size={13} style={{ color: '#f4941c' }} />
+                </span>
                 <h2 className="text-sm md:text-lg font-extrabold text-gray-900 tracking-tight">Featured Products</h2>
               </div>
               <Link to="/shop" className="text-xs font-bold text-orange-500 flex items-center gap-0.5 hover:gap-1.5 transition-all">
@@ -859,7 +911,7 @@ export default function Home() {
               <ProductCarouselTrack products={featuredProducts} accent="#f4941c" />
             ) : (
               <div className="text-center py-10 px-4">
-                <p className="text-4xl mb-2">🌟</p>
+                <FiStar size={36} className="mx-auto mb-2 text-gray-300" />
                 <p className="text-gray-500 text-sm font-medium">Featured products coming soon</p>
                 <Link to="/shop" className="mt-3 inline-block text-xs text-orange-500 font-bold">Browse all products →</Link>
               </div>
@@ -887,7 +939,7 @@ export default function Home() {
 
           {/* ── NEW ARRIVALS ── */}
           <section id="section-new" className="pt-3 pb-5">
-            <SectionHeader emoji="🆕" title="New Arrivals" link="/shop?sort=-createdAt" />
+            <SectionHeader Icon={FiClock} iconColor="#3b82f6" dotColor="bg-blue-500" title="New Arrivals" link="/shop?sort=-createdAt" />
             {loading ? (
               <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
@@ -906,7 +958,7 @@ export default function Home() {
               </>
             ) : (
               <div className="text-center py-10 px-4">
-                <p className="text-4xl mb-2">🆕</p>
+                <FiPackage size={36} className="mx-auto mb-2 text-gray-300" />
                 <p className="text-gray-500 text-sm font-medium">New products arriving soon</p>
                 <Link to="/shop" className="mt-3 inline-block text-xs text-orange-500 font-bold">Explore the shop →</Link>
               </div>
@@ -921,13 +973,15 @@ export default function Home() {
             <p className="text-center text-sm text-gray-400 mb-8">India's fastest growing multi-seller marketplace</p>
             <div className="grid grid-cols-4 gap-6">
               {[
-                { emoji: '🛡️', title: 'Verified Sellers',   desc: 'KYC verified with GST & FSSAI compliance' },
-                { emoji: '🚚', title: 'Pan-India Delivery', desc: 'Powered by Shiprocket — to every pincode' },
-                { emoji: '💸', title: 'Best Prices',        desc: 'Direct from sellers — no middlemen' },
-                { emoji: '📞', title: 'Real Support',       desc: 'Human support via WhatsApp, 7 days a week' },
+                { Icon: FiShield, color: '#0d9488', title: 'Verified Sellers',   desc: 'KYC verified with GST & FSSAI compliance' },
+                { Icon: FiTruck,  color: '#f4941c', title: 'Pan-India Delivery', desc: 'Powered by Shiprocket — to every pincode' },
+                { Icon: FiTag,    color: '#9333ea', title: 'Best Prices',        desc: 'Direct from sellers — no middlemen' },
+                { Icon: FiPhone,  color: '#3b82f6', title: 'Real Support',       desc: 'Human support via WhatsApp, 7 days a week' },
               ].map(item => (
                 <div key={item.title} className="text-center">
-                  <div className="text-4xl mb-3">{item.emoji}</div>
+                  <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: `${item.color}12` }}>
+                    <item.Icon size={24} style={{ color: item.color }} />
+                  </div>
                   <h3 className="font-bold text-sm text-gray-800 mb-1">{item.title}</h3>
                   <p className="text-xs text-gray-500 leading-relaxed">{item.desc}</p>
                 </div>
@@ -948,11 +1002,11 @@ export default function Home() {
               <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Quick Links</h4>
               <ul className="space-y-2">
                 {[
-                  { label: '🏠 Home',        path: '/'          },
-                  { label: '🛍️ Shop',         path: '/shop'      },
-                  { label: '📦 My Orders',    path: '/orders'    },
-                  { label: '👤 My Profile',   path: '/profile'   },
-                  { label: '❤️ Wishlist',     path: '/wishlist'  },
+                  { label: 'Home',        path: '/'          },
+                  { label: 'Shop',        path: '/shop'      },
+                  { label: 'My Orders',   path: '/orders'    },
+                  { label: 'My Profile',  path: '/profile'   },
+                  { label: 'Wishlist',    path: '/wishlist'  },
                 ].map(({ label, path }) => (
                   <li key={path}>
                     <Link to={path} className="text-sm text-gray-600 hover:text-orange-500 transition-colors">{label}</Link>
@@ -966,11 +1020,11 @@ export default function Home() {
               <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Categories</h4>
               <ul className="space-y-2">
                 {[
-                  { label: '🥦 Vegetables',    path: '/shop?category=vegetables'  },
-                  { label: '🍎 Fruits',         path: '/shop?category=fruits'      },
-                  { label: '👗 Fashion',         path: '/shop?category=fashion'     },
-                  { label: '📱 Electronics',     path: '/shop?category=electronics' },
-                  { label: '🗂️ All Categories', path: '/categories'                },
+                  { label: 'Vegetables',     path: '/shop?category=vegetables'  },
+                  { label: 'Fruits',         path: '/shop?category=fruits'      },
+                  { label: 'Fashion',        path: '/shop?category=fashion'     },
+                  { label: 'Electronics',    path: '/shop?category=electronics' },
+                  { label: 'All Categories', path: '/categories'                },
                 ].map(({ label, path }) => (
                   <li key={path}>
                     <Link to={path} className="text-sm text-gray-600 hover:text-orange-500 transition-colors">{label}</Link>
@@ -984,11 +1038,11 @@ export default function Home() {
               <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Help & Support</h4>
               <ul className="space-y-2">
                 {[
-                  { label: '📞 Contact Us',       path: '/contact'         },
-                  { label: '❓ FAQ',               path: '/faq'             },
-                  { label: '🚚 Shipping Policy',   path: '/shipping-policy' },
-                  { label: '↩️ Return Policy',     path: '/return-policy'   },
-                  { label: '🏪 Sell on Eptomart',  path: '/seller/profile'  },
+                  { label: 'Contact Us',       path: '/contact'         },
+                  { label: 'FAQ',              path: '/faq'             },
+                  { label: 'Shipping Policy',  path: '/shipping-policy' },
+                  { label: 'Return Policy',    path: '/return-policy'   },
+                  { label: 'Sell on Eptomart', path: '/seller/profile'  },
                 ].map(({ label, path }) => (
                   <li key={path}>
                     <Link to={path} className="text-sm text-gray-600 hover:text-orange-500 transition-colors">{label}</Link>
@@ -1002,11 +1056,11 @@ export default function Home() {
               <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Policies</h4>
               <ul className="space-y-2">
                 {[
-                  { label: '🔒 Privacy Policy',   path: '/privacy-policy'  },
-                  { label: '📋 Terms of Service',  path: '/terms'           },
-                  { label: '🧾 GST Invoices',      path: '/faq#gst'         },
-                  { label: '🌿 Uzhavar Fresh',      path: '/uzhavar'         },
-                  { label: '🏢 Koyambedu Daily',   path: '/koyambedu'       },
+                  { label: 'Privacy Policy',   path: '/privacy-policy'  },
+                  { label: 'Terms of Service', path: '/terms'           },
+                  { label: 'GST Invoices',     path: '/faq#gst'         },
+                  { label: 'Uzhavar Fresh',    path: '/uzhavar'         },
+                  { label: 'Koyambedu Daily',  path: '/koyambedu'       },
                 ].map(({ label, path }) => (
                   <li key={path}>
                     <Link to={path} className="text-sm text-gray-600 hover:text-orange-500 transition-colors">{label}</Link>

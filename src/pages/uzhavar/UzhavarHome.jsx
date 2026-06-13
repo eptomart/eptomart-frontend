@@ -5,7 +5,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiMapPin, FiSearch, FiStar, FiChevronRight, FiX } from 'react-icons/fi';
+import { FiMapPin, FiSearch, FiStar, FiChevronRight, FiX, FiZap, FiUsers, FiPackage, FiTruck } from 'react-icons/fi';
+import { FaLeaf, FaSeedling } from 'react-icons/fa';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import BottomNav from '../../components/common/BottomNav';
@@ -191,12 +192,12 @@ export default function UzhavarHome() {
           <div className="absolute -right-16 -top-16 w-48 h-48 rounded-full bg-white/5" />
           <div className="absolute -left-10 bottom-0 w-32 h-32 rounded-full bg-black/10" />
           <div className="max-w-7xl mx-auto px-4 relative z-10 animate-fade-in-up">
-            <div className="text-4xl mb-2">🌾</div>
+            <div className="mb-2 flex justify-center"><FaSeedling size={40} className="text-green-200" /></div>
             <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-0.5">FARMER FRESH</h1>
             <p className="text-green-100 text-xs">உழவர் சந்தை · Farm to Home · Direct from Farmers</p>
             <div className="mt-3 flex gap-2 justify-center flex-wrap">
-              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30">🌿 Harvested Today</span>
-              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30">🤝 No Middlemen</span>
+              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30 inline-flex items-center gap-1"><FaLeaf size={11} /> Harvested Today</span>
+              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30 inline-flex items-center gap-1"><FiUsers size={11} /> No Middlemen</span>
             </div>
           </div>
         </div>
@@ -275,7 +276,7 @@ export default function UzhavarHome() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm md:text-lg font-extrabold text-gray-900 flex items-center gap-2 tracking-tight">
               <span className="w-1 h-5 rounded-full bg-green-500" />
-              🧑‍🌾 Farmers near you
+              <FiUsers size={16} className="text-green-600" /> Farmers near you
               {!loading && farmers.length > 0 && (
                 <span className="text-xs font-semibold text-gray-400">({farmers.length})</span>
               )}
@@ -293,7 +294,7 @@ export default function UzhavarHome() {
             </div>
           ) : farmers.length === 0 ? (
             <div className="text-center py-10 text-gray-400 bg-white rounded-2xl shadow-sm border border-gray-100">
-              <div className="text-3xl mb-2">🌾</div>
+              <div className="flex justify-center mb-2"><FaSeedling size={32} className="text-gray-300" /></div>
               <p className="font-semibold text-sm">No farmers registered yet</p>
               <p className="text-xs mt-0.5">Check back soon — farmers are joining!</p>
             </div>
@@ -313,7 +314,7 @@ export default function UzhavarHome() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm md:text-lg font-extrabold text-gray-900 flex items-center gap-2 tracking-tight">
               <span className="w-1 h-5 rounded-full bg-lime-500" />
-              🥬 Fresh Harvest
+              <FaLeaf size={15} className="text-lime-600" /> Fresh Harvest
               {!loading && products.length > 0 && (
                 <span className="text-xs font-semibold text-gray-400">({products.length})</span>
               )}
@@ -340,7 +341,7 @@ export default function UzhavarHome() {
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="text-center py-10 text-gray-400 bg-white rounded-2xl shadow-sm border border-gray-100">
-              <div className="text-3xl mb-2">🥕</div>
+              <div className="flex justify-center mb-2"><FaLeaf size={32} className="text-gray-300" /></div>
               <p className="font-semibold text-sm">No products listed yet</p>
               <p className="text-xs mt-0.5">Farmers will add harvest soon!</p>
             </div>
@@ -358,12 +359,16 @@ export default function UzhavarHome() {
         <div className="px-4 pb-6">
           <div className="grid grid-cols-3 gap-3 text-center mb-4">
             {[
-              { icon: '🌿', title: 'Farm Fresh', desc: 'Harvested today' },
-              { icon: '⚡', title: 'Fast Delivery', desc: 'Same day / scheduled' },
-              { icon: '🤝', title: 'Direct Farmer', desc: 'No middlemen' },
+              { Icon: FaLeaf,     color: '#16a34a', title: 'Farm Fresh',     desc: 'Harvested today' },
+              { Icon: FiZap,      color: '#f59e0b', title: 'Fast Delivery',  desc: 'Same day / scheduled' },
+              { Icon: FiUsers,    color: '#3b82f6', title: 'Direct Farmer',  desc: 'No middlemen' },
             ].map(item => (
               <div key={item.title} className="bg-white rounded-2xl p-4 shadow-sm">
-                <div className="text-2xl mb-1">{item.icon}</div>
+                <div className="flex justify-center mb-1.5">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${item.color}16` }}>
+                    <item.Icon size={17} style={{ color: item.color }} />
+                  </div>
+                </div>
                 <p className="font-semibold text-xs text-gray-700">{item.title}</p>
                 <p className="text-xs text-gray-400">{item.desc}</p>
               </div>
@@ -371,7 +376,7 @@ export default function UzhavarHome() {
           </div>
 
           <div className="bg-gradient-to-r from-green-600 to-lime-500 rounded-2xl p-5 text-white text-center">
-            <p className="font-bold text-sm mb-0.5">📦 Uzhavar Fresh Subscription</p>
+            <p className="font-bold text-sm mb-0.5 flex items-center justify-center gap-1.5"><FiPackage size={14} /> Uzhavar Fresh Subscription</p>
             <p className="text-green-100 text-xs mb-3">Unlimited fresh orders · No booking fee per order</p>
             <div className="flex gap-2 justify-center text-xs font-semibold mb-3">
               <span className="bg-white/20 rounded-lg px-3 py-1.5">₹299 / month</span>
@@ -388,7 +393,7 @@ export default function UzhavarHome() {
         <div className="px-4 py-4 pb-10">
           <div className="bg-gradient-to-r from-green-700 to-lime-600 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-center sm:text-left">
-              <p className="text-white font-black text-base">🌾 Are you a farmer?</p>
+              <p className="text-white font-black text-base flex items-center gap-2"><FaSeedling size={16} /> Are you a farmer?</p>
               <p className="text-green-100 text-xs mt-0.5">List your harvest and sell directly to buyers near you — no middlemen</p>
               <p className="text-green-200 text-[10px]">நீங்கள் உழவரா? இப்போதே பதிவு செய்யுங்கள்</p>
             </div>
@@ -412,7 +417,7 @@ function FarmerCard({ farmer, onClick }) {
     <div onClick={onClick}
       className="bg-white rounded-2xl shadow-card border border-gray-100 p-4 cursor-pointer hover:shadow-card-hover hover:border-green-300 hover:-translate-y-0.5 transition-all duration-300">
       <div className="flex items-start justify-between mb-3">
-        <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center text-2xl">🧑‍🌾</div>
+        <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center"><FiUsers size={22} className="text-green-600" /></div>
         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${farmer.availableNow ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
           {farmer.availableNow ? '● Live' : '○ Scheduled'}
         </span>
@@ -427,7 +432,7 @@ function FarmerCard({ farmer, onClick }) {
         </div>
       )}
       <div className="flex items-center justify-between mt-3">
-        <span className="text-xs text-green-600 font-medium">📍 {farmer.deliveryRadius}km delivery</span>
+        <span className="text-xs text-green-600 font-medium flex items-center gap-1"><FiMapPin size={11} /> {farmer.deliveryRadius}km delivery</span>
         <FiChevronRight size={14} className="text-gray-400" />
       </div>
     </div>
@@ -440,7 +445,7 @@ function ProductCard({ product, onClick }) {
       className="bg-white rounded-2xl shadow-card border border-gray-100 p-3 cursor-pointer hover:shadow-card-hover hover:border-green-300 hover:-translate-y-0.5 transition-all duration-300">
       {product.image
         ? <img src={product.image} alt={product.name} className="w-full h-24 object-cover rounded-xl mb-2 bg-gray-100" />
-        : <div className="w-full h-24 rounded-xl bg-green-50 flex items-center justify-center text-3xl mb-2">🥬</div>
+        : <div className="w-full h-24 rounded-xl bg-green-50 flex items-center justify-center mb-2"><FaLeaf size={32} className="text-green-300" /></div>
       }
       <p className="font-semibold text-xs text-gray-800 line-clamp-1">{product.name}</p>
       {product.nameTa && <p className="text-xs text-gray-400 line-clamp-1">{product.nameTa}</p>}

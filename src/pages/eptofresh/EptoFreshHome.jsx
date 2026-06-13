@@ -7,20 +7,21 @@ import api from '../../utils/api';
 import toast from 'react-hot-toast';
 import {
   FiMapPin, FiStar, FiClock, FiChevronRight,
-  FiShoppingBag, FiEdit2, FiGrid,
+  FiShoppingBag, FiEdit2, FiGrid, FiSearch, FiAlertTriangle,
 } from 'react-icons/fi';
+import { FaDrumstickBite, FaFish } from 'react-icons/fa';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/common/Navbar';
 
 const CATEGORIES = [
-  { key: 'chicken',       label: 'Chicken',      emoji: '🍗' },
-  { key: 'mutton',        label: 'Mutton',       emoji: '🥩' },
-  { key: 'fish',          label: 'Fish',         emoji: '🐟' },
-  { key: 'seafood',       label: 'Seafood',      emoji: '🦐' },
-  { key: 'beef',          label: 'Beef',         emoji: '🥩' },
-  { key: 'pork',          label: 'Pork',         emoji: '🐖' },
-  { key: 'ready_to_cook', label: 'Ready to Cook', emoji: '🍱' },
+  { key: 'chicken',       label: 'Chicken',       Icon: FaDrumstickBite, color: '#f97316' },
+  { key: 'mutton',        label: 'Mutton',         Icon: FaDrumstickBite, color: '#ef4444' },
+  { key: 'fish',          label: 'Fish',           Icon: FaFish,          color: '#3b82f6' },
+  { key: 'seafood',       label: 'Seafood',        Icon: FaFish,          color: '#0d9488' },
+  { key: 'beef',          label: 'Beef',           Icon: FaDrumstickBite, color: '#dc2626' },
+  { key: 'pork',          label: 'Pork',           Icon: FaDrumstickBite, color: '#9333ea' },
+  { key: 'ready_to_cook', label: 'Ready to Cook',  Icon: FiGrid,          color: '#f59e0b' },
 ];
 
 export default function EptoFreshHome() {
@@ -94,7 +95,7 @@ export default function EptoFreshHome() {
       <div className="px-4 pt-4 pb-3" style={{ background: 'linear-gradient(180deg, #0B1729 0%, #111f35 100%)' }}>
         <div className="flex items-center justify-between mb-3">
           <div className="animate-fade-in-up">
-            <h1 className="text-white text-xl font-extrabold tracking-tight">🥩 EptoFresh Proteins</h1>
+            <h1 className="text-white text-xl font-extrabold tracking-tight flex items-center gap-2"><FaDrumstickBite size={18} className="text-orange-400" /> EptoFresh Proteins</h1>
             <p className="text-gray-500 text-[10px] font-medium mt-0.5">Hyperlocal · GPS-based · Fresh daily</p>
 
             {/* Location bar — tap to open map picker */}
@@ -132,8 +133,8 @@ export default function EptoFreshHome() {
               </div>
               <div className="text-left">
                 <p className="text-white text-sm font-bold leading-tight">{sellerAccount.shopName}</p>
-                <p className="text-xs font-medium" style={{ color: sellerAccount.status === 'approved' ? '#34d399' : '#fbbf24' }}>
-                  {sellerAccount.status === 'approved' ? '● Active Seller' : sellerAccount.status === 'pending_review' ? '⏳ Under Review' : sellerAccount.status}
+                <p className="text-xs font-medium flex items-center gap-1" style={{ color: sellerAccount.status === 'approved' ? '#34d399' : '#fbbf24' }}>
+                  {sellerAccount.status === 'approved' ? <><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" /> Active Seller</> : sellerAccount.status === 'pending_review' ? <><FiClock size={11} /> Under Review</> : sellerAccount.status}
                 </p>
               </div>
             </div>
@@ -157,7 +158,7 @@ export default function EptoFreshHome() {
                 boxShadow:  activeCategory === c.key ? '0 2px 12px rgba(244,148,28,0.35)' : 'none',
               }}
             >
-              <span>{c.emoji}</span> {c.label}
+              <c.Icon size={11} style={{ color: activeCategory === c.key ? '#fff' : c.color }} /> {c.label}
             </button>
           ))}
         </div>
@@ -192,7 +193,7 @@ export default function EptoFreshHome() {
 
         {!loading && sellers.length === 0 && (
           <div className="text-center py-16">
-            <div className="text-5xl mb-3">🔍</div>
+            <div className="flex justify-center mb-3"><FiSearch size={48} className="text-gray-600" /></div>
             <p className="text-white font-semibold">No sellers found</p>
             <p className="text-gray-500 text-sm mt-1">Try setting your location or check back soon</p>
             <button
@@ -251,14 +252,14 @@ function SellerCard({ seller, onClick }) {
         <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-gray-700 flex items-center justify-center">
           {seller.shopImage
             ? <img src={seller.shopImage} alt={seller.shopName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-            : <span className="text-2xl">🥩</span>}
+            : <FaDrumstickBite size={28} className="text-gray-500" />}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
             <span className="text-white font-semibold text-sm truncate">{seller.shopName}</span>
-            {seller.badges?.verified && <span className="text-blue-400 text-[10px] font-bold">✓</span>}
-            {seller.badges?.topRated && <span className="text-yellow-400 text-[10px]">⭐</span>}
+            {seller.badges?.verified && <FiGrid size={10} className="text-blue-400" />}
+            {seller.badges?.topRated && <FiStar size={10} className="text-yellow-400" style={{ fill: 'currentColor' }} />}
           </div>
 
           <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
@@ -299,10 +300,10 @@ function SellerCard({ seller, onClick }) {
       {isLong && (
         <div className="px-4 pb-3">
           <span
-            className="text-[10px] font-bold px-2 py-1 rounded-full"
+            className="text-[10px] font-bold px-2 py-1 rounded-full inline-flex items-center gap-1"
             style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)' }}
           >
-            📍 Long Distance — Additional charges apply
+            <FiMapPin size={10} /> Long Distance — Additional charges apply
           </span>
         </div>
       )}

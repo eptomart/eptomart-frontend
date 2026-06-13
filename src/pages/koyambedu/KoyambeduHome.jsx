@@ -5,7 +5,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiSearch, FiChevronRight, FiMapPin } from 'react-icons/fi';
+import { FiSearch, FiChevronRight, FiMapPin, FiShoppingCart, FiSun, FiTruck, FiPackage, FiCheckCircle, FiZap, FiUsers, FiGrid } from 'react-icons/fi';
+import { FaLeaf, FaCarrot } from 'react-icons/fa';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import BottomNav from '../../components/common/BottomNav';
@@ -36,7 +37,7 @@ function ProductCard({ product }) {
         <div className="relative overflow-hidden">
           <img src={img} alt={product.name} className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-500" />
           {product.badges?.includes('fresh_arrival') && (
-            <span className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm">🌿 Fresh</span>
+            <span className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm flex items-center gap-1"><FaLeaf size={9} /> Fresh</span>
           )}
           {product.badges?.includes('low_stock') && (
             <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm animate-pulse">Low Stock</span>
@@ -142,13 +143,13 @@ export default function KoyambeduHome() {
           <div className="absolute -right-16 -top-16 w-48 h-48 rounded-full bg-white/5" />
           <div className="absolute -left-10 bottom-0 w-32 h-32 rounded-full bg-black/10" />
           <div className="max-w-7xl mx-auto px-4 relative z-10 animate-fade-in-up">
-            <div className="text-4xl mb-2">🥬</div>
+            <div className="mb-2 flex justify-center"><FaLeaf size={40} className="text-emerald-200" /></div>
             <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-0.5">KOYAMBEDU DAILY</h1>
             <p className="text-emerald-200 text-xs">கோயம்பேடு சந்தை · Wholesale Market · Direct Delivery</p>
             <div className="mt-3 flex gap-2 justify-center flex-wrap">
-              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30">🌅 Market Open</span>
-              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30">🚚 ₹149 (up to 20 kg) · ₹249 (20–90 kg)</span>
-              <span className="bg-yellow-400/90 text-emerald-900 text-[11px] font-bold px-3 py-1 rounded-full">📦 &gt;90 kg? Contact us</span>
+              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30 inline-flex items-center gap-1"><FiSun size={11} /> Market Open</span>
+              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30 inline-flex items-center gap-1"><FiTruck size={11} /> ₹149 (up to 20 kg) · ₹249 (20–90 kg)</span>
+              <span className="bg-yellow-400/90 text-emerald-900 text-[11px] font-bold px-3 py-1 rounded-full inline-flex items-center gap-1"><FiPackage size={11} /> &gt;90 kg? Contact us</span>
             </div>
           </div>
         </div>
@@ -185,7 +186,7 @@ export default function KoyambeduHome() {
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
               <Link to="/koyambedu/shop"
                 className="flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-200">
-                🛒 All
+                <FiShoppingCart size={12} /> All
               </Link>
               {categories.slice(0, 10).map(cat => (
                 <Link key={cat._id} to={`/koyambedu/shop?category=${cat._id}`}
@@ -201,21 +202,21 @@ export default function KoyambeduHome() {
         <div>
           {loading ? (
             <div className="flex flex-col items-center py-16 text-gray-400 gap-3">
-              <div className="text-4xl animate-bounce">🥬</div>
+              <div className="animate-bounce"><FaLeaf size={40} className="text-emerald-400" /></div>
               <p className="text-sm">Loading today's market...</p>
             </div>
           ) : (
             <>
-              <SectionRow title="Today's Fresh Arrivals" icon="🌅" products={sections.freshArrivals} viewAllLink="/koyambedu/shop?badges=fresh_arrival" />
-              <SectionRow title="Koyambedu Deals"        icon="💰" products={sections.deals}         viewAllLink="/koyambedu/shop?sort=popular" />
-              <SectionRow title="Flower Express"         icon="🌸" products={sections.flowers}       viewAllLink="/koyambedu/shop?category=flowers" />
-              <SectionRow title="Seasonal Specials"      icon="🌾" products={sections.seasonal}      viewAllLink="/koyambedu/shop?badges=seasonal" />
-              <SectionRow title="Bulk Buyer Zone"        icon="📦" products={sections.bulk}          viewAllLink="/koyambedu/shop?bulk=true" />
+              <SectionRow title="Today's Fresh Arrivals" icon={<FiSun size={16} />} products={sections.freshArrivals} viewAllLink="/koyambedu/shop?badges=fresh_arrival" />
+              <SectionRow title="Koyambedu Deals"        icon={<FiZap size={16} />} products={sections.deals}         viewAllLink="/koyambedu/shop?sort=popular" />
+              <SectionRow title="Flower Express"         icon={<FaLeaf size={16} />} products={sections.flowers}       viewAllLink="/koyambedu/shop?category=flowers" />
+              <SectionRow title="Seasonal Specials"      icon={<FaCarrot size={16} />} products={sections.seasonal}      viewAllLink="/koyambedu/shop?badges=seasonal" />
+              <SectionRow title="Bulk Buyer Zone"        icon={<FiPackage size={16} />} products={sections.bulk}          viewAllLink="/koyambedu/shop?bulk=true" />
 
               {/* Empty state */}
               {!Object.values(sections).some(s => s?.length) && (
                 <div className="text-center py-16 px-4">
-                  <p className="text-5xl mb-3">🌿</p>
+                  <div className="flex justify-center mb-3"><FaLeaf size={48} className="text-emerald-300" /></div>
                   <p className="font-bold text-gray-600 text-base">No products yet</p>
                   <p className="text-gray-400 text-sm mt-1">Sellers are stocking up — check back soon!</p>
                 </div>
@@ -228,19 +229,21 @@ export default function KoyambeduHome() {
 
         {/* ── Smart Baskets ─────────────────── */}
         <div className="max-w-7xl mx-auto px-4 mb-6">
-          <h2 className="font-bold text-gray-800 text-sm mb-3">🤖 Smart Baskets</h2>
+          <h2 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-1.5"><FiGrid size={14} className="text-emerald-600" /> Smart Baskets</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
-              { label: 'Sambar Combo',   icon: '🥘', q: 'sambar vegetables'       },
-              { label: 'Pooja Special',  icon: '🪔', q: 'pooja flowers banana leaf' },
-              { label: 'Juice Basket',   icon: '🍹', q: 'juice fruits'             },
-              { label: 'Weekly Greens',  icon: '🌿', q: 'greens spinach'           },
-              { label: 'Festival Pack',  icon: '🎊', q: 'festival flowers'         },
-              { label: 'Morning Fresh',  icon: '🌄', q: 'fresh arrivals morning'   },
+              { label: 'Sambar Combo',   Icon: FaCarrot,  color: '#ef4444', q: 'sambar vegetables'       },
+              { label: 'Pooja Special',  Icon: FaLeaf,    color: '#f59e0b', q: 'pooja flowers banana leaf' },
+              { label: 'Juice Basket',   Icon: FaCarrot,  color: '#f97316', q: 'juice fruits'             },
+              { label: 'Weekly Greens',  Icon: FaLeaf,    color: '#16a34a', q: 'greens spinach'           },
+              { label: 'Festival Pack',  Icon: FaLeaf,    color: '#8b5cf6', q: 'festival flowers'         },
+              { label: 'Morning Fresh',  Icon: FiSun,     color: '#0d9488', q: 'fresh arrivals morning'   },
             ].map(b => (
               <Link key={b.label} to={`/koyambedu/shop?search=${encodeURIComponent(b.q)}`}
                 className="bg-white border border-emerald-100 rounded-xl p-3 flex items-center gap-2 shadow-card hover:border-emerald-400 hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-300 active:scale-95">
-                <span className="text-2xl">{b.icon}</span>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${b.color}16` }}>
+                  <b.Icon size={16} style={{ color: b.color }} />
+                </div>
                 <span className="text-xs font-semibold text-gray-700">{b.label}</span>
               </Link>
             ))}
@@ -253,12 +256,14 @@ export default function KoyambeduHome() {
             <h3 className="font-bold text-gray-800 text-sm mb-3">How Koyambedu Daily Works</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
-                { icon: '🛒', title: 'Browse & Order',     desc: 'Shop fresh produce. Pay securely.' },
-                { icon: '✅', title: 'Seller Confirms',    desc: 'Seller verifies stock & final price.' },
-                { icon: '🚚', title: 'Doorstep Delivery',  desc: 'Chennai delivery, same or next day.' },
+                { Icon: FiShoppingCart, color: '#059669', title: 'Browse & Order',     desc: 'Shop fresh produce. Pay securely.' },
+                { Icon: FiCheckCircle,  color: '#16a34a', title: 'Seller Confirms',    desc: 'Seller verifies stock & final price.' },
+                { Icon: FiTruck,        color: '#0d9488', title: 'Doorstep Delivery',  desc: 'Chennai delivery, same or next day.' },
               ].map(step => (
                 <div key={step.title} className="flex items-start gap-3 p-3 bg-emerald-50/50 rounded-xl">
-                  <span className="text-2xl flex-shrink-0">{step.icon}</span>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${step.color}18` }}>
+                    <step.Icon size={17} style={{ color: step.color }} />
+                  </div>
                   <div>
                     <p className="font-bold text-gray-800 text-xs">{step.title}</p>
                     <p className="text-gray-500 text-xs mt-0.5">{step.desc}</p>
@@ -273,12 +278,16 @@ export default function KoyambeduHome() {
         <div className="max-w-7xl mx-auto px-4 mb-6">
           <div className="grid grid-cols-3 gap-3 text-center">
             {[
-              { icon: '🌿', title: 'Farm Fresh',     desc: 'Harvested today' },
-              { icon: '⚡', title: 'Fast Delivery',  desc: 'Same / next day' },
-              { icon: '🤝', title: 'Wholesale Price',desc: 'No middlemen'    },
+              { Icon: FaLeaf,  color: '#059669', title: 'Farm Fresh',     desc: 'Harvested today' },
+              { Icon: FiZap,   color: '#f59e0b', title: 'Fast Delivery',  desc: 'Same / next day' },
+              { Icon: FiUsers, color: '#3b82f6', title: 'Wholesale Price',desc: 'No middlemen'    },
             ].map(item => (
               <div key={item.title} className="bg-white rounded-2xl p-4 shadow-sm border border-emerald-50">
-                <div className="text-2xl mb-1">{item.icon}</div>
+                <div className="flex justify-center mb-1.5">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${item.color}16` }}>
+                    <item.Icon size={17} style={{ color: item.color }} />
+                  </div>
+                </div>
                 <p className="font-semibold text-xs text-gray-700">{item.title}</p>
                 <p className="text-xs text-gray-400">{item.desc}</p>
               </div>
@@ -292,7 +301,7 @@ export default function KoyambeduHome() {
             style={{ background: 'linear-gradient(135deg,#064e3b,#065f46)' }}>
             <div className="p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-center sm:text-left">
-                <p className="text-white font-black text-base">🏪 Are you a Koyambedu Seller?</p>
+                <p className="text-white font-black text-base flex items-center gap-2"><FiGrid size={16} /> Are you a Koyambedu Seller?</p>
                 <p className="text-emerald-200 text-xs mt-1">List your stall on Eptomart — reach Chennai homes directly.</p>
                 <p className="text-emerald-300 text-[10px] mt-0.5">கோயம்பேடு வியாபாரியா? இப்போதே இணையுங்கள்</p>
               </div>

@@ -6,6 +6,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   FiSearch, FiShoppingCart, FiUser, FiX, FiLogOut,
   FiPackage, FiSettings, FiHeart, FiGrid, FiArrowLeft, FiMic,
+  FiShoppingBag, FiTruck, FiHome,
 } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -428,29 +429,30 @@ export default function Navbar() {
           <div className="max-w-7xl mx-auto px-3">
             <nav className="flex items-center gap-1 h-10 overflow-x-auto scrollbar-hide">
               {[
-                { label: '🛍️ All Products',   to: '/shop' },
-                { label: '🗂️ Categories',     to: '/categories' },
-                { label: '🥬 Koyambedu Daily', to: '/koyambedu' },
-                { label: '🌾 Uzhavar Fresh',   to: '/uzhavar' },
-                { label: '🥩 EptoFresh',       to: '/eptofresh' },
+                { label: 'All Products',    to: '/shop',       dot: null },
+                { label: 'Categories',      to: '/categories', dot: null },
+                { label: 'Koyambedu Daily', to: '/koyambedu',  dot: '#34d399' },
+                { label: 'Uzhavar Fresh',   to: '/uzhavar',    dot: '#a3e635' },
+                { label: 'EptoFresh',       to: '/eptofresh',  dot: '#fb923c' },
               ].map(item => {
                 const active = pathname === item.to || (item.to !== '/shop' && pathname.startsWith(item.to));
                 return (
                   <Link key={item.to} to={item.to}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors inline-flex items-center gap-1.5
                       ${active ? 'text-white bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/[0.06]'}`}>
+                    {item.dot && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: item.dot }} />}
                     {item.label}
                   </Link>
                 );
               })}
               <div className="flex-1" />
               <Link to="/seller/profile"
-                className="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all hover:brightness-110"
+                className="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all hover:brightness-110 inline-flex items-center gap-1.5"
                 style={{ color: '#f4941c', background: 'rgba(244,148,28,0.10)', border: '1px solid rgba(244,148,28,0.25)' }}>
-                🏪 Sell on Eptomart
+                <FiShoppingBag size={12} /> Sell on Eptomart
               </Link>
-              <span className="text-[11px] text-gray-500 font-medium whitespace-nowrap pl-2">
-                🚚 Free delivery above ₹999
+              <span className="text-[11px] text-gray-500 font-medium whitespace-nowrap pl-2 inline-flex items-center gap-1.5">
+                <FiTruck size={12} style={{ color: '#6DB651' }} /> Free delivery above ₹999
               </span>
             </nav>
           </div>

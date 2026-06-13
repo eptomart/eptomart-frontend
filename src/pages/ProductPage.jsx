@@ -7,6 +7,7 @@ import { Helmet } from 'react-helmet-async';
 import {
   FiShoppingCart, FiHeart, FiStar, FiTruck, FiShield,
   FiMinus, FiPlus, FiRepeat, FiColumns, FiInfo, FiArrowLeft, FiShare2,
+  FiAlertTriangle, FiZap, FiExternalLink, FiCamera,
 } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
@@ -290,7 +291,7 @@ export default function ProductPage() {
               )}
               {product.likeCount > 0 && (
                 <span className="text-xs text-red-500 flex items-center gap-1">
-                  ❤️ {product.likeCount} people saved this
+                  <FiHeart size={11} style={{ fill: 'currentColor' }} /> {product.likeCount} people saved this
                 </span>
               )}
               {product.repeatBuyerCount > 0 && (
@@ -348,7 +349,7 @@ export default function ProductPage() {
                     to={`/store/${product.seller._id}`}
                     className="flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold text-white bg-primary-500 hover:bg-primary-600 px-3 py-2 rounded-lg transition-colors whitespace-nowrap"
                   >
-                    🏪 Visit Store
+                    <FiExternalLink size={12} /> Visit Store
                   </Link>
                 </div>
               </div>
@@ -419,7 +420,7 @@ export default function ProductPage() {
             {/* Seller unavailable banner */}
             {isUnavailable && (
               <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4 text-sm text-red-700 flex items-start gap-2">
-                <span className="text-base">⚠️</span>
+                <FiAlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
                 <div>
                   <strong>Seller not available</strong>
                   <p className="text-red-600 mt-0.5 text-xs">This product's seller has been deactivated. You cannot add it to cart at this time.</p>
@@ -482,7 +483,7 @@ export default function ProductPage() {
                 ${(isUnavailable || activeStock === 0) ? 'opacity-50 cursor-not-allowed' : ''}
                 ${(requireVariantSelect && !selectedVariant) ? 'bg-gray-400 hover:bg-gray-500' : ''}`}
             >
-              {(requireVariantSelect && !selectedVariant) ? '⚡ Select Variant to Buy' : '⚡ Buy Now'}
+              <span className="inline-flex items-center gap-1.5"><FiZap size={14} />{(requireVariantSelect && !selectedVariant) ? 'Select Variant to Buy' : 'Buy Now'}</span>
             </button>
 
             {/* Delivery Estimate */}
@@ -523,7 +524,7 @@ export default function ProductPage() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-sm font-semibold text-pink-600 hover:text-pink-700 bg-pink-50 hover:bg-pink-100 border border-pink-200 rounded-xl px-4 py-2.5 transition-all mt-3 w-fit"
               >
-                <span className="text-base">📸</span>
+                <FiCamera size={15} />
                 View on Instagram
               </a>
             )}
@@ -534,7 +535,7 @@ export default function ProductPage() {
         {otherSellers.length > 0 && (
           <div className="card p-5 mb-8">
             <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              🏪 Also available from {otherSellers.length} other seller{otherSellers.length > 1 ? 's' : ''}
+              <FiGrid size={16} className="text-orange-400" /> Also available from {otherSellers.length} other seller{otherSellers.length > 1 ? 's' : ''}
             </h2>
             <div className="space-y-3">
               {otherSellers.map((listing, i) => {
@@ -551,7 +552,7 @@ export default function ProductPage() {
                     <div className="text-right">
                       <p className="font-bold text-primary-600">{formatINR(lPrice)}</p>
                       {listing.deliveryEstimate && (
-                        <p className="text-xs text-gray-500">🚚 {listing.deliveryEstimate.label}</p>
+                        <p className="text-xs text-gray-500 flex items-center gap-1"><FiTruck size={11} /> {listing.deliveryEstimate.label}</p>
                       )}
                     </div>
                     <button
@@ -651,7 +652,7 @@ export default function ProductPage() {
             disabled={activeStock === 0}
             className="flex-[1.4] py-2.5 rounded-xl text-sm font-bold text-white active:scale-95 transition-all disabled:opacity-50"
             style={{ background: 'linear-gradient(135deg,#ff9d30,#f4941c)' }}>
-            {activeStock === 0 ? 'Out of Stock' : (requireVariantSelect && !selectedVariant) ? 'Select Variant' : '⚡ Buy Now'}
+            {activeStock === 0 ? 'Out of Stock' : <span className="inline-flex items-center gap-1"><FiZap size={13} />{(requireVariantSelect && !selectedVariant) ? 'Select Variant' : 'Buy Now'}</span>}
           </button>
         </div>
       )}

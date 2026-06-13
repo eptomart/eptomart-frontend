@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiTrash2, FiShoppingBag, FiTruck, FiEdit2 } from 'react-icons/fi';
+import { FiTrash2, FiShoppingBag, FiTruck, FiEdit2, FiInfo, FiCheckCircle, FiZap, FiPackage, FiLock, FiGrid } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import QuantityControl from '../components/cart/QuantityControl';
@@ -47,8 +47,10 @@ export default function Cart() {
         <Helmet><title>Cart — Eptomart</title></Helmet>
         <Navbar />
         <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
-          <div className="w-28 h-28 rounded-full flex items-center justify-center text-6xl mb-5 animate-fade-in-up"
-            style={{ background: 'linear-gradient(135deg,#fff8ee,#ffecd0)' }}>🛒</div>
+          <div className="w-28 h-28 rounded-full flex items-center justify-center mb-5 animate-fade-in-up"
+            style={{ background: 'linear-gradient(135deg,#fff8ee,#ffecd0)' }}>
+            <FiShoppingBag size={52} style={{ color: '#f4941c' }} />
+          </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Your cart is empty</h2>
           <p className="text-gray-400 mb-6">Looks like you haven't added anything yet.</p>
           <Link to="/shop" className="btn-primary">Start Shopping →</Link>
@@ -79,8 +81,8 @@ export default function Cart() {
                 {/* Seller header */}
                 {group.seller && (
                   <div className="bg-orange-50 px-4 py-2.5 border-b border-orange-100">
-                    <p className="text-sm font-semibold text-gray-700">
-                      🏪 {group.seller.businessName || 'Seller'}
+                    <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                      <FiGrid size={13} className="text-orange-400" /> {group.seller.businessName || 'Seller'}
                     </p>
                   </div>
                 )}
@@ -151,9 +153,10 @@ export default function Cart() {
 
             {/* COD warning */}
             {isCodBlocked && (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-700">
-                ℹ️ <strong>Cash on Delivery not available</strong> for:{' '}
-                {codBlockedItems.map(i => i.name).join(', ')}. Please pay online.
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-700 flex items-start gap-2">
+                <FiInfo size={15} className="flex-shrink-0 mt-0.5" />
+                <span><strong>Cash on Delivery not available</strong> for:{' '}
+                {codBlockedItems.map(i => i.name).join(', ')}. Please pay online.</span>
               </div>
             )}
 
@@ -165,7 +168,7 @@ export default function Cart() {
 
               {cartGrandExShipping > FREE_SHIPPING_THRESHOLD ? (
                 <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-700 font-semibold">
-                  🎉 FREE shipping — orders above ₹{FREE_SHIPPING_THRESHOLD}
+                  <FiCheckCircle size={15} /> FREE shipping — orders above ₹{FREE_SHIPPING_THRESHOLD}
                 </div>
               ) : (
                 <>
@@ -209,7 +212,7 @@ export default function Cart() {
                     {shipping === LIGHT_SHIPPING && (
                       <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-orange-400 text-white text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">YOUR RATE</span>
                     )}
-                    <div className="text-xl mb-1">🛵</div>
+                    <div className="flex justify-center mb-1"><FiZap size={20} className="text-orange-400" /></div>
                     <p className="text-[11px] font-semibold text-gray-600 leading-tight">≤ 500g</p>
                     <p className="text-sm font-extrabold text-orange-500 mt-0.5">₹{LIGHT_SHIPPING}</p>
                   </div>
@@ -223,7 +226,7 @@ export default function Cart() {
                     {shipping === HEAVY_SHIPPING && (
                       <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-orange-400 text-white text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">YOUR RATE</span>
                     )}
-                    <div className="text-xl mb-1">🚚</div>
+                    <div className="flex justify-center mb-1"><FiTruck size={20} className="text-orange-400" /></div>
                     <p className="text-[11px] font-semibold text-gray-600 leading-tight">&gt; 500g</p>
                     <p className="text-sm font-extrabold text-orange-500 mt-0.5">₹{HEAVY_SHIPPING}</p>
                   </div>
@@ -237,7 +240,7 @@ export default function Cart() {
                     {shipping === 0 && (
                       <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">APPLIED ✓</span>
                     )}
-                    <div className="text-xl mb-1">🎁</div>
+                    <div className="flex justify-center mb-1"><FiPackage size={20} className="text-green-500" /></div>
                     <p className="text-[11px] font-semibold text-gray-600 leading-tight">Above ₹{FREE_SHIPPING_THRESHOLD}</p>
                     <p className="text-sm font-extrabold text-green-500 mt-0.5">FREE</p>
                   </div>
@@ -263,7 +266,7 @@ export default function Cart() {
                 <div className="flex justify-between text-gray-600">
                   <span>Shipping</span>
                   <span className={shipping === 0 ? 'text-green-600 font-semibold' : ''}>
-                    {shipping === 0 ? 'FREE 🎉' : formatINR(shipping)}
+                    {shipping === 0 ? 'FREE' : formatINR(shipping)}
                   </span>
                 </div>
                 {shipping === 0 && (
@@ -289,7 +292,7 @@ export default function Cart() {
                 Continue Shopping
               </Link>
 
-              <p className="text-xs text-gray-400 text-center mt-3">🔒 Secure checkout</p>
+              <p className="text-xs text-gray-400 text-center mt-3 flex items-center justify-center gap-1"><FiLock size={11} /> Secure checkout</p>
             </div>
           </div>
         </div>
