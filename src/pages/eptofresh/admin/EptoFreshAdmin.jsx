@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
-import { FiGrid, FiUsers, FiPackage, FiShoppingBag, FiDollarSign, FiTag, FiCheck, FiX, FiCamera, FiBarChart2, FiSettings, FiPlus, FiMapPin, FiArrowLeft } from 'react-icons/fi';
+import { FiGrid, FiUsers, FiPackage, FiShoppingBag, FiDollarSign, FiTag, FiCheck, FiX, FiCamera, FiBarChart2, FiSettings, FiPlus, FiMapPin, FiArrowLeft, FiEdit2, FiSave } from 'react-icons/fi';
 
 export default function EptoFreshAdmin() {
   const navigate  = useNavigate();
@@ -291,11 +291,177 @@ function AddSellerModal({ onClose, onCreated }) {
   );
 }
 
+function EditSellerModal({ seller, onClose, onUpdated }) {
+  const [form, setForm] = useState({
+    shopName:    seller.shopName    || '',
+    ownerName:   seller.ownerName   || '',
+    phone:       seller.contact?.phone || '',
+    email:       seller.contact?.email || '',
+    addressLine1: seller.address?.addressLine1 || '',
+    city:        seller.address?.city  || 'Chennai',
+    state:       seller.address?.state || 'Tamil Nadu',
+    pincode:     seller.address?.pincode || '',
+    lat:         seller.location?.coordinates ? String(seller.location.coordinates[1]) : '',
+    lng:         seller.location?.coordinates ? String(seller.location.coordinates[0]) : '',
+    categories:  seller.categories  || [],
+    fssaiNumber: seller.kyc?.fssaiNumber || '',
+    panNumber:   seller.kyc?.panNumber   || '',
+    gstNumber:   seller.kyc?.gstNumber   || '',
+  });
+  const [saving, setSaving]       = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const toggleCat = (k) => setForm(f => ({
+    ...f,
+    categories: f.categories.includes(k) ? f.categories.filter(c => c !== k) : [...f.categories, k],
+  }));
+
+  const getGPS = () => {
+    if (!navigator.geolocation) return toast.error('GPS not supported');
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        set('lat', pos.coords.latitude.toFixed(6));
+        set('lng', pos.coords.longitude.toFixed(6));
+        toast.success('GPS captured!');
+        setGpsLoading(false);
+      },
+      () => { toast.error('GPS denied'); setGpsLoading(false); }
+    );
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.shopName || !form.ownerName || !form.phone) {
+      toast.error('Shop name, owner name, and phone are required'); return;
+    }
+    setSaving(true);
+    try {
+      const { data } = await api.put(`/eptofresh/admin/sellers/${seller._id}`, form);
+      if (data.success) {
+        toast.success(`${form.shopName} updated!`);
+        onUpdated(data.seller || { ...seller, ...form });
+        onClose();
+      } else { toast.error(data.message || 'Update failed'); }
+    } catch (err) { toast.error(err.response?.data?.message || 'Update failed'); }
+    finally { setSaving(false); }
+  };
+
+  const inputStyle = {
+    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: 12, color: '#fff', padding: '10px 12px', fontSize: 15, width: '100%', outline: 'none',
+  };
+  const labelStyle = { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
+      <div
+        className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl overflow-y-auto"
+        style={{ background: '#0f2035', maxHeight: '92vh', padding: '24px 20px 40px' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-white font-bold text-lg flex items-center gap-2"><FiEdit2 size={16} className="text-orange-400" /> Edit Seller</h2>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
+            <FiX className="text-gray-400" size={16} />
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="space-y-4">
+          <div>
+            <label style={labelStyle}>Shop Name *</label>
+            <input style={inputStyle} value={form.shopName} onChange={e => set('shopName', e.target.value)} required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label style={labelStyle}>Owner Name *</label>
+              <input style={inputStyle} value={form.ownerName} onChange={e => set('ownerName', e.target.value)} required />
+            </div>
+            <div>
+              <label style={labelStyle}>Phone *</label>
+              <input style={inputStyle} type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} required />
+            </div>
+          </div>
+          <div>
+            <label style={labelStyle}>Email</label>
+            <input style={inputStyle} type="email" value={form.email} onChange={e => set('email', e.target.value)} />
+          </div>
+          <div>
+            <label style={labelStyle}>Address</label>
+            <input style={inputStyle} value={form.addressLine1} onChange={e => set('addressLine1', e.target.value)} placeholder="Street, area" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label style={labelStyle}>City</label>
+              <input style={inputStyle} value={form.city} onChange={e => set('city', e.target.value)} />
+            </div>
+            <div>
+              <label style={labelStyle}>Pincode</label>
+              <input style={inputStyle} type="tel" maxLength={6} value={form.pincode} onChange={e => set('pincode', e.target.value)} />
+            </div>
+          </div>
+
+          {/* GPS */}
+          <div>
+            <label style={labelStyle}><FiMapPin size={10} style={{ display:'inline', marginRight:3 }} />GPS Coordinates</label>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <input style={inputStyle} type="text" value={form.lat} onChange={e => set('lat', e.target.value)} placeholder="Latitude" />
+              <input style={inputStyle} type="text" value={form.lng} onChange={e => set('lng', e.target.value)} placeholder="Longitude" />
+            </div>
+            <button type="button" onClick={getGPS} disabled={gpsLoading}
+              className="w-full py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+              style={{ background: 'rgba(244,148,28,0.1)', color: '#f4941c', border: '1px solid rgba(244,148,28,0.2)' }}>
+              <FiMapPin size={12} /> {gpsLoading ? 'Getting GPS…' : 'Auto-fill GPS from current location'}
+            </button>
+          </div>
+
+          {/* Categories */}
+          <div>
+            <label style={labelStyle}>Categories</label>
+            <div className="flex flex-wrap gap-2">
+              {MEAT_CATEGORIES.map(c => (
+                <button key={c.key} type="button" onClick={() => toggleCat(c.key)}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                  style={{
+                    background: form.categories.includes(c.key) ? '#f4941c' : 'rgba(255,255,255,0.07)',
+                    color:      form.categories.includes(c.key) ? '#fff'    : 'rgba(255,255,255,0.5)',
+                    border:     form.categories.includes(c.key) ? 'none'    : '1px solid rgba(255,255,255,0.1)',
+                  }}>
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* KYC */}
+          <div>
+            <label style={labelStyle}>KYC Numbers</label>
+            <div className="space-y-2">
+              <input style={inputStyle} value={form.fssaiNumber} onChange={e => set('fssaiNumber', e.target.value)} placeholder="FSSAI Number" />
+              <input style={inputStyle} value={form.panNumber}   onChange={e => set('panNumber',   e.target.value)} placeholder="PAN Number" />
+              <input style={inputStyle} value={form.gstNumber}   onChange={e => set('gstNumber',   e.target.value)} placeholder="GST Number" />
+            </div>
+          </div>
+
+          <button type="submit" disabled={saving}
+            className="w-full py-4 rounded-2xl font-bold text-white text-base disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
+            style={{ background: '#f4941c' }}>
+            <FiSave size={16} /> {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function SellersTab() {
   const [sellers, setSellers]       = useState([]);
   const [filter, setFilter]         = useState('pending_review');
   const [acting, setActing]         = useState(null);
   const [showAdd, setShowAdd]       = useState(false);
+  const [editSeller, setEditSeller] = useState(null); // seller object being edited
   const [linkingId, setLinkingId]   = useState(null); // sellerId currently being linked
   const [linkPhone, setLinkPhone]   = useState('');
   const [linkEmail, setLinkEmail]   = useState('');
@@ -348,6 +514,10 @@ function SellersTab() {
     if (filter === 'approved') setSellers(s => [seller, ...s]);
   };
 
+  const onUpdated = (updated) => {
+    setSellers(s => s.map(x => x._id === updated._id ? { ...x, ...updated } : x));
+  };
+
   return (
     <div>
       {/* Header row */}
@@ -374,7 +544,7 @@ function SellersTab() {
           <div key={s._id} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <div className="flex items-start justify-between mb-2">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-white font-semibold">{s.shopName}</p>
                   {s.user
                     ? <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}>✓ linked</span>
@@ -383,12 +553,27 @@ function SellersTab() {
                 </div>
                 <p className="text-gray-400 text-xs">{s.ownerName} • {s.contact?.phone}</p>
                 <p className="text-gray-600 text-xs">{s.address?.city} • {s.address?.pincode}</p>
+                {s.location?.coordinates && (
+                  <p className="text-gray-700 text-[10px]">
+                    <FiMapPin size={9} style={{ display:'inline', marginRight:2 }} />
+                    {s.location.coordinates[1]?.toFixed(4)}, {s.location.coordinates[0]?.toFixed(4)}
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-1 mt-1">
                   {(s.categories || []).map(c => <span key={c} className="text-[10px] px-1.5 py-0.5 rounded capitalize" style={{ background: 'rgba(244,148,28,0.1)', color: '#f4941c' }}>{c.replace('_',' ')}</span>)}
                 </div>
               </div>
-              <div className="flex gap-2">
-                <a href={s.kyc?.panUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs underline">{s.kyc?.panNumber}</a>
+              <div className="flex flex-col items-end gap-1.5">
+                <button
+                  onClick={() => setEditSeller(s)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold"
+                  style={{ background: 'rgba(244,148,28,0.1)', color: '#f4941c', border: '1px solid rgba(244,148,28,0.2)' }}
+                >
+                  <FiEdit2 size={11} /> Edit
+                </button>
+                {s.kyc?.panUrl && (
+                  <a href={s.kyc.panUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-[10px] underline">{s.kyc.panNumber}</a>
+                )}
               </div>
             </div>
 
@@ -481,7 +666,8 @@ function SellersTab() {
         {sellers.length === 0 && <p className="text-gray-600 text-center py-8">No sellers in this status</p>}
       </div>
 
-      {showAdd && <AddSellerModal onClose={() => setShowAdd(false)} onCreated={onCreated} />}
+      {showAdd    && <AddSellerModal  onClose={() => setShowAdd(false)}    onCreated={onCreated} />}
+      {editSeller && <EditSellerModal onClose={() => setEditSeller(null)} onUpdated={onUpdated} seller={editSeller} />}
     </div>
   );
 }

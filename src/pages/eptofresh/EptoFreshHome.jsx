@@ -207,15 +207,39 @@ export default function EptoFreshHome() {
         )}
 
         {!loading && sellers.length > 0 && (
-          <div className="space-y-3 mt-4">
-            {sellers.map(seller => (
-              <SellerCard
-                key={seller._id}
-                seller={seller}
-                onClick={() => navigate(`/eptofresh/shop/${seller._id}`)}
-              />
-            ))}
-          </div>
+          <>
+            {/* Category results header */}
+            {activeCategory && (
+              <div className="flex items-center justify-between mt-4">
+                <div>
+                  <p className="text-white font-semibold text-sm">
+                    {sellers.length} store{sellers.length !== 1 ? 's' : ''} selling{' '}
+                    <span style={{ color: '#f4941c' }}>
+                      {CATEGORIES.find(c => c.key === activeCategory)?.label || activeCategory}
+                    </span>
+                    {userLocation ? ' near you' : ''}
+                  </p>
+                  <p className="text-gray-500 text-xs">Tap a store to browse & order</p>
+                </div>
+                <button
+                  onClick={() => { setActiveCategory(''); fetchSellers(userLocation, ''); }}
+                  className="text-xs px-2.5 py-1 rounded-full font-semibold"
+                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.5)' }}
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+            <div className="space-y-3 mt-3">
+              {sellers.map(seller => (
+                <SellerCard
+                  key={seller._id}
+                  seller={seller}
+                  onClick={() => navigate(`/eptofresh/shop/${seller._id}`)}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

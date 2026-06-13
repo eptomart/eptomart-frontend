@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, Outlet, useLocation } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
-import { FiGrid, FiPackage, FiShoppingBag, FiDollarSign, FiToggleLeft, FiToggleRight, FiLogOut, FiTag, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiGrid, FiPackage, FiShoppingBag, FiDollarSign, FiToggleLeft, FiToggleRight, FiLogOut, FiTag, FiChevronDown, FiChevronUp, FiHome, FiMapPin, FiClipboard, FiClock, FiAlertCircle } from 'react-icons/fi';
 
 const STATUS_COLORS = {
   placed: '#60a5fa', accepted: '#34d399', preparing: '#f59e0b',
@@ -136,6 +136,95 @@ function PromoRequestSection() {
   );
 }
 
+// ── Update Shop Location ──────────────────────────────────
+function UpdateLocationSection() {
+  const [open, setOpen]         = useState(false);
+  const [lat, setLat]           = useState('');
+  const [lng, setLng]           = useState('');
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [saving, setSaving]     = useState(false);
+
+  const getGPS = () => {
+    if (!navigator.geolocation) return toast.error('GPS not supported on this device');
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        setLat(pos.coords.latitude.toFixed(6));
+        setLng(pos.coords.longitude.toFixed(6));
+        toast.success('Location captured!');
+        setGpsLoading(false);
+      },
+      () => { toast.error('Location access denied. Please allow GPS in browser settings.'); setGpsLoading(false); }
+    );
+  };
+
+  const save = async () => {
+    if (!lat || !lng) return toast.error('Please capture your location first');
+    setSaving(true);
+    try {
+      const { data } = await api.put('/eptofresh/seller/profile', { locationLat: lat, locationLng: lng });
+      if (data.success) {
+        toast.success('Shop location updated! You will now appear in nearby buyer searches.');
+        setOpen(false);
+      } else {
+        toast.error(data.message || 'Failed to update location');
+      }
+    } catch { toast.error('Failed to update location'); } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="px-4 mt-3">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between rounded-2xl px-4 py-3"
+        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+      >
+        <div className="flex items-center gap-2">
+          <FiMapPin style={{ color: '#f4941c' }} size={15} />
+          <span className="text-white text-sm font-semibold">Update Shop Location</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(244,148,28,0.12)', color: '#f4941c' }}>GPS</span>
+        </div>
+        {open ? <FiChevronUp size={15} style={{ color: '#f4941c' }} /> : <FiChevronDown size={15} style={{ color: '#f4941c' }} />}
+      </button>
+
+      {open && (
+        <div className="mt-2 rounded-2xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <p className="text-gray-400 text-xs">Keep your GPS pin accurate so nearby customers can discover your shop. Open this page from your shop location for best results.</p>
+
+          <button
+            onClick={getGPS}
+            disabled={gpsLoading}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-60"
+            style={{
+              background: lat ? 'rgba(52,211,153,0.12)' : 'rgba(244,148,28,0.12)',
+              color:      lat ? '#34d399' : '#f4941c',
+              border: `1px solid ${lat ? 'rgba(52,211,153,0.2)' : 'rgba(244,148,28,0.2)'}`,
+            }}
+          >
+            <FiMapPin size={14} />
+            {gpsLoading
+              ? 'Getting location…'
+              : lat
+                ? `✓ ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`
+                : 'Capture Current Location'}
+          </button>
+
+          {lat && (
+            <button
+              onClick={save}
+              disabled={saving}
+              className="w-full py-2.5 rounded-xl font-bold text-white text-sm disabled:opacity-50"
+              style={{ background: '#f4941c' }}
+            >
+              {saving ? 'Saving…' : 'Save Location'}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function EptoFreshSellerDashboard() {
   const navigate   = useNavigate();
   const location   = useLocation();
@@ -176,9 +265,14 @@ export default function EptoFreshSellerDashboard() {
   if (dash?.seller?.status === 'rejected') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: '#0B1729' }}>
-        <div className="text-5xl mb-4">❌</div>
+        <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ background: 'rgba(248,113,113,0.12)' }}>
+          <FiAlertCircle size={32} className="text-red-400" />
+        </div>
         <h2 className="text-white text-xl font-bold mb-2">Application Rejected</h2>
         <p className="text-gray-400 text-sm">Please contact support for more information.</p>
+        <button onClick={() => window.location.href = '/eptofresh'} className="mt-5 px-5 py-2.5 rounded-2xl text-sm font-semibold text-white" style={{ background: '#f4941c' }}>
+          Back to EptoFresh
+        </button>
       </div>
     );
   }
@@ -190,7 +284,7 @@ export default function EptoFreshSellerDashboard() {
         <div className="px-4 pt-4">
           <div className="rounded-2xl px-4 py-3 flex items-start gap-3"
             style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)' }}>
-            <span className="text-xl mt-0.5">⏳</span>
+            <FiClock size={16} className="text-yellow-300 mt-0.5 shrink-0" />
             <div>
               <p className="text-yellow-300 font-semibold text-sm">Application Under Review</p>
               <p className="text-yellow-200/60 text-xs mt-0.5">You can set up your products now. Your shop will go live once admin approves your application (usually within 24 hours).</p>
@@ -201,6 +295,16 @@ export default function EptoFreshSellerDashboard() {
 
       {/* Header */}
       <div className="px-4 pt-4 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        {/* Back to EptoFresh home */}
+        <button
+          onClick={() => navigate('/eptofresh')}
+          className="flex items-center gap-1.5 mb-3 text-xs font-semibold"
+          style={{ color: 'rgba(255,255,255,0.35)' }}
+        >
+          <FiHome size={13} />
+          <span>EptoFresh Home</span>
+        </button>
+
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-white font-bold text-lg">{dash?.seller?.shopName}</h1>
@@ -220,12 +324,14 @@ export default function EptoFreshSellerDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mt-4">
           {[
-            { label: 'Today', value: dash?.stats?.todayOrders || 0, icon: '📋' },
-            { label: 'Pending', value: dash?.stats?.pendingOrders || 0, icon: '⏳' },
-            { label: 'Payout', value: `₹${(dash?.stats?.pendingPayout || 0).toFixed(0)}`, icon: '💰' },
+            { label: 'Today',   value: dash?.stats?.todayOrders  || 0,                              Icon: FiClipboard, color: '#60a5fa' },
+            { label: 'Pending', value: dash?.stats?.pendingOrders || 0,                              Icon: FiClock,     color: '#fbbf24' },
+            { label: 'Payout',  value: `₹${(dash?.stats?.pendingPayout || 0).toFixed(0)}`,           Icon: FiDollarSign,color: '#34d399' },
           ].map(s => (
             <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              <div className="text-xl mb-1">{s.icon}</div>
+              <div className="flex justify-center mb-1">
+                <s.Icon size={18} style={{ color: s.color }} />
+              </div>
               <div className="text-white font-bold text-sm">{s.value}</div>
               <div className="text-gray-500 text-[10px]">{s.label}</div>
             </div>
@@ -235,6 +341,9 @@ export default function EptoFreshSellerDashboard() {
 
       {/* Promo Code Request */}
       <PromoRequestSection />
+
+      {/* GPS Location Update */}
+      <UpdateLocationSection />
 
       {/* Recent orders */}
       <div className="px-4 mt-4">
