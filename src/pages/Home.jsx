@@ -333,44 +333,49 @@ function PromoBanner() {
   const timer = useRef(null);
   const restart = () => {
     clearInterval(timer.current);
-    timer.current = setInterval(() => setActive(a => (a + 1) % PROMOS.length), 4200);
+    timer.current = setInterval(() => setActive(a => (a + 1) % PROMOS.length), 4000);
   };
   useEffect(() => { restart(); return () => clearInterval(timer.current); }, []);
   const p = PROMOS[active];
+
   return (
     <div className="px-4">
-      <Link to={p.to}
-        className="relative flex items-center justify-between rounded-2xl px-5 py-5 overflow-hidden active:scale-[0.98] transition-all duration-500"
-        style={{ background: p.bg, boxShadow: `0 10px 32px ${p.glow}` }}>
+      <Link
+        to={p.to}
+        className="relative flex items-center gap-3 rounded-2xl px-4 py-3 overflow-hidden active:scale-[0.97] transition-transform duration-150"
+        style={{ background: p.bg, boxShadow: `0 4px 18px ${p.glow}` }}
+      >
+        {/* Shine overlay */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 55%)' }} />
+        {/* Ghost icon — right edge decoration only */}
+        <p.Icon className="absolute pointer-events-none" size={72}
+          style={{ right: -10, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.08)' }} />
 
-        {/* Top-right glow blob */}
-        <div className="absolute pointer-events-none" style={{ width: 200, height: 200, borderRadius: '50%', top: -80, right: -60, background: `radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 65%)` }} />
-        {/* Decorative circles */}
-        <div className="absolute pointer-events-none" style={{ width: 120, height: 120, borderRadius: '50%', bottom: -40, right: 90, border: '1.5px solid rgba(255,255,255,0.14)' }} />
-        <div className="absolute pointer-events-none" style={{ width: 70,  height: 70,  borderRadius: '50%', top: -20, right: 40, border: '1.5px solid rgba(255,255,255,0.10)' }} />
-        {/* Large ghost icon */}
-        <p.Icon className="absolute pointer-events-none" size={108} style={{ right: -16, bottom: -26, color: 'rgba(255,255,255,0.10)' }} />
-
-        <div key={active} className="relative z-10 animate-fade-in-up min-w-0">
-          {/* Tag pill */}
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold tracking-widest uppercase px-2.5 py-1 rounded-full mb-2"
-            style={{ color: 'rgba(255,255,255,0.95)', background: p.tagBg, border: '1px solid rgba(255,255,255,0.25)', backdropFilter: 'blur(4px)' }}>
-            <p.Icon size={9} /> {p.tag}
-          </span>
-          <p className="text-white font-black text-[22px] leading-tight tracking-tight drop-shadow-sm">{p.title}</p>
-          <p className="text-[11px] mt-1 font-semibold" style={{ color: 'rgba(255,255,255,0.72)' }}>{p.sub}</p>
+        {/* Icon badge */}
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 relative z-10"
+          style={{ background: 'rgba(255,255,255,0.20)', backdropFilter: 'blur(6px)' }}>
+          <p.Icon size={16} className="text-white" />
         </div>
 
-        <div className="relative z-10 flex flex-col items-end gap-2.5 flex-shrink-0 ml-3">
-          <span className="bg-white text-xs font-black pl-4 pr-3 py-2.5 rounded-xl whitespace-nowrap inline-flex items-center gap-1 shadow-lg"
-            style={{ color: '#111827' }}>
-            {p.cta} <FiArrowRight size={12} />
+        {/* Text */}
+        <div key={active} className="flex-1 min-w-0 relative z-10 animate-fade-in-up">
+          <p className="text-white font-black text-[15px] leading-tight truncate tracking-tight">{p.title}</p>
+          <p className="text-[10px] font-medium mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.68)' }}>{p.sub}</p>
+        </div>
+
+        {/* CTA + dots */}
+        <div className="flex flex-col items-end gap-1.5 shrink-0 relative z-10">
+          <span
+            className="bg-white text-[11px] font-black px-3 py-1.5 rounded-xl inline-flex items-center gap-1 shadow"
+            style={{ color: '#111827' }}
+          >
+            {p.cta} <FiArrowRight size={10} />
           </span>
-          {/* Dot indicators */}
           <div className="flex gap-1">
             {PROMOS.map((_, i) => (
               <button key={i} onClick={e => { e.preventDefault(); setActive(i); restart(); }}
-                className={`h-1.5 rounded-full transition-all ${i === active ? 'w-5 bg-white' : 'w-1.5 bg-white/40'}`} />
+                className={`h-1 rounded-full transition-all duration-300 ${i === active ? 'w-4 bg-white' : 'w-1 bg-white/35'}`} />
             ))}
           </div>
         </div>
@@ -403,12 +408,21 @@ function MobileCategoryStrip() {
     <div className="flex gap-2.5 overflow-x-auto scrollbar-hide px-4 pt-3 pb-0.5">
       {cats.map(c => (
         <Link key={c.key} to={c.to}
-          className="flex-shrink-0 flex flex-col items-center gap-1 w-[58px] active:scale-95 transition-transform">
-          <div className="w-[50px] h-[50px] rounded-2xl flex items-center justify-center border shadow-card"
-            style={{ background: `${c.color}12`, borderColor: `${c.color}26` }}>
-            <c.Icon size={20} style={{ color: c.color }} />
+          className="flex-shrink-0 flex flex-col items-center gap-1.5 w-[58px] active:scale-90 transition-transform duration-150">
+          <div
+            className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center relative overflow-hidden"
+            style={{
+              background: `linear-gradient(145deg, ${c.color}cc 0%, ${c.color} 100%)`,
+              boxShadow: `0 4px 12px ${c.color}55, 0 1px 4px rgba(0,0,0,0.16)`,
+            }}
+          >
+            {/* Top-left shine */}
+            <div className="absolute inset-0 pointer-events-none"
+              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.30) 0%, transparent 55%)' }} />
+            <c.Icon size={22} className="relative z-10"
+              style={{ color: '#fff', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.28))' }} />
           </div>
-          <span className="text-[9.5px] font-bold text-gray-700 text-center leading-tight whitespace-nowrap">{c.label}</span>
+          <span className="text-[10px] font-bold text-gray-800 text-center leading-tight whitespace-nowrap">{c.label}</span>
         </Link>
       ))}
     </div>
