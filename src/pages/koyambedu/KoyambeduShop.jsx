@@ -268,8 +268,8 @@ export default function KoyambeduShop() {
             </div>
           )}
 
-        </div>{/* end max-w-7xl */}
-      </div>{/* end page wrapper */}
+        </div>
+      </div>
 
       <BottomNav />
 
