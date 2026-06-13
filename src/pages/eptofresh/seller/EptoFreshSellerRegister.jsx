@@ -1,11 +1,11 @@
 // ============================================
 // EPTOFRESH SELLER REGISTRATION
 // ============================================
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
-import { FiArrowLeft, FiMapPin, FiUpload } from 'react-icons/fi';
+import { FiArrowLeft, FiMapPin, FiUpload, FiEdit2 } from 'react-icons/fi';
 
 const CATEGORIES = [
   { key: 'chicken', label: '🍗 Chicken' },
@@ -42,25 +42,31 @@ export default function EptoFreshSellerRegister() {
     }));
   };
 
-  const getGPS = () => {
-    if (!navigator.geolocation) return toast.error('GPS not supported');
-    setGpsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        update('locationLat', pos.coords.latitude.toString());
-        update('locationLng', pos.coords.longitude.toString());
-        toast.success('Location captured!');
-        setGpsLoading(false);
-      },
-      () => { toast.error('GPS denied'); setGpsLoading(false); }
-    );
+  // Read location back when user returns from the map picker
+  const readLocationFromStorage = () => {
+    const saved = localStorage.getItem('eptofresh_seller_reg_location');
+    if (saved) {
+      try {
+        const { lat, lng, label } = JSON.parse(saved);
+        update('locationLat', lat);
+        update('locationLng', lng);
+        localStorage.removeItem('eptofresh_seller_reg_location');
+      } catch { /* ignore */ }
+    }
   };
+
+  useEffect(() => {
+    readLocationFromStorage();
+    const onFocus = () => readLocationFromStorage();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
 
   const handleSubmit = async () => {
     if (!form.shopName || !form.ownerName || !form.contactPhone || !form.fssaiNumber) {
       return toast.error('Please fill all required fields');
     }
-    if (!form.locationLat) return toast.error('Please capture your shop GPS location');
+    if (!form.locationLat) return toast.error('Please pin your shop location on the map');
     if (!form.categories.length) return toast.error('Select at least one category');
 
     setSubmitting(true);
@@ -132,12 +138,22 @@ export default function EptoFreshSellerRegister() {
             </div>
 
             <div>
-              <label className="text-gray-400 text-xs mb-1 block">Shop GPS Location <span className="text-red-400">*</span></label>
-              <button onClick={getGPS} className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-                style={{ background: form.locationLat ? 'rgba(52,211,153,0.12)' : 'rgba(244,148,28,0.12)', color: form.locationLat ? '#34d399' : '#f4941c', border: `1px solid ${form.locationLat ? 'rgba(52,211,153,0.2)' : 'rgba(244,148,28,0.2)'}` }}>
-                <FiMapPin size={14} />
-                {gpsLoading ? 'Getting location...' : form.locationLat ? `✓ Location captured (${parseFloat(form.locationLat).toFixed(4)}, ${parseFloat(form.locationLng).toFixed(4)})` : 'Capture Shop Location'}
+              <label className="text-gray-400 text-xs mb-1 block">Shop Location on Map <span className="text-red-400">*</span></label>
+              <button
+                onClick={() => navigate('/eptofresh/seller/location?source=register')}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+                style={{
+                  background: form.locationLat ? 'rgba(52,211,153,0.12)' : 'rgba(244,148,28,0.12)',
+                  color:      form.locationLat ? '#34d399' : '#f4941c',
+                  border:     `1px solid ${form.locationLat ? 'rgba(52,211,153,0.2)' : 'rgba(244,148,28,0.2)'}`,
+                }}
+              >
+                {form.locationLat
+                  ? <><FiMapPin size={14} /> ✓ Location pinned ({parseFloat(form.locationLat).toFixed(4)}, {parseFloat(form.locationLng).toFixed(4)}) — Tap to change</>
+                  : <><FiMapPin size={14} /> Pin Shop Location on Map</>
+                }
               </button>
+              <p className="text-gray-600 text-[11px] mt-1 ml-1">Opens a map — drag the pin to your exact shop.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

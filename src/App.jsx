@@ -95,8 +95,9 @@ const EptoFreshSellerProducts  = lazy(() => import('./pages/eptofresh/seller/Ept
 const EptoFreshSellerOrders    = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerOrders'));
 const EptoFreshSellerOrderDetail = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerOrders').then(m => ({ default: m.EptoFreshSellerOrderDetail })));
 const EptoFreshSellerPayouts   = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerPayouts'));
-const EptoFreshAdmin           = lazy(() => import('./pages/eptofresh/admin/EptoFreshAdmin'));
-const EptoFreshLocationPicker  = lazy(() => import('./pages/eptofresh/EptoFreshLocationPicker').then(m => ({ default: m.EptoFreshLocationPicker })));
+const EptoFreshAdmin                  = lazy(() => import('./pages/eptofresh/admin/EptoFreshAdmin'));
+const EptoFreshLocationPicker         = lazy(() => import('./pages/eptofresh/EptoFreshLocationPicker').then(m => ({ default: m.EptoFreshLocationPicker })));
+const EptoFreshSellerLocationPicker   = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerLocationPicker'));
 
 // ── Seller pages ─────────────────────────────
 const SellerLayout  = lazy(() => import('./pages/seller/SellerLayout'));
@@ -270,6 +271,7 @@ function AppRoutes() {
           <Route path="/eptofresh/orders/:orderId"              element={<ProtectedRoute><EptoFreshOrderDetail /></ProtectedRoute>} />
           <Route path="/eptofresh/orders/:orderId/tracking"     element={<ProtectedRoute><EptoFreshTracking /></ProtectedRoute>} />
           <Route path="/eptofresh/seller/register"              element={<ProtectedRoute><EptoFreshSellerRegister /></ProtectedRoute>} />
+          <Route path="/eptofresh/seller/location"              element={<ProtectedRoute><EptoFreshSellerLocationPicker /></ProtectedRoute>} />
           <Route path="/eptofresh/seller"                       element={<ProtectedRoute><EptoFreshSellerDashboard /></ProtectedRoute>} />
           <Route path="/eptofresh/seller/products"              element={<ProtectedRoute><EptoFreshSellerProducts /></ProtectedRoute>} />
           <Route path="/eptofresh/seller/orders"                element={<ProtectedRoute><EptoFreshSellerOrders /></ProtectedRoute>} />

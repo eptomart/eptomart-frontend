@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, Outlet, useLocation } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
-import { FiGrid, FiPackage, FiShoppingBag, FiDollarSign, FiToggleLeft, FiToggleRight, FiLogOut, FiTag, FiChevronDown, FiChevronUp, FiHome, FiMapPin, FiClipboard, FiClock, FiAlertCircle } from 'react-icons/fi';
+import { FiGrid, FiPackage, FiShoppingBag, FiDollarSign, FiToggleLeft, FiToggleRight, FiLogOut, FiTag, FiChevronDown, FiChevronUp, FiHome, FiMapPin, FiList, FiClock, FiAlertCircle } from 'react-icons/fi';
 
 const STATUS_COLORS = {
   placed: '#60a5fa', accepted: '#34d399', preparing: '#f59e0b',
@@ -136,91 +136,24 @@ function PromoRequestSection() {
   );
 }
 
-// ── Update Shop Location ──────────────────────────────────
-function UpdateLocationSection() {
-  const [open, setOpen]         = useState(false);
-  const [lat, setLat]           = useState('');
-  const [lng, setLng]           = useState('');
-  const [gpsLoading, setGpsLoading] = useState(false);
-  const [saving, setSaving]     = useState(false);
-
-  const getGPS = () => {
-    if (!navigator.geolocation) return toast.error('GPS not supported on this device');
-    setGpsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        setLat(pos.coords.latitude.toFixed(6));
-        setLng(pos.coords.longitude.toFixed(6));
-        toast.success('Location captured!');
-        setGpsLoading(false);
-      },
-      () => { toast.error('Location access denied. Please allow GPS in browser settings.'); setGpsLoading(false); }
-    );
-  };
-
-  const save = async () => {
-    if (!lat || !lng) return toast.error('Please capture your location first');
-    setSaving(true);
-    try {
-      const { data } = await api.put('/eptofresh/seller/profile', { locationLat: lat, locationLng: lng });
-      if (data.success) {
-        toast.success('Shop location updated! You will now appear in nearby buyer searches.');
-        setOpen(false);
-      } else {
-        toast.error(data.message || 'Failed to update location');
-      }
-    } catch { toast.error('Failed to update location'); } finally { setSaving(false); }
-  };
-
+// ── Update Shop Location (map-based) ─────────────────────
+function UpdateLocationSection({ navigate }) {
   return (
     <div className="px-4 mt-3">
       <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center justify-between rounded-2xl px-4 py-3"
+        onClick={() => navigate('/eptofresh/seller/location')}
+        className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 transition-all active:scale-[0.98]"
         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
       >
-        <div className="flex items-center gap-2">
-          <FiMapPin style={{ color: '#f4941c' }} size={15} />
-          <span className="text-white text-sm font-semibold">Update Shop Location</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(244,148,28,0.12)', color: '#f4941c' }}>GPS</span>
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(244,148,28,0.12)' }}>
+          <FiMapPin size={16} style={{ color: '#f4941c' }} />
         </div>
-        {open ? <FiChevronUp size={15} style={{ color: '#f4941c' }} /> : <FiChevronDown size={15} style={{ color: '#f4941c' }} />}
+        <div className="flex-1 text-left">
+          <p className="text-white text-sm font-semibold">Update Shop Location</p>
+          <p className="text-gray-500 text-[11px] mt-0.5">Pin your exact location on map so customers can find you</p>
+        </div>
+        <FiChevronDown size={14} style={{ color: 'rgba(255,255,255,0.3)', transform: 'rotate(-90deg)' }} />
       </button>
-
-      {open && (
-        <div className="mt-2 rounded-2xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <p className="text-gray-400 text-xs">Keep your GPS pin accurate so nearby customers can discover your shop. Open this page from your shop location for best results.</p>
-
-          <button
-            onClick={getGPS}
-            disabled={gpsLoading}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-60"
-            style={{
-              background: lat ? 'rgba(52,211,153,0.12)' : 'rgba(244,148,28,0.12)',
-              color:      lat ? '#34d399' : '#f4941c',
-              border: `1px solid ${lat ? 'rgba(52,211,153,0.2)' : 'rgba(244,148,28,0.2)'}`,
-            }}
-          >
-            <FiMapPin size={14} />
-            {gpsLoading
-              ? 'Getting location…'
-              : lat
-                ? `✓ ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`
-                : 'Capture Current Location'}
-          </button>
-
-          {lat && (
-            <button
-              onClick={save}
-              disabled={saving}
-              className="w-full py-2.5 rounded-xl font-bold text-white text-sm disabled:opacity-50"
-              style={{ background: '#f4941c' }}
-            >
-              {saving ? 'Saving…' : 'Save Location'}
-            </button>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -324,7 +257,7 @@ export default function EptoFreshSellerDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mt-4">
           {[
-            { label: 'Today',   value: dash?.stats?.todayOrders  || 0,                              Icon: FiClipboard, color: '#60a5fa' },
+            { label: 'Today',   value: dash?.stats?.todayOrders  || 0,                              Icon: FiList,      color: '#60a5fa' },
             { label: 'Pending', value: dash?.stats?.pendingOrders || 0,                              Icon: FiClock,     color: '#fbbf24' },
             { label: 'Payout',  value: `₹${(dash?.stats?.pendingPayout || 0).toFixed(0)}`,           Icon: FiDollarSign,color: '#34d399' },
           ].map(s => (
@@ -342,8 +275,8 @@ export default function EptoFreshSellerDashboard() {
       {/* Promo Code Request */}
       <PromoRequestSection />
 
-      {/* GPS Location Update */}
-      <UpdateLocationSection />
+      {/* Map Location Update */}
+      <UpdateLocationSection navigate={navigate} />
 
       {/* Recent orders */}
       <div className="px-4 mt-4">

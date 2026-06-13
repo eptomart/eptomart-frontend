@@ -69,7 +69,9 @@ export default function EptoFreshHome() {
   const fetchSellers = useCallback(async (loc, category) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ radius: 30 });
+      // No radius cap — show ALL approved sellers regardless of distance.
+      // If user has a location, pass lat/lng so distance can be calculated for display.
+      const params = new URLSearchParams();
       if (loc) { params.set('lat', loc.lat); params.set('lng', loc.lng); }
       if (category) params.set('category', category);
       const { data } = await api.get(`/eptofresh/sellers?${params}`);
