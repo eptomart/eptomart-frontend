@@ -7,13 +7,25 @@ import api from '../../utils/api';
 import toast from 'react-hot-toast';
 import {
   FiMapPin, FiStar, FiClock, FiChevronRight, FiSearch,
-  FiShoppingBag, FiEdit2, FiGrid, FiAlertTriangle, FiX, FiChevronDown,
+  FiShoppingBag, FiEdit2, FiGrid, FiAlertTriangle, FiX, FiChevronDown, FiArrowLeft,
 } from 'react-icons/fi';
 import { FaDrumstickBite, FaFish, FaBone, FaBacon, FaFireAlt, FaStore } from 'react-icons/fa';
-import { GiSteak } from 'react-icons/gi';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
 import { useAuth } from '../../context/AuthContext';
-import Navbar from '../../components/common/Navbar';
+
+// ── Shop initial avatar (initial letter colored circle) ──
+function ShopAvatar({ name, image, size = 70 }) {
+  const initial = (name || 'S').charAt(0).toUpperCase();
+  const colors = ['#f97316','#ef4444','#3b82f6','#0d9488','#9333ea','#d97706','#16a34a'];
+  const color  = colors[initial.charCodeAt(0) % colors.length];
+  if (image) return <img src={image} alt={name} className="w-full h-full object-cover" />;
+  return (
+    <div className="w-full h-full flex items-center justify-center font-black text-white rounded-xl"
+      style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)`, fontSize: size * 0.42 }}>
+      {initial}
+    </div>
+  );
+}
 
 const CATEGORIES = [
   { key: '',              label: 'All',           Icon: FiGrid,          color: '#f4941c', bg: '#fff4e6' },
@@ -99,22 +111,25 @@ export default function EptoFreshHome() {
 
   return (
     <div className="min-h-screen pb-28 w-full overflow-x-hidden" style={{ background: '#F5F4F2' }}>
-      <Navbar />
 
-      {/* ── BRANDED HERO ── */}
-      <div style={{
+      {/* ── BRANDED HERO — no Navbar, compact sticky ── */}
+      <div className="sticky top-0 z-30" style={{
         background: 'linear-gradient(135deg, #ea6c0a 0%, #f4941c 50%, #f9b048 100%)',
         boxShadow: '0 4px 24px rgba(244,148,28,0.3)',
+        paddingTop: 'env(safe-area-inset-top)',
       }}>
-        <div className="px-4 pt-4 pb-5">
+        <div className="px-4 pt-3 pb-5">
 
           {/* Top row */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}>
-                <FaDrumstickBite size={15} className="text-white" />
-              </div>
+              {/* Back to main home */}
+              <button
+                onClick={() => navigate('/')}
+                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition-all"
+                style={{ background: 'rgba(255,255,255,0.2)' }}>
+                <FiArrowLeft size={15} className="text-white" />
+              </button>
               <div>
                 <div className="flex items-center gap-1.5">
                   <h1 className="text-white text-base font-extrabold tracking-tight leading-none">EptoFresh</h1>
@@ -360,17 +375,9 @@ function SellerCard({ seller, onClick, index = 0 }) {
       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 16px rgba(0,0,0,0.07)'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.04)'; }}
     >
       <div className="p-3.5 flex items-center gap-3">
-        {/* Shop image */}
-        <div className="relative w-[70px] h-[70px] rounded-xl overflow-hidden shrink-0"
-          style={{ background: '#FFF4E6' }}>
-          {seller.shopImage
-            ? <img src={seller.shopImage} alt={seller.shopName} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-            : (
-              <div className="w-full h-full flex flex-col items-center justify-center"
-                style={{ background: 'linear-gradient(135deg,#fff4e6,#ffe8c8)' }}>
-                <GiSteak size={28} style={{ color: '#f4941c' }} />
-              </div>
-            )}
+        {/* Shop avatar (initial letter) */}
+        <div className="relative w-[70px] h-[70px] rounded-xl overflow-hidden shrink-0">
+          <ShopAvatar name={seller.shopName} image={seller.shopImage} size={70} />
           {/* Open/closed dot */}
           <div
             className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 border-white"

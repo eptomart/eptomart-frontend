@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
-import Navbar from '../../components/common/Navbar';
 import BottomNav from '../../components/common/BottomNav';
 import toast from 'react-hot-toast';
 
@@ -137,78 +136,85 @@ export default function KoyambeduShop() {
   const activeCategory = categories.find(c => c._id === categoryId);
 
   return (
-    <>
-      <Navbar />
+    <div className="min-h-screen bg-[#f5f5f7] pb-24" style={{ paddingBottom: itemCount > 0 ? 140 : 96 }}>
 
-      <main className="min-h-screen bg-[#f5f5f7] pb-24 md:pb-8">
-        <div className="max-w-7xl mx-auto">
-
-          {/* ── Page Header (Koyambedu green) ── */}
-          <div style={{ background: 'linear-gradient(135deg,#14532d,#16a34a)' }} className="px-4 pt-5 pb-4 text-white md:rounded-b-2xl">
-            <div className="flex items-center gap-3 mb-3">
-              <button onClick={() => navigate('/koyambedu')} className="text-white/80 p-1 hover:bg-white/10 rounded-lg transition">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
-                </svg>
-              </button>
-              <div className="flex-1">
-                <h1 className="font-black text-lg">
-                  {activeCategory ? `${activeCategory.icon || '🌿'} ${activeCategory.name}` : 'Shop Fresh Market'}
-                </h1>
-                {/* Distance from Koyambedu market */}
-                {distToMarket != null && (
-                  <p className="text-white/80 text-xs mt-0.5 flex items-center gap-1">
-                    <span>📍</span>
-                    <span>
-                      {locationLabel ? `${locationLabel} · ` : ''}{distToMarket} km from Koyambedu market
-                      {distToMarket <= 7 ? ' · Delivery available' : ' · Outside zone'}
-                    </span>
-                  </p>
-                )}
-              </div>
-              <Link to="/koyambedu/cart" className="relative p-1">
-                <span className="text-xl">🛍️</span>
-                {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center">{itemCount}</span>
-                )}
-              </Link>
-            </div>
-            {/* Search */}
-            <div className="relative">
-              <input
-                value={search}
-                onChange={e => setParam('search', e.target.value)}
-                placeholder="Search vegetables, fruits, flowers..."
-                className="w-full bg-white/15 backdrop-blur border border-white/30 rounded-xl px-4 py-2.5 text-white placeholder-white/60 text-sm focus:outline-none focus:ring-2 focus:ring-white/40"
-              />
-              {search && (
-                <button onClick={() => setParam('search', '')} className="absolute right-3 top-2.5 text-white/60">✕</button>
-              )}
-            </div>
+      {/* ── Compact sticky green header (no Navbar) ── */}
+      <div className="sticky top-0 z-30" style={{
+        background: 'linear-gradient(135deg,#14532d,#16a34a)',
+        paddingTop: 'env(safe-area-inset-top)',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
+      }}>
+        {/* Title row */}
+        <div className="px-4 pt-3 pb-2 flex items-center gap-3">
+          <button onClick={() => navigate('/koyambedu')}
+            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition"
+            style={{ background: 'rgba(255,255,255,0.15)' }}>
+            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-black text-white text-base leading-tight">
+              {activeCategory ? `${activeCategory.icon || '🌿'} ${activeCategory.name}` : '🌿 Shop Fresh Market'}
+            </h1>
+            {distToMarket != null && (
+              <p className="text-white/75 text-[11px] mt-0.5">
+                📍 {locationLabel ? `${locationLabel} · ` : ''}{distToMarket} km from market
+                {distToMarket <= 7 ? ' · Delivery available ✓' : ' · Outside zone'}
+              </p>
+            )}
           </div>
+          <Link to="/koyambedu/cart" className="relative w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+            style={{ background: itemCount > 0 ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)' }}>
+            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 2.3A1 1 0 006 17h12M17 17a2 2 0 100 4 2 2 0 000-4zm-8 0a2 2 0 100 4 2 2 0 000-4z"/>
+            </svg>
+            {itemCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-orange-500 rounded-full text-white text-[9px] font-black flex items-center justify-center">{itemCount}</span>
+            )}
+          </Link>
+        </div>
 
-          {/* ── Filters ── */}
-          <div className="px-4 py-3 flex gap-2 overflow-x-auto scrollbar-hide">
-            {['', 'today', 'tomorrow'].map(dt => (
-              <button key={dt}
-                onClick={() => setParam('deliveryType', dt)}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap border transition ${
-                  deliveryType === dt
-                    ? 'bg-green-600 text-white border-green-600'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-green-400'
-                }`}>
-                {dt === '' ? 'All' : dt === 'today' ? '⚡ Today' : '📅 Tomorrow'}
-              </button>
-            ))}
-            <select value={sortBy} onChange={e => setParam('sort', e.target.value)}
-              className="text-xs font-semibold px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-600 focus:outline-none focus:border-green-400">
-              <option value="default">Default</option>
-              <option value="price_asc">Price ↑</option>
-              <option value="price_desc">Price ↓</option>
-              <option value="fresh">Freshest</option>
-              <option value="popular">Popular</option>
-            </select>
-          </div>
+        {/* Search */}
+        <div className="px-4 pb-3 relative">
+          <input
+            value={search}
+            onChange={e => setParam('search', e.target.value)}
+            placeholder="Search vegetables, fruits, flowers..."
+            className="w-full rounded-xl px-4 py-2.5 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-white/60"
+            style={{ fontSize: 16 }}
+          />
+          {search && (
+            <button onClick={() => setParam('search', '')}
+              className="absolute right-7 top-2.5 text-gray-400 font-bold">✕</button>
+          )}
+        </div>
+
+        {/* Filters strip */}
+        <div className="px-4 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
+          {['', 'today', 'tomorrow'].map(dt => (
+            <button key={dt}
+              onClick={() => setParam('deliveryType', dt)}
+              className={`text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shrink-0 transition ${
+                deliveryType === dt
+                  ? 'bg-white text-green-700'
+                  : 'bg-white/20 text-white border border-white/30'
+              }`}>
+              {dt === '' ? 'All' : dt === 'today' ? '⚡ Today' : '📅 Tomorrow'}
+            </button>
+          ))}
+          <select value={sortBy} onChange={e => setParam('sort', e.target.value)}
+            className="text-xs font-bold px-3 py-1.5 rounded-full shrink-0 bg-white/20 text-white border border-white/30 focus:outline-none">
+            <option value="default" className="text-gray-800">Default</option>
+            <option value="price_asc" className="text-gray-800">Price ↑</option>
+            <option value="price_desc" className="text-gray-800">Price ↓</option>
+            <option value="fresh" className="text-gray-800">Freshest</option>
+            <option value="popular" className="text-gray-800">Popular</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto">
 
           {/* ── Category pills ── */}
           {categories.length > 0 && (
@@ -263,22 +269,25 @@ export default function KoyambeduShop() {
           )}
 
         </div>{/* end max-w-7xl */}
-      </main>
+      </div>{/* end page wrapper */}
 
       <BottomNav />
 
-      {/* ── Sticky cart pill (sits above bottom nav) ── */}
+      {/* ── Sticky cart bar (above bottom nav) ── */}
       {itemCount > 0 && (
-        <div className="fixed bottom-20 md:bottom-6 left-4 right-4 max-w-lg mx-auto bg-green-600 text-white px-4 py-3 flex items-center justify-between z-[9990] shadow-xl rounded-2xl">
-          <div>
-            <p className="text-xs opacity-80">{itemCount} item{itemCount > 1 ? 's' : ''}</p>
-            <p className="font-bold text-sm">₹{subtotal.toLocaleString('en-IN')}</p>
+        <div className="fixed bottom-16 left-4 right-4 max-w-lg mx-auto z-40"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="bg-green-600 text-white px-4 py-3 flex items-center justify-between rounded-2xl shadow-xl">
+            <div>
+              <p className="text-xs opacity-80">{itemCount} item{itemCount > 1 ? 's' : ''}</p>
+              <p className="font-bold text-sm">₹{subtotal.toLocaleString('en-IN')}</p>
+            </div>
+            <Link to="/koyambedu/cart" className="bg-white text-green-700 font-bold text-sm px-5 py-2 rounded-xl">
+              View Cart →
+            </Link>
           </div>
-          <Link to="/koyambedu/cart" className="bg-white text-green-700 font-bold text-sm px-5 py-2 rounded-xl">
-            View Cart →
-          </Link>
         </div>
       )}
-    </>
+    </div>
   );
 }
