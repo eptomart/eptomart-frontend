@@ -9,6 +9,8 @@ import {
   FiArrowLeft, FiStar, FiMapPin, FiShoppingCart,
   FiPlus, FiMinus, FiAlertTriangle, FiClock,
 } from 'react-icons/fi';
+import { GiSteak, GiChickenLeg, GiShrimp, GiMeat, GiRoastChicken } from 'react-icons/gi';
+import { FaFish } from 'react-icons/fa';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
 import Navbar from '../../components/common/Navbar';
 
@@ -29,7 +31,8 @@ export default function EptoFreshShop() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [deliveryInfo, setDeliveryInfo] = useState(null);
 
-  useEffect(() => { fetchShop(); }, [sellerId]);
+  // Re-fetch when sellerId changes OR when location becomes available
+  useEffect(() => { fetchShop(); }, [sellerId, userLocation?.lat, userLocation?.lng]);
 
   const fetchShop = async () => {
     setLoading(true);
@@ -106,7 +109,7 @@ export default function EptoFreshShop() {
             style={{ background: 'linear-gradient(135deg,#fff4e6,#ffe8c8)' }}>
             {seller?.shopImage
               ? <img src={seller.shopImage} alt={seller?.shopName} className="w-full h-full object-cover" />
-              : <span className="text-2xl">🥩</span>}
+              : <GiSteak size={26} style={{ color: '#f4941c' }} />}
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-gray-900 text-base font-bold truncate">{seller?.shopName}</h1>
@@ -204,6 +207,21 @@ export default function EptoFreshShop() {
   );
 }
 
+// Category-based icon placeholder
+function ProductPlaceholder({ category }) {
+  const map = {
+    chicken:      { Icon: GiChickenLeg,   color: '#f97316' },
+    mutton:       { Icon: GiMeat,         color: '#ef4444' },
+    fish:         { Icon: FaFish,         color: '#3b82f6' },
+    seafood:      { Icon: GiShrimp,       color: '#0d9488' },
+    beef:         { Icon: GiSteak,        color: '#b91c1c' },
+    pork:         { Icon: GiRoastChicken, color: '#9333ea' },
+    ready_to_cook:{ Icon: GiRoastChicken, color: '#d97706' },
+  };
+  const { Icon = GiSteak, color = '#f4941c' } = map[category] || {};
+  return <Icon size={32} style={{ color }} />;
+}
+
 function ProductCard({ product, qty, sellerId, sellerName, onAdd, onUpdate }) {
   const [selectedVariant, setSelectedVariant] = useState(product.variants?.[0] || null);
   const [adding, setAdding] = useState(false);
@@ -233,10 +251,11 @@ function ProductCard({ product, qty, sellerId, sellerName, onAdd, onUpdate }) {
       style={{ boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
 
       {/* Product image */}
-      <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 flex items-center justify-center bg-gray-50">
+      <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
+        style={{ background: 'linear-gradient(135deg, #fff4e6, #ffe8c8)' }}>
         {product.images?.[0]?.url
           ? <img src={product.images[0].url} alt={product.name} className="w-full h-full object-cover" />
-          : <span className="text-3xl">🥩</span>}
+          : <ProductPlaceholder category={product.category} />}
       </div>
 
       <div className="flex-1 min-w-0">

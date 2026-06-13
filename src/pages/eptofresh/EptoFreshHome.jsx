@@ -9,7 +9,8 @@ import {
   FiMapPin, FiStar, FiClock, FiChevronRight, FiSearch,
   FiShoppingBag, FiEdit2, FiGrid, FiAlertTriangle, FiX, FiChevronDown,
 } from 'react-icons/fi';
-import { FaDrumstickBite, FaFish, FaBone, FaBacon, FaFireAlt } from 'react-icons/fa';
+import { FaDrumstickBite, FaFish, FaBone, FaBacon, FaFireAlt, FaStore } from 'react-icons/fa';
+import { GiSteak } from 'react-icons/gi';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/common/Navbar';
@@ -365,9 +366,9 @@ function SellerCard({ seller, onClick, index = 0 }) {
           {seller.shopImage
             ? <img src={seller.shopImage} alt={seller.shopName} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
             : (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-0.5"
+              <div className="w-full h-full flex flex-col items-center justify-center"
                 style={{ background: 'linear-gradient(135deg,#fff4e6,#ffe8c8)' }}>
-                <FaDrumstickBite size={24} style={{ color: '#f4941c' }} />
+                <GiSteak size={28} style={{ color: '#f4941c' }} />
               </div>
             )}
           {/* Open/closed dot */}

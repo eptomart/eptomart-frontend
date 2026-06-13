@@ -45,10 +45,25 @@ export function EptoFreshCartProvider({ children }) {
   const [items, setItems]         = useState([]);
   const [cartTotal, setCartTotal] = useState(0);
   const [loading, setLoading]     = useState(false);
-  const [userLocation, setUserLocation] = useState(null); // { lat, lng }
+  // Restore persisted location first (manual pick survives refresh)
+  const [userLocation, setUserLocationRaw] = useState(() => {
+    try {
+      const saved = localStorage.getItem('eptofresh_coords');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
 
-  // Request GPS once
+  // Persist whenever location changes
+  const setUserLocation = useCallback((loc) => {
+    setUserLocationRaw(loc);
+    if (loc) {
+      try { localStorage.setItem('eptofresh_coords', JSON.stringify(loc)); } catch {}
+    }
+  }, []);
+
+  // Request GPS once — only if no saved location yet
   useEffect(() => {
+    if (userLocation) return; // already have a location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         pos => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
