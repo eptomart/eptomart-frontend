@@ -6,7 +6,7 @@
 // ============================================
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiSearch, FiMapPin, FiArrowLeft, FiX, FiNavigation } from 'react-icons/fi';
+import { FiSearch, FiMapPin, FiArrowLeft, FiX } from 'react-icons/fi';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
@@ -83,7 +83,6 @@ export default function KoyambeduLocationPicker() {
   const [showSugg,    setShowSugg]    = useState(false);
   const [confirming,  setConfirming]  = useState(false);
   const [distKm,      setDistKm]      = useState(null);
-  const [gpsLoading,  setGpsLoading]  = useState(false);
 
   // ── Init Google Map ──────────────────────────────────
   useEffect(() => {
@@ -126,19 +125,6 @@ export default function KoyambeduLocationPicker() {
         });
         setDistKm(Math.round(haversineKm(DEFAULT.lat, DEFAULT.lng, MARKET_LAT, MARKET_LNG) * 10) / 10);
         setMapReady(true);
-
-        // Auto-GPS on open
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            pos => {
-              if (!mounted) return;
-              const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-              map.setCenter(loc);
-              map.setZoom(16);
-            },
-            () => {} // silent fail
-          );
-        }
       })
       .catch(() => { if (mounted) setLoadError(true); });
     return () => { mounted = false; clearTimeout(geocodeTimer.current); };
@@ -194,23 +180,6 @@ export default function KoyambeduLocationPicker() {
       }
     );
   }, []);
-
-  // ── GPS button ──────────────────────────────────────
-  const handleGPS = () => {
-    if (!navigator.geolocation) { toast.error('GPS not supported on this device'); return; }
-    setGpsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setGpsLoading(false);
-        if (!mapRef.current) return;
-        const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
-        mapRef.current.panTo(loc);
-        mapRef.current.setZoom(16);
-      },
-      () => { setGpsLoading(false); toast.error('Could not get GPS location.'); },
-      { timeout: 10000 }
-    );
-  };
 
   // ── Confirm ─────────────────────────────────────────
   const confirm = () => {
@@ -291,14 +260,6 @@ export default function KoyambeduLocationPicker() {
                 : null}
           </div>
 
-          {/* GPS button */}
-          <button onClick={handleGPS} disabled={gpsLoading || !mapReady}
-            className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition disabled:opacity-50"
-            style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.18)' }}>
-            {gpsLoading
-              ? <span className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-              : <FiNavigation size={18} className="text-green-700" />}
-          </button>
         </div>
 
         {/* Search suggestions */}
