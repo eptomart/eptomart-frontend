@@ -178,7 +178,7 @@ export default function EptoFreshCheckout() {
   const INDIAN_MOBILE = /^[6-9]\d{9}$/;
 
   return (
-    <div className="min-h-screen pb-32" style={{ background: '#0D0A07' }}>
+    <div className="min-h-screen pb-32" style={{ background: '#F5F4F2' }}>
       <Navbar />
 
       {/* ── Mandatory Long Distance Consent Modal ── */}
@@ -187,7 +187,7 @@ export default function EptoFreshCheckout() {
           <div className="w-full max-w-lg rounded-t-3xl p-6 pb-10" style={{ background: '#0f2035', border: '1px solid rgba(239,68,68,0.3)' }}>
             <div className="flex items-center gap-2 mb-4">
               <span className="text-2xl">⚠️</span>
-              <h2 className="text-white font-bold text-base">LONG DISTANCE DELIVERY NOTICE</h2>
+              <h2 className="text-gray-900 font-bold text-base">LONG DISTANCE DELIVERY NOTICE</h2>
             </div>
             <p className="text-gray-300 text-sm mb-4">
               This seller is located more than 10 KM away from your delivery location.
@@ -201,7 +201,7 @@ export default function EptoFreshCheckout() {
             </ul>
             <div className="rounded-xl p-3 mb-4 flex justify-between items-center" style={{ background: 'rgba(244,148,28,0.08)', border: '1px solid rgba(244,148,28,0.2)' }}>
               <span className="text-gray-400 text-sm">Distance</span>
-              <span className="text-white font-semibold">{deliveryInfo?.distanceKm} km</span>
+              <span className="text-gray-900 font-semibold">{deliveryInfo?.distanceKm} km</span>
             </div>
             <div className="rounded-xl p-3 mb-5 flex justify-between items-center" style={{ background: 'rgba(244,148,28,0.08)', border: '1px solid rgba(244,148,28,0.2)' }}>
               <span className="text-gray-400 text-sm">Delivery Charge</span>
@@ -214,7 +214,7 @@ export default function EptoFreshCheckout() {
                 onChange={e => setConsentChecked(e.target.checked)}
                 className="w-5 h-5 accent-orange-400 mt-0.5 shrink-0"
               />
-              <span className="text-white text-sm">
+              <span className="text-gray-900 text-sm">
                 I understand and accept the additional delivery charges and delivery conditions.
               </span>
             </label>
@@ -222,14 +222,14 @@ export default function EptoFreshCheckout() {
               <button
                 onClick={() => { setShowConsentModal(false); setDeliveryInfo(null); }}
                 className="flex-1 py-3 rounded-2xl font-semibold text-sm"
-                style={{ background: 'rgba(255,255,255,0.07)', color: '#fff' }}
+                style={{ background: 'rgba(0,0,0,0.05)', color: '#fff' }}
               >
                 Go Back
               </button>
               <button
                 disabled={!consentChecked}
                 onClick={() => { setConfirmedFar(true); setShowConsentModal(false); setStep(1); }}
-                className="flex-1 py-3 rounded-2xl font-bold text-white text-sm disabled:opacity-40"
+                className="flex-1 py-3 rounded-2xl font-bold text-gray-900 text-sm disabled:opacity-40"
                 style={{ background: '#f4941c' }}
               >
                 Accept & Continue
@@ -239,11 +239,11 @@ export default function EptoFreshCheckout() {
         </div>
       )}
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-12 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <button onClick={() => step > 0 ? setStep(step - 1) : navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
-          <FiArrowLeft className="text-white" />
+      <div className="flex items-center gap-3 px-4 pt-12 pb-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+        <button onClick={() => step > 0 ? setStep(step - 1) : navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(0,0,0,0.05)' }}>
+          <FiArrowLeft className="text-gray-900" />
         </button>
-        <h1 className="text-white font-bold text-lg">Checkout</h1>
+        <h1 className="text-gray-900 font-bold text-lg">Checkout</h1>
       </div>
 
       {/* Step indicator */}
@@ -264,7 +264,7 @@ export default function EptoFreshCheckout() {
         {/* Step 0 — Address */}
         {step === 0 && (
           <div className="space-y-3">
-            <h2 className="text-white font-semibold">Delivery Address</h2>
+            <h2 className="text-gray-900 font-semibold">Delivery Address</h2>
             {[
               { key: 'fullName', label: 'Full Name', type: 'text' },
               { key: 'phone', label: 'Mobile Number', type: 'tel' },
@@ -280,8 +280,8 @@ export default function EptoFreshCheckout() {
                   type={f.type}
                   value={address[f.key]}
                   onChange={e => setAddress(a => ({ ...a, [f.key]: e.target.value }))}
-                  className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
-                  style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm text-gray-900 outline-none"
+                  style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }}
                 />
                 {f.key === 'phone' && address.phone && !INDIAN_MOBILE.test(address.phone) && (
                   <p className="text-red-400 text-xs mt-1">Enter valid 10-digit Indian mobile number</p>
@@ -292,7 +292,7 @@ export default function EptoFreshCheckout() {
             <button
               onClick={checkDelivery}
               disabled={checkingDelivery || !address.fullName || !INDIAN_MOBILE.test(address.phone) || !address.addressLine1 || !address.pincode}
-              className="w-full py-3 rounded-2xl font-bold text-white mt-4 disabled:opacity-50"
+              className="w-full py-3 rounded-2xl font-bold text-gray-900 mt-4 disabled:opacity-50"
               style={{ background: '#f4941c' }}
             >
               {checkingDelivery ? 'Checking...' : 'Continue'}
@@ -303,16 +303,16 @@ export default function EptoFreshCheckout() {
         {/* Step 1 — Delivery Info */}
         {step === 1 && deliveryInfo && (
           <div className="space-y-4">
-            <h2 className="text-white font-semibold">Delivery Details</h2>
+            <h2 className="text-gray-900 font-semibold">Delivery Details</h2>
 
-            <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400 flex items-center gap-1"><FiMapPin size={12} /> Distance</span>
-                <span className="text-white">{deliveryInfo.distanceKm} km</span>
+                <span className="text-gray-900">{deliveryInfo.distanceKm} km</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Delivery Charge</span>
-                <span className={deliveryInfo.isFreeDelivery ? 'text-green-400 font-semibold' : 'text-white'}>
+                <span className={deliveryInfo.isFreeDelivery ? 'text-green-400 font-semibold' : 'text-gray-900'}>
                   {deliveryInfo.isFreeDelivery ? 'FREE' : `₹${deliveryInfo.charge}`}
                 </span>
               </div>
@@ -335,16 +335,16 @@ export default function EptoFreshCheckout() {
 
             {/* Wallet */}
             {walletBalance > 0 && (
-              <label className="flex items-center justify-between cursor-pointer rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <label className="flex items-center justify-between cursor-pointer rounded-xl p-3" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
                 <div>
-                  <p className="text-white text-sm font-semibold">Use Wallet Balance</p>
+                  <p className="text-gray-900 text-sm font-semibold">Use Wallet Balance</p>
                   <p className="text-gray-400 text-xs">Available: ₹{walletBalance.toFixed(2)}</p>
                 </div>
                 <input type="checkbox" checked={useWallet} onChange={e => setUseWallet(e.target.checked)} className="w-5 h-5 accent-orange-400" />
               </label>
             )}
 
-            <button onClick={() => setStep(2)} className="w-full py-3 rounded-2xl font-bold text-white" style={{ background: '#f4941c' }}>
+            <button onClick={() => setStep(2)} className="w-full py-3 rounded-2xl font-bold text-gray-900" style={{ background: '#f4941c' }}>
               Continue to Payment
             </button>
           </div>
@@ -353,7 +353,7 @@ export default function EptoFreshCheckout() {
         {/* Step 2 — Payment */}
         {step === 2 && (
           <div className="space-y-4">
-            <h2 className="text-white font-semibold">Payment</h2>
+            <h2 className="text-gray-900 font-semibold">Payment</h2>
 
             {/* Coupon input */}
             <div>
@@ -370,10 +370,10 @@ export default function EptoFreshCheckout() {
                     value={couponCode}
                     onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponDiscount(0); }}
                     placeholder="Enter promo code"
-                    className="flex-1 px-3 py-2.5 rounded-xl text-sm text-white outline-none"
-                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }}
+                    className="flex-1 px-3 py-2.5 rounded-xl text-sm text-gray-900 outline-none"
+                    style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }}
                   />
-                  <button onClick={validateCoupon} className="px-4 py-2 rounded-xl text-sm font-bold text-white" style={{ background: '#f4941c' }}>
+                  <button onClick={validateCoupon} className="px-4 py-2 rounded-xl text-sm font-bold text-gray-900" style={{ background: '#f4941c' }}>
                     Apply
                   </button>
                 </div>
@@ -381,13 +381,13 @@ export default function EptoFreshCheckout() {
             </div>
 
             {/* Order summary */}
-            <div className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              <div className="flex justify-between text-sm"><span className="text-gray-400">Subtotal</span><span className="text-white">₹{cartTotal.toFixed(2)}</span></div>
+            <div className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
+              <div className="flex justify-between text-sm"><span className="text-gray-400">Subtotal</span><span className="text-gray-900">₹{cartTotal.toFixed(2)}</span></div>
               {couponDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-gray-400">Promo</span><span className="text-green-400">-₹{couponDiscount.toFixed(2)}</span></div>}
-              <div className="flex justify-between text-sm"><span className="text-gray-400">Delivery</span><span className={deliveryInfo?.isFreeDelivery ? 'text-green-400' : 'text-white'}>{deliveryInfo?.isFreeDelivery ? 'FREE' : `₹${deliveryInfo?.charge || 0}`}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-gray-400">Delivery</span><span className={deliveryInfo?.isFreeDelivery ? 'text-green-400' : 'text-gray-900'}>{deliveryInfo?.isFreeDelivery ? 'FREE' : `₹${deliveryInfo?.charge || 0}`}</span></div>
               {useWallet && <div className="flex justify-between text-sm"><span className="text-gray-400">Wallet</span><span className="text-green-400">-₹{Math.min(walletBalance, cartTotal - couponDiscount + (deliveryInfo?.charge || 0)).toFixed(2)}</span></div>}
-              <div className="border-t border-gray-700 pt-2 flex justify-between font-bold text-lg">
-                <span className="text-white">Total</span>
+              <div className="border-t border-gray-100 pt-2 flex justify-between font-bold text-lg">
+                <span className="text-gray-900">Total</span>
                 <span className="text-orange-400">₹{getTotal().toFixed(2)}</span>
               </div>
             </div>
@@ -400,11 +400,11 @@ export default function EptoFreshCheckout() {
                   { key: 'razorpay', label: '💳 Card / UPI / Net Banking', desc: 'Pay securely online' },
                   { key: 'cod', label: '💵 Cash on Delivery', desc: 'Pay when delivered' },
                 ].map(m => (
-                  <label key={m.key} className="flex items-center gap-3 rounded-xl p-3 cursor-pointer" style={{ background: paymentMethod === m.key ? 'rgba(244,148,28,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${paymentMethod === m.key ? 'rgba(244,148,28,0.3)' : 'rgba(255,255,255,0.07)'}` }}>
+                  <label key={m.key} className="flex items-center gap-3 rounded-xl p-3 cursor-pointer" style={{ background: paymentMethod === m.key ? 'rgba(244,148,28,0.12)' : 'rgba(0,0,0,0.02)', border: `1px solid ${paymentMethod === m.key ? 'rgba(244,148,28,0.3)' : 'rgba(0,0,0,0.05)'}` }}>
                     <input type="radio" name="payment" value={m.key} checked={paymentMethod === m.key} onChange={() => setPaymentMethod(m.key)} className="accent-orange-400" />
                     <div>
-                      <p className="text-white text-sm font-semibold">{m.label}</p>
-                      <p className="text-gray-500 text-xs">{m.desc}</p>
+                      <p className="text-gray-900 text-sm font-semibold">{m.label}</p>
+                      <p className="text-gray-400 text-xs">{m.desc}</p>
                     </div>
                   </label>
                 ))}
@@ -414,7 +414,7 @@ export default function EptoFreshCheckout() {
             <button
               onClick={placeOrder}
               disabled={placing}
-              className="w-full py-4 rounded-2xl font-bold text-white text-sm disabled:opacity-60"
+              className="w-full py-4 rounded-2xl font-bold text-gray-900 text-sm disabled:opacity-60"
               style={{ background: 'linear-gradient(135deg, #f4941c 0%, #e07b10 100%)', boxShadow: '0 8px 24px rgba(244,148,28,0.35)' }}
             >
               {placing ? 'Placing Order...' : `Place Order — ₹${getTotal().toFixed(2)}`}

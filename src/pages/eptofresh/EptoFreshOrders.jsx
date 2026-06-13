@@ -37,25 +37,25 @@ export default function EptoFreshOrders() {
 
   if (loading) {
     return (
-      <div className="min-h-screen" style={{ background: '#0D0A07' }}>
+      <div className="min-h-screen" style={{ background: '#F5F4F2' }}>
         <Navbar />
         <div className="flex items-center gap-3 px-4 pt-4 pb-4">
-          <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}><FiArrowLeft className="text-white" /></button>
-          <h1 className="text-white font-bold text-lg">My Orders</h1>
+          <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(0,0,0,0.05)' }}><FiArrowLeft className="text-gray-900" /></button>
+          <h1 className="text-gray-900 font-bold text-lg">My Orders</h1>
         </div>
         <div className="px-4 space-y-3 mt-2">
-          {[1,2,3].map(i => <div key={i} className="h-24 rounded-2xl animate-pulse" style={{ background: 'rgba(255,255,255,0.05)' }} />)}
+          {[1,2,3].map(i => <div key={i} className="h-24 rounded-2xl animate-pulse" style={{ background: 'rgba(0,0,0,0.03)' }} />)}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0D0A07' }}>
+    <div className="min-h-screen pb-24" style={{ background: '#F5F4F2' }}>
       <Navbar />
-      <div className="flex items-center gap-3 px-4 pt-4 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}><FiArrowLeft className="text-white" /></button>
-        <h1 className="text-white font-bold text-lg">EptoFresh Orders</h1>
+      <div className="flex items-center gap-3 px-4 pt-4 pb-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+        <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(0,0,0,0.05)' }}><FiArrowLeft className="text-gray-900" /></button>
+        <h1 className="text-gray-900 font-bold text-lg">EptoFresh Orders</h1>
       </div>
 
       {orders.length === 0 && (
@@ -78,12 +78,12 @@ export default function EptoFreshOrders() {
               key={order._id}
               onClick={() => navigate(`/eptofresh/orders/${order._id}`)}
               className="rounded-2xl p-4 cursor-pointer active:scale-[0.98] transition-all"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+              style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}
             >
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <p className="text-white font-semibold text-sm">#{order.orderId}</p>
-                  <p className="text-gray-500 text-xs">{order.seller?.shopName}</p>
+                  <p className="text-gray-900 font-semibold text-sm">#{order.orderId}</p>
+                  <p className="text-gray-400 text-xs">{order.seller?.shopName}</p>
                 </div>
                 <span className="px-2 py-1 rounded-full text-[11px] font-semibold" style={{ background: s.bg, color: s.color }}>
                   {s.label}
@@ -137,39 +137,39 @@ export function EptoFreshOrderDetail() {
     } catch (err) { toast.error(err.response?.data?.message || 'Invalid OTP'); } finally { setConfirming(false); }
   };
 
-  if (!order) return <div className="min-h-screen flex items-center justify-center" style={{ background: '#0D0A07' }}><div className="w-8 h-8 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" /></div>;
+  if (!order) return <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F4F2' }}><div className="w-8 h-8 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" /></div>;
 
   const s = STATUS_LABELS[order.orderStatus] || { label: order.orderStatus, color: '#94a3b8' };
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0D0A07' }}>
-      <div className="flex items-center gap-3 px-4 pt-12 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}><FiArrowLeft className="text-white" /></button>
+    <div className="min-h-screen pb-24" style={{ background: '#F5F4F2' }}>
+      <div className="flex items-center gap-3 px-4 pt-12 pb-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+        <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(0,0,0,0.05)' }}><FiArrowLeft className="text-gray-900" /></button>
         <div className="flex-1">
-          <h1 className="text-white font-bold">Order #{order.orderId}</h1>
+          <h1 className="text-gray-900 font-bold">Order #{order.orderId}</h1>
           <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold" style={{ background: STATUS_LABELS[order.orderStatus]?.bg || '', color: s.color }}>{s.label}</span>
         </div>
       </div>
 
       <div className="px-4 mt-4 space-y-4">
         {/* Items */}
-        <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <h3 className="text-white font-semibold mb-3">Items</h3>
+        <div className="rounded-2xl p-4" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
+          <h3 className="text-gray-900 font-semibold mb-3">Items</h3>
           {order.items?.map((item, i) => (
             <div key={i} className="flex justify-between text-sm py-1.5">
               <span className="text-gray-300">{item.productName} {item.variant?.label ? `(${item.variant.label})` : ''} × {item.quantity}</span>
-              <span className="text-white">₹{item.totalPrice}</span>
+              <span className="text-gray-900">₹{item.totalPrice}</span>
             </div>
           ))}
         </div>
 
         {/* Pricing */}
-        <div className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <h3 className="text-white font-semibold mb-2">Pricing</h3>
-          <div className="flex justify-between text-sm"><span className="text-gray-400">Subtotal</span><span className="text-white">₹{order.pricing?.subtotal}</span></div>
-          <div className="flex justify-between text-sm"><span className="text-gray-400">Delivery</span><span className="text-white">{order.pricing?.deliveryCharge > 0 ? `₹${order.pricing.deliveryCharge}` : 'FREE'}</span></div>
+        <div className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
+          <h3 className="text-gray-900 font-semibold mb-2">Pricing</h3>
+          <div className="flex justify-between text-sm"><span className="text-gray-400">Subtotal</span><span className="text-gray-900">₹{order.pricing?.subtotal}</span></div>
+          <div className="flex justify-between text-sm"><span className="text-gray-400">Delivery</span><span className="text-gray-900">{order.pricing?.deliveryCharge > 0 ? `₹${order.pricing.deliveryCharge}` : 'FREE'}</span></div>
           {order.pricing?.couponDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-gray-400">Coupon</span><span className="text-green-400">-₹{order.pricing.couponDiscount}</span></div>}
-          <div className="border-t border-gray-700 pt-2 flex justify-between font-bold"><span className="text-white">Total</span><span className="text-orange-400">₹{order.pricing?.total}</span></div>
+          <div className="border-t border-gray-100 pt-2 flex justify-between font-bold"><span className="text-gray-900">Total</span><span className="text-orange-400">₹{order.pricing?.total}</span></div>
         </div>
 
         {/* OTP Delivery confirmation */}
@@ -178,8 +178,8 @@ export function EptoFreshOrderDetail() {
             <p className="text-orange-400 font-semibold mb-2">Confirm Delivery</p>
             <p className="text-gray-400 text-xs mb-3">Enter the OTP shown by the delivery person</p>
             <div className="flex gap-2">
-              <input type="text" inputMode="numeric" maxLength={6} value={otp} onChange={e => setOtp(e.target.value)} placeholder="6-digit OTP" className="flex-1 px-3 py-2 rounded-xl text-white outline-none text-center tracking-widest font-bold text-lg" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '18px' }} />
-              <button onClick={confirmDelivery} disabled={confirming || otp.length < 4} className="px-4 py-2 rounded-xl font-bold text-white disabled:opacity-50" style={{ background: '#f4941c' }}>
+              <input type="text" inputMode="numeric" maxLength={6} value={otp} onChange={e => setOtp(e.target.value)} placeholder="6-digit OTP" className="flex-1 px-3 py-2 rounded-xl text-gray-900 outline-none text-center tracking-widest font-bold text-lg" style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '18px' }} />
+              <button onClick={confirmDelivery} disabled={confirming || otp.length < 4} className="px-4 py-2 rounded-xl font-bold text-gray-900 disabled:opacity-50" style={{ background: '#f4941c' }}>
                 {confirming ? '...' : 'Confirm'}
               </button>
             </div>
@@ -187,8 +187,8 @@ export function EptoFreshOrderDetail() {
         )}
 
         {/* Status history */}
-        <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <h3 className="text-white font-semibold mb-3">Order Timeline</h3>
+        <div className="rounded-2xl p-4" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
+          <h3 className="text-gray-900 font-semibold mb-3">Order Timeline</h3>
           <div className="space-y-3">
             {(order.statusHistory || []).map((h, i) => {
               const st = STATUS_LABELS[h.status] || { label: h.status, color: '#94a3b8' };
@@ -196,8 +196,8 @@ export function EptoFreshOrderDetail() {
                 <div key={i} className="flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: st.color }} />
                   <div>
-                    <p className="text-white text-xs font-semibold">{st.label}</p>
-                    {h.note && <p className="text-gray-500 text-xs">{h.note}</p>}
+                    <p className="text-gray-900 text-xs font-semibold">{st.label}</p>
+                    {h.note && <p className="text-gray-400 text-xs">{h.note}</p>}
                     <p className="text-gray-600 text-[10px]">{new Date(h.timestamp).toLocaleString('en-IN')}</p>
                   </div>
                 </div>

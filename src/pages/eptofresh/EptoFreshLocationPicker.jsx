@@ -172,11 +172,11 @@ export function EptoFreshLocationPicker() {
 
   // ── Error screen ─────────────────────────────────────────
   if (loadError) return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ background: '#0D0A07' }}>
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ background: '#F5F4F2' }}>
       <div className="text-4xl">🗺️</div>
-      <p className="text-white font-semibold">Map unavailable</p>
-      <p className="text-gray-500 text-sm">Add <code className="text-orange-400 bg-white/10 px-1 rounded">GOOGLE_PLACES_API_KEY</code> to your Render backend environment variables.</p>
-      <button onClick={() => navigate(-1)} className="mt-2 px-5 py-2.5 rounded-2xl text-white font-semibold" style={{ background: '#f4941c' }}>Go Back</button>
+      <p className="text-gray-900 font-semibold">Map unavailable</p>
+      <p className="text-gray-400 text-sm">Add <code className="text-orange-400 bg-white/10 px-1 rounded">GOOGLE_PLACES_API_KEY</code> to your Render backend environment variables.</p>
+      <button onClick={() => navigate(-1)} className="mt-2 px-5 py-2.5 rounded-2xl text-gray-900 font-semibold" style={{ background: '#f4941c' }}>Go Back</button>
     </div>
   );
 
@@ -188,7 +188,7 @@ export function EptoFreshLocationPicker() {
 
       {/* ── Loading overlay ──────────────────────────────── */}
       {!mapReady && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4" style={{ background: '#0D0A07' }}>
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4" style={{ background: '#F5F4F2' }}>
           <div className="w-12 h-12 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" />
           <p className="text-gray-300 text-sm">Loading map…</p>
         </div>
@@ -263,7 +263,7 @@ export function EptoFreshLocationPicker() {
                   ? '0 8px 28px rgba(244,148,28,0.55), 0 3px 10px rgba(0,0,0,0.3)'
                   : '0 4px 16px rgba(244,148,28,0.45), 0 2px 6px rgba(0,0,0,0.2)',
               }}>
-              <FiMapPin className="text-white" size={20} />
+              <FiMapPin className="text-gray-900" size={20} />
             </div>
             <div className="w-0.5 h-4 transition-all duration-200" style={{ background: 'linear-gradient(#f4941c, transparent)' }} />
           </div>
@@ -298,14 +298,14 @@ export function EptoFreshLocationPicker() {
             <p className="font-bold text-base leading-tight text-gray-900">
               {mapMoving ? 'Move the pin to your spot' : (shortAddr || 'Search or drag the map')}
             </p>
-            {!mapMoving && fullAddr && <p className="text-xs mt-0.5 line-clamp-2 text-gray-500">{fullAddr}</p>}
+            {!mapMoving && fullAddr && <p className="text-xs mt-0.5 line-clamp-2 text-gray-400">{fullAddr}</p>}
           </div>
         </div>
 
         <button
           onClick={confirm}
           disabled={!shortAddr || mapMoving || confirming || !mapReady}
-          className="w-full py-4 rounded-2xl font-bold text-white text-base disabled:opacity-40 transition-all"
+          className="w-full py-4 rounded-2xl font-bold text-gray-900 text-base disabled:opacity-40 transition-all"
           style={{ background: '#f4941c' }}
         >
           {confirming ? 'Setting location…' : 'Confirm Location'}

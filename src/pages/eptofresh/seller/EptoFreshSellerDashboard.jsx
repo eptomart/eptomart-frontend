@@ -49,7 +49,7 @@ function PromoSection() {
   };
 
   const statusColor = { pending:'#fbbf24', approved:'#34d399', rejected:'#f87171' };
-  const iStyle = { background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)', fontSize:16 };
+  const iStyle = { background:'rgba(0,0,0,0.05)', border:'1px solid rgba(255,255,255,0.1)', fontSize:16 };
 
   return (
     <div>
@@ -61,8 +61,8 @@ function PromoSection() {
             <FiTag size={15} style={{ color:'#f4941c' }} />
           </div>
           <div className="text-left">
-            <p className="text-white text-sm font-semibold">Promo Codes</p>
-            <p className="text-gray-500 text-[10px]">Request discounts for your customers</p>
+            <p className="text-gray-900 text-sm font-semibold">Promo Codes</p>
+            <p className="text-gray-400 text-[10px]">Request discounts for your customers</p>
           </div>
           {myRequests.some(r=>r.requestStatus==='pending') && (
             <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background:'rgba(251,191,36,0.2)',color:'#fbbf24' }}>PENDING</span>
@@ -76,7 +76,7 @@ function PromoSection() {
           <div className="flex items-center justify-between">
             <p className="text-gray-400 text-xs">Request a % discount promo from admin</p>
             <button onClick={() => setShowForm(v=>!v)}
-              className="flex items-center gap-1 px-3 py-1 rounded-xl text-xs font-bold text-white"
+              className="flex items-center gap-1 px-3 py-1 rounded-xl text-xs font-bold text-gray-900"
               style={{ background:'#f4941c' }}>
               <FiPlus size={11} /> Request
             </button>
@@ -96,19 +96,19 @@ function PromoSection() {
                   <label className="text-gray-400 text-xs block mb-1">{f.label}</label>
                   <input type={f.type} value={form[f.key]} placeholder={f.ph}
                     onChange={e => setForm(v=>({...v,[f.key]:e.target.value}))}
-                    className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none"
+                    className="w-full px-3 py-2 rounded-xl text-sm text-gray-900 outline-none"
                     style={iStyle} />
                 </div>
               ))}
               <div className="flex gap-2">
                 <button onClick={submit} disabled={submitting}
-                  className="flex-1 py-2.5 rounded-xl font-bold text-white text-sm disabled:opacity-50"
+                  className="flex-1 py-2.5 rounded-xl font-bold text-gray-900 text-sm disabled:opacity-50"
                   style={{ background:'#f4941c' }}>
                   {submitting ? 'Submitting…' : 'Submit'}
                 </button>
                 <button onClick={() => setShowForm(false)}
                   className="px-4 rounded-xl text-sm text-gray-400"
-                  style={{ background:'rgba(255,255,255,0.05)' }}>Cancel</button>
+                  style={{ background:'rgba(0,0,0,0.03)' }}>Cancel</button>
               </div>
             </div>
           )}
@@ -117,10 +117,10 @@ function PromoSection() {
               <p className="text-gray-600 text-[10px] uppercase tracking-wider font-semibold">My Requests</p>
               {myRequests.map(c => (
                 <div key={c._id} className="flex items-center justify-between rounded-xl px-3 py-2"
-                  style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.05)' }}>
+                  style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(0,0,0,0.03)' }}>
                   <div>
-                    <p className="text-white text-xs font-bold">{c.code}</p>
-                    <p className="text-gray-500 text-[10px]">{c.discountValue}% · Max {c.maxUsage} uses</p>
+                    <p className="text-gray-900 text-xs font-bold">{c.code}</p>
+                    <p className="text-gray-400 text-[10px]">{c.discountValue}% · Max {c.maxUsage} uses</p>
                   </div>
                   <span className="text-[10px] font-bold capitalize px-2 py-0.5 rounded-full"
                     style={{ background:`${statusColor[c.requestStatus]||'#94a3b8'}18`, color:statusColor[c.requestStatus]||'#94a3b8' }}>
@@ -167,20 +167,20 @@ export default function EptoFreshSellerDashboard() {
   ];
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background:'#0A0705' }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background:'#F5F4F2' }}>
       <div className="w-8 h-8 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" />
     </div>
   );
 
   if (dash?.seller?.status === 'rejected') return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background:'#0A0705' }}>
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background:'#F5F4F2' }}>
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background:'rgba(248,113,113,0.1)', border:'1px solid rgba(248,113,113,0.2)' }}>
         <FiAlertCircle size={30} className="text-red-400" />
       </div>
-      <h2 className="text-white text-lg font-bold mb-1">Application Rejected</h2>
+      <h2 className="text-gray-900 text-lg font-bold mb-1">Application Rejected</h2>
       <p className="text-gray-400 text-sm mb-5">Please contact support for more information.</p>
       <button onClick={() => navigate('/eptofresh')}
-        className="px-6 py-2.5 rounded-xl text-sm font-bold text-white"
+        className="px-6 py-2.5 rounded-xl text-sm font-bold text-gray-900"
         style={{ background:'#f4941c' }}>Back to EptoFresh</button>
     </div>
   );
@@ -191,7 +191,7 @@ export default function EptoFreshSellerDashboard() {
   const isPending = seller?.status === 'pending_review';
 
   return (
-    <div className="min-h-screen pb-28 w-full overflow-x-hidden" style={{ background:'#0A0705' }}>
+    <div className="min-h-screen pb-28 w-full overflow-x-hidden" style={{ background:'#F5F4F2' }}>
 
       {/* ── HERO HEADER ── */}
       <div style={{ background:'linear-gradient(180deg,#1c1208 0%,#130b04 65%,#0A0705 100%)', borderBottom:'1px solid rgba(255,160,60,0.08)' }}>
@@ -214,8 +214,8 @@ export default function EptoFreshSellerDashboard() {
                   : <FiShoppingBag size={20} style={{ color:'rgba(244,148,28,0.6)' }} />}
               </div>
               <div>
-                <h1 className="text-white font-extrabold text-base leading-tight">{seller?.shopName}</h1>
-                <p className="text-gray-500 text-[11px] mt-0.5">{seller?.address?.city || 'EptoFresh Seller'}</p>
+                <h1 className="text-gray-900 font-extrabold text-base leading-tight">{seller?.shopName}</h1>
+                <p className="text-gray-400 text-[11px] mt-0.5">{seller?.address?.city || 'EptoFresh Seller'}</p>
                 {isPending && (
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full mt-1"
                     style={{ background:'rgba(251,191,36,0.15)',color:'#fbbf24' }}>
@@ -262,9 +262,9 @@ export default function EptoFreshSellerDashboard() {
               { label:'Payout',  value:`₹${Math.round(stats.pendingPayout||0)}`,          Icon:FiDollarSign,  color:'#34d399' },
             ].map(s => (
               <div key={s.label} className="rounded-xl p-2.5 flex flex-col items-center gap-1"
-                style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
+                style={{ background:'rgba(0,0,0,0.02)', border:'1px solid rgba(255,255,255,0.06)' }}>
                 <s.Icon size={15} style={{ color:s.color }} />
-                <div className="text-white font-extrabold text-sm leading-none">{s.value}</div>
+                <div className="text-gray-900 font-extrabold text-sm leading-none">{s.value}</div>
                 <div className="text-gray-600 text-[9px] font-semibold uppercase tracking-wide">{s.label}</div>
               </div>
             ))}
@@ -282,16 +282,16 @@ export default function EptoFreshSellerDashboard() {
         ].map(a => (
           <button key={a.label} onClick={() => navigate(a.to)}
             className="flex items-center gap-3 rounded-2xl p-3.5 text-left transition-all active:scale-[0.97]"
-            style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)' }}
+            style={{ background:'rgba(0,0,0,0.02)', border:'1px solid rgba(0,0,0,0.05)' }}
             onMouseEnter={e => e.currentTarget.style.borderColor=`${a.color}40`}
-            onMouseLeave={e => e.currentTarget.style.borderColor='rgba(255,255,255,0.07)'}>
+            onMouseLeave={e => e.currentTarget.style.borderColor='rgba(0,0,0,0.05)'}>
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
               style={{ background:`${a.color}18` }}>
               <a.Icon size={16} style={{ color:a.color }} />
             </div>
             <div className="min-w-0">
-              <p className="text-white text-xs font-bold leading-tight truncate">{a.label}</p>
-              <p className="text-gray-500 text-[10px] mt-0.5">{a.sub}</p>
+              <p className="text-gray-900 text-xs font-bold leading-tight truncate">{a.label}</p>
+              <p className="text-gray-400 text-[10px] mt-0.5">{a.sub}</p>
             </div>
           </button>
         ))}
@@ -305,7 +305,7 @@ export default function EptoFreshSellerDashboard() {
       {/* ── RECENT ORDERS ── */}
       <div className="px-4 mt-5">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-white font-bold text-sm">Recent Orders</p>
+          <p className="text-gray-900 font-bold text-sm">Recent Orders</p>
           <Link to="/eptofresh/seller/orders"
             className="flex items-center gap-0.5 text-xs font-semibold"
             style={{ color:'#f4941c' }}>
@@ -315,9 +315,9 @@ export default function EptoFreshSellerDashboard() {
 
         {!dash?.recentOrders?.length && (
           <div className="rounded-2xl p-8 text-center"
-            style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.05)' }}>
+            style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(0,0,0,0.03)' }}>
             <FiShoppingBag size={28} className="mx-auto mb-2 text-gray-700" />
-            <p className="text-gray-500 text-sm">No orders yet</p>
+            <p className="text-gray-400 text-sm">No orders yet</p>
             <p className="text-gray-700 text-xs mt-1">Share your shop link to start getting orders</p>
           </div>
         )}
@@ -329,13 +329,13 @@ export default function EptoFreshSellerDashboard() {
               <button key={order._id}
                 onClick={() => navigate(`/eptofresh/seller/orders/${order._id}`)}
                 className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 transition-all active:scale-[0.98]"
-                style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)' }}>
+                style={{ background:'rgba(0,0,0,0.02)', border:'1px solid rgba(0,0,0,0.05)' }}>
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                   style={{ background:m.bg }}>
                   <FiShoppingBag size={14} style={{ color:m.color }} />
                 </div>
                 <div className="flex-1 text-left min-w-0">
-                  <p className="text-white text-xs font-bold">#{order.orderId}</p>
+                  <p className="text-gray-900 text-xs font-bold">#{order.orderId}</p>
                   <span className="text-[10px] font-semibold capitalize px-1.5 py-0.5 rounded-full"
                     style={{ background:m.bg, color:m.color }}>
                     {m.label}
@@ -351,7 +351,7 @@ export default function EptoFreshSellerDashboard() {
 
       {/* ── BOTTOM NAV ── */}
       <nav className="fixed bottom-0 left-0 right-0 z-50"
-        style={{ background:'rgba(8,15,28,0.97)', borderTop:'1px solid rgba(255,255,255,0.07)', backdropFilter:'blur(12px)' }}>
+        style={{ background:'rgba(8,15,28,0.97)', borderTop:'1px solid rgba(0,0,0,0.05)', backdropFilter:'blur(12px)' }}>
         <div className="flex">
           {tabs.map(t => {
             const active = loc.pathname === t.path;

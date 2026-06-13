@@ -29,20 +29,20 @@ export default function EptoFreshAdmin() {
   ];
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0D0A07' }}>
+    <div className="min-h-screen pb-24" style={{ background: '#F5F4F2' }}>
       {/* Header */}
-      <div className="px-4 pt-6 pb-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <button onClick={() => navigate(-1)} className="p-2 rounded-xl flex-shrink-0" style={{ background: 'rgba(255,255,255,0.07)' }}>
-          <FiArrowLeft className="text-white" size={18} />
+      <div className="px-4 pt-6 pb-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+        <button onClick={() => navigate(-1)} className="p-2 rounded-xl flex-shrink-0" style={{ background: 'rgba(0,0,0,0.05)' }}>
+          <FiArrowLeft className="text-gray-900" size={18} />
         </button>
         <div>
-          <h1 className="text-white font-bold text-xl">🥩 EptoFresh Admin</h1>
-          <p className="text-gray-500 text-xs mt-0.5">Hyperlocal Proteins Marketplace</p>
+          <h1 className="text-gray-900 font-bold text-xl">🥩 EptoFresh Admin</h1>
+          <p className="text-gray-400 text-xs mt-0.5">Hyperlocal Proteins Marketplace</p>
         </div>
       </div>
 
       {/* Tab nav */}
-      <div className="flex overflow-x-auto scrollbar-hide border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+      <div className="flex overflow-x-auto scrollbar-hide border-b" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className="flex items-center gap-1.5 px-4 py-3 text-xs font-semibold whitespace-nowrap transition-all"
@@ -81,9 +81,9 @@ function DashboardTab({ dash }) {
           { label: 'Revenue',            value: `₹${(stats.totalRevenue||0).toFixed(0)}`, color: '#a78bfa' },
           { label: 'Pending Payouts',    value: `₹${(stats.pendingPayouts||0).toFixed(0)}`, color: '#fbbf24' },
         ].map(s => (
-          <div key={s.label} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div key={s.label} className="rounded-2xl p-4" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
             <p className="font-bold text-lg" style={{ color: s.color }}>{s.value}</p>
-            <p className="text-gray-500 text-xs mt-0.5">{s.label}</p>
+            <p className="text-gray-400 text-xs mt-0.5">{s.label}</p>
           </div>
         ))}
       </div>
@@ -91,18 +91,18 @@ function DashboardTab({ dash }) {
       {stats.pendingPackedApprovals > 0 && (
         <div className="rounded-2xl p-4" style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.2)' }}>
           <p className="text-purple-400 font-semibold">📦 {stats.pendingPackedApprovals} order{stats.pendingPackedApprovals > 1 ? 's' : ''} waiting for photo approval</p>
-          <p className="text-gray-500 text-xs">Verify packed product photos to trigger Porter delivery</p>
+          <p className="text-gray-400 text-xs">Verify packed product photos to trigger Porter delivery</p>
         </div>
       )}
 
       <div>
-        <p className="text-white font-semibold mb-3 text-sm">Recent Orders</p>
+        <p className="text-gray-900 font-semibold mb-3 text-sm">Recent Orders</p>
         <div className="space-y-2">
           {(dash.recentOrders || []).map(o => (
-            <div key={o._id} className="flex items-center justify-between rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <div key={o._id} className="flex items-center justify-between rounded-xl p-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
               <div>
-                <p className="text-white text-xs font-semibold">#{o.orderId}</p>
-                <p className="text-gray-500 text-[10px]">{o.seller?.shopName}</p>
+                <p className="text-gray-900 text-xs font-semibold">#{o.orderId}</p>
+                <p className="text-gray-400 text-[10px]">{o.seller?.shopName}</p>
               </div>
               <div className="text-right">
                 <p className="text-orange-400 text-xs font-bold">₹{o.pricing?.total}</p>
@@ -243,22 +243,22 @@ function AdminMapPicker({ onConfirm, onClose }) {
 
       {/* Loading */}
       {!ready && !error && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3" style={{ background: '#0D0A07' }}>
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3" style={{ background: '#F5F4F2' }}>
           <div className="w-10 h-10 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" />
           <p className="text-gray-300 text-sm">Loading map…</p>
         </div>
       )}
       {error && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ background: '#0D0A07' }}>
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ background: '#F5F4F2' }}>
           <FiMapPin size={36} className="text-orange-400" />
-          <p className="text-white font-semibold">Map unavailable — check GOOGLE_PLACES_API_KEY on backend</p>
-          <button onClick={onClose} className="px-5 py-2.5 rounded-2xl text-white font-semibold text-sm" style={{ background: '#f4941c' }}>Go Back</button>
+          <p className="text-gray-900 font-semibold">Map unavailable — check GOOGLE_PLACES_API_KEY on backend</p>
+          <button onClick={onClose} className="px-5 py-2.5 rounded-2xl text-gray-900 font-semibold text-sm" style={{ background: '#f4941c' }}>Go Back</button>
         </div>
       )}
 
       {/* Hint chip */}
       <div className="absolute left-0 right-0 z-10 flex justify-center" style={{ top: 'env(safe-area-inset-top, 8px)', paddingTop: 8 }}>
-        <span className="px-3 py-1 rounded-full text-xs font-bold text-white" style={{ background: 'rgba(244,148,28,0.9)', backdropFilter: 'blur(6px)' }}>
+        <span className="px-3 py-1 rounded-full text-xs font-bold text-gray-900" style={{ background: 'rgba(244,148,28,0.9)', backdropFilter: 'blur(6px)' }}>
           Pin the seller's shop location
         </span>
       </div>
@@ -302,7 +302,7 @@ function AdminMapPicker({ onConfirm, onClose }) {
         <div className="flex flex-col items-center">
           <div className="flex flex-col items-center transition-all duration-200" style={{ transform: moving ? 'translateY(-14px) scale(1.1)' : 'none' }}>
             <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#f4941c', border: '3px solid #fff', boxShadow: moving ? '0 8px 28px rgba(244,148,28,0.55)' : '0 4px 16px rgba(244,148,28,0.45)' }}>
-              <FiMapPin className="text-white" size={20} />
+              <FiMapPin className="text-gray-900" size={20} />
             </div>
             <div className="w-0.5 h-4" style={{ background: 'linear-gradient(#f4941c, transparent)' }} />
           </div>
@@ -320,11 +320,11 @@ function AdminMapPicker({ onConfirm, onClose }) {
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-0.5">{moving ? 'Adjusting…' : 'Selected location'}</p>
             <p className="font-bold text-base leading-tight text-gray-900">{moving ? 'Drag to exact spot' : (short || 'Search or drag map')}</p>
-            {!moving && full && <p className="text-xs mt-0.5 line-clamp-2 text-gray-500">{full}</p>}
+            {!moving && full && <p className="text-xs mt-0.5 line-clamp-2 text-gray-400">{full}</p>}
           </div>
         </div>
         <button onClick={confirm} disabled={!short || moving || saving || !ready}
-          className="w-full py-4 rounded-2xl font-bold text-white text-base disabled:opacity-40 flex items-center justify-center gap-2"
+          className="w-full py-4 rounded-2xl font-bold text-gray-900 text-base disabled:opacity-40 flex items-center justify-center gap-2"
           style={{ background: '#f4941c' }}>
           {saving ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> Setting…</> : <><FiCheck size={18} /> Confirm Location</>}
         </button>
@@ -399,7 +399,7 @@ function AddSellerModal({ onClose, onCreated }) {
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-white font-bold text-lg">➕ Add Seller</h2>
+          <h2 className="text-gray-900 font-bold text-lg">➕ Add Seller</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
             <FiX className="text-gray-400" size={16} />
           </button>
@@ -485,7 +485,7 @@ function AddSellerModal({ onClose, onCreated }) {
                   onClick={() => toggleCat(c.key)}
                   className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
                   style={{
-                    background: form.categories.includes(c.key) ? '#f4941c' : 'rgba(255,255,255,0.07)',
+                    background: form.categories.includes(c.key) ? '#f4941c' : 'rgba(0,0,0,0.05)',
                     color:      form.categories.includes(c.key) ? '#fff'    : 'rgba(255,255,255,0.5)',
                     border:     form.categories.includes(c.key) ? 'none'    : '1px solid rgba(255,255,255,0.1)',
                   }}
@@ -509,7 +509,7 @@ function AddSellerModal({ onClose, onCreated }) {
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-4 rounded-2xl font-bold text-white text-base disabled:opacity-50 mt-2"
+            className="w-full py-4 rounded-2xl font-bold text-gray-900 text-base disabled:opacity-50 mt-2"
             style={{ background: '#f4941c' }}
           >
             {saving ? 'Creating seller…' : '✓  Add as Approved Seller'}
@@ -579,7 +579,7 @@ function EditSellerModal({ seller, onClose, onUpdated }) {
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-white font-bold text-lg flex items-center gap-2"><FiEdit2 size={16} className="text-orange-400" /> Edit Seller</h2>
+          <h2 className="text-gray-900 font-bold text-lg flex items-center gap-2"><FiEdit2 size={16} className="text-orange-400" /> Edit Seller</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
             <FiX className="text-gray-400" size={16} />
           </button>
@@ -659,7 +659,7 @@ function EditSellerModal({ seller, onClose, onUpdated }) {
                 <button key={c.key} type="button" onClick={() => toggleCat(c.key)}
                   className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
                   style={{
-                    background: form.categories.includes(c.key) ? '#f4941c' : 'rgba(255,255,255,0.07)',
+                    background: form.categories.includes(c.key) ? '#f4941c' : 'rgba(0,0,0,0.05)',
                     color:      form.categories.includes(c.key) ? '#fff'    : 'rgba(255,255,255,0.5)',
                     border:     form.categories.includes(c.key) ? 'none'    : '1px solid rgba(255,255,255,0.1)',
                   }}>
@@ -680,7 +680,7 @@ function EditSellerModal({ seller, onClose, onUpdated }) {
           </div>
 
           <button type="submit" disabled={saving}
-            className="w-full py-4 rounded-2xl font-bold text-white text-base disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-2xl font-bold text-gray-900 text-base disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
             style={{ background: '#f4941c' }}>
             <FiSave size={16} /> {saving ? 'Saving…' : 'Save Changes'}
           </button>
@@ -770,14 +770,14 @@ function SellersTab() {
         <div className="flex gap-2 overflow-x-auto">
           {['pending_review','approved','rejected','suspended'].map(f => (
             <button key={f} onClick={() => setFilter(f)} className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap capitalize"
-              style={{ background: filter === f ? '#f4941c' : 'rgba(255,255,255,0.07)', color: filter === f ? '#fff' : 'rgba(255,255,255,0.5)' }}>
+              style={{ background: filter === f ? '#f4941c' : 'rgba(0,0,0,0.05)', color: filter === f ? '#fff' : 'rgba(255,255,255,0.5)' }}>
               {f.replace('_', ' ')}
             </button>
           ))}
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white whitespace-nowrap ml-2 shrink-0"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-900 whitespace-nowrap ml-2 shrink-0"
           style={{ background: '#f4941c' }}
         >
           <FiPlus size={13} /> Add Seller
@@ -786,11 +786,11 @@ function SellersTab() {
 
       <div className="space-y-3">
         {sellers.map(s => (
-          <div key={s._id} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div key={s._id} className="rounded-2xl p-4" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
             <div className="flex items-start justify-between mb-2">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-white font-semibold">{s.shopName}</p>
+                  <p className="text-gray-900 font-semibold">{s.shopName}</p>
                   {s.user
                     ? <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}>✓ linked</span>
                     : <button onClick={() => startLink(s)} className="text-[9px] px-1.5 py-0.5 rounded-full font-bold cursor-pointer" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>⚠ link user</button>
@@ -847,7 +847,7 @@ function SellersTab() {
                   value={linkPhone}
                   onChange={e => setLinkPhone(e.target.value)}
                   placeholder="Phone (10 digits)"
-                  className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                  className="w-full px-3 py-2 rounded-lg text-sm text-gray-900 outline-none"
                   style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(251,191,36,0.3)' }}
                 />
                 <input
@@ -855,18 +855,18 @@ function SellersTab() {
                   value={linkEmail}
                   onChange={e => setLinkEmail(e.target.value)}
                   placeholder="Or email address"
-                  className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                  className="w-full px-3 py-2 rounded-lg text-sm text-gray-900 outline-none"
                   style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(251,191,36,0.3)' }}
                 />
                 <div className="flex gap-2">
                   <button onClick={() => confirmLink(s._id)} disabled={linkBusy}
-                    className="flex-1 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-50"
+                    className="flex-1 py-2 rounded-lg text-xs font-bold text-gray-900 disabled:opacity-50"
                     style={{ background: '#f4941c' }}>
                     {linkBusy ? 'Linking…' : 'Confirm Link'}
                   </button>
                   <button onClick={() => { setLinkingId(null); setLinkPhone(''); setLinkEmail(''); }}
                     className="px-3 py-2 rounded-lg text-xs text-gray-400"
-                    style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    style={{ background: 'rgba(0,0,0,0.03)' }}>
                     Cancel
                   </button>
                 </div>
@@ -882,7 +882,7 @@ function SellersTab() {
                   value={rejectReason}
                   onChange={e => setRejectReason(e.target.value)}
                   placeholder="e.g. Incomplete KYC documents"
-                  className="w-full px-3 py-2 rounded-lg text-sm text-white outline-none"
+                  className="w-full px-3 py-2 rounded-lg text-sm text-gray-900 outline-none"
                   style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(248,113,113,0.3)' }}
                 />
                 <div className="flex gap-2">
@@ -893,7 +893,7 @@ function SellersTab() {
                   </button>
                   <button onClick={() => { setRejectId(null); setRejectReason(''); }}
                     className="px-3 py-2 rounded-lg text-xs text-gray-400"
-                    style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    style={{ background: 'rgba(0,0,0,0.03)' }}>
                     Cancel
                   </button>
                 </div>
@@ -903,7 +903,7 @@ function SellersTab() {
             {s.status === 'pending_review' && (
               <div className="flex gap-2">
                 <button onClick={() => approve(s._id)} disabled={acting === s._id + 'approve'}
-                  className="flex-1 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60"
+                  className="flex-1 py-2 rounded-xl text-xs font-bold text-gray-900 flex items-center justify-center gap-1 disabled:opacity-60"
                   style={{ background: '#34d399' }}>
                   <FiCheck size={13} /> Approve
                 </button>
@@ -1034,7 +1034,7 @@ function ProductsTab() {
           onClick={e => e.stopPropagation()}>
 
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-white font-bold text-lg">{title}</h2>
+            <h2 className="text-gray-900 font-bold text-lg">{title}</h2>
             <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
               <FiX className="text-gray-400" size={16} />
             </button>
@@ -1107,7 +1107,7 @@ function ProductsTab() {
               <label style={labelStyle}><FiCamera size={10} style={{ display: 'inline', marginRight: 4 }} />Product Image</label>
               <label className="block cursor-pointer">
                 <div className="w-full py-2.5 px-3 rounded-xl text-sm flex items-center gap-2"
-                  style={{ background: imgFile ? 'rgba(52,211,153,0.08)' : 'rgba(255,255,255,0.05)', border: '1px dashed rgba(255,255,255,0.15)', color: imgFile ? '#34d399' : 'rgba(255,255,255,0.4)' }}>
+                  style={{ background: imgFile ? 'rgba(52,211,153,0.08)' : 'rgba(0,0,0,0.03)', border: '1px dashed rgba(255,255,255,0.15)', color: imgFile ? '#34d399' : 'rgba(255,255,255,0.4)' }}>
                   <FiCamera size={14} />
                   {imgFile ? imgFile.name : 'Upload product photo (JPG/PNG)'}
                 </div>
@@ -1116,7 +1116,7 @@ function ProductsTab() {
             </div>
 
             <button type="submit" disabled={saving}
-              className="w-full py-4 rounded-2xl font-bold text-white text-base disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-2xl font-bold text-gray-900 text-base disabled:opacity-50 flex items-center justify-center gap-2"
               style={{ background: '#f4941c' }}>
               {saving ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />Saving…</> : <><FiSave size={16} />{title}</>}
             </button>
@@ -1142,9 +1142,9 @@ function ProductsTab() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-white font-semibold">{products.length} product{products.length !== 1 ? 's' : ''}</p>
+        <p className="text-gray-900 font-semibold">{products.length} product{products.length !== 1 ? 's' : ''}</p>
         <button onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-gray-900"
           style={{ background: '#f4941c' }}>
           <FiPlus size={14} /> Add Product
         </button>
@@ -1154,13 +1154,13 @@ function ProductsTab() {
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         <button onClick={() => setFilterStat('')}
           className="px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
-          style={{ background: filterStat === '' ? '#f4941c' : 'rgba(255,255,255,0.07)', color: '#fff' }}>
+          style={{ background: filterStat === '' ? '#f4941c' : 'rgba(0,0,0,0.05)', color: '#fff' }}>
           All Status
         </button>
         {['pending','approved','rejected'].map(s => (
           <button key={s} onClick={() => setFilterStat(s)}
             className="px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap capitalize"
-            style={{ background: filterStat === s ? '#f4941c' : 'rgba(255,255,255,0.07)', color: '#fff' }}>
+            style={{ background: filterStat === s ? '#f4941c' : 'rgba(0,0,0,0.05)', color: '#fff' }}>
             {s}
           </button>
         ))}
@@ -1185,26 +1185,26 @@ function ProductsTab() {
       {!loading && products.length === 0 && (
         <div className="text-center py-12">
           <FiPackage size={40} className="text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-500">No products found. Tap Add Product to create one.</p>
+          <p className="text-gray-400">No products found. Tap Add Product to create one.</p>
         </div>
       )}
 
       <div className="space-y-3">
         {products.map(p => (
-          <div key={p._id} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div key={p._id} className="rounded-2xl p-4" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
             <div className="flex gap-3">
               <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-700 shrink-0 flex items-center justify-center">
                 {p.images?.[0]?.url
                   ? <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" />
-                  : <FiPackage size={24} className="text-gray-500" />}
+                  : <FiPackage size={24} className="text-gray-400" />}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-white font-semibold text-sm truncate">{p.name}</p>
+                    <p className="text-gray-900 font-semibold text-sm truncate">{p.name}</p>
                     <p className="text-gray-400 text-xs capitalize mt-0.5">{p.category?.replace('_',' ')} · {p.unit}</p>
                     <p className="text-orange-400 text-xs font-bold mt-0.5">₹{p.basePrice}/{p.unit}</p>
-                    <p className="text-gray-500 text-[10px] mt-0.5">{p.seller?.shopName || 'Unknown seller'}</p>
+                    <p className="text-gray-400 text-[10px] mt-0.5">{p.seller?.shopName || 'Unknown seller'}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full capitalize"
@@ -1218,7 +1218,7 @@ function ProductsTab() {
                   {(!p.status || p.status === 'pending') && (
                     <>
                       <button onClick={() => approve(p._id)} disabled={acting === p._id}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-white disabled:opacity-60"
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-900 disabled:opacity-60"
                         style={{ background: '#34d399' }}><FiCheck size={11} /> Approve</button>
                       <button onClick={() => reject(p._id)} disabled={acting === p._id}
                         className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold disabled:opacity-60"
@@ -1298,7 +1298,7 @@ function OrdersTab() {
       <div className="flex gap-2 mb-4 overflow-x-auto">
         {['packed','accepted','placed','out_for_delivery','delivered','cancelled'].map(f => (
           <button key={f} onClick={() => setFilter(f)} className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap capitalize"
-            style={{ background: filter === f ? '#f4941c' : 'rgba(255,255,255,0.07)', color: filter === f ? '#fff' : 'rgba(255,255,255,0.5)' }}>
+            style={{ background: filter === f ? '#f4941c' : 'rgba(0,0,0,0.05)', color: filter === f ? '#fff' : 'rgba(255,255,255,0.5)' }}>
             {f.replace(/_/g,' ')}
           </button>
         ))}
@@ -1307,10 +1307,10 @@ function OrdersTab() {
       <div className="space-y-3">
         {orders.length === 0 && <p className="text-gray-600 text-center py-8">No orders</p>}
         {orders.map(o => (
-          <div key={o._id} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div key={o._id} className="rounded-2xl p-4" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
             <div className="flex items-start justify-between mb-2">
               <div>
-                <p className="text-white font-semibold text-sm">#{o.orderId}</p>
+                <p className="text-gray-900 font-semibold text-sm">#{o.orderId}</p>
                 <p className="text-gray-400 text-xs">{o.seller?.shopName} • {o.shippingAddress?.city}</p>
                 <p className="text-gray-600 text-xs">{o.distanceKm?.toFixed(1)} km</p>
               </div>
@@ -1331,7 +1331,7 @@ function OrdersTab() {
                 </div>
                 <div className="flex gap-2 mt-3">
                   <button onClick={() => approvePhotos(o._id)} disabled={acting === o._id || !o.packedPhotos?.length}
-                    className="flex-1 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60"
+                    className="flex-1 py-2 rounded-xl text-xs font-bold text-gray-900 flex items-center justify-center gap-1 disabled:opacity-60"
                     style={{ background: '#34d399' }}><FiCheck size={12} /> Approve & Book Porter</button>
                   <button onClick={() => rejectPhotos(o._id)} className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
                     style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171' }}><FiX size={12} /> Reject Photos</button>
@@ -1373,8 +1373,8 @@ function PayoutsTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-white font-semibold">{payouts.length} pending payouts</p>
-        <button onClick={settle} disabled={!selected.length || settling} className="px-3 py-1.5 rounded-xl text-xs font-bold text-white disabled:opacity-50" style={{ background: '#34d399' }}>
+        <p className="text-gray-900 font-semibold">{payouts.length} pending payouts</p>
+        <button onClick={settle} disabled={!selected.length || settling} className="px-3 py-1.5 rounded-xl text-xs font-bold text-gray-900 disabled:opacity-50" style={{ background: '#34d399' }}>
           {settling ? 'Processing...' : `Settle (${selected.length})`}
         </button>
       </div>
@@ -1382,11 +1382,11 @@ function PayoutsTab() {
       <div className="space-y-2">
         {payouts.length === 0 && <p className="text-gray-600 text-center py-8">No pending payouts</p>}
         {payouts.map(p => (
-          <label key={p._id} className="flex items-center gap-3 rounded-xl p-3 cursor-pointer" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${selected.includes(p._id) ? 'rgba(52,211,153,0.3)' : 'rgba(255,255,255,0.07)'}` }}>
+          <label key={p._id} className="flex items-center gap-3 rounded-xl p-3 cursor-pointer" style={{ background: 'rgba(0,0,0,0.02)', border: `1px solid ${selected.includes(p._id) ? 'rgba(52,211,153,0.3)' : 'rgba(0,0,0,0.05)'}` }}>
             <input type="checkbox" checked={selected.includes(p._id)} onChange={e => setSelected(s => e.target.checked ? [...s, p._id] : s.filter(x => x !== p._id))} className="w-4 h-4 accent-green-400" />
             <div className="flex-1">
-              <p className="text-white text-xs font-semibold">#{p.orderId}</p>
-              <p className="text-gray-500 text-[10px]">{p.seller?.shopName} • {p.seller?.bankDetails?.upiId || p.seller?.bankDetails?.accountNumber}</p>
+              <p className="text-gray-900 text-xs font-semibold">#{p.orderId}</p>
+              <p className="text-gray-400 text-[10px]">{p.seller?.shopName} • {p.seller?.bankDetails?.upiId || p.seller?.bankDetails?.accountNumber}</p>
             </div>
             <p className="text-green-400 font-bold text-sm">₹{p.sellerReceives?.toFixed(2)}</p>
           </label>
@@ -1443,7 +1443,7 @@ function CouponsTab() {
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
-  const inputStyle = { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' };
+  const inputStyle = { background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' };
 
   return (
     <div>
@@ -1455,12 +1455,12 @@ function CouponsTab() {
         ].map(t => (
           <button key={t.key} onClick={() => setSubTab(t.key)}
             className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
-            style={{ background: subTab === t.key ? '#f4941c' : 'rgba(255,255,255,0.07)', color: '#fff' }}>
+            style={{ background: subTab === t.key ? '#f4941c' : 'rgba(0,0,0,0.05)', color: '#fff' }}>
             {t.label}
           </button>
         ))}
         {subTab === 'coupons' && (
-          <button onClick={() => setShowAdd(!showAdd)} className="ml-auto px-3 py-1.5 rounded-xl text-xs font-bold text-white" style={{ background: 'rgba(255,255,255,0.1)' }}>+ New</button>
+          <button onClick={() => setShowAdd(!showAdd)} className="ml-auto px-3 py-1.5 rounded-xl text-xs font-bold text-gray-900" style={{ background: 'rgba(255,255,255,0.1)' }}>+ New</button>
         )}
       </div>
 
@@ -1468,14 +1468,14 @@ function CouponsTab() {
       {subTab === 'coupons' && (
         <>
           {showAdd && (
-            <div className="rounded-2xl p-4 mb-4 space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              <p className="text-white text-sm font-semibold mb-1">New Coupon</p>
+            <div className="rounded-2xl p-4 mb-4 space-y-3" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
+              <p className="text-gray-900 text-sm font-semibold mb-1">New Coupon</p>
 
               {/* Discount type selector */}
               <div>
                 <label className="text-gray-400 text-xs">Discount Type</label>
                 <select value={form.discountType} onChange={e => setForm(v => ({ ...v, discountType: e.target.value }))}
-                  className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-white outline-none" style={inputStyle}>
+                  className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-gray-900 outline-none" style={inputStyle}>
                   <option value="percent" className="bg-gray-900">% Percent (excludes shipping)</option>
                   <option value="flat"    className="bg-gray-900">₹ Flat amount</option>
                 </select>
@@ -1494,7 +1494,7 @@ function CouponsTab() {
                   <label className="text-gray-400 text-xs">{f.label}</label>
                   <input type={f.type} value={form[f.key]} onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))}
                     placeholder={f.placeholder}
-                    className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-white outline-none"
+                    className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-gray-900 outline-none"
                     style={inputStyle} />
                 </div>
               ))}
@@ -1502,7 +1502,7 @@ function CouponsTab() {
               <div>
                 <label className="text-gray-400 text-xs">Applies To (Platform)</label>
                 <select value={form.platformRestriction} onChange={e => setForm(v => ({ ...v, platformRestriction: e.target.value }))}
-                  className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-white outline-none" style={inputStyle}>
+                  className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-gray-900 outline-none" style={inputStyle}>
                   <option value="all"         className="bg-gray-900">🌐 All platforms</option>
                   <option value="main"        className="bg-gray-900">🛒 Eptomart Main only</option>
                   <option value="koyambedu"   className="bg-gray-900">🥬 Koyambedu Daily only</option>
@@ -1517,28 +1517,28 @@ function CouponsTab() {
                     <label className="text-gray-400 text-xs">Seller ID (optional — leave blank for all sellers on this platform)</label>
                     <input type="text" value={form.assignedSellerId} onChange={e => setForm(v => ({ ...v, assignedSellerId: e.target.value }))}
                       placeholder="MongoDB ObjectId of the seller"
-                      className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-white outline-none" style={inputStyle} />
+                      className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-gray-900 outline-none" style={inputStyle} />
                   </div>
                   <div>
                     <label className="text-gray-400 text-xs">Seller Name (for display)</label>
                     <input type="text" value={form.assignedSellerName} onChange={e => setForm(v => ({ ...v, assignedSellerName: e.target.value }))}
                       placeholder="e.g. Fresh Meats by Kumar"
-                      className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-white outline-none" style={inputStyle} />
+                      className="w-full mt-1 px-3 py-2 rounded-xl text-sm text-gray-900 outline-none" style={inputStyle} />
                   </div>
                 </div>
               )}
               <div className="flex gap-2">
-                <button onClick={createCoupon} className="flex-1 py-2.5 rounded-xl font-bold text-white text-sm" style={{ background: '#f4941c' }}>Create Coupon</button>
-                <button onClick={() => setShowAdd(false)} className="px-4 py-2.5 rounded-xl text-sm text-gray-400" style={{ background: 'rgba(255,255,255,0.05)' }}>Cancel</button>
+                <button onClick={createCoupon} className="flex-1 py-2.5 rounded-xl font-bold text-gray-900 text-sm" style={{ background: '#f4941c' }}>Create Coupon</button>
+                <button onClick={() => setShowAdd(false)} className="px-4 py-2.5 rounded-xl text-sm text-gray-400" style={{ background: 'rgba(0,0,0,0.03)' }}>Cancel</button>
               </div>
             </div>
           )}
 
           <div className="space-y-2">
             {coupons.filter(c => c.requestStatus !== 'pending').map(c => (
-              <div key={c._id} className="flex items-center justify-between rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div key={c._id} className="flex items-center justify-between rounded-xl p-3" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
                 <div>
-                  <p className="text-white font-bold text-sm">{c.code}</p>
+                  <p className="text-gray-900 font-bold text-sm">{c.code}</p>
                   <p className="text-gray-400 text-xs">
                     {c.discountType === 'flat' ? `₹${c.discountValue} off` : `${c.discountValue}% off (excl. shipping)`}
                     {' • '} Min ₹{c.minOrderValue}
@@ -1577,16 +1577,16 @@ function CouponsTab() {
             <p className="text-gray-600 text-sm text-center py-8">No pending promo requests from sellers</p>
           )}
           {requests.map(c => (
-            <div key={c._id} className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div key={c._id} className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-white font-bold text-sm">{c.code}</p>
+                  <p className="text-gray-900 font-bold text-sm">{c.code}</p>
                   <p className="text-orange-400 text-xs font-semibold">{c.requestedBy?.shopName || 'Seller'}</p>
                 </div>
                 <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>PENDING</span>
               </div>
               <p className="text-gray-300 text-xs">{c.discountValue}% off (excl. shipping) • Min ₹{c.minOrderValue} • Max {c.maxUsage} uses</p>
-              <p className="text-gray-500 text-xs">Valid: {new Date(c.validFrom).toLocaleDateString('en-IN')} – {new Date(c.validTo).toLocaleDateString('en-IN')}</p>
+              <p className="text-gray-400 text-xs">Valid: {new Date(c.validFrom).toLocaleDateString('en-IN')} – {new Date(c.validTo).toLocaleDateString('en-IN')}</p>
               <div className="flex gap-1 flex-wrap">
                 {c.platformRestriction && c.platformRestriction !== 'all' && (
                   <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase" style={{ background: 'rgba(244,148,28,0.15)', color: '#f4941c' }}>
@@ -1660,26 +1660,26 @@ function DeliveryConfigTab() {
     <div className="space-y-4 max-w-lg">
       <div className="rounded-xl p-3" style={{ background: 'rgba(244,148,28,0.06)', border: '1px solid rgba(244,148,28,0.15)' }}>
         <p className="text-orange-400 text-xs font-semibold">⚙️ Global Delivery Rules</p>
-        <p className="text-gray-500 text-xs mt-0.5">Changes apply to all new delivery quotes immediately. No code changes needed.</p>
+        <p className="text-gray-400 text-xs mt-0.5">Changes apply to all new delivery quotes immediately. No code changes needed.</p>
       </div>
 
       {FIELDS.map(f => (
         <div key={f.key}>
-          <label className="text-white text-sm font-semibold block mb-0.5">{f.label}</label>
-          <p className="text-gray-500 text-xs mb-1">{f.hint}</p>
+          <label className="text-gray-900 text-sm font-semibold block mb-0.5">{f.label}</label>
+          <p className="text-gray-400 text-xs mb-1">{f.hint}</p>
           <input
             type="number"
             value={config[f.key] ?? ''}
             onChange={e => setConfig(c => ({ ...c, [f.key]: parseFloat(e.target.value) || 0 }))}
-            className="w-full px-3 py-2.5 rounded-xl text-white text-sm outline-none"
-            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }}
+            className="w-full px-3 py-2.5 rounded-xl text-gray-900 text-sm outline-none"
+            style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }}
           />
         </div>
       ))}
 
       {/* Live preview */}
-      <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
-        <p className="text-white text-xs font-semibold mb-3">📊 Current Policy Preview</p>
+      <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(0,0,0,0.05)' }}>
+        <p className="text-gray-900 text-xs font-semibold mb-3">📊 Current Policy Preview</p>
         <div className="space-y-1 text-xs text-gray-400">
           <p>• Free delivery: Orders ≥ ₹{config.freeDeliveryThreshold} within {config.freeDeliveryDistanceLimit} km → <span className="text-green-400">FREE</span></p>
           <p>• Orders ≥ ₹{config.freeDeliveryThreshold} beyond {config.freeDeliveryDistanceLimit} km → ₹{config.highValueSurchargePerSlab} per {config.highValueSlabSizeKm} km</p>
@@ -1693,7 +1693,7 @@ function DeliveryConfigTab() {
         </div>
       </div>
 
-      <button onClick={save} disabled={saving} className="w-full py-3 rounded-2xl font-bold text-white disabled:opacity-60" style={{ background: '#f4941c' }}>
+      <button onClick={save} disabled={saving} className="w-full py-3 rounded-2xl font-bold text-gray-900 disabled:opacity-60" style={{ background: '#f4941c' }}>
         {saving ? 'Saving...' : 'Save Configuration'}
       </button>
     </div>

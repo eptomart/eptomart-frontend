@@ -42,7 +42,7 @@ export default function EptoFreshTracking() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0D0A07' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F4F2' }}>
         <div className="w-8 h-8 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" />
       </div>
     );
@@ -51,15 +51,15 @@ export default function EptoFreshTracking() {
   const currentStatusIdx = STATUS_ORDER.indexOf(tracking?.orderStatus);
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0D0A07' }}>
+    <div className="min-h-screen pb-24" style={{ background: '#F5F4F2' }}>
       <Navbar />
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-4 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
-          <FiArrowLeft className="text-white" />
+      <div className="flex items-center gap-3 px-4 pt-4 pb-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+        <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(0,0,0,0.05)' }}>
+          <FiArrowLeft className="text-gray-900" />
         </button>
-        <h1 className="text-white font-bold flex-1">Live Tracking</h1>
-        <button onClick={fetchTracking} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
+        <h1 className="text-gray-900 font-bold flex-1">Live Tracking</h1>
+        <button onClick={fetchTracking} className="p-2 rounded-full" style={{ background: 'rgba(0,0,0,0.05)' }}>
           <FiRefreshCw className="text-gray-400" size={16} />
         </button>
       </div>
@@ -67,11 +67,11 @@ export default function EptoFreshTracking() {
       <div className="px-4 mt-4 space-y-4">
         {/* Map placeholder — integrate with Google Maps / Leaflet for real GPS */}
         {tracking?.porter?.driverLat && (
-          <div className="rounded-2xl overflow-hidden" style={{ height: 200, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="rounded-2xl overflow-hidden" style={{ height: 200, background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.05)' }}>
             <div className="w-full h-full flex items-center justify-center flex-col gap-2">
               <FiMapPin size={30} className="text-orange-400" />
-              <p className="text-white text-sm font-semibold">Driver Location</p>
-              <p className="text-gray-500 text-xs">Lat: {tracking.porter.driverLat?.toFixed(4)}, Lng: {tracking.porter.driverLng?.toFixed(4)}</p>
+              <p className="text-gray-900 text-sm font-semibold">Driver Location</p>
+              <p className="text-gray-400 text-xs">Lat: {tracking.porter.driverLat?.toFixed(4)}, Lng: {tracking.porter.driverLng?.toFixed(4)}</p>
               {tracking.porter.trackingUrl && (
                 <a href={tracking.porter.trackingUrl} target="_blank" rel="noopener noreferrer"
                   className="text-orange-400 text-xs underline">Open in Porter App</a>
@@ -82,13 +82,13 @@ export default function EptoFreshTracking() {
 
         {/* Driver info */}
         {tracking?.porter?.driverName && (
-          <div className="rounded-2xl p-4 flex items-center gap-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="rounded-2xl p-4 flex items-center gap-3" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
             <div className="w-10 h-10 rounded-full bg-orange-900/30 flex items-center justify-center">
               <FiUser className="text-orange-400" />
             </div>
             <div className="flex-1">
-              <p className="text-white font-semibold text-sm">{tracking.porter.driverName}</p>
-              <p className="text-gray-500 text-xs">Delivery Partner</p>
+              <p className="text-gray-900 font-semibold text-sm">{tracking.porter.driverName}</p>
+              <p className="text-gray-400 text-xs">Delivery Partner</p>
             </div>
             {tracking.porter.estimatedDelivery && (
               <div className="text-right">
@@ -96,7 +96,7 @@ export default function EptoFreshTracking() {
                   <FiClock size={12} />
                   {new Date(tracking.porter.estimatedDelivery).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                 </p>
-                <p className="text-gray-500 text-[10px]">Est. arrival</p>
+                <p className="text-gray-400 text-[10px]">Est. arrival</p>
               </div>
             )}
           </div>
@@ -107,13 +107,13 @@ export default function EptoFreshTracking() {
           <div className="rounded-2xl p-4 text-center" style={{ background: 'rgba(244,148,28,0.08)', border: '1px solid rgba(244,148,28,0.25)' }}>
             <p className="text-gray-400 text-xs mb-1">Show this OTP to the delivery person</p>
             <p className="text-4xl font-black tracking-[0.3em] text-orange-400">{tracking.deliveryOtp}</p>
-            <p className="text-gray-500 text-xs mt-1">Do not share with anyone else</p>
+            <p className="text-gray-400 text-xs mt-1">Do not share with anyone else</p>
           </div>
         )}
 
         {/* Progress steps */}
-        <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <h3 className="text-white font-semibold mb-4">Order Progress</h3>
+        <div className="rounded-2xl p-4" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
+          <h3 className="text-gray-900 font-semibold mb-4">Order Progress</h3>
           <div className="space-y-0">
             {STATUS_STEPS.map((step, idx) => {
               const isCompleted = idx <= currentStatusIdx;
@@ -122,11 +122,11 @@ export default function EptoFreshTracking() {
                 <div key={step.key} className="flex items-start gap-3">
                   <div className="flex flex-col items-center">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${isCurrent ? 'scale-110' : ''}`}
-                      style={{ background: isCompleted ? (isCurrent ? '#f4941c' : 'rgba(52,211,153,0.2)') : 'rgba(255,255,255,0.05)' }}>
+                      style={{ background: isCompleted ? (isCurrent ? '#f4941c' : 'rgba(52,211,153,0.2)') : 'rgba(0,0,0,0.03)' }}>
                       {isCompleted ? (isCurrent ? step.icon : '✓') : <span className="text-gray-600 text-xs">{idx + 1}</span>}
                     </div>
                     {idx < STATUS_STEPS.length - 1 && (
-                      <div className="w-0.5 h-6 mt-1" style={{ background: isCompleted ? 'rgba(52,211,153,0.3)' : 'rgba(255,255,255,0.07)' }} />
+                      <div className="w-0.5 h-6 mt-1" style={{ background: isCompleted ? 'rgba(52,211,153,0.3)' : 'rgba(0,0,0,0.05)' }} />
                     )}
                   </div>
                   <div className="pb-5 pt-1">

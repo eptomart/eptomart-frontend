@@ -37,10 +37,10 @@ export default function EptoFreshSellerOrders() {
   useEffect(() => { fetchOrders(); }, [filter]);
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0D0A07' }}>
-      <div className="flex items-center gap-3 px-4 pt-10 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <button onClick={() => navigate('/eptofresh/seller')} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}><FiArrowLeft className="text-white" /></button>
-        <h1 className="text-white font-bold text-lg">Orders</h1>
+    <div className="min-h-screen pb-24" style={{ background: '#F5F4F2' }}>
+      <div className="flex items-center gap-3 px-4 pt-10 pb-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+        <button onClick={() => navigate('/eptofresh/seller')} className="p-2 rounded-full" style={{ background: 'rgba(0,0,0,0.05)' }}><FiArrowLeft className="text-gray-900" /></button>
+        <h1 className="text-gray-900 font-bold text-lg">Orders</h1>
       </div>
 
       {/* Filter tabs */}
@@ -48,17 +48,17 @@ export default function EptoFreshSellerOrders() {
         {['placed', 'accepted', 'preparing', 'packed', 'delivered', 'cancelled'].map(f => (
           <button key={f} onClick={() => setFilter(f)}
             className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap capitalize"
-            style={{ background: filter === f ? '#f4941c' : 'rgba(255,255,255,0.07)', color: filter === f ? '#fff' : 'rgba(255,255,255,0.5)' }}>
+            style={{ background: filter === f ? '#f4941c' : 'rgba(0,0,0,0.05)', color: filter === f ? '#fff' : 'rgba(255,255,255,0.5)' }}>
             {STATUS_LABELS[f]?.label || f}
           </button>
         ))}
       </div>
 
       <div className="px-4 space-y-3">
-        {loading && [1,2,3].map(i => <div key={i} className="h-24 rounded-2xl animate-pulse" style={{ background: 'rgba(255,255,255,0.05)' }} />)}
+        {loading && [1,2,3].map(i => <div key={i} className="h-24 rounded-2xl animate-pulse" style={{ background: 'rgba(0,0,0,0.03)' }} />)}
 
         {!loading && orders.length === 0 && (
-          <div className="text-center py-16 text-gray-500">No orders in this status</div>
+          <div className="text-center py-16 text-gray-400">No orders in this status</div>
         )}
 
         {orders.map(order => {
@@ -67,11 +67,11 @@ export default function EptoFreshSellerOrders() {
             <div key={order._id}
               onClick={() => navigate(`/eptofresh/seller/orders/${order._id}`)}
               className="rounded-2xl p-4 cursor-pointer active:scale-[0.98]"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <p className="text-white font-semibold text-sm">#{order.orderId}</p>
-                  <p className="text-gray-500 text-xs">{order.items?.length} item{order.items?.length > 1 ? 's' : ''}</p>
+                  <p className="text-gray-900 font-semibold text-sm">#{order.orderId}</p>
+                  <p className="text-gray-400 text-xs">{order.items?.length} item{order.items?.length > 1 ? 's' : ''}</p>
                 </div>
                 <span className="px-2 py-1 rounded-full text-[11px] font-semibold" style={{ background: `${s.color}1a`, color: s.color }}>
                   {s.label}
@@ -79,7 +79,7 @@ export default function EptoFreshSellerOrders() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-orange-400 font-bold">₹{order.pricing?.total}</span>
-                <span className="text-gray-500 text-xs">{new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="text-gray-400 text-xs">{new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             </div>
           );
@@ -131,29 +131,29 @@ export function EptoFreshSellerOrderDetail() {
     } catch (err) { toast.error(err.response?.data?.message || 'Upload failed'); } finally { setUploading(false); }
   };
 
-  if (!order) return <div className="min-h-screen flex items-center justify-center" style={{ background: '#0D0A07' }}><div className="w-8 h-8 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" /></div>;
+  if (!order) return <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F4F2' }}><div className="w-8 h-8 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" /></div>;
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0D0A07' }}>
-      <div className="flex items-center gap-3 px-4 pt-10 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}><FiArrowLeft className="text-white" /></button>
-        <h1 className="text-white font-bold">Order #{order.orderId}</h1>
+    <div className="min-h-screen pb-24" style={{ background: '#F5F4F2' }}>
+      <div className="flex items-center gap-3 px-4 pt-10 pb-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+        <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(0,0,0,0.05)' }}><FiArrowLeft className="text-gray-900" /></button>
+        <h1 className="text-gray-900 font-bold">Order #{order.orderId}</h1>
       </div>
 
       <div className="px-4 mt-4 space-y-4">
         {/* Items — Seller sees: product, qty, cut, variant ONLY */}
-        <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <h3 className="text-white font-semibold mb-3">Items to Prepare</h3>
+        <div className="rounded-2xl p-4" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
+          <h3 className="text-gray-900 font-semibold mb-3">Items to Prepare</h3>
           {order.items?.map((item, i) => (
             <div key={i} className="py-2.5 border-b border-gray-800 last:border-0">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-white font-semibold text-sm">{item.productName}</p>
+                  <p className="text-gray-900 font-semibold text-sm">{item.productName}</p>
                   {item.variant?.label && <p className="text-gray-400 text-xs">{item.variant.label}</p>}
                   {item.cutType && <p className="text-orange-400 text-xs capitalize">Cut: {item.cutType}</p>}
                 </div>
                 <div className="text-right">
-                  <p className="text-white font-bold">× {item.quantity}</p>
+                  <p className="text-gray-900 font-bold">× {item.quantity}</p>
                   <p className="text-gray-400 text-xs">₹{item.totalPrice}</p>
                 </div>
               </div>
@@ -169,11 +169,11 @@ export function EptoFreshSellerOrderDetail() {
         {order.orderStatus === 'placed' && (
           <div className="space-y-3">
             <div className="rounded-2xl p-4" style={{ background: 'rgba(52,211,153,0.06)', border: '1px solid rgba(52,211,153,0.15)' }}>
-              <p className="text-white font-semibold mb-1">New Order!</p>
+              <p className="text-gray-900 font-semibold mb-1">New Order!</p>
               <p className="text-gray-400 text-xs mb-3">Accept to start preparing, or reject if unavailable</p>
               <div className="flex gap-3">
                 <button onClick={accept} disabled={actioning}
-                  className="flex-1 py-3 rounded-xl font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  className="flex-1 py-3 rounded-xl font-bold text-gray-900 flex items-center justify-center gap-1.5 disabled:opacity-60"
                   style={{ background: '#34d399' }}>
                   <FiCheck size={16} /> Accept
                 </button>
@@ -187,8 +187,8 @@ export function EptoFreshSellerOrderDetail() {
             {showReject && (
               <div className="rounded-2xl p-4" style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.15)' }}>
                 <label className="text-gray-400 text-xs block mb-1">Rejection reason</label>
-                <input value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="e.g. Out of stock today" className="w-full px-3 py-2 rounded-xl text-sm text-white mb-2 outline-none" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }} />
-                <button onClick={reject} disabled={actioning} className="w-full py-2.5 rounded-xl font-bold text-white disabled:opacity-60" style={{ background: '#ef4444' }}>Confirm Reject</button>
+                <input value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="e.g. Out of stock today" className="w-full px-3 py-2 rounded-xl text-sm text-gray-900 mb-2 outline-none" style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }} />
+                <button onClick={reject} disabled={actioning} className="w-full py-2.5 rounded-xl font-bold text-gray-900 disabled:opacity-60" style={{ background: '#ef4444' }}>Confirm Reject</button>
               </div>
             )}
           </div>
@@ -197,7 +197,7 @@ export function EptoFreshSellerOrderDetail() {
         {/* Upload packed photos */}
         {['accepted', 'preparing'].includes(order.orderStatus) && (
           <div className="rounded-2xl p-4" style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.15)' }}>
-            <p className="text-white font-semibold mb-1">Upload Packed Photos</p>
+            <p className="text-gray-900 font-semibold mb-1">Upload Packed Photos</p>
             <p className="text-gray-400 text-xs mb-3">Take photos of the packed products for admin verification</p>
             <input ref={fileRef} type="file" multiple accept="image/*" className="hidden" onChange={e => uploadPhotos(e.target.files)} />
             <button onClick={() => fileRef.current?.click()} disabled={uploading}
@@ -213,7 +213,7 @@ export function EptoFreshSellerOrderDetail() {
         {order.orderStatus === 'packed' && (
           <div className="rounded-2xl p-4" style={{ background: 'rgba(96,165,250,0.06)', border: '1px solid rgba(96,165,250,0.15)' }}>
             <p className="text-blue-400 font-semibold">⏳ Waiting for admin to verify photos</p>
-            <p className="text-gray-500 text-xs mt-1">Once approved, a delivery driver will be assigned</p>
+            <p className="text-gray-400 text-xs mt-1">Once approved, a delivery driver will be assigned</p>
           </div>
         )}
 
@@ -221,7 +221,7 @@ export function EptoFreshSellerOrderDetail() {
         {order.porter?.driverName && (
           <div className="rounded-2xl p-4" style={{ background: 'rgba(52,211,153,0.06)', border: '1px solid rgba(52,211,153,0.15)' }}>
             <p className="text-green-400 font-semibold mb-1">🚗 Driver Assigned</p>
-            <p className="text-white text-sm">{order.porter.driverName}</p>
+            <p className="text-gray-900 text-sm">{order.porter.driverName}</p>
             <p className="text-gray-400 text-xs">Status: {order.porter.status}</p>
           </div>
         )}

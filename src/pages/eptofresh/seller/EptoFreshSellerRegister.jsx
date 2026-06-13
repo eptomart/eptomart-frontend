@@ -99,23 +99,23 @@ export default function EptoFreshSellerRegister() {
     <div>
       <label className="text-gray-400 text-xs mb-1 block">{label}{required && <span className="text-red-400 ml-1">*</span>}</label>
       <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
-        style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }} />
+        className="w-full px-3 py-2.5 rounded-xl text-sm text-gray-900 outline-none"
+        style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }} />
     </div>
   );
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0D0A07' }}>
-      <div className="flex items-center gap-3 px-4 pt-12 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}><FiArrowLeft className="text-white" /></button>
+    <div className="min-h-screen pb-24" style={{ background: '#F5F4F2' }}>
+      <div className="flex items-center gap-3 px-4 pt-12 pb-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+        <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(0,0,0,0.05)' }}><FiArrowLeft className="text-gray-900" /></button>
         <div>
-          <h1 className="text-white font-bold">Sell on EptoFresh</h1>
-          <p className="text-gray-500 text-xs">Register your meat/fish shop</p>
+          <h1 className="text-gray-900 font-bold">Sell on EptoFresh</h1>
+          <p className="text-gray-400 text-xs">Register your meat/fish shop</p>
         </div>
       </div>
 
       {/* Step tabs */}
-      <div className="flex" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+      <div className="flex" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
         {['Shop Info', 'Categories', 'KYC Docs'].map((s, i) => (
           <button key={s} onClick={() => setStep(i)} className="flex-1 py-3 text-xs font-semibold transition-all"
             style={{ color: step === i ? '#f4941c' : 'rgba(255,255,255,0.4)', borderBottom: step === i ? '2px solid #f4941c' : '2px solid transparent' }}>
@@ -171,7 +171,7 @@ export default function EptoFreshSellerRegister() {
               <Input label="Closing Time" value={form.closingTime} onChange={v => update('closingTime', v)} type="time" />
             </div>
 
-            <button onClick={() => setStep(1)} className="w-full py-3 rounded-2xl font-bold text-white" style={{ background: '#f4941c' }}>
+            <button onClick={() => setStep(1)} className="w-full py-3 rounded-2xl font-bold text-gray-900" style={{ background: '#f4941c' }}>
               Next: Categories →
             </button>
           </>
@@ -185,7 +185,7 @@ export default function EptoFreshSellerRegister() {
                 <button key={c.key} onClick={() => toggleCategory(c.key)}
                   className="py-3 rounded-xl text-sm font-semibold transition-all"
                   style={{
-                    background:   form.categories.includes(c.key) ? '#f4941c' : 'rgba(255,255,255,0.05)',
+                    background:   form.categories.includes(c.key) ? '#f4941c' : 'rgba(0,0,0,0.03)',
                     color:        form.categories.includes(c.key) ? '#fff' : 'rgba(255,255,255,0.5)',
                     border:       `1px solid ${form.categories.includes(c.key) ? 'transparent' : 'rgba(255,255,255,0.08)'}`,
                   }}>
@@ -194,8 +194,8 @@ export default function EptoFreshSellerRegister() {
               ))}
             </div>
             <div className="flex gap-2 mt-2">
-              <button onClick={() => setStep(0)} className="flex-1 py-3 rounded-2xl text-sm font-semibold" style={{ background: 'rgba(255,255,255,0.07)', color: '#fff' }}>← Back</button>
-              <button onClick={() => setStep(2)} disabled={!form.categories.length} className="flex-1 py-3 rounded-2xl font-bold text-white disabled:opacity-50" style={{ background: '#f4941c' }}>Next: KYC Docs →</button>
+              <button onClick={() => setStep(0)} className="flex-1 py-3 rounded-2xl text-sm font-semibold" style={{ background: 'rgba(0,0,0,0.05)', color: '#fff' }}>← Back</button>
+              <button onClick={() => setStep(2)} disabled={!form.categories.length} className="flex-1 py-3 rounded-2xl font-bold text-gray-900 disabled:opacity-50" style={{ background: '#f4941c' }}>Next: KYC Docs →</button>
             </div>
           </>
         )}
@@ -220,7 +220,7 @@ export default function EptoFreshSellerRegister() {
                 </label>
                 <label className="block cursor-pointer">
                   <div className="w-full py-2.5 px-3 rounded-xl text-sm flex items-center gap-2"
-                    style={{ background: files[doc.key] ? 'rgba(52,211,153,0.08)' : 'rgba(255,255,255,0.05)', border: '1px dashed rgba(255,255,255,0.15)', color: files[doc.key] ? '#34d399' : 'rgba(255,255,255,0.4)' }}>
+                    style={{ background: files[doc.key] ? 'rgba(52,211,153,0.08)' : 'rgba(0,0,0,0.03)', border: '1px dashed rgba(255,255,255,0.15)', color: files[doc.key] ? '#34d399' : 'rgba(255,255,255,0.4)' }}>
                     <FiUpload size={14} />
                     {files[doc.key] ? files[doc.key].name : 'Upload file (JPG / PNG / PDF)'}
                   </div>
@@ -230,8 +230,8 @@ export default function EptoFreshSellerRegister() {
             ))}
 
             <div className="flex gap-2 mt-2">
-              <button onClick={() => setStep(1)} className="flex-1 py-3 rounded-2xl text-sm font-semibold" style={{ background: 'rgba(255,255,255,0.07)', color: '#fff' }}>← Back</button>
-              <button onClick={handleSubmit} disabled={submitting} className="flex-1 py-3 rounded-2xl font-bold text-white disabled:opacity-60" style={{ background: '#f4941c' }}>
+              <button onClick={() => setStep(1)} className="flex-1 py-3 rounded-2xl text-sm font-semibold" style={{ background: 'rgba(0,0,0,0.05)', color: '#fff' }}>← Back</button>
+              <button onClick={handleSubmit} disabled={submitting} className="flex-1 py-3 rounded-2xl font-bold text-gray-900 disabled:opacity-60" style={{ background: '#f4941c' }}>
                 {submitting ? 'Submitting...' : 'Submit Registration'}
               </button>
             </div>
