@@ -53,6 +53,7 @@ const emptyForm = {
   validFrom: today(), validTo: inDays(30),
   description: '', platformRestriction: 'all',
   assignedSellerName: '', assignedSellerId: '',
+  allowMultipleUsePerBuyer: false,
 };
 
 export default function AdminCoupons() {
@@ -315,6 +316,27 @@ export default function AdminCoupons() {
               />
             </div>
 
+            {/* Multi-use checkbox */}
+            <div className="sm:col-span-2 lg:col-span-3">
+              <label className="flex items-start gap-3 cursor-pointer select-none group">
+                <div className="relative mt-0.5 shrink-0">
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={form.allowMultipleUsePerBuyer}
+                    onChange={e => setForm(f => ({ ...f, allowMultipleUsePerBuyer: e.target.checked }))}
+                  />
+                  <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${form.allowMultipleUsePerBuyer ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 bg-white group-hover:border-indigo-400'}`}>
+                    {form.allowMultipleUsePerBuyer && <FiCheck size={12} className="text-white" />}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Allow same buyer to use multiple times</p>
+                  <p className="text-xs text-gray-400 mt-0.5">If unchecked, each customer can only redeem this coupon once. Check this for loyalty or birthday coupons.</p>
+                </div>
+              </label>
+            </div>
+
             <div className="sm:col-span-2 lg:col-span-3 flex justify-end gap-3 pt-2">
               <button
                 type="button"
@@ -396,6 +418,9 @@ export default function AdminCoupons() {
                       <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">
                         {PLATFORM_LABEL[c.platformRestriction] || c.platformRestriction}
                       </span>
+                      {c.allowMultipleUsePerBuyer && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-600">Multi-use</span>
+                      )}
                     </div>
 
                     <p className="text-sm text-gray-600 mt-1">

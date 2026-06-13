@@ -26,9 +26,18 @@
     font-family: 'Inter', system-ui, sans-serif;
     background-color: #f8f9fa;
     color: #1a1a1a;
-    min-height: 100vh;
+    /* dvh = dynamic viewport height — stays fixed on Android even when address bar shows/hides */
+    min-height: 100dvh;
+    min-height: 100vh; /* fallback for browsers without dvh */
     -webkit-font-smoothing: antialiased;
     overscroll-behavior-y: contain;
+    /* Prevent layout shrink on Android when virtual keyboard appears */
+    position: relative;
+  }
+
+  /* Android: keep fixed-height screens from shrinking when keyboard opens */
+  .min-h-screen {
+    min-height: 100dvh !important;
   }
 
   /* Custom scrollbar */

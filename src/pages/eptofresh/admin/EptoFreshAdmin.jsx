@@ -906,50 +906,346 @@ function SellersTab() {
   );
 }
 
-// ── Products Approval ────────────────────────────────────
-function ProductsTab() {
-  const [products, setProducts] = useState([]);
-  const [acting, setActing]     = useState(null);
+// ── Products — full management ────────────────────────────
+const PRODUCT_CATEGORIES = [
+  { key: 'chicken',       label: 'Chicken' },
+  { key: 'mutton',        label: 'Mutton' },
+  { key: 'fish',          label: 'Fish' },
+  { key: 'seafood',       label: 'Seafood' },
+  { key: 'beef',          label: 'Beef' },
+  { key: 'pork',          label: 'Pork' },
+  { key: 'ready_to_cook', label: 'Ready to Cook' },
+];
+const UNITS = ['kg', 'g', 'piece', '500g', '250g', 'pack', 'dozen'];
 
-  useEffect(() => {
-    api.get('/eptofresh/admin/products/pending').then(r => { if (r.data.success) setProducts(r.data.products); }).catch(() => {});
-  }, []);
+const BLANK_PRODUCT = {
+  name: '', category: 'chicken', basePrice: '', unit: 'kg',
+  description: '', stock: '', minOrderQty: '0.5', maxOrderQty: '10',
+  sellerId: '',
+};
+
+function ProductsTab() {
+  const [products,    setProducts]    = useState([]);
+  const [sellers,     setSellers]     = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [filterCat,   setFilterCat]   = useState('');
+  const [filterStat,  setFilterStat]  = useState('');
+  const [acting,      setActing]      = useState(null);
+  const [showAdd,     setShowAdd]     = useState(false);
+  const [editProduct, setEditProduct] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (filterCat)  params.set('category', filterCat);
+      if (filterStat) params.set('status', filterStat);
+      const [pRes, sRes] = await Promise.all([
+        api.get(`/eptofresh/admin/products?${params}`).catch(() => ({ data: { products: [] } })),
+        api.get('/eptofresh/admin/sellers').catch(() => ({ data: { sellers: [] } })),
+      ]);
+      setProducts(pRes.data.products || []);
+      setSellers((sRes.data.sellers || []).filter(s => s.status === 'approved'));
+    } catch { toast.error('Failed to load'); }
+    finally { setLoading(false); }
+  }, [filterCat, filterStat]);
+
+  useEffect(() => { load(); }, [load]);
 
   const approve = async (id) => {
     setActing(id);
-    await api.post(`/eptofresh/admin/products/${id}/approve`).then(r => { if (r.data.success) { toast.success('Product approved'); setProducts(p => p.filter(x => x._id !== id)); } }).catch(() => toast.error('Failed'));
+    try {
+      const { data } = await api.post(`/eptofresh/admin/products/${id}/approve`);
+      if (data.success) { toast.success('Product approved'); setProducts(p => p.map(x => x._id === id ? { ...x, status: 'approved' } : x)); }
+    } catch { toast.error('Failed'); }
     setActing(null);
   };
+
   const reject = async (id) => {
-    const reason = window.prompt('Reason?');
-    if (!reason) return;
-    await api.post(`/eptofresh/admin/products/${id}/reject`, { reason }).then(r => { if (r.data.success) setProducts(p => p.filter(x => x._id !== id)); }).catch(() => {});
+    const reason = window.prompt('Reject reason?');
+    if (reason === null) return;
+    setActing(id);
+    try {
+      await api.post(`/eptofresh/admin/products/${id}/reject`, { reason });
+      setProducts(p => p.map(x => x._id === id ? { ...x, status: 'rejected' } : x));
+      toast.success('Product rejected');
+    } catch { toast.error('Failed'); }
+    setActing(null);
+  };
+
+  const deleteProduct = async (id) => {
+    if (!window.confirm('Delete this product?')) return;
+    setActing(id);
+    try {
+      await api.delete(`/eptofresh/admin/products/${id}`);
+      setProducts(p => p.filter(x => x._id !== id));
+      toast.success('Deleted');
+    } catch { toast.error('Failed to delete'); }
+    setActing(null);
+  };
+
+  const statusColor = (s) => s === 'approved' ? '#34d399' : s === 'rejected' ? '#f87171' : '#fbbf24';
+  const inputStyle = { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, color: '#fff', padding: '10px 12px', fontSize: 15, width: '100%', outline: 'none' };
+  const labelStyle = { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 };
+
+  // ── Add / Edit modal shared form ──────────────────────────
+  function ProductFormModal({ initial, title, onSave, onClose }) {
+    const [form, setForm]   = useState(initial);
+    const [saving, setSaving] = useState(false);
+    const [imgFile, setImgFile] = useState(null);
+    const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+    const submit = async (e) => {
+      e.preventDefault();
+      if (!form.name || !form.basePrice || !form.sellerId) return toast.error('Name, price and seller are required');
+      setSaving(true);
+      try {
+        const fd = new FormData();
+        Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+        if (imgFile) fd.append('image', imgFile);
+        await onSave(fd);
+        onClose();
+      } catch (err) { toast.error(err.response?.data?.message || 'Save failed'); }
+      finally { setSaving(false); }
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
+        <div className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl overflow-y-auto"
+          style={{ background: '#0f2035', maxHeight: '92vh', padding: '24px 20px 40px' }}
+          onClick={e => e.stopPropagation()}>
+
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-white font-bold text-lg">{title}</h2>
+            <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
+              <FiX className="text-gray-400" size={16} />
+            </button>
+          </div>
+
+          <form onSubmit={submit} className="space-y-4">
+            {/* Seller assignment */}
+            <div>
+              <label style={labelStyle}>Assign to Seller *</label>
+              <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.sellerId} onChange={e => set('sellerId', e.target.value)} required>
+                <option value="">— Select approved seller —</option>
+                {sellers.map(s => <option key={s._id} value={s._id}>{s.shopName} ({s.ownerName})</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Product Name *</label>
+              <input style={inputStyle} value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Fresh Whole Chicken" required />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label style={labelStyle}>Category *</label>
+                <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.category} onChange={e => set('category', e.target.value)}>
+                  {PRODUCT_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Unit *</label>
+                <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.unit} onChange={e => set('unit', e.target.value)}>
+                  {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label style={labelStyle}>Price (₹) *</label>
+                <input style={inputStyle} type="number" min="0" step="0.01" value={form.basePrice}
+                  onChange={e => set('basePrice', e.target.value)} placeholder="250" required />
+              </div>
+              <div>
+                <label style={labelStyle}>Stock (units)</label>
+                <input style={inputStyle} type="number" min="0" value={form.stock}
+                  onChange={e => set('stock', e.target.value)} placeholder="e.g. 50" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label style={labelStyle}>Min Order Qty</label>
+                <input style={inputStyle} type="number" min="0" step="0.1" value={form.minOrderQty}
+                  onChange={e => set('minOrderQty', e.target.value)} />
+              </div>
+              <div>
+                <label style={labelStyle}>Max Order Qty</label>
+                <input style={inputStyle} type="number" min="0" step="0.1" value={form.maxOrderQty}
+                  onChange={e => set('maxOrderQty', e.target.value)} />
+              </div>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Description</label>
+              <textarea style={{ ...inputStyle, resize: 'none' }} rows={2} value={form.description}
+                onChange={e => set('description', e.target.value)} placeholder="Fresh cleaned chicken, ready to cook" />
+            </div>
+
+            {/* Image upload */}
+            <div>
+              <label style={labelStyle}><FiCamera size={10} style={{ display: 'inline', marginRight: 4 }} />Product Image</label>
+              <label className="block cursor-pointer">
+                <div className="w-full py-2.5 px-3 rounded-xl text-sm flex items-center gap-2"
+                  style={{ background: imgFile ? 'rgba(52,211,153,0.08)' : 'rgba(255,255,255,0.05)', border: '1px dashed rgba(255,255,255,0.15)', color: imgFile ? '#34d399' : 'rgba(255,255,255,0.4)' }}>
+                  <FiCamera size={14} />
+                  {imgFile ? imgFile.name : 'Upload product photo (JPG/PNG)'}
+                </div>
+                <input type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={e => setImgFile(e.target.files[0])} />
+              </label>
+            </div>
+
+            <button type="submit" disabled={saving}
+              className="w-full py-4 rounded-2xl font-bold text-white text-base disabled:opacity-50 flex items-center justify-center gap-2"
+              style={{ background: '#f4941c' }}>
+              {saving ? <><div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />Saving…</> : <><FiSave size={16} />{title}</>}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  const handleAdd = async (fd) => {
+    const { data } = await api.post('/eptofresh/admin/products', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+    if (data.success) { toast.success('Product added!'); setProducts(p => [data.product, ...p]); }
+    else throw new Error(data.message);
+  };
+
+  const handleEdit = async (fd) => {
+    const { data } = await api.put(`/eptofresh/admin/products/${editProduct._id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+    if (data.success) { toast.success('Product updated!'); setProducts(p => p.map(x => x._id === editProduct._id ? data.product : x)); }
+    else throw new Error(data.message);
   };
 
   return (
-    <div className="space-y-3">
-      {products.length === 0 && <p className="text-gray-600 text-center py-8">No products pending approval</p>}
-      {products.map(p => (
-        <div key={p._id} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <div className="flex gap-3 mb-3">
-            <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-700 shrink-0 flex items-center justify-center">
-              {p.images?.[0]?.url ? <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" /> : <span className="text-xl">🥩</span>}
-            </div>
-            <div>
-              <p className="text-white font-semibold">{p.name}</p>
-              <p className="text-gray-400 text-xs capitalize">{p.category.replace('_',' ')} • {p.seller?.shopName}</p>
-              <p className="text-orange-400 text-xs">₹{p.basePrice}/{p.unit}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => approve(p._id)} disabled={acting === p._id}
-              className="flex-1 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1 disabled:opacity-60"
-              style={{ background: '#34d399' }}><FiCheck size={12} /> Approve</button>
-            <button onClick={() => reject(p._id)} className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
-              style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171' }}><FiX size={12} /> Reject</button>
-          </div>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <p className="text-white font-semibold">{products.length} product{products.length !== 1 ? 's' : ''}</p>
+        <button onClick={() => setShowAdd(true)}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white"
+          style={{ background: '#f4941c' }}>
+          <FiPlus size={14} /> Add Product
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        <button onClick={() => setFilterStat('')}
+          className="px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
+          style={{ background: filterStat === '' ? '#f4941c' : 'rgba(255,255,255,0.07)', color: '#fff' }}>
+          All Status
+        </button>
+        {['pending','approved','rejected'].map(s => (
+          <button key={s} onClick={() => setFilterStat(s)}
+            className="px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap capitalize"
+            style={{ background: filterStat === s ? '#f4941c' : 'rgba(255,255,255,0.07)', color: '#fff' }}>
+            {s}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        <button onClick={() => setFilterCat('')}
+          className="px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
+          style={{ background: filterCat === '' ? 'rgba(244,148,28,0.6)' : 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)' }}>
+          All Categories
+        </button>
+        {PRODUCT_CATEGORIES.map(c => (
+          <button key={c.key} onClick={() => setFilterCat(c.key)}
+            className="px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
+            style={{ background: filterCat === c.key ? 'rgba(244,148,28,0.6)' : 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)' }}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {loading && <div className="flex justify-center py-8"><div className="w-8 h-8 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" /></div>}
+
+      {!loading && products.length === 0 && (
+        <div className="text-center py-12">
+          <FiPackage size={40} className="text-gray-600 mx-auto mb-3" />
+          <p className="text-gray-500">No products found. Tap Add Product to create one.</p>
         </div>
-      ))}
+      )}
+
+      <div className="space-y-3">
+        {products.map(p => (
+          <div key={p._id} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="flex gap-3">
+              <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-700 shrink-0 flex items-center justify-center">
+                {p.images?.[0]?.url
+                  ? <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" />
+                  : <FiPackage size={24} className="text-gray-500" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-white font-semibold text-sm truncate">{p.name}</p>
+                    <p className="text-gray-400 text-xs capitalize mt-0.5">{p.category?.replace('_',' ')} · {p.unit}</p>
+                    <p className="text-orange-400 text-xs font-bold mt-0.5">₹{p.basePrice}/{p.unit}</p>
+                    <p className="text-gray-500 text-[10px] mt-0.5">{p.seller?.shopName || 'Unknown seller'}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full capitalize"
+                      style={{ background: `${statusColor(p.status)}22`, color: statusColor(p.status) }}>
+                      {p.status || 'pending'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 mt-3 flex-wrap">
+                  {(!p.status || p.status === 'pending') && (
+                    <>
+                      <button onClick={() => approve(p._id)} disabled={acting === p._id}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-white disabled:opacity-60"
+                        style={{ background: '#34d399' }}><FiCheck size={11} /> Approve</button>
+                      <button onClick={() => reject(p._id)} disabled={acting === p._id}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold disabled:opacity-60"
+                        style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171' }}><FiX size={11} /> Reject</button>
+                    </>
+                  )}
+                  <button onClick={() => setEditProduct(p)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold"
+                    style={{ background: 'rgba(244,148,28,0.12)', color: '#f4941c' }}><FiEdit2 size={11} /> Edit</button>
+                  <button onClick={() => deleteProduct(p._id)} disabled={acting === p._id}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold disabled:opacity-60"
+                    style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)' }}><FiX size={11} /> Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {showAdd && (
+        <ProductFormModal
+          title="Add Product"
+          initial={{ ...BLANK_PRODUCT }}
+          onSave={handleAdd}
+          onClose={() => setShowAdd(false)}
+        />
+      )}
+      {editProduct && (
+        <ProductFormModal
+          title="Edit Product"
+          initial={{
+            name:        editProduct.name || '',
+            category:    editProduct.category || 'chicken',
+            basePrice:   editProduct.basePrice || '',
+            unit:        editProduct.unit || 'kg',
+            description: editProduct.description || '',
+            stock:       editProduct.stock || '',
+            minOrderQty: editProduct.minOrderQty || '0.5',
+            maxOrderQty: editProduct.maxOrderQty || '10',
+            sellerId:    editProduct.seller?._id || editProduct.seller || '',
+          }}
+          onSave={handleEdit}
+          onClose={() => setEditProduct(null)}
+        />
+      )}
     </div>
   );
 }

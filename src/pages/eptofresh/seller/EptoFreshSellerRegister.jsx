@@ -75,6 +75,9 @@ export default function EptoFreshSellerRegister() {
         else if (Array.isArray(v)) v.forEach(item => fd.append(`${k}[]`, item));
         else fd.append(k, v);
       });
+      // Backend expects 'lat' and 'lng' — map from locationLat/locationLng
+      fd.append('lat', form.locationLat);
+      fd.append('lng', form.locationLng);
       if (files.meatLicense) fd.append('meatLicense', files.meatLicense);
       if (files.aadhaar)     fd.append('aadhaar', files.aadhaar);
       if (files.pan)         fd.append('pan', files.pan);
