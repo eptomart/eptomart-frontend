@@ -2,7 +2,7 @@
 // HOME PAGE — Eptomart Premium
 // ============================================
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   FiArrowRight, FiSearch, FiZap, FiChevronRight, FiMic, FiX,
@@ -69,40 +69,68 @@ function SectionHeader({ Icon, iconColor = '#f4941c', title, link, linkLabel = '
   );
 }
 
-// ── Product Card (used in both grid and slider) ────────────────
+// ── Product Card — Blinkit style ───────────────────────────────
 function ProductGridCard({ product: p, accent = '#f4941c' }) {
+  const navigate = useNavigate();
   const orig = p.price || 0;
   const disc = p.discountPrice && p.discountPrice < orig ? p.discountPrice : null;
   const pct  = disc ? Math.round(((orig - disc) / orig) * 100) : 0;
   const img  = p.images?.find(i => i.isDefault)?.url || p.images?.[0]?.url || '';
+  const unit = p.unit || p.weight || p.size || '';
+  const href = `/product/${p.slug || p._id}`;
+
   return (
-    <Link to={`/product/${p.slug || p._id}`}
-      className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-card hover:shadow-card-hover hover:-translate-y-1 hover:border-gray-200 transition-all duration-300 active:scale-95 group flex flex-col">
-      <div className="relative bg-gray-50 overflow-hidden" style={{ aspectRatio: '1/1' }}>
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col"
+      style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.07)' }}>
+
+      {/* Image area */}
+      <Link to={href} className="relative bg-gray-50 block overflow-hidden" style={{ aspectRatio: '1/1' }}>
         {img
-          ? <img src={img} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-          : <div className="w-full h-full flex items-center justify-center"><FiPackage size={36} className="text-gray-300" /></div>
-        }
+          ? <img src={img} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
+          : <div className="w-full h-full flex items-center justify-center"><FiPackage size={36} className="text-gray-200" /></div>}
+
+        {/* Stacked % OFF badge — top left */}
         {pct >= 5 && (
-          <div className="absolute top-2 left-2 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md"
-            style={{ background: accent }}>
-            {pct}% OFF
+          <div className="absolute top-2 left-2 text-white text-center leading-none font-black rounded-md px-1.5 py-1"
+            style={{ background: accent, fontSize: 9, minWidth: 32 }}>
+            <div style={{ fontSize: 11 }}>{pct}%</div>
+            <div>OFF</div>
           </div>
         )}
-      </div>
-      <div className="p-3 flex flex-col gap-1 flex-1">
-        <p className="text-[12px] font-bold text-gray-800 line-clamp-2 leading-snug">{p.name}</p>
-        <div className="flex items-baseline gap-1.5 mt-auto pt-1">
-          <span className="text-sm font-extrabold text-gray-900">₹{(disc || orig).toLocaleString('en-IN')}</span>
-          {disc && <span className="text-[10px] text-gray-400 line-through">₹{orig.toLocaleString('en-IN')}</span>}
+      </Link>
+
+      {/* Info + add button */}
+      <div className="p-2.5 flex flex-col gap-0.5 flex-1">
+        <Link to={href}>
+          <p className="text-[11.5px] font-bold text-gray-800 line-clamp-2 leading-snug">{p.name}</p>
+          {unit && <p className="text-[10px] text-gray-400 mt-0.5">{unit}</p>}
+        </Link>
+
+        {/* Price row + add button */}
+        <div className="flex items-end justify-between mt-auto pt-1.5">
+          <div>
+            <span className="text-sm font-extrabold text-gray-900">
+              ₹{(disc || orig).toLocaleString('en-IN')}
+            </span>
+            {disc && (
+              <span className="text-[10px] text-gray-400 line-through ml-1">
+                ₹{orig.toLocaleString('en-IN')}
+              </span>
+            )}
+          </div>
+
+          {/* Round + button */}
+          <button
+            onClick={() => navigate(href)}
+            className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0 active:scale-90 transition-transform"
+            style={{ background: accent, boxShadow: `0 3px 10px ${accent}60`, lineHeight: 1 }}
+            aria-label="Add to cart"
+          >
+            +
+          </button>
         </div>
-        {p.ratings?.average > 0 && (
-          <span className="text-[10px] text-amber-500 font-semibold inline-flex items-center gap-0.5">
-            <FiStar size={9} style={{ fill: 'currentColor' }} /> {p.ratings.average.toFixed(1)}
-          </span>
-        )}
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -155,7 +183,7 @@ function MobileProductSlider({ products, accent }) {
         <div
           key={`${p._id}-${i}`}
           className="flex-shrink-0"
-          style={{ width: 'calc(50% - 6px)', scrollSnapAlign: 'start' }}
+          style={{ width: 'calc(47% - 4px)', scrollSnapAlign: 'start' }}
         >
           <ProductGridCard product={p} accent={accent} />
         </div>
@@ -386,45 +414,85 @@ function PromoBanner() {
 
 // ── Category data (desktop strip + mobile circles) ─────────────
 const EPTOMART_CATS = [
-  { name: 'Grocery & Staples',   short: 'Grocery',    slug: 'grocery-staples',    Icon: FaShoppingBasket, color: '#3b82f6', from: '₹49' },
-  { name: 'Masalas & Spices',    short: 'Masalas',    slug: 'masalas-spices',     Icon: FaPepperHot,      color: '#ef4444', from: '₹29' },
-  { name: 'Snacks & Namkeen',    short: 'Snacks',     slug: 'snacks-namkeen',     Icon: FaCookieBite,     color: '#ec4899', from: '₹39' },
-  { name: 'Dry Fruits & Nuts',   short: 'Dry Fruits', slug: 'dry-fruits-nuts',    Icon: FaSeedling,       color: '#92400e', from: '₹99' },
-  { name: 'Oils & Ghee',         short: 'Oils & Ghee',slug: 'oils-ghee',          Icon: FaWineBottle,     color: '#d97706', from: '₹89' },
-  { name: 'Pickles & Condiments',short: 'Pickles',    slug: 'pickles-condiments', Icon: FaLemon,          color: '#16a34a', from: '₹59' },
-  { name: 'Bakery & Dairy',      short: 'Bakery',     slug: 'bakery-dairy',       Icon: FaBreadSlice,     color: '#f59e0b', from: '₹29' },
-  { name: 'Health & Organic',    short: 'Organic',    slug: 'health-organic',     Icon: FaLeaf,           color: '#059669', from: '₹79' },
+  { name: 'Grocery & Staples',   short: 'Grocery',    slug: 'grocery-staples',    Icon: FaShoppingBasket, color: '#3b82f6', from: '₹49',
+    img: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=120&h=120&fit=crop&q=80' },
+  { name: 'Masalas & Spices',    short: 'Masalas',    slug: 'masalas-spices',     Icon: FaPepperHot,      color: '#ef4444', from: '₹29',
+    img: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=120&h=120&fit=crop&q=80' },
+  { name: 'Snacks & Namkeen',    short: 'Snacks',     slug: 'snacks-namkeen',     Icon: FaCookieBite,     color: '#ec4899', from: '₹39',
+    img: 'https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=120&h=120&fit=crop&q=80' },
+  { name: 'Dry Fruits & Nuts',   short: 'Dry Fruits', slug: 'dry-fruits-nuts',    Icon: FaSeedling,       color: '#92400e', from: '₹99',
+    img: 'https://images.unsplash.com/photo-1604928141064-207cea6f571f?w=120&h=120&fit=crop&q=80' },
+  { name: 'Oils & Ghee',         short: 'Oils & Ghee',slug: 'oils-ghee',          Icon: FaWineBottle,     color: '#d97706', from: '₹89',
+    img: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=120&h=120&fit=crop&q=80' },
+  { name: 'Pickles & Condiments',short: 'Pickles',    slug: 'pickles-condiments', Icon: FaLemon,          color: '#16a34a', from: '₹59',
+    img: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=120&h=120&fit=crop&q=80' },
+  { name: 'Bakery & Dairy',      short: 'Bakery',     slug: 'bakery-dairy',       Icon: FaBreadSlice,     color: '#f59e0b', from: '₹29',
+    img: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=120&h=120&fit=crop&q=80' },
+  { name: 'Health & Organic',    short: 'Organic',    slug: 'health-organic',     Icon: FaLeaf,           color: '#059669', from: '₹79',
+    img: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=120&h=120&fit=crop&q=80' },
 ];
 
-// ── Mobile category circles — instant navigation (Blinkit/Zepto pattern) ──
+// ── Mobile category strip — Blinkit-style image thumbnails ────────
 function MobileCategoryStrip() {
+  const { pathname } = useLocation();
+
   const cats = [
-    ...EPTOMART_CATS.map(c => ({ key: c.slug, label: c.short, Icon: c.Icon, color: c.color, to: `/shop/${c.slug}` })),
-    { key: 'koyambedu', label: 'Koyambedu', Icon: FaCarrot,         color: '#16a34a', to: '/koyambedu' },
-    { key: 'uzhavar',   label: 'Uzhavar',   Icon: FaTractor,        color: '#0d9488', to: '/uzhavar' },
-    { key: 'eptofresh', label: 'Proteins',  Icon: FaDrumstickBite,  color: '#c2410c', to: '/eptofresh' },
+    // "Top Picks" — special icon-based entry
+    { key: 'top',       label: 'Top\nPicks',       img: null,      Icon: FiStar,         color: '#f4941c', to: '/shop' },
+    // Main categories with real food photos
+    ...EPTOMART_CATS.map(c => ({
+      key: c.slug, label: c.short, img: c.img, Icon: c.Icon, color: c.color, to: `/shop/${c.slug}`,
+    })),
+    // Sub-apps
+    { key: 'koyambedu', label: 'Koyambedu\nMarket',
+      img: 'https://res.cloudinary.com/dlyaal4px/image/upload/w_120,h_120,c_fill,q_80/v1781293088/koyambedu_market_gapajd.jpg',
+      Icon: FaCarrot, color: '#16a34a', to: '/koyambedu' },
+    { key: 'uzhavar',   label: 'Uzhavar\nFresh',
+      img: 'https://res.cloudinary.com/dlyaal4px/image/upload/w_120,h_120,c_fill,q_80/v1781293061/Framer_r1buun.jpg',
+      Icon: FaTractor, color: '#0d9488', to: '/uzhavar' },
+    { key: 'eptofresh', label: 'Proteins\n& Meat',
+      img: 'https://res.cloudinary.com/dlyaal4px/image/upload/w_120,h_120,c_fill,q_80/v1781293088/eptofresh_protiens_ba0j1p.jpg',
+      Icon: FaDrumstickBite, color: '#c2410c', to: '/eptofresh' },
   ];
+
   return (
-    <div className="flex gap-2.5 overflow-x-auto scrollbar-hide px-4 pt-3 pb-0.5">
-      {cats.map(c => (
-        <Link key={c.key} to={c.to}
-          className="flex-shrink-0 flex flex-col items-center gap-1.5 w-[58px] active:scale-90 transition-transform duration-150">
-          <div
-            className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center relative overflow-hidden"
-            style={{
-              background: `linear-gradient(145deg, ${c.color}cc 0%, ${c.color} 100%)`,
-              boxShadow: `0 4px 12px ${c.color}55, 0 1px 4px rgba(0,0,0,0.16)`,
-            }}
-          >
-            {/* Top-left shine */}
-            <div className="absolute inset-0 pointer-events-none"
-              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.30) 0%, transparent 55%)' }} />
-            <c.Icon size={22} className="relative z-10"
-              style={{ color: '#fff', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.28))' }} />
-          </div>
-          <span className="text-[10px] font-bold text-gray-800 text-center leading-tight whitespace-nowrap">{c.label}</span>
-        </Link>
-      ))}
+    <div className="bg-white border-b border-gray-100">
+      <div className="flex overflow-x-auto scrollbar-hide px-3 py-3 gap-1">
+        {cats.map(c => {
+          const isActive = pathname === c.to || pathname.startsWith(c.to + '/');
+          return (
+            <Link key={c.key} to={c.to}
+              className="flex-shrink-0 flex flex-col items-center w-[68px] active:scale-90 transition-transform duration-150 relative pb-1.5">
+              {/* Circle image / icon */}
+              <div className="w-[56px] h-[56px] rounded-full overflow-hidden mb-1.5 relative"
+                style={{
+                  border: isActive ? `2.5px solid ${c.color}` : '2px solid #f3f4f6',
+                  boxShadow: isActive ? `0 0 0 3px ${c.color}22` : 'none',
+                }}>
+                {c.img ? (
+                  <img src={c.img} alt={c.label.replace('\n', ' ')} className="w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  // Gradient circle for "Top Picks"
+                  <div className="w-full h-full flex items-center justify-center"
+                    style={{ background: `linear-gradient(145deg, ${c.color}cc, ${c.color})` }}>
+                    <c.Icon size={22} style={{ color: '#fff', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.25))' }} />
+                  </div>
+                )}
+              </div>
+              {/* Label — supports two lines */}
+              <span className="text-[10px] font-semibold text-center leading-tight w-full px-0.5"
+                style={{ color: isActive ? c.color : '#374151', whiteSpace: 'pre-line', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                {c.label}
+              </span>
+              {/* Active underline indicator */}
+              {isActive && (
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[3px] w-8 rounded-full"
+                  style={{ background: c.color }} />
+              )}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
