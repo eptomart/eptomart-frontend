@@ -268,12 +268,10 @@ export default function KoyambeduShop() {
             </div>
           )}
 
-        </div>
       </div>
 
       <BottomNav />
 
-      {/* ── Sticky cart bar (above bottom nav) ── */}
       {itemCount > 0 && (
         <div className="fixed bottom-16 left-4 right-4 max-w-lg mx-auto z-40"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
