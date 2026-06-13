@@ -1,19 +1,29 @@
 // ============================================
 // UZHAVAR FRESH — Buyer Landing Page
-// Loads all farmers immediately, GPS refines list
+// Compact native-mobile layout matching EptoFresh
+// No Navbar/Footer — sticky gradient header
 // ============================================
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiMapPin, FiSearch, FiStar, FiChevronRight, FiX, FiZap, FiUsers, FiPackage, FiTruck } from 'react-icons/fi';
+import {
+  FiMapPin, FiSearch, FiStar, FiChevronRight, FiX,
+  FiZap, FiUsers, FiPackage, FiArrowLeft, FiChevronDown,
+} from 'react-icons/fi';
 import { FaLeaf, FaSeedling } from 'react-icons/fa';
-import Navbar from '../../components/common/Navbar';
-import Footer from '../../components/common/Footer';
 import BottomNav from '../../components/common/BottomNav';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
 const CATEGORIES = ['All', 'vegetable', 'fruit', 'grain', 'herb', 'other'];
+const CAT_COLORS = {
+  All: '#16a34a', vegetable: '#16a34a', fruit: '#f97316',
+  grain: '#d97706', herb: '#0d9488', other: '#6b7280',
+};
+const CAT_BG = {
+  All: '#f0fdf4', vegetable: '#f0fdf4', fruit: '#fff4ee',
+  grain: '#fffbeb', herb: '#f0fdfa', other: '#f3f4f6',
+};
 
 const DISTRICTS_TN = [
   'Chennai','Coimbatore','Madurai','Tiruchirappalli','Salem','Tirunelveli',
@@ -27,19 +37,20 @@ const DISTRICTS_TN = [
 
 export default function UzhavarHome() {
   const navigate = useNavigate();
-  const [farmers,    setFarmers]    = useState([]);
-  const [products,   setProducts]   = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [category,   setCategory]   = useState('All');
-  const [pincode,    setPincode]    = useState('');
-  const [district,   setDistrict]   = useState('');
-  const [locationLabel, setLocationLabel] = useState('All Farmers');
-  const [matchType,  setMatchType]  = useState('all');
-  const [gpsActive,  setGpsActive]  = useState(false);
-  const [locLoading, setLocLoading] = useState(false);
+
+  const [farmers,       setFarmers]      = useState([]);
+  const [products,      setProducts]     = useState([]);
+  const [loading,       setLoading]      = useState(true);
+  const [category,      setCategory]     = useState('All');
+  const [pincode,       setPincode]      = useState('');
+  const [district,      setDistrict]     = useState('');
+  const [locationLabel, setLocationLabel]= useState('All Farmers');
+  const [matchType,     setMatchType]    = useState('all');
+  const [gpsActive,     setGpsActive]    = useState(false);
+  const [locLoading,    setLocLoading]   = useState(false);
+  const [showLocPanel,  setShowLocPanel] = useState(false);
   const pincodeRef = useRef(null);
 
-  // On mount: load ALL farmers immediately + try GPS silently
   useEffect(() => {
     loadAll();
     tryAutoGPS();
@@ -55,7 +66,7 @@ export default function UzhavarHome() {
       setFarmers(fRes.data.farmers || []);
       setProducts(pRes.data.products || []);
     } catch {
-      // silent — show empty state
+      // silent
     } finally {
       setLoading(false);
     }
@@ -64,10 +75,8 @@ export default function UzhavarHome() {
   const tryAutoGPS = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      pos => {
-        fetchByCoords(pos.coords.latitude, pos.coords.longitude, true);
-      },
-      () => {}, // silent fail — user can click manually
+      pos => fetchByCoords(pos.coords.latitude, pos.coords.longitude, true),
+      () => {},
       { timeout: 8000 }
     );
   };
@@ -86,18 +95,12 @@ export default function UzhavarHome() {
       setProducts(pRes.data.products || []);
       setMatchType(mt);
       setGpsActive(true);
-      if (mt === 'gps_exact') {
-        setLocationLabel('Near you');
-        if (!silent) toast.success('Showing farmers near you');
-      } else if (mt === 'gps_expanded') {
-        setLocationLabel('Nearest farmers');
-        if (!silent) toast.success('Showing nearest available farmers');
-      } else {
-        setLocationLabel('All Farmers');
-        if (!silent) toast('Showing all farmers — none found nearby', { icon: 'ℹ️' });
-      }
+      setShowLocPanel(false);
+      if (mt === 'gps_exact')     { setLocationLabel('Near you');          if (!silent) toast.success('Showing farmers near you'); }
+      else if (mt === 'gps_expanded') { setLocationLabel('Nearest farmers');  if (!silent) toast.success('Showing nearest farmers'); }
+      else                        { setLocationLabel('All Farmers');        if (!silent) toast('No farmers nearby — showing all', { icon: 'ℹ️' }); }
     } catch {
-      if (!silent) toast.error('Could not get nearby farmers');
+      if (!silent) toast.error('Could not get location');
     } finally {
       setLocLoading(false);
     }
@@ -120,8 +123,9 @@ export default function UzhavarHome() {
       setGpsActive(true);
       setLocationLabel(d);
       setPincode('');
+      setShowLocPanel(false);
       const count = fRes.data.farmers?.length || 0;
-      if (count > 0) toast.success(`${count} farmer${count > 1 ? 's' : ''} found in ${d}`);
+      if (count > 0) toast.success(`${count} farmer${count > 1 ? 's' : ''} in ${d}`);
       else toast('No farmers in this district yet', { icon: 'ℹ️' });
     } catch {
       toast.error('Search failed');
@@ -156,9 +160,10 @@ export default function UzhavarHome() {
       setMatchType(mt);
       setGpsActive(true);
       setDistrict('');
-      if (mt === 'pincode_exact') setLocationLabel(`Pincode: ${pincode}`);
+      setShowLocPanel(false);
+      if (mt === 'pincode_exact')   setLocationLabel(`Pincode: ${pincode}`);
       else if (mt === 'pincode_zone') setLocationLabel(`Zone: ${pincode.slice(0, 3)}xxx`);
-      else setLocationLabel('All Farmers');
+      else                          setLocationLabel('All Farmers');
     } catch {
       toast.error('Search failed');
     } finally {
@@ -178,105 +183,144 @@ export default function UzhavarHome() {
   const filteredProducts = category === 'All' ? products : products.filter(p => p.category === category);
 
   return (
-    <>
+    <div className="min-h-screen pb-28 w-full overflow-x-hidden" style={{ background: '#F5F4F2' }}>
       <Helmet>
         <title>Farmer Fresh — Farm to Home | Eptomart</title>
         <meta name="description" content="Buy fresh vegetables and fruits directly from farmers near you. Same-day delivery." />
       </Helmet>
-      <Navbar />
 
-      {/* Same page body structure as Home — pb-24 for mobile bottom nav */}
-      <main className="min-h-screen bg-[#f5f5f7] pb-24 md:pb-8">
-        {/* Hero — full-bleed, content constrained */}
-        <div className="bg-gradient-to-br from-green-800 via-green-700 to-lime-600 text-white pt-8 pb-14 text-center relative overflow-hidden">
-          <div className="absolute -right-16 -top-16 w-48 h-48 rounded-full bg-white/5" />
-          <div className="absolute -left-10 bottom-0 w-32 h-32 rounded-full bg-black/10" />
-          <div className="max-w-7xl mx-auto px-4 relative z-10 animate-fade-in-up">
-            <div className="mb-2 flex justify-center"><FaSeedling size={40} className="text-green-200" /></div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight mb-0.5">FARMER FRESH</h1>
-            <p className="text-green-100 text-xs">உழவர் சந்தை · Farm to Home · Direct from Farmers</p>
-            <div className="mt-3 flex gap-2 justify-center flex-wrap">
-              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30 inline-flex items-center gap-1"><FaLeaf size={11} /> Harvested Today</span>
-              <span className="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full border border-white/30 inline-flex items-center gap-1"><FiUsers size={11} /> No Middlemen</span>
-            </div>
-          </div>
-        </div>
+      {/* ── Compact sticky green header ── */}
+      <div className="sticky top-0 z-30" style={{
+        background: 'linear-gradient(135deg, #064e3b 0%, #065f46 50%, #16a34a 100%)',
+        boxShadow: '0 4px 24px rgba(22,163,74,0.3)',
+        paddingTop: 'env(safe-area-inset-top)',
+      }}>
+        <div className="px-4 pt-3 pb-5">
 
-        {/* ── Page content wrapper — same max-width as Home ── */}
-        <div className="max-w-7xl mx-auto">
-
-        {/* Location filter bar — overlaps hero */}
-        <div className="px-4 -mt-6 relative z-10 mb-4">
-          {/* Row 1: district dropdown + GPS */}
-          <div className="bg-white rounded-2xl shadow-lg p-3 flex flex-col gap-2">
+          {/* Top row */}
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              {/* District dropdown — most reliable filter */}
-              <div className="flex-1 min-w-0">
+              <button
+                onClick={() => navigate('/')}
+                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition-all"
+                style={{ background: 'rgba(255,255,255,0.2)' }}>
+                <FiArrowLeft size={15} className="text-white" />
+              </button>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <h1 className="text-white text-base font-extrabold tracking-tight leading-none">Farmer Fresh</h1>
+                  <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full text-white"
+                    style={{ background: 'rgba(255,255,255,0.22)' }}>UZHAVAR</span>
+                </div>
+                <p className="text-green-100 text-[10px] mt-0.5 opacity-80">உழவர் சந்தை · Farm to Home · Direct</p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/uzhavar/farmer')}
+              className="text-[11px] font-bold px-2.5 py-1.5 rounded-xl shrink-0 active:scale-90 transition"
+              style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }}>
+              + Farmer?
+            </button>
+          </div>
+
+          {/* Location pill */}
+          <button
+            onClick={() => setShowLocPanel(v => !v)}
+            className="flex items-center gap-2 rounded-2xl px-3 py-2.5 w-full transition-all active:scale-[0.98]"
+            style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.25)' }}>
+            <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: 'rgba(255,255,255,0.25)' }}>
+              {locLoading
+                ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <FiMapPin size={11} className="text-white" />}
+            </div>
+            <span className="text-white text-xs font-semibold flex-1 text-left truncate opacity-95">
+              {locationLabel}
+              {gpsActive && <span className="ml-1 text-green-200 text-[10px]">· Tap to change</span>}
+            </span>
+            {gpsActive
+              ? <button onClick={e => { e.stopPropagation(); clearLocation(); }}><FiX size={14} className="text-white opacity-70 shrink-0" /></button>
+              : <FiChevronDown size={13} className="text-white opacity-70 shrink-0" />}
+          </button>
+
+          {/* Expandable location panel */}
+          {showLocPanel && (
+            <div className="mt-2 rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.95)', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+              <div className="p-3 space-y-2">
+                {/* GPS button */}
+                <button onClick={handleGPS} disabled={locLoading}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm text-white active:scale-95 transition disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg,#16a34a,#059669)' }}>
+                  {locLoading
+                    ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    : <FiMapPin size={14} />}
+                  Use My Location (GPS)
+                </button>
+                {/* District */}
                 <select
                   value={district}
                   onChange={e => handleDistrict(e.target.value)}
                   disabled={locLoading}
-                  className="w-full border border-gray-200 rounded-xl px-2.5 py-2 text-xs font-semibold text-gray-700 focus:outline-none focus:border-green-400 bg-white disabled:opacity-50 appearance-none"
-                >
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-700 focus:outline-none focus:border-green-400 bg-white disabled:opacity-50 appearance-none">
                   <option value="">📍 Select District</option>
-                  {DISTRICTS_TN.map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
+                  {DISTRICTS_TN.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
-              </div>
-
-              {/* GPS button */}
-              <button onClick={handleGPS} disabled={locLoading}
-                className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white rounded-xl px-3 py-2 text-xs font-bold flex-shrink-0 disabled:opacity-60 transition-colors">
-                {locLoading
-                  ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  : <FiMapPin size={12} />}
-                {locLoading ? '' : 'Near Me'}
-              </button>
-            </div>
-
-            {/* Row 2: pincode + active label */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <input
-                  ref={pincodeRef}
-                  value={pincode}
-                  onChange={e => setPincode(e.target.value.replace(/\D/g,'').slice(0,6))}
-                  onKeyDown={e => e.key === 'Enter' && handlePincode()}
-                  placeholder="Or enter pincode"
-                  className="w-32 border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:border-green-400"
-                />
-                <button onClick={handlePincode} disabled={locLoading}
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl px-2.5 py-1.5 text-xs font-semibold disabled:opacity-50 transition-colors">
-                  Go
-                </button>
-              </div>
-
-              {/* Active location label */}
-              <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
-                {gpsActive && (
-                  <>
-                    <FiMapPin size={11} className="text-green-600 flex-shrink-0" />
-                    <span className="text-xs font-semibold text-green-700 truncate">{locationLabel}</span>
-                    <button onClick={clearLocation} className="text-gray-400 hover:text-red-400 flex-shrink-0 ml-1">
-                      <FiX size={12} />
-                    </button>
-                  </>
-                )}
-                {!gpsActive && (
-                  <span className="text-xs text-gray-400">All Tamil Nadu</span>
-                )}
+                {/* Pincode */}
+                <div className="flex gap-2">
+                  <input
+                    ref={pincodeRef}
+                    value={pincode}
+                    onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onKeyDown={e => e.key === 'Enter' && handlePincode()}
+                    placeholder="Enter 6-digit pincode"
+                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400"
+                    style={{ fontSize: 16 }}
+                  />
+                  <button onClick={handlePincode} disabled={locLoading || pincode.length !== 6}
+                    className="bg-green-600 text-white rounded-xl px-4 py-2 text-sm font-bold disabled:opacity-50 transition active:scale-95">
+                    Go
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* ── Farmers section ─────────────────── */}
-        <div className="px-4 mb-6">
+        {/* Category pills — on white strip */}
+        <div style={{ background: '#FFFFFF', borderRadius: '20px 20px 0 0', paddingTop: 14, paddingBottom: 2 }}>
+          <div className="flex gap-2 px-4 overflow-x-auto pb-3 scrollbar-hide">
+            {CATEGORIES.map(c => {
+              const active = category === c;
+              const color  = CAT_COLORS[c] || '#16a34a';
+              const bg     = CAT_BG[c] || '#f0fdf4';
+              return (
+                <button
+                  key={c}
+                  onClick={() => setCategory(c)}
+                  className="px-3.5 py-1.5 rounded-full whitespace-nowrap shrink-0 text-[11px] font-bold transition-all active:scale-95 capitalize"
+                  style={{
+                    background: active ? color : bg,
+                    color: active ? '#fff' : color,
+                    boxShadow: active ? `0 4px 14px ${color}40` : '0 1px 4px rgba(0,0,0,0.06)',
+                    border: active ? 'none' : `1px solid ${color}22`,
+                  }}>
+                  {c}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Content ── */}
+      <div className="px-4 pt-4" style={{ background: '#F5F4F2' }}>
+
+        {/* Farmers section */}
+        <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm md:text-lg font-extrabold text-gray-900 flex items-center gap-2 tracking-tight">
-              <span className="w-1 h-5 rounded-full bg-green-500" />
-              <FiUsers size={16} className="text-green-600" /> Farmers near you
+            <h2 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+              <span className="w-1 h-5 rounded-full bg-green-500 shrink-0" />
+              <FiUsers size={15} className="text-green-600" /> Farmers
               {!loading && farmers.length > 0 && (
                 <span className="text-xs font-semibold text-gray-400">({farmers.length})</span>
               )}
@@ -284,8 +328,9 @@ export default function UzhavarHome() {
           </div>
           {loading ? (
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
-              {[0,1,2].map(i => (
-                <div key={i} className="flex-shrink-0 w-52 bg-white rounded-2xl border border-gray-100 p-4 animate-pulse">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="flex-shrink-0 w-48 bg-white rounded-2xl p-4 animate-pulse"
+                  style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
                   <div className="w-12 h-12 bg-gray-100 rounded-xl mb-3" />
                   <div className="h-3 bg-gray-100 rounded w-3/4 mb-2" />
                   <div className="h-3 bg-gray-100 rounded w-1/2" />
@@ -293,15 +338,15 @@ export default function UzhavarHome() {
               ))}
             </div>
           ) : farmers.length === 0 ? (
-            <div className="text-center py-10 text-gray-400 bg-white rounded-2xl shadow-sm border border-gray-100">
-              <div className="flex justify-center mb-2"><FaSeedling size={32} className="text-gray-300" /></div>
-              <p className="font-semibold text-sm">No farmers registered yet</p>
-              <p className="text-xs mt-0.5">Check back soon — farmers are joining!</p>
+            <div className="text-center py-10 bg-white rounded-2xl" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+              <FaSeedling size={32} className="text-gray-300 mx-auto mb-2" />
+              <p className="font-semibold text-sm text-gray-500">No farmers registered yet</p>
+              <p className="text-xs text-gray-400 mt-0.5">Check back soon!</p>
             </div>
           ) : (
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
               {farmers.map(farmer => (
-                <div key={farmer._id} className="flex-shrink-0 w-52">
+                <div key={farmer._id} className="flex-shrink-0 w-48">
                   <FarmerCard farmer={farmer} onClick={() => navigate(`/uzhavar/farmer/${farmer._id}`)} />
                 </div>
               ))}
@@ -309,30 +354,21 @@ export default function UzhavarHome() {
           )}
         </div>
 
-        {/* ── Products section ─────────────────── */}
-        <div className="px-4 pb-6">
+        {/* Products section */}
+        <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm md:text-lg font-extrabold text-gray-900 flex items-center gap-2 tracking-tight">
-              <span className="w-1 h-5 rounded-full bg-lime-500" />
-              <FaLeaf size={15} className="text-lime-600" /> Fresh Harvest
-              {!loading && products.length > 0 && (
-                <span className="text-xs font-semibold text-gray-400">({products.length})</span>
+            <h2 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+              <span className="w-1 h-5 rounded-full bg-lime-500 shrink-0" />
+              <FaLeaf size={14} className="text-lime-600" /> Fresh Harvest
+              {!loading && filteredProducts.length > 0 && (
+                <span className="text-xs font-semibold text-gray-400">({filteredProducts.length})</span>
               )}
             </h2>
           </div>
-          {/* Category filter chips */}
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mb-3">
-            {CATEGORIES.map(c => (
-              <button key={c} onClick={() => setCategory(c)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors capitalize ${category === c ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-green-300'}`}>
-                {c}
-              </button>
-            ))}
-          </div>
           {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {[0,1,2,3].map(i => (
-                <div key={i} className="bg-white rounded-2xl border border-gray-100 p-3 animate-pulse">
+            <div className="grid grid-cols-2 gap-3">
+              {[0, 1, 2, 3].map(i => (
+                <div key={i} className="bg-white rounded-2xl p-3 animate-pulse" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
                   <div className="w-full h-24 bg-gray-100 rounded-xl mb-2" />
                   <div className="h-3 bg-gray-100 rounded w-3/4 mb-1" />
                   <div className="h-4 bg-gray-100 rounded w-1/2" />
@@ -340,13 +376,13 @@ export default function UzhavarHome() {
               ))}
             </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="text-center py-10 text-gray-400 bg-white rounded-2xl shadow-sm border border-gray-100">
-              <div className="flex justify-center mb-2"><FaLeaf size={32} className="text-gray-300" /></div>
-              <p className="font-semibold text-sm">No products listed yet</p>
-              <p className="text-xs mt-0.5">Farmers will add harvest soon!</p>
+            <div className="text-center py-10 bg-white rounded-2xl" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+              <FaLeaf size={32} className="text-gray-300 mx-auto mb-2" />
+              <p className="font-semibold text-sm text-gray-500">No products yet</p>
+              <p className="text-xs text-gray-400 mt-0.5">Farmers will add harvest soon!</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {filteredProducts.map(prod => (
                 <ProductCard key={prod._id} product={prod}
                   onClick={() => navigate(`/uzhavar/farmer/${prod.farmer?._id}`)} />
@@ -355,102 +391,112 @@ export default function UzhavarHome() {
           )}
         </div>
 
-        {/* Info strip */}
-        <div className="px-4 pb-6">
-          <div className="grid grid-cols-3 gap-3 text-center mb-4">
-            {[
-              { Icon: FaLeaf,     color: '#16a34a', title: 'Farm Fresh',     desc: 'Harvested today' },
-              { Icon: FiZap,      color: '#f59e0b', title: 'Fast Delivery',  desc: 'Same day / scheduled' },
-              { Icon: FiUsers,    color: '#3b82f6', title: 'Direct Farmer',  desc: 'No middlemen' },
-            ].map(item => (
-              <div key={item.title} className="bg-white rounded-2xl p-4 shadow-sm">
-                <div className="flex justify-center mb-1.5">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${item.color}16` }}>
-                    <item.Icon size={17} style={{ color: item.color }} />
-                  </div>
-                </div>
-                <p className="font-semibold text-xs text-gray-700">{item.title}</p>
-                <p className="text-xs text-gray-400">{item.desc}</p>
+        {/* Trust strip */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {[
+            { Icon: FaLeaf,    color: '#16a34a', title: 'Farm Fresh',    desc: 'Harvested today' },
+            { Icon: FiZap,     color: '#f59e0b', title: 'Fast Delivery', desc: 'Same day' },
+            { Icon: FiUsers,   color: '#3b82f6', title: 'Direct Farmer', desc: 'No middlemen' },
+          ].map(item => (
+            <div key={item.title} className="bg-white rounded-2xl p-3 text-center" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center mx-auto mb-1.5"
+                style={{ background: `${item.color}16` }}>
+                <item.Icon size={17} style={{ color: item.color }} />
               </div>
-            ))}
-          </div>
-
-          <div className="bg-gradient-to-r from-green-600 to-lime-500 rounded-2xl p-5 text-white text-center">
-            <p className="font-bold text-sm mb-0.5 flex items-center justify-center gap-1.5"><FiPackage size={14} /> Farmer Fresh Subscription</p>
-            <p className="text-green-100 text-xs mb-3">Unlimited fresh orders · No booking fee per order</p>
-            <div className="flex gap-2 justify-center text-xs font-semibold mb-3">
-              <span className="bg-white/20 rounded-lg px-3 py-1.5">₹299 / month</span>
-              <span className="bg-white/20 rounded-lg px-3 py-1.5">₹499 / 3 months</span>
+              <p className="font-semibold text-xs text-gray-700">{item.title}</p>
+              <p className="text-[10px] text-gray-400">{item.desc}</p>
             </div>
-            <button onClick={() => navigate('/uzhavar/subscribe')}
-              className="bg-white text-green-700 font-bold px-5 py-2 rounded-xl text-xs hover:bg-green-50 transition-colors">
-              Subscribe Now →
-            </button>
-          </div>
+          ))}
         </div>
 
-        {/* Are you a farmer? */}
-        <div className="px-4 py-4 pb-10">
-          <div className="bg-gradient-to-r from-green-700 to-lime-600 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-center sm:text-left">
-              <p className="text-white font-black text-base flex items-center gap-2"><FaSeedling size={16} /> Are you a farmer?</p>
-              <p className="text-green-100 text-xs mt-0.5">List your harvest and sell directly to buyers near you — no middlemen</p>
-              <p className="text-green-200 text-[10px]">நீங்கள் உழவரா? இப்போதே பதிவு செய்யுங்கள்</p>
-            </div>
-            <button onClick={() => navigate('/uzhavar/farmer')}
-              className="flex-shrink-0 bg-white text-green-700 font-black text-sm px-5 py-2.5 rounded-xl hover:bg-green-50 transition-colors">
-              Register as Farmer →
-            </button>
+        {/* Subscription CTA */}
+        <div className="mb-6 rounded-2xl p-5 text-white text-center"
+          style={{ background: 'linear-gradient(135deg,#065f46,#16a34a)' }}>
+          <p className="font-bold text-sm mb-0.5 flex items-center justify-center gap-1.5">
+            <FiPackage size={14} /> Farmer Fresh Subscription
+          </p>
+          <p className="text-green-100 text-xs mb-3">Unlimited fresh orders · No booking fee</p>
+          <div className="flex gap-2 justify-center text-xs font-semibold mb-3">
+            <span className="bg-white/20 rounded-lg px-3 py-1.5">₹299 / month</span>
+            <span className="bg-white/20 rounded-lg px-3 py-1.5">₹499 / 3 months</span>
           </div>
+          <button onClick={() => navigate('/uzhavar/subscribe')}
+            className="bg-white text-green-700 font-bold px-5 py-2 rounded-xl text-xs active:scale-95 transition">
+            Subscribe Now →
+          </button>
         </div>
+
+        {/* Farmer CTA */}
+        <div className="mb-6 rounded-2xl p-5 flex flex-col gap-3"
+          style={{ background: 'linear-gradient(135deg,#14532d,#065f46)' }}>
+          <div>
+            <p className="text-white font-black text-sm flex items-center gap-2">
+              <FaSeedling size={15} /> Are you a farmer?
+            </p>
+            <p className="text-green-100 text-xs mt-1">List your harvest · Sell directly to buyers · No middlemen</p>
+            <p className="text-green-300 text-[10px] mt-0.5">நீங்கள் உழவரா? இப்போதே பதிவு செய்யுங்கள்</p>
+          </div>
+          <button onClick={() => navigate('/uzhavar/farmer')}
+            className="self-start bg-white text-green-700 font-black text-sm px-5 py-2.5 rounded-xl active:scale-95 transition">
+            Register as Farmer →
+          </button>
         </div>
-      </main>
-      <Footer className="hidden md:block" />
+      </div>
+
       <BottomNav />
-    </>
+    </div>
   );
 }
 
 function FarmerCard({ farmer, onClick }) {
   const avg = farmer.ratings?.average || 0;
   return (
-    <div onClick={onClick}
-      className="bg-white rounded-2xl shadow-card border border-gray-100 p-4 cursor-pointer hover:shadow-card-hover hover:border-green-300 hover:-translate-y-0.5 transition-all duration-300">
+    <button onClick={onClick} className="w-full text-left bg-white rounded-2xl p-4 active:scale-[0.98] transition"
+      style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)', border: '1px solid rgba(0,0,0,0.04)' }}>
       <div className="flex items-start justify-between mb-3">
-        <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center"><FiUsers size={22} className="text-green-600" /></div>
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${farmer.availableNow ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+        <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
+          <FiUsers size={22} className="text-green-600" />
+        </div>
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${farmer.availableNow ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
           {farmer.availableNow ? '● Live' : '○ Scheduled'}
         </span>
       </div>
-      <h3 className="font-bold text-gray-800 text-sm">{farmer.name}</h3>
-      <p className="text-xs text-gray-500">{farmer.address?.village ? `${farmer.address.village}, ` : ''}{farmer.address?.district}</p>
+      <p className="font-bold text-gray-800 text-sm leading-tight">{farmer.name}</p>
+      <p className="text-xs text-gray-400 mt-0.5">
+        {farmer.address?.village ? `${farmer.address.village}, ` : ''}{farmer.address?.district}
+      </p>
       {avg > 0 && (
         <div className="flex items-center gap-1 mt-1">
-          <FiStar size={10} className="text-yellow-400 fill-yellow-400" />
+          <FiStar size={10} className="text-amber-400" style={{ fill: '#fbbf24', stroke: '#fbbf24' }} />
           <span className="text-xs text-gray-600">{avg.toFixed(1)}</span>
           <span className="text-xs text-gray-400">({farmer.ratings?.count})</span>
         </div>
       )}
       <div className="flex items-center justify-between mt-3">
-        <span className="text-xs text-green-600 font-medium flex items-center gap-1"><FiMapPin size={11} /> {farmer.deliveryRadius}km delivery</span>
-        <FiChevronRight size={14} className="text-gray-400" />
+        <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+          <FiMapPin size={10} /> {farmer.deliveryRadius}km
+        </span>
+        <FiChevronRight size={13} className="text-gray-300" />
       </div>
-    </div>
+    </button>
   );
 }
 
 function ProductCard({ product, onClick }) {
   return (
-    <div onClick={onClick}
-      className="bg-white rounded-2xl shadow-card border border-gray-100 p-3 cursor-pointer hover:shadow-card-hover hover:border-green-300 hover:-translate-y-0.5 transition-all duration-300">
+    <button onClick={onClick} className="w-full text-left bg-white rounded-2xl overflow-hidden active:scale-[0.98] transition"
+      style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid rgba(0,0,0,0.04)' }}>
       {product.image
-        ? <img src={product.image} alt={product.name} className="w-full h-24 object-cover rounded-xl mb-2 bg-gray-100" />
-        : <div className="w-full h-24 rounded-xl bg-green-50 flex items-center justify-center mb-2"><FaLeaf size={32} className="text-green-300" /></div>
-      }
-      <p className="font-semibold text-xs text-gray-800 line-clamp-1">{product.name}</p>
-      {product.nameTa && <p className="text-xs text-gray-400 line-clamp-1">{product.nameTa}</p>}
-      <p className="font-bold text-green-600 text-sm mt-1">₹{product.pricePerUnit}/{product.unit}</p>
-      <p className="text-xs text-gray-400 truncate">{product.farmer?.name}</p>
-    </div>
+        ? <img src={product.image} alt={product.name} className="w-full h-24 object-cover" />
+        : <div className="w-full h-24 bg-green-50 flex items-center justify-center">
+            <FaLeaf size={28} className="text-green-300" />
+          </div>}
+      <div className="p-3">
+        <p className="font-semibold text-xs text-gray-800 line-clamp-1">{product.name}</p>
+        {product.nameTa && <p className="text-[10px] text-gray-400 line-clamp-1">{product.nameTa}</p>}
+        <p className="font-bold text-green-600 text-sm mt-1">₹{product.pricePerUnit}/{product.unit}</p>
+        <p className="text-[10px] text-gray-400 truncate">{product.farmer?.name}</p>
+      </div>
+    </button>
   );
 }

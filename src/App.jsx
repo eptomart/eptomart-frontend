@@ -65,9 +65,10 @@ const AdminCoupons      = lazy(() => import('./pages/admin/Coupons'));
 const KoyambeduHome         = lazy(() => import('./pages/koyambedu/KoyambeduHome'));
 const KoyambeduShop         = lazy(() => import('./pages/koyambedu/KoyambeduShop'));
 const KoyambeduProductDetail= lazy(() => import('./pages/koyambedu/KoyambeduProductDetail'));
-const KoyambeduCart         = lazy(() => import('./pages/koyambedu/KoyambeduCart'));
-const KoyambeduCheckout     = lazy(() => import('./pages/koyambedu/KoyambeduCheckout'));
-const KoyambeduOrders       = lazy(() => import('./pages/koyambedu/KoyambeduOrders'));
+const KoyambeduCart             = lazy(() => import('./pages/koyambedu/KoyambeduCart'));
+const KoyambeduCheckout         = lazy(() => import('./pages/koyambedu/KoyambeduCheckout'));
+const KoyambeduOrders           = lazy(() => import('./pages/koyambedu/KoyambeduOrders'));
+const KoyambeduLocationPicker   = lazy(() => import('./pages/koyambedu/KoyambeduLocationPicker'));
 const KoyambeduSellerRegister      = lazy(() => import('./pages/koyambedu/seller/KoyambeduSellerRegister'));
 const KoyambeduSellerDashboard     = lazy(() => import('./pages/koyambedu/seller/KoyambeduSellerDashboard'));
 const KoyambeduSellerProducts      = lazy(() => import('./pages/koyambedu/seller/KoyambeduSellerProducts'));
@@ -243,10 +244,11 @@ function AppRoutes() {
 
           {/* ── Koyambedu Daily ─────────────────── */}
           <Route path="/koyambedu"                           element={<KoyambeduHome />} />
+          <Route path="/koyambedu/location"                  element={<KoyambeduLocationPicker />} />
           <Route path="/koyambedu/shop"                      element={<KoyambeduShop />} />
           <Route path="/koyambedu/product/:productId"        element={<KoyambeduProductDetail />} />
-          <Route path="/koyambedu/cart"                      element={<ProtectedRoute><KoyambeduCart /></ProtectedRoute>} />
-          <Route path="/koyambedu/checkout"                  element={<ProtectedRoute><KoyambeduCheckout /></ProtectedRoute>} />
+          <Route path="/koyambedu/cart"                      element={<KoyambeduCart />} />
+          <Route path="/koyambedu/checkout"                  element={<KoyambeduCheckout />} />
           <Route path="/koyambedu/orders"                    element={<ProtectedRoute><KoyambeduOrders /></ProtectedRoute>} />
           <Route path="/koyambedu/seller"                    element={<ProtectedRoute><KoyambeduSellerDashboard /></ProtectedRoute>} />
           <Route path="/koyambedu/seller/register"           element={<ProtectedRoute><KoyambeduSellerRegister /></ProtectedRoute>} />
