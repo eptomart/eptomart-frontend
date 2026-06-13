@@ -11,7 +11,7 @@ import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 
-const DEFAULT    = { lat: 13.0827, lng: 80.2707 }; // Chennai centre
+const DEFAULT    = { lat: 13.0836, lng: 80.2785 }; // Chennai Central Railway Station
 const MARKET_LAT = 13.0748;
 const MARKET_LNG = 80.2136;
 

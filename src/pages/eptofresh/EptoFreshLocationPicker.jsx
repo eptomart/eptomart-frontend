@@ -10,7 +10,7 @@ import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 
-const DEFAULT = { lat: 13.0827, lng: 80.2707 }; // Chennai
+const DEFAULT = { lat: 13.0836, lng: 80.2785 }; // Chennai Central Railway Station
 
 
 // ── Fetch key from backend → load Google Maps ────────────
