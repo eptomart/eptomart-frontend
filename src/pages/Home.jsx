@@ -335,9 +335,9 @@ function SubAppBanners() {
               className="absolute inset-0 w-full h-full object-cover"
               loading="lazy"
             />
-            {/* Uniform dark scrim — clean and consistent across all three */}
+            {/* Light scrim — only at the bottom for text readability */}
             <div className="absolute inset-0"
-              style={{ background: 'linear-gradient(to top, rgba(7,16,26,0.96) 0%, rgba(7,16,26,0.55) 42%, rgba(7,16,26,0.10) 75%, rgba(7,16,26,0.18) 100%)' }} />
+              style={{ background: 'linear-gradient(to top, rgba(7,16,26,0.78) 0%, rgba(7,16,26,0.28) 45%, transparent 75%)' }} />
             {/* Accent line at bottom */}
             <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ background: app.accent }} />
 
