@@ -49,13 +49,16 @@ export default function EptoFreshShop() {
     : products.filter(p => p.category === activeCategory);
 
   const getCartQty = (productId) => {
-    const item = items.find(i => (i.product?._id || i.product) === productId);
+    // Support both server cart (i.product._id) and guest cart (i.productId)
+    const item = items.find(i =>
+      (i.product?._id || i.product) === productId || i.productId === productId
+    );
     return item?.quantity || 0;
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen" style={{ background: '#0B1729' }}>
+      <div className="min-h-screen" style={{ background: '#0D0A07' }}>
         <Navbar />
         <div className="h-40 animate-pulse" style={{ background: 'rgba(255,255,255,0.05)' }} />
         <div className="px-4 mt-4 space-y-3">
@@ -66,11 +69,11 @@ export default function EptoFreshShop() {
   }
 
   return (
-    <div className="min-h-screen pb-32" style={{ background: '#0B1729' }}>
+    <div className="min-h-screen pb-32" style={{ background: '#0D0A07' }}>
       <Navbar />
       {/* Shop header */}
       <div className="relative">
-        <div className="h-36 overflow-hidden" style={{ background: 'linear-gradient(135deg, #1a2a4a 0%, #0B1729 100%)' }}>
+        <div className="h-36 overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e1408 0%, #0D0A07 100%)' }}>
           {seller?.bannerImage && (
             <img src={seller.bannerImage} alt="" className="w-full h-full object-cover opacity-40" />
           )}
@@ -156,6 +159,7 @@ export default function EptoFreshShop() {
             product={product}
             qty={getCartQty(product._id)}
             sellerId={sellerId}
+            sellerName={seller?.shopName}
             onAdd={addToCart}
             onUpdate={updateQuantity}
           />
@@ -179,7 +183,7 @@ export default function EptoFreshShop() {
   );
 }
 
-function ProductCard({ product, qty, sellerId, onAdd, onUpdate }) {
+function ProductCard({ product, qty, sellerId, sellerName, onAdd, onUpdate }) {
   const [selectedVariant, setSelectedVariant] = useState(product.variants?.[0] || null);
   const [adding, setAdding] = useState(false);
 
@@ -188,6 +192,7 @@ function ProductCard({ product, qty, sellerId, onAdd, onUpdate }) {
     setAdding(true);
     await onAdd({
       sellerId,
+      sellerName,
       productId: product._id,
       variantId: selectedVariant?._id,
       weight:    selectedVariant?.weight,
@@ -253,7 +258,7 @@ function ProductCard({ product, qty, sellerId, onAdd, onUpdate }) {
             qty > 0 ? (
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => onUpdate({ productId: product._id, quantity: qty - 1 })}
+                  onClick={() => onUpdate({ productId: product._id, variantId: selectedVariant?._id, quantity: qty - 1 })}
                   className="w-7 h-7 rounded-full flex items-center justify-center"
                   style={{ background: 'rgba(244,148,28,0.15)', color: '#f4941c' }}
                 >

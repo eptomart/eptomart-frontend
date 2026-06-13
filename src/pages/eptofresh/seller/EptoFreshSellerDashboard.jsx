@@ -167,13 +167,13 @@ export default function EptoFreshSellerDashboard() {
   ];
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background:'#080f1c' }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background:'#0A0705' }}>
       <div className="w-8 h-8 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" />
     </div>
   );
 
   if (dash?.seller?.status === 'rejected') return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background:'#080f1c' }}>
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background:'#0A0705' }}>
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background:'rgba(248,113,113,0.1)', border:'1px solid rgba(248,113,113,0.2)' }}>
         <FiAlertCircle size={30} className="text-red-400" />
       </div>
@@ -191,10 +191,10 @@ export default function EptoFreshSellerDashboard() {
   const isPending = seller?.status === 'pending_review';
 
   return (
-    <div className="min-h-screen pb-28 w-full overflow-x-hidden" style={{ background:'#080f1c' }}>
+    <div className="min-h-screen pb-28 w-full overflow-x-hidden" style={{ background:'#0A0705' }}>
 
       {/* ── HERO HEADER ── */}
-      <div style={{ background:'linear-gradient(180deg,#111b2e 0%,#180d05 70%,#080f1c 100%)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ background:'linear-gradient(180deg,#1c1208 0%,#130b04 65%,#0A0705 100%)', borderBottom:'1px solid rgba(255,160,60,0.08)' }}>
         <div className="px-4 pt-12 pb-5">
 
           {/* Back link */}

@@ -178,7 +178,7 @@ export default function EptoFreshCheckout() {
   const INDIAN_MOBILE = /^[6-9]\d{9}$/;
 
   return (
-    <div className="min-h-screen pb-32" style={{ background: '#0B1729' }}>
+    <div className="min-h-screen pb-32" style={{ background: '#0D0A07' }}>
       <Navbar />
 
       {/* ── Mandatory Long Distance Consent Modal ── */}

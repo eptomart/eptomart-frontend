@@ -24,7 +24,7 @@ export default function EptoFreshSellerPayouts() {
   const STATUS_COLORS = { pending: '#fbbf24', settled: '#34d399', processing: '#60a5fa', failed: '#f87171' };
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0B1729' }}>
+    <div className="min-h-screen pb-24" style={{ background: '#0D0A07' }}>
       <div className="flex items-center gap-3 px-4 pt-10 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <button onClick={() => navigate('/eptofresh/seller')} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}><FiArrowLeft className="text-white" /></button>
         <h1 className="text-white font-bold text-lg">Payouts</h1>

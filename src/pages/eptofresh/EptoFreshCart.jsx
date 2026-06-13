@@ -2,9 +2,11 @@
 // EPTOFRESH CART
 // ============================================
 import { useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiTrash2, FiPlus, FiMinus, FiAlertTriangle } from 'react-icons/fi';
+import { FiArrowLeft, FiTrash2, FiPlus, FiMinus, FiAlertTriangle, FiLogIn } from 'react-icons/fi';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
 import Navbar from '../../components/common/Navbar';
+
+const isLoggedIn = () => !!localStorage.getItem('eptomart_token');
 
 export default function EptoFreshCart() {
   const navigate = useNavigate();
@@ -12,7 +14,7 @@ export default function EptoFreshCart() {
 
   if (!items.length) {
     return (
-      <div className="min-h-screen flex flex-col pb-20" style={{ background: '#0B1729' }}>
+      <div className="min-h-screen flex flex-col pb-20" style={{ background: '#0D0A07' }}>
         <Navbar />
         <div className="flex-1 flex flex-col items-center justify-center">
         <button onClick={() => navigate('/eptofresh')} className="absolute top-20 left-4 p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
@@ -38,7 +40,7 @@ export default function EptoFreshCart() {
     : null;
 
   return (
-    <div className="min-h-screen pb-40" style={{ background: '#0B1729' }}>
+    <div className="min-h-screen pb-40" style={{ background: '#0D0A07' }}>
       <Navbar />
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
@@ -73,14 +75,14 @@ export default function EptoFreshCart() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
-                onClick={() => updateQuantity({ productId: item.product?._id || item.product, variantId: item.variantId, quantity: item.quantity - 1, price: item.price, name: item.name, image: item.image, weight: item.weight, label: item.label, cutType: item.cutType, sellerId: cart?.seller?._id })}
+                onClick={() => updateQuantity({ productId: item.product?._id || item.product || item.productId, variantId: item.variantId, quantity: item.quantity - 1, price: item.price, name: item.name, image: item.image, weight: item.weight, label: item.label, cutType: item.cutType, sellerId: cart?.seller?._id })}
                 className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: 'rgba(244,148,28,0.15)', color: '#f4941c' }}
               >
                 {item.quantity === 1 ? <FiTrash2 size={13} /> : <FiMinus size={13} />}
               </button>
               <span className="text-white font-bold text-sm w-4 text-center">{item.quantity}</span>
               <button
-                onClick={() => updateQuantity({ productId: item.product?._id || item.product, variantId: item.variantId, quantity: item.quantity + 1, price: item.price, name: item.name, image: item.image, weight: item.weight, label: item.label, cutType: item.cutType, sellerId: cart?.seller?._id })}
+                onClick={() => updateQuantity({ productId: item.product?._id || item.product || item.productId, variantId: item.variantId, quantity: item.quantity + 1, price: item.price, name: item.name, image: item.image, weight: item.weight, label: item.label, cutType: item.cutType, sellerId: cart?.seller?._id })}
                 className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: '#f4941c' }}
               >
                 <FiPlus size={13} className="text-white" />
@@ -108,13 +110,26 @@ export default function EptoFreshCart() {
       </div>
 
       {/* Checkout button */}
-      <div className="fixed bottom-16 left-4 right-4 z-50">
+      <div className="fixed bottom-16 left-4 right-4 z-50 space-y-2">
+        {!isLoggedIn() && (
+          <div className="flex items-center gap-2 justify-center py-2 rounded-xl text-xs text-yellow-400" style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)' }}>
+            <FiLogIn size={13} />
+            <span>Login required to place order — your cart will be saved</span>
+          </div>
+        )}
         <button
-          onClick={() => navigate('/eptofresh/checkout')}
+          onClick={() => {
+            if (!isLoggedIn()) {
+              sessionStorage.setItem('epf_post_login_redirect', '/eptofresh/checkout');
+              navigate('/login');
+            } else {
+              navigate('/eptofresh/checkout');
+            }
+          }}
           className="w-full py-3.5 rounded-2xl font-bold text-white text-sm"
           style={{ background: 'linear-gradient(135deg, #f4941c 0%, #e07b10 100%)', boxShadow: '0 8px 24px rgba(244,148,28,0.4)' }}
         >
-          Proceed to Checkout — ₹{cartTotal.toFixed(2)} +
+          {isLoggedIn() ? `Proceed to Checkout — ₹${cartTotal.toFixed(2)} +` : `Login to Checkout — ₹${cartTotal.toFixed(2)} +`}
         </button>
       </div>
     </div>

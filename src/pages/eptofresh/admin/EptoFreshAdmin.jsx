@@ -29,7 +29,7 @@ export default function EptoFreshAdmin() {
   ];
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0B1729' }}>
+    <div className="min-h-screen pb-24" style={{ background: '#0D0A07' }}>
       {/* Header */}
       <div className="px-4 pt-6 pb-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <button onClick={() => navigate(-1)} className="p-2 rounded-xl flex-shrink-0" style={{ background: 'rgba(255,255,255,0.07)' }}>
@@ -243,13 +243,13 @@ function AdminMapPicker({ onConfirm, onClose }) {
 
       {/* Loading */}
       {!ready && !error && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3" style={{ background: '#0B1729' }}>
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3" style={{ background: '#0D0A07' }}>
           <div className="w-10 h-10 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" />
           <p className="text-gray-300 text-sm">Loading map…</p>
         </div>
       )}
       {error && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ background: '#0B1729' }}>
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ background: '#0D0A07' }}>
           <FiMapPin size={36} className="text-orange-400" />
           <p className="text-white font-semibold">Map unavailable — check GOOGLE_PLACES_API_KEY on backend</p>
           <button onClick={onClose} className="px-5 py-2.5 rounded-2xl text-white font-semibold text-sm" style={{ background: '#f4941c' }}>Go Back</button>

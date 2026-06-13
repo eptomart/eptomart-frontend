@@ -172,7 +172,7 @@ export function EptoFreshLocationPicker() {
 
   // ── Error screen ─────────────────────────────────────────
   if (loadError) return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ background: '#0B1729' }}>
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ background: '#0D0A07' }}>
       <div className="text-4xl">🗺️</div>
       <p className="text-white font-semibold">Map unavailable</p>
       <p className="text-gray-500 text-sm">Add <code className="text-orange-400 bg-white/10 px-1 rounded">GOOGLE_PLACES_API_KEY</code> to your Render backend environment variables.</p>
@@ -188,7 +188,7 @@ export function EptoFreshLocationPicker() {
 
       {/* ── Loading overlay ──────────────────────────────── */}
       {!mapReady && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4" style={{ background: '#0B1729' }}>
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4" style={{ background: '#0D0A07' }}>
           <div className="w-12 h-12 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" />
           <p className="text-gray-300 text-sm">Loading map…</p>
         </div>

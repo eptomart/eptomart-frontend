@@ -37,7 +37,7 @@ export default function EptoFreshOrders() {
 
   if (loading) {
     return (
-      <div className="min-h-screen" style={{ background: '#0B1729' }}>
+      <div className="min-h-screen" style={{ background: '#0D0A07' }}>
         <Navbar />
         <div className="flex items-center gap-3 px-4 pt-4 pb-4">
           <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}><FiArrowLeft className="text-white" /></button>
@@ -51,7 +51,7 @@ export default function EptoFreshOrders() {
   }
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0B1729' }}>
+    <div className="min-h-screen pb-24" style={{ background: '#0D0A07' }}>
       <Navbar />
       <div className="flex items-center gap-3 px-4 pt-4 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}><FiArrowLeft className="text-white" /></button>
@@ -137,12 +137,12 @@ export function EptoFreshOrderDetail() {
     } catch (err) { toast.error(err.response?.data?.message || 'Invalid OTP'); } finally { setConfirming(false); }
   };
 
-  if (!order) return <div className="min-h-screen flex items-center justify-center" style={{ background: '#0B1729' }}><div className="w-8 h-8 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" /></div>;
+  if (!order) return <div className="min-h-screen flex items-center justify-center" style={{ background: '#0D0A07' }}><div className="w-8 h-8 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" /></div>;
 
   const s = STATUS_LABELS[order.orderStatus] || { label: order.orderStatus, color: '#94a3b8' };
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0B1729' }}>
+    <div className="min-h-screen pb-24" style={{ background: '#0D0A07' }}>
       <div className="flex items-center gap-3 px-4 pt-12 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}><FiArrowLeft className="text-white" /></button>
         <div className="flex-1">

@@ -37,7 +37,7 @@ export default function EptoFreshSellerOrders() {
   useEffect(() => { fetchOrders(); }, [filter]);
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0B1729' }}>
+    <div className="min-h-screen pb-24" style={{ background: '#0D0A07' }}>
       <div className="flex items-center gap-3 px-4 pt-10 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <button onClick={() => navigate('/eptofresh/seller')} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}><FiArrowLeft className="text-white" /></button>
         <h1 className="text-white font-bold text-lg">Orders</h1>
@@ -131,10 +131,10 @@ export function EptoFreshSellerOrderDetail() {
     } catch (err) { toast.error(err.response?.data?.message || 'Upload failed'); } finally { setUploading(false); }
   };
 
-  if (!order) return <div className="min-h-screen flex items-center justify-center" style={{ background: '#0B1729' }}><div className="w-8 h-8 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" /></div>;
+  if (!order) return <div className="min-h-screen flex items-center justify-center" style={{ background: '#0D0A07' }}><div className="w-8 h-8 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" /></div>;
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0B1729' }}>
+    <div className="min-h-screen pb-24" style={{ background: '#0D0A07' }}>
       <div className="flex items-center gap-3 px-4 pt-10 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}><FiArrowLeft className="text-white" /></button>
         <h1 className="text-white font-bold">Order #{order.orderId}</h1>

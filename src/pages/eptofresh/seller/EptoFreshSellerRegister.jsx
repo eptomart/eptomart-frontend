@@ -105,7 +105,7 @@ export default function EptoFreshSellerRegister() {
   );
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0B1729' }}>
+    <div className="min-h-screen pb-24" style={{ background: '#0D0A07' }}>
       <div className="flex items-center gap-3 px-4 pt-12 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}><FiArrowLeft className="text-white" /></button>
         <div>

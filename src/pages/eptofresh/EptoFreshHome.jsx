@@ -96,11 +96,11 @@ export default function EptoFreshHome() {
   const closedSellers = filtered.filter(s => s.isOpen === false);
 
   return (
-    <div className="min-h-screen pb-28 w-full overflow-x-hidden" style={{ background: '#080f1c' }}>
+    <div className="min-h-screen pb-28 w-full overflow-x-hidden" style={{ background: '#0A0705' }}>
       <Navbar />
 
       {/* ── HERO HEADER ── */}
-      <div style={{ background: 'linear-gradient(180deg,#111b2e 0%,#180d05 70%,#080f1c 100%)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ background: 'linear-gradient(180deg,#1c1208 0%,#130b04 65%,#0A0705 100%)', borderBottom:'1px solid rgba(255,160,60,0.08)' }}>
         <div>
           <div className="px-4 pt-4 pb-4">
             {/* Top row */}
@@ -343,7 +343,7 @@ function SellerCard({ seller, onClick, index = 0 }) {
               </div>
             )}
           {/* Open/closed dot */}
-          <div className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border border-[#080f1c]"
+          <div className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border border-[#0A0705]"
             style={{
               background: isOpen ? '#34d399' : '#4b5563',
               boxShadow: isOpen ? '0 0 0 3px rgba(52,211,153,0.25)' : 'none',

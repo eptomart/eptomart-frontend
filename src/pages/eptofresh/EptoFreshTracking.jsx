@@ -42,7 +42,7 @@ export default function EptoFreshTracking() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0B1729' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0D0A07' }}>
         <div className="w-8 h-8 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" />
       </div>
     );
@@ -51,7 +51,7 @@ export default function EptoFreshTracking() {
   const currentStatusIdx = STATUS_ORDER.indexOf(tracking?.orderStatus);
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0B1729' }}>
+    <div className="min-h-screen pb-24" style={{ background: '#0D0A07' }}>
       <Navbar />
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
