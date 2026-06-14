@@ -16,7 +16,7 @@ import toast from 'react-hot-toast';
 
 const KOYAMBEDU_LAT = 13.0748;
 const KOYAMBEDU_LNG = 80.2136;
-const DEFAULT_CENTER = { lat: 13.0836, lng: 80.2785 }; // Chennai Central
+const DEFAULT_CENTER = { lat: 13.0389, lng: 80.1730 }; // Valasaravakkam, Chennai
 
 const STEP_LABELS = ['Address', 'Map', 'Date', 'Payment'];
 
