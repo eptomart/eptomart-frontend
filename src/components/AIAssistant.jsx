@@ -17,20 +17,24 @@ const CATEGORIES = [
 
 const POS_KEY = 'eptomart_ai_pos';
 
+// Safe Y: above BottomNav (68px) + any cart/checkout bar (~80px) + padding (20px)
+const SAFE_BOTTOM_MARGIN = 180;
+
 const defaultPos = () => ({
-  x: 16,  // left side — WhatsApp sits on the right at the same level
-  y: typeof window !== 'undefined' ? window.innerHeight - 80 : 500,  // same bottom line as WhatsApp
+  x: 16,
+  y: typeof window !== 'undefined' ? window.innerHeight - SAFE_BOTTOM_MARGIN : 500,
 });
 
 const loadPos = () => {
   try {
     const saved = JSON.parse(localStorage.getItem(POS_KEY));
     if (saved && typeof saved.x === 'number' && typeof saved.y === 'number') {
-      // If saved position is on the right half (old default), reset to new bottom-left default
-      if (saved.x > window.innerWidth / 2) return defaultPos();
+      // Reset if saved in the danger zone (bottom 150px — covers checkout bars)
+      const dangerZone = window.innerHeight - 150;
+      if (saved.x > window.innerWidth / 2 || saved.y > dangerZone) return defaultPos();
       return {
         x: Math.max(0, Math.min(saved.x, window.innerWidth  - 60)),
-        y: Math.max(0, Math.min(saved.y, window.innerHeight - 60)),
+        y: Math.max(0, Math.min(saved.y, dangerZone)),
       };
     }
   } catch {}
@@ -58,10 +62,17 @@ const BotFace = ({ size = 24 }) => (
 
 export default function AIAssistant() {
   const { user } = useAuth();
-  const [open,     setOpen]     = useState(false);
-  const [input,    setInput]    = useState('');
-  const [loading,  setLoading]  = useState(false);
-  const [messages, setMessages] = useState([]);
+  const [open,      setOpen]      = useState(false);
+  const [minimized, setMinimized] = useState(false); // collapsed to small circle
+  const [input,     setInput]     = useState('');
+  const [loading,   setLoading]   = useState(false);
+  const [messages,  setMessages]  = useState([]);
+
+  // Auto-minimize to small circle after 3 seconds on mount
+  useEffect(() => {
+    const t = setTimeout(() => setMinimized(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
 
   // ── Drag state ─────────────────────────────────────────────
   const [pos, setPos]   = useState(loadPos);     // { x, y } = top-left of button
@@ -105,8 +116,9 @@ export default function AIAssistant() {
     }
     if (!isDragging.current) return;
 
+    const maxY = window.innerHeight - 150; // never drag into checkout/nav zone
     const newX = Math.max(0, Math.min(drag.current.startPosX + dx, window.innerWidth  - 60));
-    const newY = Math.max(0, Math.min(drag.current.startPosY + dy, window.innerHeight - 60));
+    const newY = Math.max(0, Math.min(drag.current.startPosY + dy, maxY));
     setPos({ x: newX, y: newY });
   }, []);
 
@@ -123,11 +135,15 @@ export default function AIAssistant() {
     }
   }, []);
 
-  // Click only fires if no significant drag occurred
+  // Click: minimized → expand pill; pill → open chat; open → close
   const handleBtnClick = useCallback(() => {
     if (isDragging.current) return;
+    if (minimized) {
+      setMinimized(false); // expand pill, don't open chat yet
+      return;
+    }
     setOpen(o => !o);
-  }, []);
+  }, [minimized]);
 
   // ── AI send ─────────────────────────────────────────────────
   const send = async (text) => {
@@ -157,10 +173,9 @@ export default function AIAssistant() {
   };
 
   // ── Chat window positioning — open above/beside button ──────
-  // Figure out which quadrant the button is in and place chat accordingly
-  const CHAT_W = 384;   // sm:w-96
+  const CHAT_W = 384;
   const CHAT_H = Math.min(window.innerHeight * 0.75, 600);
-  const BTN_W  = open ? 52 : 160;
+  const BTN_W  = (open || minimized) ? 52 : 160;
   const BTN_H  = 52;
   const PAD    = 10;
 
@@ -208,24 +223,38 @@ export default function AIAssistant() {
         <button
           onClick={handleBtnClick}
           aria-label="AI Shopping Assistant"
-          className="flex items-center shadow-2xl transition-transform hover:scale-105 active:scale-95 overflow-hidden"
+          className="flex items-center shadow-2xl overflow-hidden"
           style={{
             background:   'linear-gradient(135deg,#0a1628,#0f2040)',
-            borderRadius: open ? '50%' : '999px',
-            width:        open ? '52px' : 'auto',
-            height:       '52px',
-            padding:      open ? '0' : '0 16px 0 4px',
+            borderRadius: '50%',
+            width:        minimized ? '44px' : open ? '52px' : 'auto',
+            height:       minimized ? '44px' : '52px',
+            padding:      (minimized || open) ? '0' : '0 16px 0 4px',
             border:       '2px solid #22c55e',
-            boxShadow:    '0 0 18px rgba(34,197,94,0.3), 0 4px 20px rgba(0,0,0,0.4)',
+            boxShadow:    minimized
+              ? '0 0 10px rgba(34,197,94,0.25), 0 2px 10px rgba(0,0,0,0.35)'
+              : '0 0 18px rgba(34,197,94,0.3), 0 4px 20px rgba(0,0,0,0.4)',
+            transition:   'width 0.25s ease, border-radius 0.25s ease, box-shadow 0.2s',
           }}
         >
-          {open ? (
+          {/* Minimized: tiny circle with just the bot face */}
+          {minimized && (
+            <div className="w-full h-full flex items-center justify-center">
+              <BotFace size={30} />
+            </div>
+          )}
+
+          {/* Open (chat visible): X close button */}
+          {!minimized && open && (
             <div className="w-full h-full flex items-center justify-center">
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
-          ) : (
+          )}
+
+          {/* Default pill: bot + label */}
+          {!minimized && !open && (
             <>
               <div className="w-14 h-14 flex items-center justify-center flex-shrink-0">
                 <BotFace size={56} />
@@ -241,16 +270,13 @@ export default function AIAssistant() {
                 style={{ boxShadow: '0 0 6px #22c55e' }} />
             </>
           )}
-          {!open && (
+
+          {/* Ping ring — only on minimized */}
+          {minimized && (
             <span className="absolute inset-0 rounded-full animate-ping opacity-10"
-              style={{ background: '#22c55e' }} />
+              style={{ background: '#22c55e', animationDuration: '2.5s' }} />
           )}
         </button>
-
-        {/* Drag hint tooltip — shown briefly on mount */}
-        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 whitespace-nowrap pointer-events-none opacity-60">
-          ⠿ drag to move
-        </div>
       </div>
 
       {/* ── Chat window ── */}
