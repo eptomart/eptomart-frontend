@@ -786,7 +786,8 @@ export default function FarmerDetail() {
       )}
 
       {cartCount > 0 && tab === 'shop' && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-xl px-4 py-4 z-30">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-xl px-4 pt-4 z-30"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
           <div className="max-w-2xl mx-auto">
             {/* Minimum order warning */}
             {belowMinimum && (

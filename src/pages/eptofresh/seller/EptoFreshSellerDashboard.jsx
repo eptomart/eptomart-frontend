@@ -352,7 +352,7 @@ export default function EptoFreshSellerDashboard() {
       {/* ── BOTTOM NAV ── */}
       <nav className="fixed bottom-0 left-0 right-0 z-50"
         style={{ background:'rgba(8,15,28,0.97)', borderTop:'1px solid rgba(0,0,0,0.05)', backdropFilter:'blur(12px)' }}>
-        <div className="flex">
+        <div className="flex" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
           {tabs.map(t => {
             const active = loc.pathname === t.path;
             return (

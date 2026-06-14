@@ -313,7 +313,7 @@ export default function EptoFreshSellerLocationPicker() {
           borderRadius: '24px 24px 0 0',
           boxShadow: '0 -4px 30px rgba(0,0,0,0.15)',
           padding: '16px 16px',
-          paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
         }}
       >
         <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: '#e5e7eb' }} />

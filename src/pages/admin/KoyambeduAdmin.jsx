@@ -72,7 +72,7 @@ const UNITS_KBD  = ['kg','g','piece','bunch','dozen','litre','pack','leaf'];
 const BADGES_KBD = ['fresh_arrival','low_stock','best_seller','seasonal','organic','festival_special','bulk_deal'];
 const EMPTY_KBD_PRODUCT = {
   categoryId:'', name:'', nameTamil:'', unit:'kg', unitLabel:'kg',
-  currentPrice:'', stockQty:0, minQty:0.5, maxQty:50, weightKg:1,
+  currentPrice:'', stockQty:0, minQty:1, maxQty:50, weightKg:1,
   sameDayCutoff:'08:00', isSameDay:true, isNextDay:true, isAvailable:true,
   badges:[], description:'',
 };

@@ -311,7 +311,7 @@ function AdminMapPicker({ onConfirm, onClose }) {
       </div>
 
       {/* Bottom panel */}
-      <div className="absolute left-0 right-0 bottom-0 z-10" style={{ background: '#fff', borderRadius: '24px 24px 0 0', boxShadow: '0 -4px 30px rgba(0,0,0,0.15)', padding: '16px 16px', paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}>
+      <div className="absolute left-0 right-0 bottom-0 z-10" style={{ background: '#fff', borderRadius: '24px 24px 0 0', boxShadow: '0 -4px 30px rgba(0,0,0,0.15)', padding: '16px 16px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)' }}>
         <div className="w-10 h-1 rounded-full mx-auto mb-3" style={{ background: '#e5e7eb' }} />
         <div className="flex items-start gap-3 mb-4">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#fff7ed' }}>

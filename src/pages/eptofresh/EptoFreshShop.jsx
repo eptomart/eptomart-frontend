@@ -180,8 +180,8 @@ export default function EptoFreshShop() {
 
       {/* ── Cart bar ── */}
       {cartCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white px-4 py-3"
-          style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))', boxShadow: '0 -4px 20px rgba(0,0,0,0.1)' }}>
+        <div className="fixed left-4 right-4 z-[9990] px-0"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 68px)' }}>
           <button onClick={() => navigate('/eptofresh/cart')}
             className="w-full py-3.5 rounded-2xl flex items-center justify-between px-5"
             style={{ background: '#f4941c', boxShadow: '0 4px 18px rgba(244,148,28,0.4)' }}>
