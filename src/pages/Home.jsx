@@ -67,7 +67,7 @@ const SkeletonCard = () => (
 // ── Section Header ─────────────────────────────────────────────
 function SectionHeader({ Icon, iconColor = '#f4941c', title, link, linkLabel = 'See all', dotColor = 'bg-orange-500' }) {
   return (
-    <div className="flex items-center justify-between mb-3 px-4">
+    <div className="flex items-center justify-between mb-1.5 px-4">
       <div className="flex items-center gap-2">
         <span className={`w-1 h-5 rounded-full flex-shrink-0 ${dotColor}`} />
         {Icon && (
@@ -190,7 +190,7 @@ function FlashDeals({ products }) {
   if (!products.length) return null;
   return (
     <section id="section-flash">
-      <div className="flex items-center justify-between mb-3 px-4">
+      <div className="flex items-center justify-between mb-1.5 px-4">
         <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-1.5 bg-red-500 text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-sm">
             <FiZap size={11} fill="white" /> FLASH DEALS
@@ -308,7 +308,7 @@ function TrustStrip() {
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
         {TRUST_ITEMS.map(b => (
           <div key={b.label}
-            className="flex-shrink-0 flex items-center gap-1.5 bg-white border border-gray-100 rounded-xl px-3 py-2"
+            className="flex-shrink-0 flex items-center gap-1.5 bg-white border border-gray-100 rounded-xl px-3 py-1.5"
             style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
             <b.Icon size={14} style={{ color: b.color }} />
             <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">{b.label}</span>
@@ -447,7 +447,7 @@ function MobileCategoryStrip() {
 
   return (
     <div className="bg-white border-b border-gray-100">
-      <div className="flex overflow-x-auto scrollbar-hide px-3 py-3 gap-0">
+      <div className="flex overflow-x-auto scrollbar-hide px-3 py-2 gap-0">
         {cats.map(c => {
           const isActive = pathname === c.to || pathname.startsWith(c.to + '/');
           return (
@@ -563,7 +563,7 @@ function RecentlyViewed() {
   if (items.length < 2) return null;
 
   return (
-    <section className="pt-3 pb-4">
+    <section className="pt-2 pb-2">
       <SectionHeader Icon={FiEye} iconColor="#8b5cf6" dotColor="bg-purple-500" title="Recently Viewed" />
       <ProductCarouselTrack products={items.slice(0, 8)} accent="#8b5cf6" />
     </section>
@@ -837,7 +837,7 @@ function MobileSearchBar() {
 
 // ── Section divider ────────────────────────────────────────────
 const Divider = () => (
-  <div className="px-4 my-1">
+  <div className="px-4 my-0.5">
     <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
   </div>
 );
@@ -930,32 +930,28 @@ export default function Home() {
           {/* 1. Hero banner */}
           <MobileHero />
 
-          {/* 2. Category strip — immediately after hero for fast browsing */}
-          <div className="pt-3">
+          {/* 2. Category strip */}
+          <div className="pt-1.5">
             <MobileCategoryStrip />
           </div>
 
           {/* 3. Shop by Source — compact 3-tile row */}
-          <div className="pt-3 pb-1">
-            <div className="flex items-center gap-2 mb-2 px-4">
-              <span className="w-1 h-4 rounded-full bg-green-500 flex-shrink-0" />
-              <h2 className="text-xs font-extrabold text-gray-700 uppercase tracking-wide">Shop by Source</h2>
-            </div>
+          <div className="pt-2 px-0">
             <ShopBySource />
           </div>
 
           {/* 4. Promo banner */}
-          <div className="pt-3 pb-1">
+          <div className="pt-2">
             <PromoBanner />
           </div>
 
           {/* 5. Trust indicators */}
-          <div className="pt-2 pb-1">
+          <div className="pt-1.5">
             <TrustStrip />
           </div>
 
           {/* 6. Continue Shopping */}
-          <div className="pt-2">
+          <div className="pt-1">
             <ContinueShopping />
           </div>
 
@@ -964,7 +960,7 @@ export default function Home() {
         {/* ── SHARED: Featured Products ── */}
         <div className="md:max-w-7xl md:mx-auto">
           <Divider />
-          <section id="section-featured" className="pt-3 pb-4">
+          <section id="section-featured" className="pt-2 pb-2">
             <SectionHeader Icon={FiStar} iconColor="#f4941c" dotColor="bg-orange-500" title="Featured Products" link="/shop" />
             {loading ? (
               <div className="flex gap-2.5 px-4 overflow-hidden">
@@ -989,7 +985,7 @@ export default function Home() {
           <Divider />
 
           {/* Flash Deals */}
-          <section className="pt-3 pb-4">
+          <section className="pt-2 pb-2">
             {loading
               ? <div className="flex gap-2.5 px-4 overflow-hidden">
                   {[...Array(4)].map((_, i) => (
@@ -1011,7 +1007,7 @@ export default function Home() {
           <Divider />
 
           {/* New Arrivals */}
-          <section id="section-new" className="pt-3 pb-5">
+          <section id="section-new" className="pt-2 pb-4">
             <SectionHeader Icon={FiClock} iconColor="#3b82f6" dotColor="bg-blue-500" title="New Arrivals" link="/shop?sort=-createdAt" />
             {loading ? (
               <div className="px-4 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
