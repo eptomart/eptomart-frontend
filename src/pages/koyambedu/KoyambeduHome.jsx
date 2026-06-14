@@ -154,11 +154,23 @@ export default function KoyambeduHome() {
       </Helmet>
 
       {/* ── Compact sticky green header ── */}
-      <div className="sticky top-0 z-30" style={{
+      <div className="sticky top-0 z-30 relative overflow-hidden" style={{
         background: 'linear-gradient(135deg, #064e3b 0%, #065f46 50%, #059669 100%)',
         boxShadow: '0 4px 24px rgba(6,95,70,0.35)',
         paddingTop: 'env(safe-area-inset-top)',
       }}>
+        {/* Category background image — faded right accent */}
+        <img
+          src="/categories/koyambedu.jpg"
+          alt=""
+          aria-hidden="true"
+          className="absolute right-0 top-0 h-full w-[45%] object-cover pointer-events-none select-none"
+          style={{
+            maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 100%)',
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 100%)',
+            opacity: 0.28,
+          }}
+        />
         <div className="px-4 pt-3 pb-5">
 
           {/* Top row */}

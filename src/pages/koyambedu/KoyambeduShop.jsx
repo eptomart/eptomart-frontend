@@ -142,11 +142,21 @@ export default function KoyambeduShop() {
     <div className="min-h-screen bg-[#f5f5f7] pb-24" style={{ paddingBottom: itemCount > 0 ? 140 : 96 }}>
 
       {/* ── Compact sticky green header (no Navbar) ── */}
-      <div className="sticky top-0 z-30" style={{
+      <div className="sticky top-0 z-30 relative overflow-hidden" style={{
         background: 'linear-gradient(135deg,#14532d,#16a34a)',
         paddingTop: 'env(safe-area-inset-top)',
         boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
       }}>
+        <img
+          src="/categories/koyambedu.jpg"
+          alt="" aria-hidden="true"
+          className="absolute right-0 top-0 h-full w-[45%] object-cover pointer-events-none select-none"
+          style={{
+            maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 100%)',
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 100%)',
+            opacity: 0.28,
+          }}
+        />
         {/* Title row */}
         <div className="px-4 pt-3 pb-2 flex items-center gap-3">
           <button onClick={() => navigate('/koyambedu')}

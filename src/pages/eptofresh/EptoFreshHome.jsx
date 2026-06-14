@@ -113,11 +113,23 @@ export default function EptoFreshHome() {
     <div className="min-h-screen pb-28 w-full overflow-x-hidden" style={{ background: '#F5F4F2' }}>
 
       {/* ── BRANDED HERO — no Navbar, compact sticky ── */}
-      <div className="sticky top-0 z-30" style={{
+      <div className="sticky top-0 z-30 relative overflow-hidden" style={{
         background: 'linear-gradient(135deg, #ea6c0a 0%, #f4941c 50%, #f9b048 100%)',
         boxShadow: '0 4px 24px rgba(244,148,28,0.3)',
         paddingTop: 'env(safe-area-inset-top)',
       }}>
+        {/* Category background image — faded right accent */}
+        <img
+          src="/categories/proteins.jpg"
+          alt=""
+          aria-hidden="true"
+          className="absolute right-0 top-0 h-full w-[45%] object-cover pointer-events-none select-none"
+          style={{
+            maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.6) 100%)',
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.6) 100%)',
+            opacity: 0.3,
+          }}
+        />
         <div className="px-4 pt-3 pb-5">
 
           {/* Top row */}
