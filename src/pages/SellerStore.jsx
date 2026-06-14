@@ -150,7 +150,7 @@ export default function SellerStore() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-8">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mb-8">
                 {products.map(product => (
                   <ProductCard key={product._id} product={product} />
                 ))}

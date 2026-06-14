@@ -165,9 +165,9 @@ function DesktopProductGrid({ products, accent }) {
 // ── Mobile horizontal slider ───────────────────────────────────
 function MobileProductSlider({ products, accent }) {
   return (
-    <div className="flex gap-3 px-4 pb-1 overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+    <div className="flex gap-2 px-4 pb-1 overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
       {products.map((p, i) => (
-        <div key={p._id} className="flex-shrink-0" style={{ width: 'calc(42% - 4px)', scrollSnapAlign: 'start' }}>
+        <div key={p._id} className="flex-shrink-0" style={{ width: 'calc(38% - 4px)', scrollSnapAlign: 'start' }}>
           <ProductGridCard product={p} accent={accent} index={i} />
         </div>
       ))}

@@ -1,252 +1,162 @@
 // ============================================
-// PRODUCT CARD — Amazon-style inline qty + Wishlist + Compare
+// PRODUCT CARD — Compact (Zepto-style)
+// 20% smaller: aspect-[5/4] image, p-2 padding, round + button
 // ============================================
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiShoppingCart, FiHeart, FiStar, FiColumns, FiEye, FiMinus, FiPlus, FiTrash2 } from 'react-icons/fi';
+import { FiShoppingCart, FiHeart, FiTrash2 } from 'react-icons/fi';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
-import { useCompare } from '../../context/CompareContext';
 import { formatINR, getDiscountPercent } from '../../utils/currency';
 import { imgCard } from '../../utils/cloudinary';
 
 export default function ProductCard({ product }) {
   const { addToCart, updateQuantity, removeFromCart, cartItems, isInCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
-  const { addToCompare, isInCompare } = useCompare();
   const navigate = useNavigate();
   const [heartAnim, setHeartAnim] = useState(false);
   const [adding,    setAdding]    = useState(false);
 
-  const { name, slug, price, discountPrice, images, ratings, stock, category, codAvailable, seller, location } = product;
-  const sellerCity  = seller?.address?.city || seller?.city || location?.city || null;
+  const { name, slug, price, discountPrice, images, stock } = product;
   const inCart      = isInCart(product._id);
-  // For non-variant products there is exactly one cart entry per product.
-  // Variant products always navigate to /product/:slug so qty controls here are safe.
   const cartItem    = cartItems.find(i => i._id === product._id);
   const cartQty     = cartItem?.quantity || 0;
   const cartItemId  = cartItem?.cartItemId || null;
   const inWishlist  = isInWishlist(product._id);
-  const inCompare   = isInCompare(product._id);
   const discount    = getDiscountPercent(price, discountPrice);
-  // For variant products show "From ₹X" using lowest variant price; otherwise use product price
-  const pricedVariants = (product.variants || []).filter(v => v.price != null && v.price > 0);
-  const hasVariantPrices = pricedVariants.length > 0;
-  const lowestVariantPrice = hasVariantPrices ? Math.min(...pricedVariants.map(v => v.price)) : null;
-  const effectivePrice = discountPrice || price;
-  const mainImage   = imgCard(images?.find(i => i.isDefault)?.url || images?.[0]?.url) || 'https://via.placeholder.com/300x300?text=No+Image';
-  const isUnavailable = product.isActive === false;
+  const pricedVariants  = (product.variants || []).filter(v => v.price != null && v.price > 0);
+  const hasVariants     = product.variants?.length > 0;
+  const lowestVarPrice  = pricedVariants.length > 0 ? Math.min(...pricedVariants.map(v => v.price)) : null;
+  const effectivePrice  = discountPrice || price;
+  const mainImage       = imgCard(images?.find(i => i.isDefault)?.url || images?.[0]?.url) || 'https://via.placeholder.com/300x300?text=No+Image';
+  const isUnavailable   = product.isActive === false;
+  const isOutOfStock    = stock === 0;
+  const canAdd          = !isUnavailable && !isOutOfStock;
 
   const handleWishlist = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setHeartAnim(true);
-    setTimeout(() => setHeartAnim(false), 400);
+    e.preventDefault(); e.stopPropagation();
+    setHeartAnim(true); setTimeout(() => setHeartAnim(false), 400);
     toggleWishlist(product);
   };
 
-  const handleCompare = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    addToCompare(product);
-  };
-
-  const handleAddToCart = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (isUnavailable) return;
-    if (product.variants?.length > 0) {
-      navigate(`/product/${slug}`);
-      return;
-    }
+  const handleAdd = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (hasVariants) { navigate(`/product/${slug}`); return; }
+    if (!canAdd) return;
     setAdding(true);
     addToCart(product);
-    setTimeout(() => setAdding(false), 800);
+    setTimeout(() => setAdding(false), 600);
   };
 
-  const handleQtyChange = (e, delta) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleQty = (e, delta) => {
+    e.preventDefault(); e.stopPropagation();
     if (!cartItemId) return;
     const newQty = cartQty + delta;
-    if (newQty <= 0) {
-      removeFromCart(cartItemId);
-    } else {
-      updateQuantity(cartItemId, newQty);
-    }
+    if (newQty <= 0) removeFromCart(cartItemId);
+    else updateQuantity(cartItemId, newQty);
   };
 
   return (
-    <div className={`card-lift group overflow-hidden relative flex flex-col ${isUnavailable ? 'opacity-60 grayscale' : ''}`}>
-      <Link to={`/product/${slug}`} className="block relative overflow-hidden rounded-t-2xl">
-        <div className="aspect-square bg-gray-50 overflow-hidden">
+    <div className={`card-lift group bg-white rounded-2xl overflow-hidden relative flex flex-col ${isUnavailable ? 'opacity-60 grayscale' : ''}`}
+      style={{ boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)' }}>
+
+      {/* ── Image ── */}
+      <Link to={`/product/${slug}`} className="block relative overflow-hidden">
+        <div className="aspect-[5/4] bg-gray-50 overflow-hidden">
           <img
             src={mainImage}
             alt={name}
-            className="w-full h-full object-cover group-hover:scale-[1.06] transition-transform duration-500 ease-out"
+            className="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-500 ease-out"
             loading="lazy"
           />
         </div>
-        {/* Subtle bottom fade for image legibility */}
-        <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-black/[0.04] to-transparent pointer-events-none" />
 
-        {/* Badges */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {discount > 0 && <span className="text-[10px] px-2 py-0.5 rounded-md font-extrabold bg-green-500 text-white shadow-sm tracking-wide">{discount}% OFF</span>}
-          {isUnavailable && <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-gray-700 text-white shadow-sm">Unavailable</span>}
-          {!isUnavailable && stock === 0 && <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-gray-500 text-white shadow-sm">Out of Stock</span>}
-          {stock > 0 && stock <= 5 && <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-red-500 text-white shadow-sm animate-pulse">Only {stock} left</span>}
-          {codAvailable === false && <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-blue-500 text-white shadow-sm">Online only</span>}
-        </div>
+        {/* Discount badge */}
+        {discount > 0 && !isUnavailable && !isOutOfStock && (
+          <span className="absolute top-1.5 left-1.5 text-[9px] px-1.5 py-0.5 rounded font-extrabold bg-green-500 text-white shadow-sm leading-tight">
+            {discount}% OFF
+          </span>
+        )}
+        {isUnavailable && (
+          <span className="absolute top-1.5 left-1.5 text-[9px] px-1.5 py-0.5 rounded font-bold bg-gray-600 text-white leading-tight">Unavailable</span>
+        )}
+        {!isUnavailable && isOutOfStock && (
+          <span className="absolute top-1.5 left-1.5 text-[9px] px-1.5 py-0.5 rounded font-bold bg-gray-500 text-white leading-tight">Out of Stock</span>
+        )}
+        {canAdd && stock > 0 && stock <= 5 && (
+          <span className="absolute bottom-1.5 left-1.5 text-[9px] px-1.5 py-0.5 rounded font-bold bg-red-500 text-white animate-pulse leading-tight">Only {stock} left</span>
+        )}
 
-        {/* Wishlist — always visible (touch devices can't hover) */}
+        {/* Wishlist */}
         <button
           onClick={handleWishlist}
-          title={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
-          className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md backdrop-blur-sm transition-all duration-200
+          className={`absolute top-1.5 right-1.5 w-7 h-7 rounded-full flex items-center justify-center shadow backdrop-blur-sm transition-all duration-200
             ${heartAnim ? 'scale-125' : 'scale-100'}
-            ${inWishlist ? 'bg-red-500 text-white' : 'bg-white/90 text-gray-500 hover:text-red-500 hover:bg-white'}`}
+            ${inWishlist ? 'bg-red-500 text-white' : 'bg-white/90 text-gray-400 hover:text-red-500'}`}
         >
-          <FiHeart size={15} style={{ fill: inWishlist ? 'currentColor' : 'none' }} />
+          <FiHeart size={12} style={{ fill: inWishlist ? 'currentColor' : 'none' }} />
         </button>
-
-        {/* Compare + Quick view — desktop hover only */}
-        <div className="absolute top-12 right-2 hidden md:flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-2 group-hover:translate-x-0">
-          <button
-            onClick={handleCompare}
-            title="Compare product"
-            className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all
-              ${inCompare ? 'bg-blue-500 text-white' : 'bg-white text-gray-500 hover:text-blue-500'}`}
-          >
-            <FiColumns size={15} />
-          </button>
-          <button
-            onClick={(e) => { e.preventDefault(); navigate(`/product/${slug}`); }}
-            title="Quick view"
-            className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md text-gray-500 hover:text-primary-500 transition-all"
-          >
-            <FiEye size={15} />
-          </button>
-        </div>
       </Link>
 
-      <div className="p-3 flex flex-col flex-1">
-        <div className="flex items-center justify-between mb-1">
-          {category?.name && <p className="text-xs text-gray-400 uppercase tracking-wide">{category.name}</p>}
-          {sellerCity && <p className="text-xs text-gray-400 flex items-center gap-0.5">📍{sellerCity}</p>}
-        </div>
-
+      {/* ── Info ── */}
+      <div className="p-2 flex flex-col flex-1">
         <Link to={`/product/${slug}`}>
-          <h3 className="text-sm font-medium text-gray-800 line-clamp-2 mb-1 hover:text-primary-600 transition-colors leading-snug">{name}</h3>
+          <h3 className="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug hover:text-primary-600 transition-colors">{name}</h3>
         </Link>
 
-        {ratings?.count > 0 && (
-          <div className="flex items-center gap-1 mb-2">
-            <div className="flex items-center gap-0.5 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded">
-              <span>{ratings.average?.toFixed(1)}</span>
-              <FiStar size={9} style={{ fill: 'currentColor' }} />
-            </div>
-            <span className="text-xs text-gray-400">({ratings.count})</span>
-          </div>
+        {product.unitLabel && (
+          <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{product.unitLabel}</p>
         )}
 
-        <div className="flex items-baseline gap-2 mb-1">
-          {hasVariantPrices ? (
-            <span className="font-extrabold text-gray-900 text-base">
-              From {formatINR(lowestVariantPrice)}
-            </span>
-          ) : (
-            <>
-              <span className="font-extrabold text-gray-900 text-base">{formatINR(effectivePrice)}</span>
-              {discount > 0 && <span className="text-xs text-gray-400 line-through">{formatINR(price)}</span>}
-              {discount > 0 && <span className="text-[10px] font-bold text-green-600">Save {formatINR(price - effectivePrice)}</span>}
-            </>
-          )}
-        </div>
-
-        {/* Free delivery hint — matches ₹999 threshold */}
-        {!hasVariantPrices && effectivePrice > 999 && (
-          <p className="text-[10px] font-semibold text-green-600 mb-1.5 flex items-center gap-1">🚚 Free Delivery</p>
-        )}
-
-        {/* Variant chips */}
-        {product.variants?.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
-            {product.variants.slice(0, 3).map((v, i) => {
-              const label = [v.label, v.value ? `${v.value}${v.unit || ''}` : null].filter(Boolean).join(' ');
-              return (
-                <span key={i} className="text-[10px] px-1.5 py-0.5 bg-orange-50 border border-orange-100 text-orange-700 rounded font-medium leading-tight">
-                  {label}
-                </span>
-              );
-            })}
-            {product.variants.length > 3 && (
-              <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded font-medium leading-tight">
-                +{product.variants.length - 3} more
-              </span>
+        {/* Price row + Add button */}
+        <div className="mt-auto pt-1.5 flex items-center justify-between gap-1">
+          <div className="min-w-0 flex-1">
+            {hasVariants && lowestVarPrice ? (
+              <p className="font-bold text-gray-900 text-sm leading-none">From {formatINR(lowestVarPrice)}</p>
+            ) : (
+              <div className="flex items-baseline gap-1 flex-wrap">
+                <span className="font-bold text-gray-900 text-sm leading-none">{formatINR(effectivePrice)}</span>
+                {discount > 0 && (
+                  <span className="text-[9px] text-gray-400 line-through leading-none">{formatINR(price)}</span>
+                )}
+              </div>
             )}
           </div>
-        )}
 
-        {/* ── Add to Cart / Inline qty control ── */}
-        <div className="mt-auto pt-1">
-          {inCart && !isUnavailable && stock > 0 ? (
-            // Amazon-style inline qty controls
-            <div className="flex items-center gap-2">
-              <div className="flex items-center border-2 border-primary-400 rounded-xl overflow-hidden flex-1">
-                <button
-                  onClick={(e) => handleQtyChange(e, -1)}
-                  className={`px-3 py-2 transition-all flex-shrink-0
-                    ${cartQty === 1 ? 'text-red-500 hover:bg-red-50' : 'text-gray-600 hover:bg-gray-100'}`}
-                >
-                  {cartQty === 1 ? <FiTrash2 size={14} /> : <FiMinus size={14} />}
-                </button>
-                <span className="flex-1 text-center text-sm font-bold text-gray-800 select-none">
-                  {cartQty}
-                </span>
-                <button
-                  onClick={(e) => handleQtyChange(e, +1)}
-                  disabled={cartQty >= stock}
-                  className="px-3 py-2 text-gray-600 hover:bg-gray-100 transition-all flex-shrink-0 disabled:opacity-40"
-                >
-                  <FiPlus size={14} />
-                </button>
-              </div>
-              <Link
-                to="/cart"
-                onClick={(e) => e.stopPropagation()}
-                className="text-xs text-primary-600 font-medium hover:underline whitespace-nowrap"
+          {/* Qty controls (in-cart) or Add button */}
+          {inCart && canAdd && !hasVariants ? (
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button
+                onClick={(e) => handleQty(e, -1)}
+                className="w-6 h-6 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-sm leading-none active:scale-90 transition"
               >
-                View cart
-              </Link>
+                {cartQty === 1 ? <FiTrash2 size={9} /> : '−'}
+              </button>
+              <span className="text-xs font-bold text-green-700 w-5 text-center select-none">{cartQty}</span>
+              <button
+                onClick={(e) => handleQty(e, +1)}
+                disabled={cartQty >= stock}
+                className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center font-bold text-sm leading-none active:scale-90 transition disabled:opacity-40"
+              >
+                +
+              </button>
             </div>
           ) : (
             <button
-              onClick={handleAddToCart}
-              disabled={stock === 0 || isUnavailable}
-              className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-sm font-semibold transition-all
-                ${adding ? 'scale-95 opacity-80' : 'active:scale-95'}
-                ${isUnavailable
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : stock === 0
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : adding
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-primary-500 hover:bg-primary-600 text-white'}`}
+              onClick={handleAdd}
+              disabled={!hasVariants && !canAdd}
+              className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-base leading-none shadow-sm transition-all
+                ${adding ? 'scale-90 bg-green-700' : 'active:scale-90'}
+                ${(!hasVariants && !canAdd) ? 'bg-gray-300 cursor-not-allowed shadow-none' : 'bg-green-600 hover:bg-green-700'}`}
+              style={canAdd || hasVariants ? { boxShadow: '0 3px 10px rgba(22,163,74,0.35)' } : {}}
             >
               {adding
-                ? <><span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Adding…</>
-                : <>
-                    <FiShoppingCart size={15} />
-                    {isUnavailable
-                      ? 'Not Available'
-                      : stock === 0
-                        ? 'Out of Stock'
-                        : product.variants?.length > 0
-                          ? 'Select Options'
-                          : 'Add to Cart'}
-                  </>
-              }
+                ? <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                : hasVariants
+                  ? <FiShoppingCart size={12} />
+                  : isOutOfStock
+                    ? '×'
+                    : '+'}
             </button>
           )}
         </div>

@@ -30,7 +30,7 @@ const ProductCard = ({ product }) => {
     <div className="bg-white rounded-2xl border border-green-100 shadow-sm overflow-hidden">
       <Link to={`/koyambedu/product/${product._id}`}>
         <div className="relative">
-          <img src={img} alt={product.name} className="w-full h-32 object-cover" />
+          <img src={img} alt={product.name} className="w-full h-[108px] object-cover" />
           {product.badges?.includes('fresh_arrival') && (
             <span className="absolute top-2 left-2 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">Fresh</span>
           )}
@@ -39,19 +39,15 @@ const ProductCard = ({ product }) => {
           )}
         </div>
       </Link>
-      <div className="p-3">
+      <div className="p-2">
         <Link to={`/koyambedu/product/${product._id}`}>
-          <p className="text-sm font-semibold text-gray-800 line-clamp-1">{product.name}</p>
-          {product.nameTamil && <p className="text-[10px] text-gray-400">{product.nameTamil}</p>}
+          <p className="text-xs font-semibold text-gray-800 line-clamp-1">{product.name}</p>
+          {product.nameTamil && <p className="text-[10px] text-gray-400 leading-tight">{product.nameTamil}</p>}
         </Link>
-        <p className="text-[10px] text-gray-500 mt-0.5">{product.seller?.businessName}</p>
-        {product.marketPriceMin > 0 && (
-          <p className="text-[10px] text-orange-500 mt-0.5">Market ₹{product.marketPriceMin}–{product.marketPriceMax}</p>
-        )}
         <div className="flex items-center justify-between mt-2">
           <div>
-            <span className="text-green-700 font-bold text-sm">₹{product.currentPrice}</span>
-            <span className="text-gray-400 text-[10px] ml-1">/{product.unitLabel}</span>
+            <span className="text-green-700 font-bold text-xs">₹{product.currentPrice}</span>
+            <span className="text-gray-400 text-[10px] ml-0.5">/{product.unitLabel}</span>
           </div>
           {qty === 0 ? (
             <button
@@ -243,7 +239,7 @@ export default function KoyambeduShop() {
           </p>
 
           {/* ── Product grid ── */}
-          <div className="px-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="px-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {products.map(p => <ProductCard key={p._id} product={p} />)}
           </div>
 

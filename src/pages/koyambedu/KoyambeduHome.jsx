@@ -43,7 +43,7 @@ function ProductCard({ product }) {
     <div className="bg-white rounded-2xl overflow-hidden"
       style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid rgba(0,0,0,0.04)' }}>
       <Link to={`/koyambedu/product/${product._id}`} className="block relative active:opacity-80 transition">
-        <img src={img} alt={product.name} className="w-full h-28 object-cover" />
+        <img src={img} alt={product.name} className="w-full h-24 object-cover" />
         {product.badges?.includes('fresh_arrival') && (
           <span className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
             <FaLeaf size={8} /> Fresh
@@ -53,18 +53,15 @@ function ProductCard({ product }) {
           <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">Low</span>
         )}
       </Link>
-      <div className="p-3">
+      <div className="p-2">
         <Link to={`/koyambedu/product/${product._id}`}>
-          <p className="font-semibold text-gray-800 text-sm leading-tight line-clamp-1">{product.name}</p>
-          {product.nameTamil && <p className="text-[10px] text-gray-400 mt-0.5">{product.nameTamil}</p>}
+          <p className="font-semibold text-gray-800 text-xs leading-tight line-clamp-1">{product.name}</p>
+          {product.nameTamil && <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{product.nameTamil}</p>}
         </Link>
-        {product.marketPriceMin > 0 && (
-          <p className="text-[10px] text-orange-500 mt-0.5">Market ₹{product.marketPriceMin}–₹{product.marketPriceMax}/{product.unitLabel}</p>
-        )}
-        <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center justify-between mt-1.5">
           <div>
-            <span className="text-green-700 font-bold text-sm">₹{product.currentPrice}</span>
-            <span className="text-gray-400 text-[10px] ml-1">/{product.unitLabel}</span>
+            <span className="text-green-700 font-bold text-xs">₹{product.currentPrice}</span>
+            <span className="text-gray-400 text-[10px] ml-0.5">/{product.unitLabel}</span>
           </div>
           {qty === 0 ? (
             <button
@@ -114,7 +111,7 @@ function SectionRow({ title, icon, products, viewAllLink }) {
           </Link>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {products.slice(0, 6).map(p => <ProductCard key={p._id} product={p} />)}
       </div>
     </div>

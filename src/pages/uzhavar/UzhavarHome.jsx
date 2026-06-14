@@ -382,7 +382,7 @@ export default function UzhavarHome() {
               <p className="text-xs text-gray-400 mt-0.5">Farmers will add harvest soon!</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               {filteredProducts.map(prod => (
                 <ProductCard key={prod._id} product={prod}
                   onClick={() => navigate(`/uzhavar/farmer/${prod.farmer?._id}`)} />
@@ -487,14 +487,14 @@ function ProductCard({ product, onClick }) {
     <button onClick={onClick} className="w-full text-left bg-white rounded-2xl overflow-hidden active:scale-[0.98] transition"
       style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid rgba(0,0,0,0.04)' }}>
       {product.image
-        ? <img src={product.image} alt={product.name} className="w-full h-24 object-cover" />
-        : <div className="w-full h-24 bg-green-50 flex items-center justify-center">
-            <FaLeaf size={28} className="text-green-300" />
+        ? <img src={product.image} alt={product.name} className="w-full h-20 object-cover" />
+        : <div className="w-full h-20 bg-green-50 flex items-center justify-center">
+            <FaLeaf size={24} className="text-green-300" />
           </div>}
-      <div className="p-3">
+      <div className="p-2">
         <p className="font-semibold text-xs text-gray-800 line-clamp-1">{product.name}</p>
-        {product.nameTa && <p className="text-[10px] text-gray-400 line-clamp-1">{product.nameTa}</p>}
-        <p className="font-bold text-green-600 text-sm mt-1">₹{product.pricePerUnit}/{product.unit}</p>
+        {product.nameTa && <p className="text-[10px] text-gray-400 line-clamp-1 leading-tight">{product.nameTa}</p>}
+        <p className="font-bold text-green-600 text-xs mt-1">₹{product.pricePerUnit}/{product.unit}</p>
         <p className="text-[10px] text-gray-400 truncate">{product.farmer?.name}</p>
       </div>
     </button>
