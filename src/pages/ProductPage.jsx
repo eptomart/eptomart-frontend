@@ -611,7 +611,7 @@ export default function ProductPage() {
         {relatedProducts.length > 0 && (
           <section>
             <h2 className="text-xl font-bold text-gray-800 mb-4">Related Products</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {relatedProducts.map(p => <ProductCard key={p._id} product={p} />)}
             </div>
           </section>

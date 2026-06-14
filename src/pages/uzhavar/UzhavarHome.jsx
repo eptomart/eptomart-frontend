@@ -382,7 +382,7 @@ export default function UzhavarHome() {
               <p className="text-xs text-gray-400 mt-0.5">Farmers will add harvest soon!</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {filteredProducts.map(prod => (
                 <ProductCard key={prod._id} product={prod}
                   onClick={() => navigate(`/uzhavar/farmer/${prod.farmer?._id}`)} />

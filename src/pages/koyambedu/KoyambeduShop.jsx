@@ -32,9 +32,9 @@ const ProductCard = ({ product }) => {
       <Link to={`/koyambedu/product/${product._id}`}>
         <div className="relative">
           {img
-            ? <img src={img} alt={product.name} className="w-full h-[88px] object-cover" />
-            : <div className="w-full h-[88px] bg-green-50 flex items-center justify-center">
-                <FaLeaf size={24} className="text-green-200" />
+            ? <img src={img} alt={product.name} className="w-full h-[72px] object-cover" />
+            : <div className="w-full h-[72px] bg-green-50 flex items-center justify-center">
+                <FaLeaf size={20} className="text-green-200" />
               </div>}
           {product.badges?.includes('fresh_arrival') && (
             <span className="absolute top-1.5 left-1.5 bg-green-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">Fresh</span>
@@ -244,7 +244,7 @@ export default function KoyambeduShop() {
           </p>
 
           {/* ── Product grid ── */}
-          <div className="px-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="px-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {products.map(p => <ProductCard key={p._id} product={p} />)}
           </div>
 

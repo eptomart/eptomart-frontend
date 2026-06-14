@@ -167,7 +167,7 @@ function MobileProductSlider({ products, accent }) {
   return (
     <div className="flex gap-2 px-4 pb-1 overflow-x-auto scrollbar-hide" style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
       {products.map((p, i) => (
-        <div key={p._id} className="flex-shrink-0" style={{ width: 'calc(38% - 4px)', scrollSnapAlign: 'start' }}>
+        <div key={p._id} className="flex-shrink-0" style={{ width: 'calc(30% - 4px)', scrollSnapAlign: 'start' }}>
           <ProductGridCard product={p} accent={accent} index={i} />
         </div>
       ))}
@@ -253,26 +253,38 @@ const SOURCE_APPS = [
   },
 ];
 
-// Compact 3-tile row — Zepto/Blinkit style module selector
+// Highlighted 3-tile row — gradient dark backgrounds
 const SOURCE_TILES = [
-  { to: '/koyambedu', emoji: '🥬', label: 'Koyambedu',    sub: 'Market Fresh', color: '#065f46', bg: '#f0fdf4', border: '#bbf7d0' },
-  { to: '/uzhavar',   emoji: '🌾', label: 'Farmer Fresh', sub: 'Farm Direct',  color: '#0f766e', bg: '#f0fdfa', border: '#99f6e4' },
-  { to: '/eptofresh', emoji: '🥩', label: 'Proteins',     sub: 'Hyperlocal',   color: '#c2410c', bg: '#fff7ed', border: '#fed7aa' },
+  {
+    to: '/koyambedu', emoji: '🥬', label: 'Koyambedu', sub: 'Market Fresh',
+    gradient: 'linear-gradient(145deg, #064e3b 0%, #059669 100%)',
+    shadow: '0 6px 18px rgba(6,78,59,0.38)',
+  },
+  {
+    to: '/uzhavar', emoji: '🌾', label: 'Farmer Fresh', sub: 'Farm Direct',
+    gradient: 'linear-gradient(145deg, #134e4a 0%, #0d9488 100%)',
+    shadow: '0 6px 18px rgba(13,148,136,0.32)',
+  },
+  {
+    to: '/eptofresh', emoji: '🥩', label: 'Proteins', sub: 'Hyperlocal',
+    gradient: 'linear-gradient(145deg, #7c2d12 0%, #ea580c 100%)',
+    shadow: '0 6px 18px rgba(234,88,12,0.32)',
+  },
 ];
 
 function ShopBySource() {
   return (
-    <div className="px-4 grid grid-cols-3 gap-2">
+    <div className="px-4 grid grid-cols-3 gap-2.5">
       {SOURCE_TILES.map(t => (
         <Link
           key={t.to}
           to={t.to}
-          className="flex flex-col items-center justify-center rounded-2xl py-3 gap-0.5 active:scale-[0.96] transition-transform"
-          style={{ background: t.bg, border: `1.5px solid ${t.border}`, minHeight: 76, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
+          className="flex flex-col items-center justify-center rounded-2xl py-4 gap-0.5 active:scale-[0.95] transition-all"
+          style={{ background: t.gradient, minHeight: 90, boxShadow: t.shadow }}
         >
-          <span className="text-2xl leading-none mb-0.5">{t.emoji}</span>
-          <p className="text-[11px] font-extrabold text-center leading-tight" style={{ color: t.color }}>{t.label}</p>
-          <p className="text-[9px] text-gray-400 font-semibold text-center leading-tight">{t.sub}</p>
+          <span className="text-3xl leading-none">{t.emoji}</span>
+          <p className="text-[11px] font-extrabold text-white text-center leading-tight mt-1">{t.label}</p>
+          <p className="text-[9px] font-semibold text-center leading-tight" style={{ color: 'rgba(255,255,255,0.6)' }}>{t.sub}</p>
         </Link>
       ))}
     </div>
@@ -1002,12 +1014,12 @@ export default function Home() {
           <section id="section-new" className="pt-3 pb-5">
             <SectionHeader Icon={FiClock} iconColor="#3b82f6" dotColor="bg-blue-500" title="New Arrivals" link="/shop?sort=-createdAt" />
             {loading ? (
-              <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+              <div className="px-4 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
                 {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
               </div>
             ) : newArrivals.length > 0 ? (
               <>
-                <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                <div className="px-4 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
                   {newArrivals.map(p => <ProductCard key={p._id} product={p} />)}
                 </div>
                 <div className="text-center mt-5 px-4">

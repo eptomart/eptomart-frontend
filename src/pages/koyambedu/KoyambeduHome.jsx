@@ -45,9 +45,9 @@ function ProductCard({ product }) {
       style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid rgba(0,0,0,0.04)' }}>
       <Link to={`/koyambedu/product/${product._id}`} className="block relative active:opacity-80 transition">
         {img
-          ? <img src={img} alt={product.name} className="w-full h-20 object-cover" />
-          : <div className="w-full h-20 bg-green-50 flex items-center justify-center">
-              <FaLeaf size={22} className="text-green-200" />
+          ? <img src={img} alt={product.name} className="w-full h-16 object-cover" />
+          : <div className="w-full h-16 bg-green-50 flex items-center justify-center">
+              <FaLeaf size={18} className="text-green-200" />
             </div>}
         {product.badges?.includes('fresh_arrival') && (
           <span className="absolute top-1.5 left-1.5 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
@@ -116,7 +116,7 @@ function SectionRow({ title, icon, products, viewAllLink }) {
           </Link>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
         {products.slice(0, 6).map(p => <ProductCard key={p._id} product={p} />)}
       </div>
     </div>
