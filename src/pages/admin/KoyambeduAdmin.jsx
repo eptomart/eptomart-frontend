@@ -4,7 +4,69 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
-const TAB_LIST = ['dashboard', 'orders', 'sellers', 'seller-admins', 'categories'];
+const TAB_LIST = ['dashboard', 'orders', 'sellers', 'seller-admins', 'categories', 'danger'];
+
+// ── Danger Zone component ─────────────────────
+function DangerZone() {
+  const [confirm, setConfirm] = useState('');
+  const [wiping,  setWiping]  = useState(false);
+  const [result,  setResult]  = useState(null);
+
+  const handleWipe = async () => {
+    if (confirm !== 'DELETE ALL') {
+      toast.error('Type DELETE ALL exactly to confirm'); return;
+    }
+    setWiping(true);
+    try {
+      const { data } = await api.delete('/koyambedu/admin/wipe-all');
+      setResult(data.deleted);
+      setConfirm('');
+      toast.success('All Koyambedu data wiped');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Wipe failed');
+    } finally { setWiping(false); }
+  };
+
+  return (
+    <div className="space-y-4 mt-2">
+      <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-5">
+        <h2 className="font-black text-red-700 text-base mb-1">⚠️ Danger Zone</h2>
+        <p className="text-red-600 text-sm mb-4 leading-relaxed">
+          This will permanently delete <strong>all</strong> Koyambedu data:
+          products, sellers, seller-admins, orders, carts, and categories.
+          <br />Main user accounts are <strong>not</strong> affected.
+          <br /><span className="font-bold">This cannot be undone.</span>
+        </p>
+
+        {result && (
+          <div className="bg-white border border-red-200 rounded-xl p-3 mb-4 text-xs text-gray-700 space-y-1">
+            <p className="font-bold text-red-700 mb-1">✓ Wiped successfully:</p>
+            {Object.entries(result).map(([k, v]) => (
+              <p key={k}>{k}: <strong>{v}</strong> deleted</p>
+            ))}
+          </div>
+        )}
+
+        <label className="block text-sm font-bold text-red-700 mb-1">
+          Type <code className="bg-red-100 px-1 rounded">DELETE ALL</code> to confirm
+        </label>
+        <input
+          type="text"
+          value={confirm}
+          onChange={e => setConfirm(e.target.value)}
+          placeholder="DELETE ALL"
+          className="w-full border-2 border-red-300 rounded-xl px-3 py-2.5 text-sm font-mono mb-3 focus:outline-none focus:border-red-500"
+        />
+        <button
+          onClick={handleWipe}
+          disabled={wiping || confirm !== 'DELETE ALL'}
+          className="w-full bg-red-600 text-white font-black py-3 rounded-xl disabled:opacity-40 transition active:scale-95">
+          {wiping ? 'Wiping…' : '🗑️ Wipe All Koyambedu Data'}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const UNITS_KBD  = ['kg','g','piece','bunch','dozen','litre','pack','leaf'];
 const BADGES_KBD = ['fresh_arrival','low_stock','best_seller','seasonal','organic','festival_special','bulk_deal'];
@@ -919,6 +981,9 @@ export default function KoyambeduAdmin() {
           </div>
         </div>
       )}
+
+      {/* ── DANGER ZONE TAB ── */}
+      {tab === 'danger' && <DangerZone />}
 
       {/* ── Reject reason modal ── */}
       {rejectModal && (
