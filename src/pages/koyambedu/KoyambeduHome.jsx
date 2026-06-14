@@ -35,12 +35,14 @@ function ProductCard({ product }) {
   const { getQty, updateItem } = useKoyambeduCart();
   const qty  = getQty(product._id);
   const img  = product.images?.find(i => i.isPrimary)?.url || product.images?.[0]?.url || IMG_PH;
-  const step = product.qtyStep || 1;
+  // Minimum 1 KG / 1 PC — never 0.5
+  const step   = Math.max(1, product.qtyStep || 1);
+  const minQty = Math.max(1, product.minQty || 1);
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden active:scale-[0.98] transition"
+    <div className="bg-white rounded-2xl overflow-hidden"
       style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid rgba(0,0,0,0.04)' }}>
-      <Link to={`/koyambedu/product/${product._id}`} className="block relative">
+      <Link to={`/koyambedu/product/${product._id}`} className="block relative active:opacity-80 transition">
         <img src={img} alt={product.name} className="w-full h-28 object-cover" />
         {product.badges?.includes('fresh_arrival') && (
           <span className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
@@ -65,17 +67,30 @@ function ProductCard({ product }) {
             <span className="text-gray-400 text-[10px] ml-1">/{product.unitLabel}</span>
           </div>
           {qty === 0 ? (
-            <button onClick={() => updateItem(product._id, step, 'tomorrow')}
-              className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl active:scale-95 transition">
+            <button
+              onClick={() => updateItem(product._id, minQty, 'tomorrow')}
+              className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl active:scale-95 transition-transform"
+              style={{ boxShadow: '0 2px 8px rgba(22,163,74,0.35)' }}>
               + Add
             </button>
           ) : (
             <div className="flex items-center gap-1.5">
-              <button onClick={() => updateItem(product._id, Math.max(0, qty - step), 'tomorrow')}
-                className="w-7 h-7 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center">−</button>
-              <span className="text-sm font-bold text-green-700 min-w-[20px] text-center">{qty}</span>
-              <button onClick={() => updateItem(product._id, Math.min(product.maxQty || 50, qty + step), 'tomorrow')}
-                className="w-7 h-7 rounded-full bg-green-600 text-white font-bold flex items-center justify-center">+</button>
+              <button
+                onClick={() => {
+                  const next = qty - step;
+                  updateItem(product._id, next < minQty ? 0 : next, 'tomorrow', { silent: true });
+                }}
+                className="w-7 h-7 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center active:scale-90 transition-transform">
+                −
+              </button>
+              <span className="text-sm font-bold text-green-700 min-w-[28px] text-center">
+                {qty}<span className="text-[9px] font-medium text-gray-400 ml-0.5">{product.unitLabel}</span>
+              </span>
+              <button
+                onClick={() => updateItem(product._id, Math.min(product.maxQty || 50, qty + step), 'tomorrow', { silent: true })}
+                className="w-7 h-7 rounded-full bg-green-600 text-white font-bold flex items-center justify-center active:scale-90 transition-transform">
+                +
+              </button>
             </div>
           )}
         </div>

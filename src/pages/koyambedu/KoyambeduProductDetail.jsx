@@ -33,7 +33,7 @@ export default function KoyambeduProductDetail() {
       .then(r => {
         const p = r.data.product;
         setProduct(p);
-        setQty(p.qtyStep || 1);
+        setQty(Math.max(1, p.qtyStep || 1));
         // Today only available before 8 AM
         if (p.isSameDay && isBefore8AM()) setDelivery('today');
         else setDelivery('tomorrow');
@@ -62,12 +62,14 @@ export default function KoyambeduProductDetail() {
 
   const cartQty = getQty(productId);
   const images  = product.images?.filter(i => i.url)?.length ? product.images : [{ url: IMG_PLACEHOLDER }];
-  const step    = product.qtyStep || 0.5;
+  // Minimum 1 KG / 1 PC — never allow 0.5 step
+  const step    = Math.max(1, product.qtyStep || 1);
+  const minQty  = Math.max(1, product.minQty || 1);
   const todayAvailable = product.isSameDay && before8;
 
   const handleAddOrUpdate = () => {
+    // Context handles toast (first-add only) — no double toast here
     updateItem(productId, qty, deliveryType);
-    toast.success(cartQty > 0 ? 'Cart updated' : 'Added to cart');
   };
 
   return (
@@ -241,7 +243,7 @@ export default function KoyambeduProductDetail() {
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setQty(q => Math.max(product.minQty || step, parseFloat((q - step).toFixed(2))))}
+                onClick={() => setQty(q => Math.max(minQty, parseFloat((q - step).toFixed(2))))}
                 className="w-10 h-10 rounded-full bg-green-100 text-green-700 font-bold text-xl flex items-center justify-center active:scale-90 transition">
                 −
               </button>

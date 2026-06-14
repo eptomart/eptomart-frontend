@@ -1,60 +1,52 @@
 // ============================================
 // KOYAMBEDU CART CONTEXT
-// Adds userLocation with localStorage persistence (same pattern as EptoFresh)
+// Optimistic local updates + debounced API sync
+// — UI responds instantly, no lag on every tap
+// — Only toasts on first add / remove
 // ============================================
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 const KBD_COORDS_KEY = 'kbd_coords';
 const KBD_AREA_KEY   = 'kbd_area';
+const DEBOUNCE_MS    = 700;
 
 const KoyambeduCartContext = createContext(null);
 
 export const KoyambeduCartProvider = ({ children }) => {
-  const [cart, setCart]       = useState({ items: [] });
+  const [cart,    setCart]    = useState({ items: [] });
   const [loading, setLoading] = useState(false);
 
-  // Restore persisted location (survives refresh)
+  // optimisticQtys: { [productId]: qty } — overrides server state until API responds
+  const [optimisticQtys, setOptimisticQtys] = useState({});
+  const pendingRef = useRef({}); // debounce timers per product
+
+  // ── Persisted location ────────────────────────
   const [userLocation, setUserLocationRaw] = useState(() => {
-    try {
-      const saved = localStorage.getItem(KBD_COORDS_KEY);
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
+    try { return JSON.parse(localStorage.getItem(KBD_COORDS_KEY) || 'null'); } catch { return null; }
   });
-  const [locationLabel, setLocationLabelRaw] = useState(() => {
-    return localStorage.getItem(KBD_AREA_KEY) || '';
-  });
+  const [locationLabel, setLocationLabelRaw] = useState(
+    () => localStorage.getItem(KBD_AREA_KEY) || ''
+  );
 
   const setUserLocation = useCallback((loc) => {
     setUserLocationRaw(loc);
-    if (loc) {
-      try { localStorage.setItem(KBD_COORDS_KEY, JSON.stringify(loc)); } catch {}
-    } else {
-      localStorage.removeItem(KBD_COORDS_KEY);
-    }
+    try {
+      loc ? localStorage.setItem(KBD_COORDS_KEY, JSON.stringify(loc))
+          : localStorage.removeItem(KBD_COORDS_KEY);
+    } catch {}
   }, []);
 
   const setLocationLabel = useCallback((label) => {
     setLocationLabelRaw(label);
-    if (label) {
-      try { localStorage.setItem(KBD_AREA_KEY, label); } catch {}
-    } else {
-      localStorage.removeItem(KBD_AREA_KEY);
-    }
+    try {
+      label ? localStorage.setItem(KBD_AREA_KEY, label)
+            : localStorage.removeItem(KBD_AREA_KEY);
+    } catch {}
   }, []);
 
-  // Request GPS once — only if no saved location
-  useEffect(() => {
-    if (userLocation) return;
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => {}
-      );
-    }
-  }, []);
-
+  // ── Fetch cart from server ────────────────────
   const fetchCart = useCallback(async () => {
     try {
       const { data } = await api.get('/koyambedu/cart');
@@ -62,30 +54,82 @@ export const KoyambeduCartProvider = ({ children }) => {
     } catch {}
   }, []);
 
-  const updateItem = useCallback(async (productId, quantity, deliveryType = 'tomorrow') => {
-    setLoading(true);
-    try {
-      const { data } = await api.post('/koyambedu/cart', { productId, quantity, deliveryType });
-      setCart(data.cart || { items: [] });
-      if (quantity > 0) toast.success('Cart updated');
-      else toast.success('Item removed');
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to update cart');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // ── getQty: optimistic override first ─────────
+  const getQty = useCallback((productId) => {
+    const pid = String(productId);
+    if (pid in optimisticQtys) return optimisticQtys[pid];
+    return cart.items?.find(i => String(i.product?._id || i.product) === pid)?.quantity || 0;
+  }, [cart, optimisticQtys]);
 
+  // ── updateItem: optimistic + debounced API ────
+  // showToast: true only on first add (called from "Add" button, not +/− stepper)
+  const updateItem = useCallback((productId, quantity, deliveryType = 'tomorrow', { silent = false } = {}) => {
+    const pid       = String(productId);
+    const prevQty   = optimisticQtys[pid] ?? (cart.items?.find(i => String(i.product?._id || i.product) === pid)?.quantity || 0);
+    const isFirstAdd = prevQty === 0 && quantity > 0;
+    const isRemove   = quantity <= 0;
+
+    // 1. Optimistic update — instant UI response
+    setOptimisticQtys(prev => ({ ...prev, [pid]: Math.max(0, quantity) }));
+
+    // 2. Toast only on meaningful events (not every stepper tap)
+    if (!silent) {
+      if (isFirstAdd) toast.success('Added to cart 🛒', { duration: 1500 });
+      else if (isRemove) toast.success('Removed from cart', { duration: 1200 });
+    }
+
+    // 3. Debounce API call — only fires after 700ms pause
+    if (pendingRef.current[pid]?.timer) clearTimeout(pendingRef.current[pid].timer);
+    pendingRef.current[pid] = {
+      timer: setTimeout(async () => {
+        try {
+          setLoading(true);
+          const { data } = await api.post('/koyambedu/cart', {
+            productId, quantity: Math.max(0, quantity), deliveryType,
+          });
+          // Sync server truth, clear optimistic override for this product
+          setCart(data.cart || { items: [] });
+          setOptimisticQtys(prev => {
+            const next = { ...prev };
+            delete next[pid];
+            return next;
+          });
+        } catch (err) {
+          toast.error(err?.response?.data?.message || 'Failed to update cart');
+          // Revert optimistic state
+          setOptimisticQtys(prev => {
+            const next = { ...prev };
+            delete next[pid];
+            return next;
+          });
+          fetchCart();
+        } finally {
+          setLoading(false);
+          delete pendingRef.current[pid];
+        }
+      }, DEBOUNCE_MS),
+    };
+  }, [cart, optimisticQtys, fetchCart]);
+
+  // ── clearCart ─────────────────────────────────
   const clearCart = useCallback(async () => {
     try {
       await api.delete('/koyambedu/cart/clear');
       setCart({ items: [] });
+      setOptimisticQtys({});
     } catch {}
   }, []);
 
-  const itemCount = cart.items?.reduce((s, i) => s + 1, 0) || 0;
-  const subtotal  = cart.items?.reduce((s, i) => s + (i.unitPrice || 0) * (i.quantity || 0), 0) || 0;
-  const getQty    = (productId) => cart.items?.find(i => String(i.product?._id || i.product) === String(productId))?.quantity || 0;
+  // ── Derived values ────────────────────────────
+  // Merge server cart with optimistic overrides for accurate counts
+  const effectiveItems = cart.items?.map(item => {
+    const pid = String(item.product?._id || item.product);
+    const qty = pid in optimisticQtys ? optimisticQtys[pid] : item.quantity;
+    return { ...item, quantity: qty };
+  }).filter(i => i.quantity > 0) || [];
+
+  const itemCount = effectiveItems.length;
+  const subtotal  = effectiveItems.reduce((s, i) => s + (i.unitPrice || 0) * (i.quantity || 0), 0);
 
   return (
     <KoyambeduCartContext.Provider value={{
