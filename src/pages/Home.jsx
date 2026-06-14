@@ -55,7 +55,7 @@ function useCountdown(hours = 6) {
 // ── Skeleton ───────────────────────────────────────────────────
 const SkeletonCard = () => (
   <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse">
-    <div className="aspect-square bg-gray-100" />
+    <div className="aspect-[5/4] bg-gray-100" />
     <div className="p-3 space-y-2">
       <div className="h-3 bg-gray-100 rounded w-3/4" />
       <div className="h-3 bg-gray-100 rounded w-1/2" />
@@ -101,7 +101,7 @@ function ProductGridCard({ product: p, accent = '#f4941c', index = 0 }) {
       className="bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col group"
       style={{ boxShadow: '0 1px 5px rgba(0,0,0,0.06)' }}
     >
-      <Link to={href} className="relative bg-gray-50 block overflow-hidden" style={{ aspectRatio: '1/1' }}>
+      <Link to={href} className="relative bg-gray-50 block overflow-hidden" style={{ aspectRatio: '5/4' }}>
         {img
           ? <img src={img} alt={p.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.07]" />
           : <div className="w-full h-full flex items-center justify-center"><FiPackage size={30} className="text-gray-200" /></div>}
@@ -253,54 +253,26 @@ const SOURCE_APPS = [
   },
 ];
 
+// Compact 3-tile row — Zepto/Blinkit style module selector
+const SOURCE_TILES = [
+  { to: '/koyambedu', emoji: '🥬', label: 'Koyambedu',    sub: 'Market Fresh', color: '#065f46', bg: '#f0fdf4', border: '#bbf7d0' },
+  { to: '/uzhavar',   emoji: '🌾', label: 'Farmer Fresh', sub: 'Farm Direct',  color: '#0f766e', bg: '#f0fdfa', border: '#99f6e4' },
+  { to: '/eptofresh', emoji: '🥩', label: 'Proteins',     sub: 'Hyperlocal',   color: '#c2410c', bg: '#fff7ed', border: '#fed7aa' },
+];
+
 function ShopBySource() {
   return (
-    <div className="px-4 space-y-2.5">
-      {SOURCE_APPS.map(app => (
+    <div className="px-4 grid grid-cols-3 gap-2">
+      {SOURCE_TILES.map(t => (
         <Link
-          key={app.to}
-          to={app.to}
-          className="relative flex items-center rounded-2xl overflow-hidden active:scale-[0.98] transition-transform"
-          style={{
-            height: 100,
-            background: app.gradient,
-            boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
-          }}
+          key={t.to}
+          to={t.to}
+          className="flex flex-col items-center justify-center rounded-2xl py-3 gap-0.5 active:scale-[0.96] transition-transform"
+          style={{ background: t.bg, border: `1.5px solid ${t.border}`, minHeight: 76, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
         >
-          {/* Background image faded right */}
-          <img
-            src={app.img}
-            alt={app.title}
-            className="absolute right-0 top-0 h-full w-[45%] object-cover"
-            style={{ maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.7) 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.7) 100%)' }}
-            loading="lazy"
-          />
-          {/* Scrim over image */}
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.0) 55%, rgba(0,0,0,0.35) 100%)' }} />
-          {/* Accent bar left edge */}
-          <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl" style={{ background: app.accentColor }} />
-
-          {/* Content */}
-          <div className="relative z-10 flex-1 px-4 py-3">
-            {/* Badge */}
-            <span className="inline-flex items-center gap-1 text-[9px] font-extrabold tracking-wide px-2 py-0.5 rounded-full mb-1.5"
-              style={{ background: 'rgba(255,255,255,0.18)', color: app.accentColor, border: `1px solid ${app.accentColor}40` }}>
-              <app.BadgeIcon size={8} /> {app.badge}
-            </span>
-            <p className="text-white font-extrabold text-base leading-tight" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>
-              {app.title}
-            </p>
-            <p className="text-[10px] font-medium mt-0.5 leading-snug" style={{ color: 'rgba(255,255,255,0.7)' }}>
-              {app.desc}
-            </p>
-          </div>
-
-          {/* CTA arrow */}
-          <div className="relative z-10 pr-4 flex-shrink-0">
-            <span className="flex items-center gap-1 text-[11px] font-bold text-white bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/20">
-              {app.cta} <FiArrowRight size={11} />
-            </span>
-          </div>
+          <span className="text-2xl leading-none mb-0.5">{t.emoji}</span>
+          <p className="text-[11px] font-extrabold text-center leading-tight" style={{ color: t.color }}>{t.label}</p>
+          <p className="text-[9px] text-gray-400 font-semibold text-center leading-tight">{t.sub}</p>
         </Link>
       ))}
     </div>
@@ -944,37 +916,32 @@ export default function Home() {
           {/* 1. Hero banner */}
           <MobileHero />
 
-          {/* 2. Trust indicators — right below hero */}
-          <div className="pt-3 pb-1">
-            <TrustStrip />
-          </div>
-
-          {/* 3. Shop by Source — Koyambedu / Farmer Fresh / Proteins */}
-          <div className="pt-3 pb-1">
-            <div className="flex items-center justify-between mb-2.5 px-4">
-              <div className="flex items-center gap-2">
-                <span className="w-1 h-5 rounded-full bg-green-500 flex-shrink-0" />
-                <span className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: '#f0fdf4' }}>
-                  <FiMapPin size={13} className="text-green-600" />
-                </span>
-                <h2 className="text-sm font-extrabold text-gray-900">Shop by Source</h2>
-              </div>
-            </div>
-            <ShopBySource />
-          </div>
-
-          {/* 4. Promo banner (auto-rotating, promotional content) */}
-          <div className="pt-3 pb-1">
-            <PromoBanner />
-          </div>
-
-          {/* 5. Category strip */}
+          {/* 2. Category strip — immediately after hero for fast browsing */}
           <div className="pt-3">
             <MobileCategoryStrip />
           </div>
 
-          {/* 6. Continue Shopping (logged-in users with history) */}
-          <div className="pt-3">
+          {/* 3. Shop by Source — compact 3-tile row */}
+          <div className="pt-3 pb-1">
+            <div className="flex items-center gap-2 mb-2 px-4">
+              <span className="w-1 h-4 rounded-full bg-green-500 flex-shrink-0" />
+              <h2 className="text-xs font-extrabold text-gray-700 uppercase tracking-wide">Shop by Source</h2>
+            </div>
+            <ShopBySource />
+          </div>
+
+          {/* 4. Promo banner */}
+          <div className="pt-3 pb-1">
+            <PromoBanner />
+          </div>
+
+          {/* 5. Trust indicators */}
+          <div className="pt-2 pb-1">
+            <TrustStrip />
+          </div>
+
+          {/* 6. Continue Shopping */}
+          <div className="pt-2">
             <ContinueShopping />
           </div>
 
@@ -1033,12 +1000,12 @@ export default function Home() {
           <section id="section-new" className="pt-3 pb-5">
             <SectionHeader Icon={FiClock} iconColor="#3b82f6" dotColor="bg-blue-500" title="New Arrivals" link="/shop?sort=-createdAt" />
             {loading ? (
-              <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+              <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                 {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
               </div>
             ) : newArrivals.length > 0 ? (
               <>
-                <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                <div className="px-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                   {newArrivals.map(p => <ProductCard key={p._id} product={p} />)}
                 </div>
                 <div className="text-center mt-5 px-4">

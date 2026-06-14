@@ -225,11 +225,11 @@ function ProductCard({ product, qty, sellerId, sellerName, onAdd, onUpdate }) {
   const price = selectedVariant?.price || product.todayPrice || product.basePrice;
 
   return (
-    <div className="flex gap-3 bg-white rounded-2xl p-3"
+    <div className="flex gap-2.5 bg-white rounded-2xl p-2.5"
       style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
 
       {/* Image */}
-      <div className="w-[76px] h-[76px] rounded-xl overflow-hidden shrink-0 bg-gray-50 flex items-center justify-center">
+      <div className="w-[64px] h-[64px] rounded-xl overflow-hidden shrink-0 bg-gray-50 flex items-center justify-center">
         {product.images?.[0]?.url
           ? <img src={product.images[0].url} alt={product.name} className="w-full h-full object-cover" />
           : <span className="text-3xl select-none">{catEmoji(product.category)}</span>}
