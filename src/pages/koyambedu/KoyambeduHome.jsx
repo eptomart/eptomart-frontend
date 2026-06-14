@@ -68,7 +68,7 @@ function ProductCard({ product }) {
           </div>
           {qty === 0 ? (
             <button
-              onClick={() => updateItem(product._id, minQty, 'tomorrow')}
+              onClick={() => updateItem(product._id, minQty, 'tomorrow', { productData: product })}
               className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl active:scale-95 transition-transform"
               style={{ boxShadow: '0 2px 8px rgba(22,163,74,0.35)' }}>
               + Add

@@ -68,8 +68,7 @@ export default function KoyambeduProductDetail() {
   const todayAvailable = product.isSameDay && before8;
 
   const handleAddOrUpdate = () => {
-    // Context handles toast (first-add only) — no double toast here
-    updateItem(productId, qty, deliveryType);
+    updateItem(productId, qty, deliveryType, { productData: product });
   };
 
   return (

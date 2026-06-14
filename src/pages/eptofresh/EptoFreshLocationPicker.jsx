@@ -280,7 +280,7 @@ export function EptoFreshLocationPicker() {
           borderRadius: '24px 24px 0 0',
           boxShadow: '0 -4px 30px rgba(0,0,0,0.15)',
           padding: '16px 16px',
-          paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
         }}
       >
         {/* Handle */}

@@ -58,7 +58,7 @@ export default function KoyambeduCart() {
         {cart.items.map((item, i) => {
           const prod = item.product;
           const img  = prod?.images?.find(im => im.isPrimary)?.url || prod?.images?.[0]?.url || IMG_PH;
-          const step = prod?.qtyStep || 0.5;
+          const step = Math.max(1, prod?.qtyStep || 1);
           const line = (item.unitPrice || 0) * (item.quantity || 0);
 
           return (
@@ -72,11 +72,11 @@ export default function KoyambeduCart() {
                 </Link>
                 <p className="text-xs text-gray-400">₹{item.unitPrice}/{item.unitLabel}</p>
                 <div className="flex items-center gap-1.5 mt-2">
-                  <button onClick={() => updateItem(String(prod?._id || item.product), Math.max(0, item.quantity - step))}
-                    className="w-7 h-7 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center text-sm">−</button>
+                  <button onClick={() => updateItem(String(prod?._id || item.product), Math.max(0, item.quantity - step), item.deliveryType || 'tomorrow', { silent: true })}
+                    className="w-7 h-7 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center text-sm active:scale-90 transition-transform">−</button>
                   <span className="text-sm font-bold text-gray-800 min-w-[36px] text-center">{item.quantity} {item.unitLabel}</span>
-                  <button onClick={() => updateItem(String(prod?._id || item.product), item.quantity + step)}
-                    className="w-7 h-7 rounded-full bg-green-600 text-white font-bold flex items-center justify-center text-sm">+</button>
+                  <button onClick={() => updateItem(String(prod?._id || item.product), item.quantity + step, item.deliveryType || 'tomorrow', { silent: true })}
+                    className="w-7 h-7 rounded-full bg-green-600 text-white font-bold flex items-center justify-center text-sm active:scale-90 transition-transform">+</button>
                 </div>
                 {/* Delivery type badge */}
                 <span className={`mt-1.5 inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${item.deliveryType === 'today' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
@@ -135,10 +135,17 @@ export default function KoyambeduCart() {
       </div>
 
       {/* Proceed button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-green-100 px-4 py-3 z-[9990]">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-green-100 px-4 pt-3 z-[9990]"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}>
+        {!user && (
+          <p className="text-center text-xs text-gray-400 mb-2">
+            🔒 You'll be asked to log in at payment — cart is saved!
+          </p>
+        )}
         <button
           onClick={() => navigate('/koyambedu/checkout')}
-          className="w-full bg-green-600 text-white font-bold py-3.5 rounded-xl hover:bg-green-700 transition text-sm">
+          className="w-full bg-green-600 text-white font-bold py-3.5 rounded-xl hover:bg-green-700 transition text-sm"
+          style={{ boxShadow: '0 4px 16px rgba(22,163,74,0.4)' }}>
           Proceed to Checkout · ₹{total.toFixed(2)}
         </button>
       </div>

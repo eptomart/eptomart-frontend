@@ -294,7 +294,7 @@ export default function KoyambeduLocationPicker() {
           paddingTop: 16,
           paddingLeft: 16,
           paddingRight: 16,
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 28px)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
         }}>
         {/* Handle */}
         <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: '#e5e7eb' }} />
