@@ -35,8 +35,9 @@ export default function BottomNav() {
         style={{ background: 'linear-gradient(90deg, transparent 5%, rgba(244,148,28,0.18) 50%, transparent 95%)' }} />
 
       <div
-        className="px-1 pt-2 pb-3"
+        className="px-1 pt-2"
         style={{
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
           background: 'linear-gradient(180deg, rgba(9,18,33,0.97) 0%, rgba(7,14,27,0.99) 100%)',
           backdropFilter: 'saturate(180%) blur(28px)',
           WebkitBackdropFilter: 'saturate(180%) blur(28px)',

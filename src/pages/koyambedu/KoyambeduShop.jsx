@@ -273,8 +273,7 @@ export default function KoyambeduShop() {
       <BottomNav />
 
       {itemCount > 0 && (
-        <div className="fixed bottom-16 left-4 right-4 max-w-lg mx-auto z-40"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="fixed left-4 right-4 max-w-lg mx-auto z-40" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 68px)' }}>
           <div className="bg-green-600 text-white px-4 py-3 flex items-center justify-between rounded-2xl shadow-xl">
             <div>
               <p className="text-xs opacity-80">{itemCount} item{itemCount > 1 ? 's' : ''}</p>

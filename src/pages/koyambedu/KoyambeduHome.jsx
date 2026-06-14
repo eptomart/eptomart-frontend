@@ -384,7 +384,7 @@ export default function KoyambeduHome() {
       <BottomNav />
 
       {itemCount > 0 && (
-        <div className="fixed bottom-16 left-4 right-4 max-w-lg mx-auto z-40">
+        <div className="fixed left-4 right-4 max-w-lg mx-auto z-40" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 68px)' }}>
           <div className="bg-green-600 text-white px-4 py-3 rounded-2xl flex items-center justify-between shadow-xl">
             <div>
               <p className="text-xs opacity-80">{itemCount} item{itemCount !== 1 ? 's' : ''}</p>
