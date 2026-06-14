@@ -565,7 +565,9 @@ function MobileHero() {
   const { user } = useAuth();
   const h = new Date().getHours();
   const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-  const first = user?.name?.split(' ')[0];
+  const rawFirst = user?.name?.split(' ')[0];
+  // Don't greet with the brand name if test/fallback account
+  const first = rawFirst && rawFirst.toLowerCase() !== 'eptomart' ? rawFirst : null;
   return (
     <div className="px-4 pt-3 pb-0">
       <Link to="/shop"
@@ -580,7 +582,7 @@ function MobileHero() {
         <div className="relative z-10 px-4 py-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="font-semibold" style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11 }}>
-              {greeting}{first ? `, ${first}` : ''}
+              {greeting}{first ? `, ${first}` : ' 👋'}
             </p>
             <p className="text-white font-extrabold leading-tight tracking-tight" style={{ fontSize: 19 }}>
               Fresh groceries, <span style={{ color: '#f4941c' }}>delivered fast</span>
