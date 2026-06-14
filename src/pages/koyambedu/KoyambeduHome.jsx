@@ -17,7 +17,8 @@ import api from '../../utils/api';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import toast from 'react-hot-toast';
 
-const IMG_PH = 'https://placehold.co/300x200/dcfce7/166534?text=Fresh';
+// Inline fallback — never show a giant "Fresh" text placeholder
+const IMG_PH = null;
 
 const KOYAMBEDU_LAT = 13.0748, KOYAMBEDU_LNG = 80.2136;
 const haversineKm = (lat1, lon1, lat2, lon2) => {
@@ -34,7 +35,7 @@ const CAT_ICONS = {
 function ProductCard({ product }) {
   const { getQty, updateItem } = useKoyambeduCart();
   const qty  = getQty(product._id);
-  const img  = product.images?.find(i => i.isPrimary)?.url || product.images?.[0]?.url || IMG_PH;
+  const img  = product.images?.find(i => i.isPrimary)?.url || product.images?.[0]?.url || null;
   // Minimum 1 KG / 1 PC — never 0.5
   const step   = Math.max(1, product.qtyStep || 1);
   const minQty = Math.max(1, product.minQty || 1);
@@ -43,14 +44,18 @@ function ProductCard({ product }) {
     <div className="bg-white rounded-2xl overflow-hidden"
       style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1px solid rgba(0,0,0,0.04)' }}>
       <Link to={`/koyambedu/product/${product._id}`} className="block relative active:opacity-80 transition">
-        <img src={img} alt={product.name} className="w-full h-24 object-cover" />
+        {img
+          ? <img src={img} alt={product.name} className="w-full h-20 object-cover" />
+          : <div className="w-full h-20 bg-green-50 flex items-center justify-center">
+              <FaLeaf size={22} className="text-green-200" />
+            </div>}
         {product.badges?.includes('fresh_arrival') && (
-          <span className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
-            <FaLeaf size={8} /> Fresh
+          <span className="absolute top-1.5 left-1.5 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+            <FaLeaf size={7} /> Fresh
           </span>
         )}
         {product.badges?.includes('low_stock') && (
-          <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">Low</span>
+          <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">Low</span>
         )}
       </Link>
       <div className="p-2">

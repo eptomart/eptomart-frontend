@@ -19,23 +19,28 @@ const haversineKm = (lat1, lon1, lat2, lon2) => {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 };
 
-const IMG_PLACEHOLDER = 'https://placehold.co/300x200/dcfce7/166534?text=Fresh';
+// No external placeholder — avoids giant "Fresh" text rendering in card
+const IMG_PLACEHOLDER = null;
 
 const ProductCard = ({ product }) => {
   const { getQty, updateItem, loading } = useKoyambeduCart();
   const qty = getQty(product._id);
-  const img = product.images?.find(i => i.isPrimary)?.url || product.images?.[0]?.url || IMG_PLACEHOLDER;
+  const img = product.images?.find(i => i.isPrimary)?.url || product.images?.[0]?.url || null;
 
   return (
     <div className="bg-white rounded-2xl border border-green-100 shadow-sm overflow-hidden">
       <Link to={`/koyambedu/product/${product._id}`}>
         <div className="relative">
-          <img src={img} alt={product.name} className="w-full h-[108px] object-cover" />
+          {img
+            ? <img src={img} alt={product.name} className="w-full h-[88px] object-cover" />
+            : <div className="w-full h-[88px] bg-green-50 flex items-center justify-center">
+                <FaLeaf size={24} className="text-green-200" />
+              </div>}
           {product.badges?.includes('fresh_arrival') && (
-            <span className="absolute top-2 left-2 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">Fresh</span>
+            <span className="absolute top-1.5 left-1.5 bg-green-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">Fresh</span>
           )}
           {product.isSameDay && (
-            <span className="absolute bottom-2 right-2 bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">Today ⚡</span>
+            <span className="absolute bottom-1.5 right-1.5 bg-orange-500 text-white text-[9px] px-1.5 py-0.5 rounded-full">Today ⚡</span>
           )}
         </div>
       </Link>
