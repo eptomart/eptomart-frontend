@@ -9,7 +9,7 @@ import { Helmet } from 'react-helmet-async';
 import {
   FiSearch, FiChevronRight, FiMapPin, FiShoppingBag, FiSun,
   FiTruck, FiPackage, FiCheckCircle, FiZap, FiUsers, FiGrid,
-  FiArrowLeft, FiChevronDown, FiX,
+  FiArrowLeft, FiChevronDown, FiAlertTriangle,
 } from 'react-icons/fi';
 import { FaLeaf, FaCarrot } from 'react-icons/fa';
 import BottomNav from '../../components/common/BottomNav';
@@ -271,7 +271,7 @@ export default function KoyambeduHome() {
         {/* Price note */}
         <div className="mb-4 rounded-xl px-3 py-2.5 flex items-start gap-2"
           style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
-          <span className="text-amber-500 text-sm mt-0.5 shrink-0">⚠️</span>
+          <FiAlertTriangle size={13} className="text-amber-500 shrink-0 mt-0.5" />
           <p className="text-amber-700 text-[11px] leading-relaxed">
             Fresh produce prices may vary slightly based on daily market arrivals. Seller will request approval before dispatch if price changes.
           </p>

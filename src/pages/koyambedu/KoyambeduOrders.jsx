@@ -4,21 +4,24 @@
 // ============================================
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiPackage } from 'react-icons/fi';
+import {
+  FiArrowLeft, FiPackage, FiCheckCircle, FiClock, FiAlertTriangle,
+  FiTruck, FiHome, FiXCircle, FiRefreshCw, FiList,
+} from 'react-icons/fi';
 import { FaLeaf } from 'react-icons/fa';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
 const STATUS_CONFIG = {
-  placed:                 { label: 'Order Placed',          color: '#3b82f6', bg: '#eff6ff',   icon: '📋' },
-  pending_confirmation:   { label: 'Awaiting Confirmation', color: '#d97706', bg: '#fffbeb',   icon: '⏳' },
-  price_revision_pending: { label: 'Price Revision',        color: '#ea580c', bg: '#fff7ed',   icon: '⚠️' },
-  confirmed:              { label: 'Confirmed',             color: '#16a34a', bg: '#f0fdf4',   icon: '✅' },
-  packing:                { label: 'Packing',               color: '#9333ea', bg: '#faf5ff',   icon: '📦' },
-  dispatched:             { label: 'On the Way',            color: '#0284c7', bg: '#e0f2fe',   icon: '🚚' },
-  delivered:              { label: 'Delivered',             color: '#059669', bg: '#d1fae5',   icon: '🏠' },
-  cancelled:              { label: 'Cancelled',             color: '#dc2626', bg: '#fef2f2',   icon: '❌' },
-  refund_initiated:       { label: 'Refund Initiated',      color: '#6b7280', bg: '#f3f4f6',   icon: '💰' },
+  placed:                 { label: 'Order Placed',          color: '#3b82f6', bg: '#eff6ff',   Icon: FiList },
+  pending_confirmation:   { label: 'Awaiting Confirmation', color: '#d97706', bg: '#fffbeb',   Icon: FiClock },
+  price_revision_pending: { label: 'Price Revision',        color: '#ea580c', bg: '#fff7ed',   Icon: FiAlertTriangle },
+  confirmed:              { label: 'Confirmed',             color: '#16a34a', bg: '#f0fdf4',   Icon: FiCheckCircle },
+  packing:                { label: 'Packing',               color: '#9333ea', bg: '#faf5ff',   Icon: FiPackage },
+  dispatched:             { label: 'On the Way',            color: '#0284c7', bg: '#e0f2fe',   Icon: FiTruck },
+  delivered:              { label: 'Delivered',             color: '#059669', bg: '#d1fae5',   Icon: FiHome },
+  cancelled:              { label: 'Cancelled',             color: '#dc2626', bg: '#fef2f2',   Icon: FiXCircle },
+  refund_initiated:       { label: 'Refund Initiated',      color: '#6b7280', bg: '#f3f4f6',   Icon: FiRefreshCw },
 };
 
 const PROGRESS_STEPS = ['placed', 'confirmed', 'packing', 'dispatched', 'delivered'];
@@ -99,7 +102,7 @@ export default function KoyambeduOrders() {
 
       <div className="px-4 mt-4 space-y-4">
         {orders.map(order => {
-          const cfg = STATUS_CONFIG[order.orderStatus] || { label: order.orderStatus, color: '#6b7280', bg: '#f3f4f6', icon: '📋' };
+          const cfg = STATUS_CONFIG[order.orderStatus] || { label: order.orderStatus, color: '#6b7280', bg: '#f3f4f6', Icon: FiList };
           const isPriceRevision = order.orderStatus === 'price_revision_pending';
           const isCancelled     = ['cancelled', 'refund_initiated'].includes(order.orderStatus);
           const currentIdx      = ALL_STATUSES.indexOf(order.orderStatus);
@@ -117,9 +120,9 @@ export default function KoyambeduOrders() {
                       {new Date(order.placedAt || order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
                   </div>
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-full shrink-0"
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1"
                     style={{ background: cfg.bg, color: cfg.color }}>
-                    {cfg.icon} {cfg.label}
+                    {cfg.Icon && <cfg.Icon size={11} />} {cfg.label}
                   </span>
                 </div>
 
@@ -151,7 +154,7 @@ export default function KoyambeduOrders() {
                 {/* Price revision alert */}
                 {isPriceRevision && order.priceRevision?.revisedTotal && (
                   <div className="mt-3 rounded-xl p-3" style={{ background: '#fff7ed', border: '1px solid #fed7aa' }}>
-                    <p className="font-bold text-orange-700 text-sm mb-1">⚠️ Price Revision Request</p>
+                    <p className="font-bold text-orange-700 text-sm mb-1 flex items-center gap-1.5"><FiAlertTriangle size={13} /> Price Revision Request</p>
                     <p className="text-xs text-orange-600 mb-3">
                       Market prices changed. New total: <strong>₹{order.priceRevision.revisedTotal.toFixed(2)}</strong>
                     </p>

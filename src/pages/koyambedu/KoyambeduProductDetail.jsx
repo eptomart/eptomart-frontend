@@ -5,7 +5,10 @@
 // ============================================
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { FiArrowLeft, FiStar, FiShoppingBag, FiPackage, FiAlertTriangle } from 'react-icons/fi';
+import {
+  FiArrowLeft, FiStar, FiShoppingBag, FiPackage, FiAlertTriangle,
+  FiZap, FiCalendar, FiClock, FiTrendingUp,
+} from 'react-icons/fi';
 import { FaLeaf } from 'react-icons/fa';
 import api from '../../utils/api';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
@@ -110,10 +113,10 @@ export default function KoyambeduProductDetail() {
               </span>
             )}
             {todayAvailable && (
-              <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">⚡ Same Day</span>
+              <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5"><FiZap size={8} /> Same Day</span>
             )}
             {product.isNextDay && (
-              <span className="bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">📅 Next Day</span>
+              <span className="bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5"><FiCalendar size={8} /> Next Day</span>
             )}
             {product.badges?.includes('low_stock') && (
               <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">Low Stock</span>
@@ -147,15 +150,16 @@ export default function KoyambeduProductDetail() {
 
           {product.marketPriceMin > 0 && (
             <div className="mt-2 inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+              <FiTrendingUp size={12} className="text-amber-600 shrink-0" />
               <span className="text-amber-600 text-[11px] font-semibold">
-                📊 Market rate today: ₹{product.marketPriceMin}–₹{product.marketPriceMax}/{product.unitLabel}
+                Market rate today: ₹{product.marketPriceMin}–₹{product.marketPriceMax}/{product.unitLabel}
               </span>
             </div>
           )}
 
           {product.freshArrivalTime && (
             <p className="mt-2 text-green-600 text-xs font-semibold flex items-center gap-1">
-              🌅 Arrived today at {product.freshArrivalTime}
+              <FiClock size={11} /> Arrived today at {product.freshArrivalTime}
             </p>
           )}
 
@@ -199,13 +203,13 @@ export default function KoyambeduProductDetail() {
             {todayAvailable ? (
               <button onClick={() => setDelivery('today')}
                 className={`p-3.5 rounded-xl border-2 text-left transition active:scale-95 ${deliveryType === 'today' ? 'border-green-500 bg-green-50' : 'border-gray-100 bg-gray-50'}`}>
-                <p className="text-lg mb-1">⚡</p>
+                <FiZap size={18} className="mb-1.5 text-orange-500" />
                 <p className="font-extrabold text-gray-900 text-sm">Today</p>
                 <p className="text-[11px] text-green-600 font-semibold mt-0.5">Order before 8:00 AM</p>
               </button>
             ) : product.isSameDay ? (
               <div className="p-3.5 rounded-xl border-2 border-gray-100 bg-gray-50 opacity-50 text-left">
-                <p className="text-lg mb-1">⚡</p>
+                <FiZap size={18} className="mb-1.5 text-gray-400" />
                 <p className="font-extrabold text-gray-500 text-sm">Today</p>
                 <p className="text-[11px] text-red-400 font-semibold mt-0.5">Cutoff passed (8 AM)</p>
               </div>
@@ -213,7 +217,7 @@ export default function KoyambeduProductDetail() {
             {product.isNextDay && (
               <button onClick={() => setDelivery('tomorrow')}
                 className={`p-3.5 rounded-xl border-2 text-left transition active:scale-95 ${deliveryType === 'tomorrow' ? 'border-green-500 bg-green-50' : 'border-gray-100 bg-gray-50'}`}>
-                <p className="text-lg mb-1">📅</p>
+                <FiCalendar size={18} className="mb-1.5 text-blue-500" />
                 <p className="font-extrabold text-gray-900 text-sm">Tomorrow</p>
                 <p className="text-[11px] text-gray-500 mt-0.5">Early morning sourcing</p>
               </button>
@@ -222,7 +226,7 @@ export default function KoyambeduProductDetail() {
           {/* If neither same-day nor next-day, show default tomorrow */}
           {!product.isSameDay && !product.isNextDay && (
             <div className="p-3.5 rounded-xl border-2 border-green-500 bg-green-50">
-              <p className="text-lg mb-1">📅</p>
+              <FiCalendar size={18} className="mb-1.5 text-blue-500" />
               <p className="font-extrabold text-gray-900 text-sm">Tomorrow</p>
               <p className="text-[11px] text-gray-500 mt-0.5">Default delivery</p>
             </div>
@@ -257,9 +261,10 @@ export default function KoyambeduProductDetail() {
             </div>
           </div>
           {product.isBulkAvailable && product.bulkMinQty && (
-            <div className="mt-3 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+            <div className="mt-3 bg-green-50 border border-green-200 rounded-xl px-3 py-2 flex items-center gap-1.5">
+              <FiPackage size={12} className="text-green-700 shrink-0" />
               <p className="text-xs text-green-700 font-semibold">
-                📦 Bulk price: ₹{product.bulkPricePerUnit}/{product.unitLabel} for {product.bulkMinQty}+ {product.unitLabel}
+                Bulk price: ₹{product.bulkPricePerUnit}/{product.unitLabel} for {product.bulkMinQty}+ {product.unitLabel}
               </p>
             </div>
           )}

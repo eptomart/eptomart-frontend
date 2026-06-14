@@ -369,10 +369,7 @@ function SellerCard({ seller, onClick, index = 0 }) {
       style={{
         boxShadow: '0 2px 16px rgba(0,0,0,0.07)',
         border: '1px solid rgba(0,0,0,0.04)',
-        animation: `cardFadeUp 0.35s ease ${index * 60}ms both`,
       }}
-      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 28px rgba(244,148,28,0.18)'; e.currentTarget.style.borderColor = 'rgba(244,148,28,0.25)'; }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 16px rgba(0,0,0,0.07)'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.04)'; }}
     >
       <div className="p-3.5 flex items-center gap-3">
         {/* Shop avatar (initial letter) */}

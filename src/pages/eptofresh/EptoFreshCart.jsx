@@ -2,7 +2,7 @@
 // EPTOFRESH CART — Clean White Theme
 // ============================================
 import { useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiTrash2, FiPlus, FiMinus, FiAlertTriangle, FiLogIn } from 'react-icons/fi';
+import { FiArrowLeft, FiTrash2, FiPlus, FiMinus, FiAlertTriangle, FiLogIn, FiShoppingBag } from 'react-icons/fi';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
 const isLoggedIn = () => !!localStorage.getItem('eptomart_token');
 
@@ -13,18 +13,20 @@ export default function EptoFreshCart() {
   /* ── Empty state ── */
   if (!items.length) {
     return (
-      <div className="min-h-screen bg-white flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <div className="text-6xl mb-4">🛒</div>
-          <p className="text-gray-900 font-bold text-lg">Your cart is empty</p>
-          <p className="text-gray-400 text-sm mt-1">Add fresh proteins from nearby shops</p>
-          <button
-            onClick={() => navigate('/eptofresh')}
-            className="mt-6 px-8 py-3 rounded-2xl font-bold text-white"
-            style={{ background: '#f4941c', boxShadow: '0 6px 20px rgba(244,148,28,0.4)' }}>
-            Browse Sellers
-          </button>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8 text-center"
+        style={{ background: '#F5F4F2', paddingTop: 'env(safe-area-inset-top)' }}>
+        <div className="w-24 h-24 rounded-3xl flex items-center justify-center mb-2"
+          style={{ background: '#fff4e6', border: '1.5px solid rgba(244,148,28,0.15)' }}>
+          <FiShoppingBag size={40} style={{ color: '#f4941c', opacity: 0.5 }} />
         </div>
+        <p className="text-gray-900 font-bold text-xl">Your cart is empty</p>
+        <p className="text-gray-400 text-sm">Add fresh proteins from nearby shops</p>
+        <button
+          onClick={() => navigate('/eptofresh')}
+          className="mt-2 px-8 py-3.5 rounded-2xl font-bold text-white text-sm"
+          style={{ background: '#f4941c', boxShadow: '0 6px 20px rgba(244,148,28,0.4)' }}>
+          Browse Sellers
+        </button>
       </div>
     );
   }
@@ -45,7 +47,7 @@ export default function EptoFreshCart() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: '#F5F4F2', paddingTop: 'env(safe-area-inset-top)' }}>
+    <div className="min-h-screen" style={{ background: '#F5F4F2', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 112px)' }}>
 
       {/* Header */}
       <div className="bg-white px-4 py-3 flex items-center gap-3"
@@ -85,7 +87,9 @@ export default function EptoFreshCart() {
 
               {item.image
                 ? <img src={item.image} alt={item.name} className="w-12 h-12 rounded-xl object-cover shrink-0 bg-gray-100" />
-                : <div className="w-12 h-12 rounded-xl shrink-0 flex items-center justify-center text-xl" style={{ background: '#fff4e6' }}>🥩</div>}
+                : <div className="w-12 h-12 rounded-xl shrink-0 flex items-center justify-center" style={{ background: '#fff4e6' }}>
+                    <FiShoppingBag size={20} style={{ color: '#f4941c', opacity: 0.6 }} />
+                  </div>}
 
               <div className="flex-1 min-w-0">
                 <p className="text-gray-900 text-sm font-bold truncate">{item.name}</p>

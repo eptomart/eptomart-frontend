@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import {
+  FiArrowLeft, FiShoppingBag, FiMapPin,
+  FiZap, FiCalendar, FiTrash2,
+} from 'react-icons/fi';
+import { FaLeaf } from 'react-icons/fa';
 import api from '../../utils/api';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import BottomNav from '../../components/common/BottomNav';
@@ -61,12 +66,9 @@ const ProductCard = ({ product }) => {
               <button
                 onClick={() => updateItem(product._id, 0)}
                 disabled={loading}
-                className="w-6 h-6 rounded-full bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition"
-                title="Remove from cart"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                </svg>
+                className="w-6 h-6 rounded-full bg-red-50 text-red-500 flex items-center justify-center active:scale-90 transition"
+                title="Remove from cart">
+                <FiTrash2 size={11} />
               </button>
               <button onClick={() => updateItem(product._id, Math.max(product.qtyStep || 1, qty - (product.qtyStep || 1)))}
                 className="w-6 h-6 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center">−</button>
@@ -149,26 +151,23 @@ export default function KoyambeduShop() {
           <button onClick={() => navigate('/koyambedu')}
             className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition"
             style={{ background: 'rgba(255,255,255,0.15)' }}>
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
-            </svg>
+            <FiArrowLeft size={16} className="text-white" />
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="font-black text-white text-base leading-tight">
-              {activeCategory ? `${activeCategory.icon || '🌿'} ${activeCategory.name}` : '🌿 Shop Fresh Market'}
+              {activeCategory ? `${activeCategory.name}` : 'Shop Fresh Market'}
             </h1>
             {distToMarket != null && (
-              <p className="text-white/75 text-[11px] mt-0.5">
-                📍 {locationLabel ? `${locationLabel} · ` : ''}{distToMarket} km from market
-                {distToMarket <= 7 ? ' · Delivery available ✓' : ' · Outside zone'}
+              <p className="text-white/75 text-[11px] mt-0.5 flex items-center gap-1">
+                <FiMapPin size={9} />
+                {locationLabel ? `${locationLabel} · ` : ''}{distToMarket} km from market
+                {distToMarket <= 7 ? ' · Available ✓' : ' · Outside zone'}
               </p>
             )}
           </div>
           <Link to="/koyambedu/cart" className="relative w-9 h-9 rounded-full flex items-center justify-center shrink-0"
             style={{ background: itemCount > 0 ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)' }}>
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 2.3A1 1 0 006 17h12M17 17a2 2 0 100 4 2 2 0 000-4zm-8 0a2 2 0 100 4 2 2 0 000-4z"/>
-            </svg>
+            <FiShoppingBag size={17} className="text-white" />
             {itemCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-orange-500 rounded-full text-white text-[9px] font-black flex items-center justify-center">{itemCount}</span>
             )}
@@ -192,15 +191,19 @@ export default function KoyambeduShop() {
 
         {/* Filters strip */}
         <div className="px-4 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
-          {['', 'today', 'tomorrow'].map(dt => (
-            <button key={dt}
-              onClick={() => setParam('deliveryType', dt)}
-              className={`text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shrink-0 transition ${
-                deliveryType === dt
+          {[
+            { val: '',         label: 'All',      Icon: null },
+            { val: 'today',    label: 'Today',    Icon: FiZap },
+            { val: 'tomorrow', label: 'Tomorrow', Icon: FiCalendar },
+          ].map(({ val, label, Icon }) => (
+            <button key={val}
+              onClick={() => setParam('deliveryType', val)}
+              className={`flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shrink-0 transition ${
+                deliveryType === val
                   ? 'bg-white text-green-700'
                   : 'bg-white/20 text-white border border-white/30'
               }`}>
-              {dt === '' ? 'All' : dt === 'today' ? '⚡ Today' : '📅 Tomorrow'}
+              {Icon && <Icon size={10} />}{label}
             </button>
           ))}
           <select value={sortBy} onChange={e => setParam('sort', e.target.value)}
@@ -245,9 +248,12 @@ export default function KoyambeduShop() {
           </div>
 
           {!loading && products.length === 0 && (
-            <div className="text-center py-16">
-              <p className="text-5xl mb-3">🌿</p>
-              <p className="text-gray-500 font-medium">No products found</p>
+            <div className="text-center py-16 px-4">
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                style={{ background: '#f0fdf4', border: '1px solid rgba(22,163,74,0.12)' }}>
+                <FaLeaf size={32} className="text-green-300" />
+              </div>
+              <p className="text-gray-800 font-bold text-base">No products found</p>
               <p className="text-gray-400 text-sm mt-1">Try a different search or category</p>
             </div>
           )}
