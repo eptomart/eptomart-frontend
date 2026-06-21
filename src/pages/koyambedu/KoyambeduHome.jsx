@@ -15,6 +15,7 @@ import { FaLeaf, FaCarrot } from 'react-icons/fa';
 import BottomNav from '../../components/common/BottomNav';
 import api from '../../utils/api';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
+import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
 // Inline fallback — never show a giant "Fresh" text placeholder
@@ -123,6 +124,135 @@ function SectionRow({ title, icon, products, viewAllLink }) {
   );
 }
 
+// Special Occasion Request Form
+const OCCASION_TYPES = ['wedding','birthday','festival','corporate','pooja','other'];
+
+function SpecialRequestModal({ onClose }) {
+  const { user } = useAuth?.() || {};
+  const [form, setForm] = useState({
+    buyerName: user?.name || '', phone: user?.phone || '', email: user?.email || '',
+    occasionType: 'other', occasionTypeOther: '',
+    requiredDate: '', additionalNotes: '',
+    requestedItems: [{ itemName: '', quantity: '', unit: 'kg', notes: '' }],
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const setField = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const setItem  = (i, k, v) => setForm(f => {
+    const items = [...f.requestedItems];
+    items[i] = { ...items[i], [k]: v };
+    return { ...f, requestedItems: items };
+  });
+  const addItem  = () => setForm(f => ({ ...f, requestedItems: [...f.requestedItems, { itemName:'', quantity:'', unit:'kg', notes:'' }] }));
+  const removeItem = (i) => setForm(f => ({ ...f, requestedItems: f.requestedItems.filter((_,idx) => idx !== i) }));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.buyerName || !form.phone || !form.requiredDate) { toast.error('Name, phone, and required date are mandatory'); return; }
+    setSubmitting(true);
+    try {
+      await api.post('/koyambedu/special-request', form);
+      setDone(true);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Submission failed');
+    } finally { setSubmitting(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl overflow-y-auto max-h-[92vh]" onClick={e => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="font-black text-lg text-gray-900">🎉 Special Request</h2>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold">✕</button>
+        </div>
+
+        {done ? (
+          <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+            <div className="text-5xl mb-3">🎊</div>
+            <h3 className="font-black text-xl text-gray-900 mb-2">Request Submitted!</h3>
+            <p className="text-gray-500 text-sm mb-6">We'll contact you within 24 hours to confirm availability and pricing.</p>
+            <button onClick={onClose} className="bg-green-600 text-white font-bold px-8 py-3 rounded-xl">Done</button>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="px-5 py-4 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-xs font-medium text-gray-500">Your Name *</label>
+                <input value={form.buyerName} onChange={e => setField('buyerName', e.target.value)} required
+                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500">Phone *</label>
+                <input value={form.phone} onChange={e => setField('phone', e.target.value)} type="tel" required
+                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500">Email</label>
+                <input value={form.email} onChange={e => setField('email', e.target.value)} type="email"
+                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-gray-500">Occasion Type</label>
+                <select value={form.occasionType} onChange={e => setField('occasionType', e.target.value)}
+                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300">
+                  {OCCASION_TYPES.map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500">Required Date *</label>
+                <input type="date" value={form.requiredDate} onChange={e => setField('requiredDate', e.target.value)} required
+                  min={new Date().toISOString().slice(0,10)}
+                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300" />
+              </div>
+            </div>
+
+            {/* Items */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-gray-500">Required Items</label>
+                <button type="button" onClick={addItem} className="text-xs text-green-600 font-semibold">+ Add Item</button>
+              </div>
+              <div className="space-y-2">
+                {form.requestedItems.map((item, i) => (
+                  <div key={i} className="flex gap-2 items-start">
+                    <input placeholder="Item name" value={item.itemName} onChange={e => setItem(i,'itemName',e.target.value)}
+                      className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300" />
+                    <input placeholder="Qty" value={item.quantity} onChange={e => setItem(i,'quantity',e.target.value)}
+                      className="w-16 border border-gray-200 rounded-xl px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300" />
+                    <select value={item.unit} onChange={e => setItem(i,'unit',e.target.value)}
+                      className="w-14 border border-gray-200 rounded-xl px-1 py-2 text-xs focus:outline-none">
+                      {['kg','g','piece','bunch','dozen'].map(u => <option key={u}>{u}</option>)}
+                    </select>
+                    {form.requestedItems.length > 1 && (
+                      <button type="button" onClick={() => removeItem(i)} className="text-red-400 pt-2 text-sm">✕</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-gray-500">Additional Notes</label>
+              <textarea rows={2} value={form.additionalNotes} onChange={e => setField('additionalNotes', e.target.value)}
+                placeholder="Any special requirements…"
+                className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-300" />
+            </div>
+
+            <button type="submit" disabled={submitting}
+              className="w-full bg-green-600 text-white font-black py-3.5 rounded-xl text-sm hover:bg-green-700 disabled:opacity-60">
+              {submitting ? 'Submitting…' : '🎉 Submit Request'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function KoyambeduHome() {
   const { fetchCart, itemCount, subtotal, userLocation, locationLabel } = useKoyambeduCart();
   const navigate = useNavigate();
@@ -134,6 +264,7 @@ export default function KoyambeduHome() {
   const [categories, setCategories] = useState([]);
   const [sections,   setSections]   = useState({});
   const [loading,    setLoading]    = useState(true);
+  const [showSpecialReq, setShowSpecialReq] = useState(false);
 
   useEffect(() => {
     fetchCart();
@@ -380,6 +511,50 @@ export default function KoyambeduHome() {
           ))}
         </div>
 
+        {/* ── BANNER 1: NOW FROM KOYAMBEDU ──────── */}
+        <div className="mb-4 rounded-2xl overflow-hidden"
+          style={{ background: 'linear-gradient(135deg,#14532d 0%,#166534 60%,#15803d 100%)', boxShadow: '0 4px 20px rgba(20,83,45,0.3)' }}>
+          <div className="p-5 relative overflow-hidden">
+            <div className="absolute right-0 top-0 w-24 h-24 opacity-10 text-8xl select-none pointer-events-none">🥬</div>
+            <span className="text-[10px] font-black text-emerald-300 tracking-widest uppercase">NOW FROM KOYAMBEDU</span>
+            <h3 className="text-white font-black text-lg mt-1 leading-tight">Fresh Vegetables &amp; Fruits Daily</h3>
+            <p className="text-emerald-200 text-xs mt-1.5">Shop Fresh Produce Directly from Koyambedu Market</p>
+            <Link to="/koyambedu/shop"
+              className="inline-block mt-3 bg-white text-emerald-700 font-black text-xs px-4 py-2 rounded-xl active:scale-95 transition">
+              Shop Now →
+            </Link>
+          </div>
+        </div>
+
+        {/* ── BANNER 2: FLOWERS COMING SOON ───── */}
+        <div className="mb-4 rounded-2xl overflow-hidden"
+          style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)', boxShadow: '0 4px 20px rgba(124,58,237,0.25)' }}>
+          <div className="p-5 relative overflow-hidden">
+            <div className="absolute right-2 top-2 text-5xl opacity-20 select-none pointer-events-none">🌸</div>
+            <span className="text-[10px] font-black text-purple-200 tracking-widest uppercase">Flowers</span>
+            <h3 className="text-white font-black text-lg mt-0.5 leading-tight">Coming Soon</h3>
+            <p className="text-purple-200 text-xs mt-1.5">Fresh Flowers for Every Occasion</p>
+            <span className="inline-block mt-3 bg-white/20 text-white border border-white/30 font-bold text-xs px-4 py-2 rounded-xl">
+              Notify Me 🔔
+            </span>
+          </div>
+        </div>
+
+        {/* ── SPECIAL OCCASION REQUEST ──────────── */}
+        <div className="mb-6 rounded-2xl overflow-hidden"
+          style={{ background: 'linear-gradient(135deg,#b45309,#d97706)', boxShadow: '0 4px 20px rgba(180,83,9,0.25)' }}>
+          <div className="p-5 relative overflow-hidden">
+            <div className="absolute right-2 top-2 text-5xl opacity-20 select-none pointer-events-none">🎉</div>
+            <span className="text-[10px] font-black text-amber-200 tracking-widest uppercase">Special Orders</span>
+            <h3 className="text-white font-black text-base mt-0.5 leading-tight">Request Items for Special Occasions</h3>
+            <p className="text-amber-100 text-xs mt-1">Weddings, festivals, pooja, bulk events — we arrange it all from Koyambedu</p>
+            <button onClick={() => setShowSpecialReq(true)}
+              className="inline-block mt-3 bg-white text-amber-700 font-black text-xs px-5 py-2 rounded-xl active:scale-95 transition">
+              🎉 Make a Request →
+            </button>
+          </div>
+        </div>
+
         {/* Seller CTA */}
         <div className="mb-6 rounded-2xl overflow-hidden"
           style={{ background: 'linear-gradient(135deg,#064e3b,#065f46)' }}>
@@ -394,6 +569,9 @@ export default function KoyambeduHome() {
           </div>
         </div>
       </div>
+
+      {/* Special Request Modal */}
+      {showSpecialReq && <SpecialRequestModal onClose={() => setShowSpecialReq(false)} />}
 
       <BottomNav />
 

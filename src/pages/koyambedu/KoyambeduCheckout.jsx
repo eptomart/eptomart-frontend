@@ -362,6 +362,12 @@ export default function KoyambeduCheckout() {
   const deliveryDates = getDeliveryDates();
   const isBefore8     = new Date().getHours() < 8;
   const [selectedDate, setSelectedDate] = useState(deliveryDates[0].value);
+  const [selectedSlot, setSelectedSlot] = useState('slot1');
+  const SLOTS = [
+    { key: 'slot1', label: 'Slot 1: 9 AM – 12 PM',  icon: '🌅' },
+    { key: 'slot2', label: 'Slot 2: 12 PM – 3 PM',  icon: '☀️' },
+    { key: 'slot3', label: 'Slot 3: 3 PM – 6 PM',   icon: '🌇' },
+  ];
 
   // ── Payment ────────────────────────────────
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
@@ -403,8 +409,9 @@ export default function KoyambeduCheckout() {
       const { data } = await api.post('/koyambedu/orders', {
         shippingAddress: addr,
         paymentMethod,
-        deliverySlot:  '7 AM – 11 AM',
-        deliveryDate:  selectedDate,
+        deliverySlot:    SLOTS.find(s => s.key === selectedSlot)?.label || 'Slot 1: 9 AM – 12 PM',
+        deliverySlotKey: selectedSlot,
+        deliveryDate:    selectedDate,
         buyerLocation: {
           lat:      locationData.lat,
           lng:      locationData.lng,
@@ -468,7 +475,7 @@ export default function KoyambeduCheckout() {
       <h2 className="font-black text-2xl text-green-700 mb-1">Order Placed!</h2>
       <p className="text-gray-500 text-sm mb-1">Order ID: <strong className="text-gray-800">{placedOrder.orderId}</strong></p>
       <p className="text-gray-400 text-xs mb-4">
-        Delivery on {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' })} · 7 AM–11 AM
+        Delivery on {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' })} · {SLOTS.find(s => s.key === selectedSlot)?.label || 'Slot 1: 9 AM–12 PM'}
       </p>
       <p className="text-gray-500 text-sm mb-5">WhatsApp updates at each stage.</p>
       <div className="rounded-xl px-4 py-3 mb-6 text-sm w-full max-w-xs"
@@ -706,9 +713,22 @@ export default function KoyambeduCheckout() {
               </button>
             ))}
 
-            <div className="rounded-xl px-3 py-2.5 text-xs"
-              style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8' }}>
-              🥦 Fresh produce is packed early morning. Delivery slot: <strong>7 AM – 11 AM</strong>.
+            {/* Slot Selection */}
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-gray-700">Select Delivery Slot *</p>
+              {SLOTS.map(sl => (
+                <button key={sl.key} onClick={() => setSelectedSlot(sl.key)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all"
+                  style={{
+                    background: selectedSlot === sl.key ? '#f0fdf4' : '#fff',
+                    border: `2px solid ${selectedSlot === sl.key ? '#16a34a' : '#e5e7eb'}`,
+                    color: selectedSlot === sl.key ? '#166534' : '#374151',
+                  }}>
+                  <span className="text-xl">{sl.icon}</span>
+                  <span className="flex-1 text-left">{sl.label}</span>
+                  {selectedSlot === sl.key && <FiCheck size={18} className="text-green-600 shrink-0" />}
+                </button>
+              ))}
             </div>
 
             <div className="flex gap-3">
@@ -716,7 +736,7 @@ export default function KoyambeduCheckout() {
                 className="flex-1 border-2 border-green-200 text-green-700 font-bold py-3 rounded-xl text-sm bg-white">
                 ← Back
               </button>
-              <button onClick={() => setStep(3)} disabled={!selectedDate}
+              <button onClick={() => setStep(3)} disabled={!selectedDate || !selectedSlot}
                 className="flex-1 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-60"
                 style={{ background: 'linear-gradient(135deg, #16a34a, #059669)' }}>
                 Continue →
@@ -743,7 +763,7 @@ export default function KoyambeduCheckout() {
                 <span className="text-gray-400">📅 Date</span>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-gray-700">
-                    {deliveryDates.find(d => d.value === selectedDate)?.label || 'Tomorrow'} · 7–11 AM
+                    {deliveryDates.find(d => d.value === selectedDate)?.label || 'Tomorrow'} · {SLOTS.find(s => s.key === selectedSlot)?.label || 'Slot 1'}
                   </span>
                   <button onClick={() => setStep(2)} className="text-green-500 text-xs underline">Change</button>
                 </div>

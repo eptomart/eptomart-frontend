@@ -295,13 +295,25 @@ export default function KoyambeduSellerAdminDashboard() {
             Seller Admin
           </span>
         </div>
-        <div className="flex gap-2 mt-3">
+        <div className="flex gap-1.5 mt-3 flex-wrap">
           {TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`text-xs font-bold px-4 py-1.5 rounded-xl transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white'}`}>
+              className={`text-xs font-bold px-3 py-1.5 rounded-xl transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white'}`}>
               {t === 'sellers' ? '🏪 Sellers' : t === 'products' ? '📦 Products' : '🏷️ Categories'}
             </button>
           ))}
+          <button onClick={() => navigate('/koyambedu/seller-admin/daily-price')}
+            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white/20 text-white hover:bg-white/30">
+            🏷️ Daily Price
+          </button>
+          <button onClick={() => navigate('/koyambedu/seller-admin/reports')}
+            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white/20 text-white hover:bg-white/30">
+            📊 Reports
+          </button>
+          <button onClick={() => navigate('/koyambedu/seller-admin/special-requests')}
+            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white/20 text-white hover:bg-white/30">
+            🎉 Requests
+          </button>
         </div>
       </div>
 

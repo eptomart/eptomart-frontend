@@ -73,6 +73,9 @@ const KoyambeduSellerRegister      = lazy(() => import('./pages/koyambedu/seller
 const KoyambeduSellerDashboard     = lazy(() => import('./pages/koyambedu/seller/KoyambeduSellerDashboard'));
 const KoyambeduSellerProducts      = lazy(() => import('./pages/koyambedu/seller/KoyambeduSellerProducts'));
 const KoyambeduSellerAdminDashboard= lazy(() => import('./pages/koyambedu/seller-admin/KoyambeduSellerAdminDashboard'));
+const KoyambeduDailyPrice          = lazy(() => import('./pages/koyambedu/seller-admin/KoyambeduDailyPrice'));
+const KoyambeduReports             = lazy(() => import('./pages/koyambedu/seller-admin/KoyambeduReports'));
+const KoyambeduSpecialRequests     = lazy(() => import('./pages/koyambedu/seller-admin/KoyambeduSpecialRequests'));
 
 // ── Farmer Fresh pages ───────────────────────
 const UzhavarHome       = lazy(() => import('./pages/uzhavar/UzhavarHome'));
@@ -253,7 +256,10 @@ function AppRoutes() {
           <Route path="/koyambedu/seller"                    element={<ProtectedRoute><KoyambeduSellerDashboard /></ProtectedRoute>} />
           <Route path="/koyambedu/seller/register"           element={<ProtectedRoute><KoyambeduSellerRegister /></ProtectedRoute>} />
           <Route path="/koyambedu/seller/products"           element={<ProtectedRoute><KoyambeduSellerProducts /></ProtectedRoute>} />
-          <Route path="/koyambedu/seller-admin"              element={<ProtectedRoute><KoyambeduSellerAdminDashboard /></ProtectedRoute>} />
+          <Route path="/koyambedu/seller-admin"                    element={<ProtectedRoute><KoyambeduSellerAdminDashboard /></ProtectedRoute>} />
+          <Route path="/koyambedu/seller-admin/daily-price"        element={<ProtectedRoute><KoyambeduDailyPrice /></ProtectedRoute>} />
+          <Route path="/koyambedu/seller-admin/reports"            element={<ProtectedRoute><KoyambeduReports /></ProtectedRoute>} />
+          <Route path="/koyambedu/seller-admin/special-requests"   element={<ProtectedRoute><KoyambeduSpecialRequests /></ProtectedRoute>} />
 
           {/* ── Farmer Fresh ───────────────────── */}
           <Route path="/uzhavar"                    element={<UzhavarHome />} />
