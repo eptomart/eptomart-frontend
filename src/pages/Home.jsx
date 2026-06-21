@@ -220,8 +220,8 @@ const SOURCE_APPS = [
     img: '/categories/koyambedu.jpg',
     gradient: 'linear-gradient(135deg, #064e3b 0%, #065f46 50%, #059669 100%)',
     accentColor: '#34d399',
-    badge: 'ORDER BY 8 AM',
-    BadgeIcon: FiClock,
+    badge: 'MARKET FRESH',
+    BadgeIcon: FiCheckCircle,
     title: 'Koyambedu Daily',
     titleTamil: 'கோயம்பேடு சந்தை',
     desc: 'Fresh veggies, fruits & flowers direct from market',
@@ -624,7 +624,7 @@ const HERO_SLIDES = [
   },
   {
     gradient: 'linear-gradient(135deg, #15803d 0%, #16a34a 55%, #4ade80 100%)',
-    tag: 'Order by 8 AM, Get Today',
+    tag: 'Market Fresh · Direct Delivery',
     title: 'Koyambedu\nDaily Fresh',
     sub: 'Vegetables · Fruits · Flowers · Temple',
     cta: 'Order Now', to: '/koyambedu',
@@ -698,7 +698,7 @@ function DesktopHero() {
 function DesktopPromoGrid({ onScrollTo }) {
   const navigate = useNavigate();
   const banners = [
-    { gradient: 'linear-gradient(135deg,#14532d,#16a34a,#4ade80)', tag: 'ORDER BY 8 AM', Icon: FaCarrot,        title: 'Koyambedu Daily',    sub: 'Fresh Veggies · Fruits · Flowers', cta: 'Order Now', action: () => navigate('/koyambedu') },
+    { gradient: 'linear-gradient(135deg,#14532d,#16a34a,#4ade80)', tag: 'MARKET FRESH',  Icon: FaCarrot,        title: 'Koyambedu Daily',    sub: 'Fresh Veggies · Fruits · Flowers', cta: 'Order Now', action: () => navigate('/koyambedu') },
     { gradient: 'linear-gradient(135deg,#134e4a,#0f766e,#2dd4bf)', tag: 'FARM DIRECT',  Icon: FaTractor,        title: 'Farmer Fresh',       sub: 'உழவர் சந்தை · No middlemen',     cta: 'Explore',   action: () => navigate('/uzhavar') },
     { gradient: 'linear-gradient(135deg,#1a0a00,#7c2d12,#f97316)', tag: 'GPS · NEARBY', Icon: FaDrumstickBite,  title: 'Proteins',           sub: 'Chicken · Mutton · Fish · Seafood', cta: 'Order Now', action: () => navigate('/eptofresh') },
     { gradient: 'linear-gradient(135deg,#7f1d1d,#dc2626,#fb923c)', tag: 'ENDS SOON',   Icon: FiZap,             title: 'Flash Deals',        sub: 'Up to 60% off · Today only',       cta: 'Grab Now',  action: () => onScrollTo('section-flash') },
@@ -929,32 +929,7 @@ export default function Home() {
           {/* 1. Search bar + hero */}
           <MobileHero />
 
-          {/* 2. Koyambedu Daily featured card — real image + strong CTA */}
-          <div className="px-4 pt-3">
-            <Link to="/koyambedu"
-              className="relative flex items-center gap-3 rounded-2xl overflow-hidden active:scale-[0.97] transition-transform"
-              style={{ background: 'linear-gradient(135deg, #064e3b 0%, #065f46 55%, #16a34a 100%)', boxShadow: '0 6px 20px rgba(6,78,59,0.35)', minHeight: 80 }}>
-              {/* category image accent */}
-              <img src="/categories/koyambedu.jpg" alt="" aria-hidden
-                className="absolute right-0 top-0 h-full w-[40%] object-cover pointer-events-none select-none"
-                style={{ maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.6) 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.6) 100%)', opacity: 0.35 }} />
-              <div className="absolute inset-0 pointer-events-none"
-                style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.10) 0%, transparent 55%)' }} />
-              <div className="pl-4 py-3.5 flex items-center gap-3 flex-1 relative z-10 min-w-0 pr-4">
-                <div className="flex-1 min-w-0">
-                  <p className="text-emerald-300 text-[9px] font-black tracking-widest uppercase mb-0.5">ORDER BY 8 AM · MARKET FRESH</p>
-                  <p className="text-white font-black text-[17px] leading-tight">Koyambedu Daily</p>
-                  <p className="text-white/60 text-[11px] mt-0.5">Fresh veggies, fruits &amp; flowers direct</p>
-                </div>
-                <span className="bg-white text-emerald-700 font-black text-[11px] px-3.5 py-2 rounded-xl shrink-0 flex items-center gap-1"
-                  style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
-                  Order <FiArrowRight size={11} />
-                </span>
-              </div>
-            </Link>
-          </div>
-
-          {/* 3. Shop by Source — compact 3-tile row */}
+          {/* 2. Shop by Source — Koyambedu · Farmer Fresh · Proteins */}
           <div className="pt-2 px-0">
             <ShopBySource />
           </div>
