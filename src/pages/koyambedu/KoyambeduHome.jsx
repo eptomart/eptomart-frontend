@@ -359,11 +359,11 @@ export default function KoyambeduHome() {
           <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide pb-0.5">
             <span className="shrink-0 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1"
               style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.2)' }}>
-              <FiTruck size={10} /> ₹149 up to 20 kg
+              <FiTruck size={10} /> ₹249 per 8 km
             </span>
             <span className="shrink-0 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1"
               style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.2)' }}>
-              <FiPackage size={10} /> ₹249 up to 90 kg
+              <FiPackage size={10} /> + ₹15 platform fee
             </span>
             <span className="shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1"
               style={{ background: 'rgba(250,204,21,0.85)', color: '#065f46' }}>
@@ -437,32 +437,6 @@ export default function KoyambeduHome() {
           </>
         )}
 
-        {/* Smart Baskets */}
-        <div className="mb-6">
-          <h2 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-1.5">
-            <FiGrid size={14} className="text-emerald-600" /> Smart Baskets
-          </h2>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: 'Sambar Combo',   icon: '🍅', color: '#ef4444', q: 'sambar vegetables'        },
-              { label: 'Pooja Special',  icon: '🌸', color: '#f59e0b', q: 'pooja flowers banana leaf' },
-              { label: 'Juice Basket',   icon: '🍊', color: '#f97316', q: 'juice fruits'              },
-              { label: 'Weekly Greens',  icon: '🌿', color: '#16a34a', q: 'greens spinach'            },
-              { label: 'Festival Pack',  icon: '🪔', color: '#8b5cf6', q: 'festival flowers'          },
-              { label: 'Morning Fresh',  icon: '☀️', color: '#0d9488', q: 'fresh arrivals morning'    },
-            ].map(b => (
-              <Link key={b.label} to={`/koyambedu/shop?search=${encodeURIComponent(b.q)}`}
-                className="bg-white rounded-xl p-3 flex items-center gap-2 active:scale-95 transition"
-                style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: `1px solid ${b.color}14` }}>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg shrink-0"
-                  style={{ background: `${b.color}14` }}>
-                  {b.icon}
-                </div>
-                <span className="text-xs font-semibold text-gray-700">{b.label}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
 
         {/* How it works */}
         <div className="mb-6 bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>

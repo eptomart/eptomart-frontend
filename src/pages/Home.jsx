@@ -274,15 +274,15 @@ const SOURCE_TILES = [
 
 function ShopBySource() {
   return (
-    <div className="px-4 grid grid-cols-3 gap-2.5">
+    <div className="px-4 grid grid-cols-3 gap-2">
       {SOURCE_TILES.map(t => (
         <Link
           key={t.to}
           to={t.to}
-          className="flex flex-col items-center justify-center rounded-2xl py-4 gap-0.5 active:scale-[0.95] transition-all"
-          style={{ background: t.gradient, minHeight: 90, boxShadow: t.shadow }}
+          className="flex flex-col items-center justify-center rounded-xl py-3 gap-0.5 active:scale-[0.95] transition-all"
+          style={{ background: t.gradient, minHeight: 78, boxShadow: t.shadow }}
         >
-          <span className="text-3xl leading-none">{t.emoji}</span>
+          <span className="text-2xl leading-none">{t.emoji}</span>
           <p className="text-[11px] font-extrabold text-white text-center leading-tight mt-1">{t.label}</p>
           <p className="text-[9px] font-semibold text-center leading-tight" style={{ color: 'rgba(255,255,255,0.6)' }}>{t.sub}</p>
         </Link>
@@ -581,7 +581,7 @@ function MobileHero() {
   // Don't greet with the brand name if test/fallback account
   const first = rawFirst && rawFirst.toLowerCase() !== 'eptomart' ? rawFirst : null;
   return (
-    <div className="px-4 pt-3 pb-0">
+    <div className="px-4 pt-2 pb-0">
       <Link to="/shop"
         className="relative rounded-2xl overflow-hidden block active:scale-[0.99] transition-transform"
         style={{
@@ -589,24 +589,23 @@ function MobileHero() {
           border: '1px solid rgba(255,255,255,0.06)',
         }}
       >
-        <div className="absolute pointer-events-none" style={{ width: 180, height: 180, borderRadius: '50%', top: -80, right: -50, background: 'radial-gradient(circle, rgba(244,148,28,0.22) 0%, transparent 65%)' }} />
-        <div className="absolute pointer-events-none" style={{ width: 140, height: 140, borderRadius: '50%', bottom: -70, left: -40, background: 'radial-gradient(circle, rgba(109,182,81,0.16) 0%, transparent 65%)' }} />
-        <div className="relative z-10 px-4 py-4 flex items-center justify-between gap-3">
+        <div className="absolute pointer-events-none" style={{ width: 160, height: 160, borderRadius: '50%', top: -70, right: -40, background: 'radial-gradient(circle, rgba(244,148,28,0.22) 0%, transparent 65%)' }} />
+        <div className="relative z-10 px-4 py-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-semibold" style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11 }}>
+            <p className="font-semibold" style={{ color: 'rgba(255,255,255,0.50)', fontSize: 10.5 }}>
               {greeting}{first ? `, ${first}` : ' 👋'}
             </p>
-            <p className="text-white font-extrabold leading-tight tracking-tight" style={{ fontSize: 19 }}>
+            <p className="text-white font-extrabold leading-tight tracking-tight" style={{ fontSize: 17 }}>
               Fresh groceries, <span style={{ color: '#f4941c' }}>delivered fast</span>
             </p>
-            <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: 10.5 }} className="mt-1 font-medium flex items-center gap-1.5 truncate">
-              <FiTruck size={11} style={{ color: '#6DB651' }} className="flex-shrink-0" />
+            <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 10 }} className="mt-0.5 font-medium flex items-center gap-1.5 truncate">
+              <FiTruck size={10} style={{ color: '#6DB651' }} className="flex-shrink-0" />
               Free delivery above ₹999 · Verified sellers
             </p>
           </div>
-          <span className="flex-shrink-0 text-white text-[11px] font-bold pl-3.5 pr-3 py-2 rounded-xl whitespace-nowrap inline-flex items-center gap-1"
+          <span className="flex-shrink-0 text-white text-[10px] font-bold pl-3 pr-2.5 py-1.5 rounded-xl whitespace-nowrap inline-flex items-center gap-1"
             style={{ background: 'linear-gradient(135deg,#ff9d30,#f4941c)', boxShadow: '0 4px 14px rgba(244,148,28,0.35)' }}>
-            Shop now <FiArrowRight size={12} />
+            Shop now <FiArrowRight size={11} />
           </span>
         </div>
       </Link>
@@ -930,28 +929,33 @@ export default function Home() {
           {/* 1. Search bar + hero */}
           <MobileHero />
 
-          {/* 2. Koyambedu Daily featured card */}
+          {/* 2. Koyambedu Daily featured card — real image + strong CTA */}
           <div className="px-4 pt-3">
             <Link to="/koyambedu"
-              className="relative flex items-center gap-3 rounded-2xl px-4 py-3.5 overflow-hidden active:scale-[0.97] transition-transform"
-              style={{ background: 'linear-gradient(135deg, #064e3b 0%, #065f46 55%, #16a34a 100%)', boxShadow: '0 6px 20px rgba(6,78,59,0.35)' }}>
+              className="relative flex items-center gap-3 rounded-2xl overflow-hidden active:scale-[0.97] transition-transform"
+              style={{ background: 'linear-gradient(135deg, #064e3b 0%, #065f46 55%, #16a34a 100%)', boxShadow: '0 6px 20px rgba(6,78,59,0.35)', minHeight: 80 }}>
+              {/* category image accent */}
+              <img src="/categories/koyambedu.jpg" alt="" aria-hidden
+                className="absolute right-0 top-0 h-full w-[40%] object-cover pointer-events-none select-none"
+                style={{ maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.6) 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.6) 100%)', opacity: 0.35 }} />
               <div className="absolute inset-0 pointer-events-none"
-                style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%)' }} />
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 relative z-10 text-2xl"
-                style={{ background: 'rgba(255,255,255,0.18)' }}>🥬</div>
-              <div className="flex-1 relative z-10 min-w-0">
-                <p className="text-emerald-200 text-[10px] font-black tracking-widest uppercase mb-0.5">ORDER BY 8 AM · MARKET FRESH</p>
-                <p className="text-white font-black text-base leading-tight">Koyambedu Daily</p>
-                <p className="text-emerald-100/70 text-[11px] mt-0.5">Fresh veggies, fruits &amp; flowers direct from market</p>
+                style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.10) 0%, transparent 55%)' }} />
+              <div className="pl-4 py-3.5 flex items-center gap-3 flex-1 relative z-10 min-w-0 pr-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-emerald-300 text-[9px] font-black tracking-widest uppercase mb-0.5">ORDER BY 8 AM · MARKET FRESH</p>
+                  <p className="text-white font-black text-[17px] leading-tight">Koyambedu Daily</p>
+                  <p className="text-white/60 text-[11px] mt-0.5">Fresh veggies, fruits &amp; flowers direct</p>
+                </div>
+                <span className="bg-white text-emerald-700 font-black text-[11px] px-3.5 py-2 rounded-xl shrink-0 flex items-center gap-1"
+                  style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
+                  Order <FiArrowRight size={11} />
+                </span>
               </div>
-              <span className="relative z-10 bg-white text-emerald-700 font-black text-[11px] px-3 py-1.5 rounded-xl shrink-0 flex items-center gap-1">
-                Order <FiArrowRight size={11} />
-              </span>
             </Link>
           </div>
 
           {/* 3. Shop by Source — compact 3-tile row */}
-          <div className="pt-2.5 px-0">
+          <div className="pt-2 px-0">
             <ShopBySource />
           </div>
 
@@ -961,7 +965,7 @@ export default function Home() {
           </div>
 
           {/* 5. Trust indicators */}
-          <div className="pt-1.5">
+          <div className="pt-2">
             <TrustStrip />
           </div>
 
