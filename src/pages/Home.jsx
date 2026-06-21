@@ -274,19 +274,61 @@ const SOURCE_TILES = [
 
 function ShopBySource() {
   return (
-    <div className="px-4 grid grid-cols-3 gap-2">
-      {SOURCE_TILES.map(t => (
-        <Link
-          key={t.to}
-          to={t.to}
-          className="flex flex-col items-center justify-center rounded-xl py-3 gap-0.5 active:scale-[0.95] transition-all"
-          style={{ background: t.gradient, minHeight: 78, boxShadow: t.shadow }}
-        >
-          <span className="text-2xl leading-none">{t.emoji}</span>
-          <p className="text-[11px] font-extrabold text-white text-center leading-tight mt-1">{t.label}</p>
-          <p className="text-[9px] font-semibold text-center leading-tight" style={{ color: 'rgba(255,255,255,0.6)' }}>{t.sub}</p>
+    <div className="px-4 space-y-2">
+      {/* Koyambedu Daily — full-width hero tile */}
+      <Link to="/koyambedu"
+        className="relative flex items-center gap-4 rounded-2xl overflow-hidden active:scale-[0.98] transition-transform"
+        style={{
+          background: 'linear-gradient(135deg, #064e3b 0%, #065f46 55%, #16a34a 100%)',
+          boxShadow: '0 6px 20px rgba(6,78,59,0.38)',
+          minHeight: 90,
+        }}>
+        {/* Real market photo as faded right accent */}
+        <img src="/categories/koyambedu.jpg" alt="" aria-hidden
+          className="absolute right-0 top-0 h-full w-[45%] object-cover pointer-events-none select-none"
+          style={{
+            maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 100%)',
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 100%)',
+            opacity: 0.32,
+          }} />
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.10) 0%, transparent 55%)' }} />
+        <div className="pl-4 py-4 flex items-center gap-3 flex-1 relative z-10 min-w-0 pr-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-emerald-300 text-[9px] font-black tracking-widest uppercase mb-0.5">MARKET FRESH · DAILY</p>
+            <p className="text-white font-black text-[20px] leading-tight tracking-tight">Koyambedu Daily</p>
+            <p className="text-white/60 text-[11px] mt-0.5 font-medium">Fresh veggies, fruits &amp; flowers direct from market</p>
+          </div>
+          <span className="bg-white text-emerald-700 font-black text-[11px] px-4 py-2.5 rounded-xl shrink-0 flex items-center gap-1"
+            style={{ boxShadow: '0 2px 10px rgba(0,0,0,0.15)' }}>
+            Shop <FiArrowRight size={12} />
+          </span>
+        </div>
+      </Link>
+
+      {/* Farmer Fresh + Proteins — compact side tiles */}
+      <div className="grid grid-cols-2 gap-2">
+        <Link to="/uzhavar"
+          className="relative flex items-center gap-2.5 rounded-xl px-3 py-3 overflow-hidden active:scale-[0.96] transition-transform"
+          style={{ background: 'linear-gradient(135deg, #134e4a 0%, #0f766e 100%)', boxShadow: '0 4px 12px rgba(13,148,136,0.28)', minHeight: 64 }}>
+          <span className="text-xl shrink-0">🌾</span>
+          <div className="min-w-0">
+            <p className="text-white font-extrabold text-[12px] leading-tight">Farmer Fresh</p>
+            <p className="text-teal-200 text-[9px] font-medium mt-0.5">Farm Direct</p>
+          </div>
+          <FiChevronRight size={13} className="text-white/50 ml-auto shrink-0" />
         </Link>
-      ))}
+        <Link to="/eptofresh"
+          className="relative flex items-center gap-2.5 rounded-xl px-3 py-3 overflow-hidden active:scale-[0.96] transition-transform"
+          style={{ background: 'linear-gradient(135deg, #7c2d12 0%, #ea580c 100%)', boxShadow: '0 4px 12px rgba(234,88,12,0.28)', minHeight: 64 }}>
+          <span className="text-xl shrink-0">🥩</span>
+          <div className="min-w-0">
+            <p className="text-white font-extrabold text-[12px] leading-tight">Proteins</p>
+            <p className="text-orange-200 text-[9px] font-medium mt-0.5">Hyperlocal</p>
+          </div>
+          <FiChevronRight size={13} className="text-white/50 ml-auto shrink-0" />
+        </Link>
+      </div>
     </div>
   );
 }
