@@ -375,10 +375,11 @@ export default function KoyambeduCheckout() {
   const [couponApplied, setCouponApplied] = useState(null);
   const [couponLoading, setCouponLoading] = useState(false);
 
-  const deliveryCharge = locationData?.deliveryCharge ?? 149;
-  const serviceFee     = 10;
+  const deliveryCharge = locationData?.deliveryCharge ?? 249;
+  const distanceKm     = locationData?.distanceKm ?? null;
+  const platformFee    = 15;
   const couponDiscount = couponApplied?.discount || 0;
-  const total          = parseFloat((subtotal + deliveryCharge + serviceFee - couponDiscount).toFixed(2));
+  const total          = parseFloat((subtotal + deliveryCharge + platformFee - couponDiscount).toFixed(2));
 
   // ── Coupon ─────────────────────────────────
   const handleValidateCoupon = async () => {
@@ -477,11 +478,7 @@ export default function KoyambeduCheckout() {
       <p className="text-gray-400 text-xs mb-4">
         Delivery on {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' })} · {SLOTS.find(s => s.key === selectedSlot)?.label || 'Slot 1: 9 AM–12 PM'}
       </p>
-      <p className="text-gray-500 text-sm mb-5">WhatsApp updates at each stage.</p>
-      <div className="rounded-xl px-4 py-3 mb-6 text-sm w-full max-w-xs"
-        style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309' }}>
-        If market prices change, you'll receive an approval request before dispatch.
-      </div>
+      <p className="text-gray-500 text-sm mb-6">WhatsApp updates at each stage.</p>
       <button onClick={() => navigate('/koyambedu/orders')}
         className="bg-green-600 text-white font-bold px-8 py-3 rounded-xl w-full max-w-xs">
         Track My Order
@@ -805,16 +802,26 @@ export default function KoyambeduCheckout() {
                 </div>
               ))}
               <div className="border-t border-gray-100 mt-2 pt-2 space-y-1.5 text-sm">
-                <div className="flex justify-between text-gray-500"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
-                <div className="flex justify-between text-gray-500"><span>Delivery</span><span>₹{deliveryCharge}</span></div>
-                <div className="flex justify-between text-gray-500"><span>Service fee</span><span>₹{serviceFee}</span></div>
+                <div className="flex justify-between text-gray-500"><span>Products Total</span><span>₹{subtotal.toFixed(2)}</span></div>
+                <div className="flex justify-between text-gray-500">
+                  <span className="flex items-center gap-1">
+                    Delivery Charges
+                    {distanceKm !== null && (
+                      <span className="text-[10px] bg-green-50 text-green-600 font-semibold px-1.5 py-0.5 rounded-full">
+                        {distanceKm} km
+                      </span>
+                    )}
+                  </span>
+                  <span>₹{deliveryCharge}</span>
+                </div>
+                <div className="flex justify-between text-gray-500"><span>Platform Fee</span><span>₹{platformFee}</span></div>
                 {couponDiscount > 0 && (
                   <div className="flex justify-between font-semibold text-green-600">
                     <span>Promo ({couponApplied?.code})</span><span>−₹{couponDiscount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-gray-800 border-t border-gray-100 pt-2">
-                  <span>Total</span><span className="text-green-700">₹{total.toFixed(2)}</span>
+                  <span>Grand Total</span><span className="text-green-700">₹{total.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -842,11 +849,6 @@ export default function KoyambeduCheckout() {
                   </div>
                 )}
               </div>
-            </div>
-
-            <div className="rounded-xl px-3 py-2.5 text-[11px]"
-              style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e' }}>
-              ⚠️ Koyambedu market prices fluctuate daily. You'll get a WhatsApp message if any price changes before dispatch.
             </div>
 
             <div className="flex gap-3">

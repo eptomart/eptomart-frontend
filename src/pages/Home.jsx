@@ -927,20 +927,35 @@ export default function Home() {
         ══════════════════════════════════════════ */}
         <div className="md:hidden">
 
-          {/* 1. Hero banner */}
+          {/* 1. Search bar + hero */}
           <MobileHero />
 
-          {/* 2. Category strip */}
-          <div className="pt-1.5">
-            <MobileCategoryStrip />
+          {/* 2. Koyambedu Daily featured card */}
+          <div className="px-4 pt-3">
+            <Link to="/koyambedu"
+              className="relative flex items-center gap-3 rounded-2xl px-4 py-3.5 overflow-hidden active:scale-[0.97] transition-transform"
+              style={{ background: 'linear-gradient(135deg, #064e3b 0%, #065f46 55%, #16a34a 100%)', boxShadow: '0 6px 20px rgba(6,78,59,0.35)' }}>
+              <div className="absolute inset-0 pointer-events-none"
+                style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%)' }} />
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 relative z-10 text-2xl"
+                style={{ background: 'rgba(255,255,255,0.18)' }}>🥬</div>
+              <div className="flex-1 relative z-10 min-w-0">
+                <p className="text-emerald-200 text-[10px] font-black tracking-widest uppercase mb-0.5">ORDER BY 8 AM · MARKET FRESH</p>
+                <p className="text-white font-black text-base leading-tight">Koyambedu Daily</p>
+                <p className="text-emerald-100/70 text-[11px] mt-0.5">Fresh veggies, fruits &amp; flowers direct from market</p>
+              </div>
+              <span className="relative z-10 bg-white text-emerald-700 font-black text-[11px] px-3 py-1.5 rounded-xl shrink-0 flex items-center gap-1">
+                Order <FiArrowRight size={11} />
+              </span>
+            </Link>
           </div>
 
           {/* 3. Shop by Source — compact 3-tile row */}
-          <div className="pt-2 px-0">
+          <div className="pt-2.5 px-0">
             <ShopBySource />
           </div>
 
-          {/* 4. Promo banner */}
+          {/* 4. Promo banner (includes Fresh Koyambedu Arrivals slide) */}
           <div className="pt-2">
             <PromoBanner />
           </div>
@@ -955,6 +970,11 @@ export default function Home() {
             <ContinueShopping />
           </div>
 
+        </div>
+
+        {/* ── MOBILE ONLY: Category strip moved lower ── */}
+        <div className="md:hidden pt-2">
+          <MobileCategoryStrip />
         </div>
 
         {/* ── SHARED: Featured Products ── */}
