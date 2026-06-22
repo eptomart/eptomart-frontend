@@ -108,6 +108,13 @@ export default function KoyambeduAdmin() {
   const [searchOrder,  setSearchOrder]  = useState('');
   const [sellerFilter, setSellerFilter] = useState('');
   const [saFilter,     setSaFilter]     = useState('');
+  const [catFilter,    setCatFilter]    = useState('');
+
+  // Category create/edit modal
+  const [showCatForm,  setShowCatForm]  = useState(false);
+  const [catFormEdit,  setCatFormEdit]  = useState(null); // null = create, object = edit
+  const [catForm,      setCatForm]      = useState({ name:'', nameTamil:'', icon:'🌿', description:'', sortOrder:'0' });
+  const [catSaving,    setCatSaving]    = useState(false);
 
   // Order update modal
   const [updateModal, setUpdateModal] = useState(null);
@@ -178,7 +185,8 @@ export default function KoyambeduAdmin() {
         const { data } = await api.get(`/koyambedu/admin/seller-admins${params}`);
         setSellerAdmins(data.sellerAdmins || []);
       } else if (t === 'categories') {
-        const { data } = await api.get('/koyambedu/admin/categories?status=pending');
+        const params = catFilter ? `?status=${catFilter}` : '';
+        const { data } = await api.get(`/koyambedu/admin/categories${params}`);
         setCats(data.categories || []);
       }
     } catch { toast.error('Failed to load'); }
@@ -329,6 +337,43 @@ export default function KoyambeduAdmin() {
       setShowAddProduct(false);
     } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
     finally { setAddProdSaving(false); }
+  };
+
+  const openCatCreate = () => {
+    setCatFormEdit(null);
+    setCatForm({ name:'', nameTamil:'', icon:'🌿', description:'', sortOrder:'0' });
+    setShowCatForm(true);
+  };
+
+  const openCatEdit = (cat) => {
+    setCatFormEdit(cat);
+    setCatForm({ name: cat.name, nameTamil: cat.nameTamil || '', icon: cat.icon || '🌿', description: cat.description || '', sortOrder: String(cat.sortOrder || 0) });
+    setShowCatForm(true);
+  };
+
+  const saveCat = async () => {
+    if (!catForm.name.trim()) { toast.error('Category name is required'); return; }
+    setCatSaving(true);
+    try {
+      if (catFormEdit) {
+        await api.put(`/koyambedu/admin/categories/${catFormEdit._id}`, catForm);
+        toast.success('Category updated');
+      } else {
+        await api.post('/koyambedu/admin/categories', catForm);
+        toast.success('Category created');
+      }
+      setShowCatForm(false);
+      loadTab('categories');
+    } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
+    finally { setCatSaving(false); }
+  };
+
+  const toggleCatActive = async (cat) => {
+    try {
+      await api.put(`/koyambedu/admin/categories/${cat._id}`, { isActive: !cat.isActive });
+      toast.success(cat.isActive ? 'Category hidden' : 'Category activated');
+      loadTab('categories');
+    } catch { toast.error('Failed'); }
   };
 
   const openCreateSeller = async () => {
@@ -614,28 +659,57 @@ export default function KoyambeduAdmin() {
         {/* ── CATEGORIES ── */}
         {tab === 'categories' && !loading && (
           <div>
-            <p className="text-xs text-gray-500 mb-4">Categories pending admin approval before going live</p>
-            <div className="space-y-3">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex gap-2 flex-wrap">
+                {[['','All'],['approved','Approved'],['pending','Pending'],['rejected','Rejected']].map(([v,label]) => (
+                  <button key={v} onClick={() => { setCatFilter(v); setTimeout(() => loadTab('categories'), 0); }}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-full border transition ${catFilter === v ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <button onClick={openCatCreate}
+                className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-green-700 flex-shrink-0">
+                + Add Category
+              </button>
+            </div>
+            <div className="space-y-2">
               {cats.map(cat => (
-                <div key={cat._id} className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center gap-3">
-                  <span className="text-3xl">{cat.icon || '🌿'}</span>
-                  <div className="flex-1">
-                    <p className="font-bold text-gray-800 text-sm">{cat.name}</p>
-                    {cat.nameTamil && <p className="text-xs text-gray-400">{cat.nameTamil}</p>}
-                    <p className="text-xs text-gray-500">By: {cat.createdBy?.businessName || '—'}</p>
+                <div key={cat._id} className={`bg-white rounded-2xl border p-3 flex items-center gap-3 ${!cat.isActive ? 'opacity-50' : 'border-gray-200'}`}>
+                  <span className="text-2xl w-9 text-center">{cat.icon || '🌿'}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-gray-800 text-sm">{cat.name}</p>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                        cat.status === 'approved' ? 'bg-green-100 text-green-700'
+                        : cat.status === 'pending' ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-red-100 text-red-700'}`}>
+                        {cat.status}
+                      </span>
+                      {!cat.isActive && <span className="text-[9px] font-bold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">hidden</span>}
+                    </div>
+                    {cat.nameTamil && <p className="text-[10px] text-gray-400">{cat.nameTamil}</p>}
+                    {cat.sortOrder > 0 && <p className="text-[10px] text-gray-400">Order: {cat.sortOrder}</p>}
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => approveCategory(cat._id, true)} className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl">✓</button>
-                    <button onClick={() => approveCategory(cat._id, false)} className="bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl">✕</button>
+                  <div className="flex gap-1.5 flex-shrink-0">
+                    {cat.status === 'pending' && (
+                      <>
+                        <button onClick={() => approveCategory(cat._id, true)} className="bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg">✓</button>
+                        <button onClick={() => approveCategory(cat._id, false)} className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg">✕</button>
+                      </>
+                    )}
+                    <button onClick={() => openCatEdit(cat)}
+                      className="border border-blue-200 text-blue-600 text-[10px] font-bold px-2 py-1 rounded-lg hover:bg-blue-50">
+                      Edit
+                    </button>
+                    <button onClick={() => toggleCatActive(cat)}
+                      className={`text-[10px] font-bold px-2 py-1 rounded-lg border ${cat.isActive ? 'border-gray-200 text-gray-500 hover:bg-gray-50' : 'border-green-200 text-green-600 hover:bg-green-50'}`}>
+                      {cat.isActive ? 'Hide' : 'Show'}
+                    </button>
                   </div>
                 </div>
               ))}
-              {cats.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-green-500 text-4xl mb-2">✅</p>
-                  <p className="text-gray-500 text-sm">No pending categories</p>
-                </div>
-              )}
+              {cats.length === 0 && <p className="text-center text-gray-500 py-8">No categories found</p>}
             </div>
           </div>
         )}
@@ -668,6 +742,41 @@ export default function KoyambeduAdmin() {
               <button onClick={updateOrderStatus} disabled={updating}
                 className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
                 {updating ? 'Saving...' : 'Update Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Category Create/Edit modal ── */}
+      {showCatForm && (
+        <div className="fixed inset-0 bg-black/50 z-[9995] flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-800">{catFormEdit ? 'Edit Category' : 'Add Category'}</h3>
+              <button onClick={() => setShowCatForm(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">✕</button>
+            </div>
+            {[
+              ['name',        'Category Name *', 'text',   'e.g. Vegetables'],
+              ['nameTamil',   'Tamil Name',      'text',   'தமிழ் பெயர்'],
+              ['icon',        'Emoji Icon',      'text',   '🥦'],
+              ['description', 'Description',     'text',   'Short description'],
+              ['sortOrder',   'Sort Order',      'number', '0 = first'],
+            ].map(([field, label, type, ph]) => (
+              <div key={field}>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">{label}</label>
+                <input type={type} value={catForm[field]}
+                  onChange={e => setCatForm(f => ({ ...f, [field]: e.target.value }))}
+                  placeholder={ph}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+              </div>
+            ))}
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setShowCatForm(false)}
+                className="flex-1 border border-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm">Cancel</button>
+              <button onClick={saveCat} disabled={catSaving}
+                className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl text-sm disabled:opacity-50">
+                {catSaving ? 'Saving…' : catFormEdit ? 'Save Changes' : 'Create Category'}
               </button>
             </div>
           </div>
