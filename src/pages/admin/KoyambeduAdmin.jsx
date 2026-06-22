@@ -138,6 +138,16 @@ export default function KoyambeduAdmin() {
   const [reviewEditSeller, setReviewEditSeller] = useState(null); // seller with pendingEdit
   const [reviewEditSaving, setReviewEditSaving] = useState(false);
 
+  // Create Seller modal (SuperAdmin only)
+  const [showCreateSeller, setShowCreateSeller] = useState(false);
+  const [createSellerForm, setCreateSellerForm] = useState({
+    ownerName: '', businessName: '', stallNumber: '', marketSection: '',
+    contactPhone: '', contactEmail: '', commissionRate: '10', description: '',
+    assignedSellerAdminId: '',
+  });
+  const [approvedSaList, setApprovedSaList] = useState([]);
+  const [createSellerSaving, setCreateSellerSaving] = useState(false);
+
   // Add Product modal (admin adds product for any seller)
   const [showAddProduct,   setShowAddProduct]   = useState(false);
   const [addProdSeller,    setAddProdSeller]     = useState(null); // full seller object
@@ -321,6 +331,31 @@ export default function KoyambeduAdmin() {
     finally { setAddProdSaving(false); }
   };
 
+  const openCreateSeller = async () => {
+    setCreateSellerForm({ ownerName:'', businessName:'', stallNumber:'', marketSection:'', contactPhone:'', contactEmail:'', commissionRate:'10', description:'', assignedSellerAdminId:'' });
+    // Load approved seller admins for the dropdown
+    try {
+      const { data } = await api.get('/koyambedu/admin/seller-admins?status=approved');
+      setApprovedSaList(data.sellerAdmins || []);
+    } catch { setApprovedSaList([]); }
+    setShowCreateSeller(true);
+  };
+
+  const submitCreateSeller = async () => {
+    const { ownerName, businessName, contactPhone } = createSellerForm;
+    if (!ownerName || !businessName || !contactPhone) {
+      toast.error('Owner name, business name and phone are required'); return;
+    }
+    setCreateSellerSaving(true);
+    try {
+      await api.post('/koyambedu/admin/sellers', createSellerForm);
+      toast.success('Seller created and approved!');
+      setShowCreateSeller(false);
+      loadTab('sellers');
+    } catch (err) { toast.error(err?.response?.data?.message || 'Failed to create seller'); }
+    finally { setCreateSellerSaving(false); }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -427,13 +462,21 @@ export default function KoyambeduAdmin() {
         {/* ── SELLERS ── */}
         {tab === 'sellers' && !loading && (
           <div>
-            <div className="flex gap-2 mb-4 flex-wrap">
-              {[['','All'],['pending_review','Pending'],['approved','Approved'],['rejected','Rejected'],['suspended','Suspended']].map(([v,label]) => (
-                <button key={v} onClick={() => { setSellerFilter(v); setTimeout(() => loadTab('sellers'), 0); }}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-full border transition ${sellerFilter === v ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200'}`}>
-                  {label}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex gap-2 flex-wrap">
+                {[['','All'],['pending_review','Pending'],['approved','Approved'],['rejected','Rejected'],['suspended','Suspended']].map(([v,label]) => (
+                  <button key={v} onClick={() => { setSellerFilter(v); setTimeout(() => loadTab('sellers'), 0); }}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-full border transition ${sellerFilter === v ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {isSuperAdmin && (
+                <button onClick={openCreateSeller}
+                  className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-green-700 flex-shrink-0">
+                  + Create Seller
                 </button>
-              ))}
+              )}
             </div>
             <div className="space-y-3">
               {sellers.map(s => (
@@ -625,6 +668,67 @@ export default function KoyambeduAdmin() {
               <button onClick={updateOrderStatus} disabled={updating}
                 className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
                 {updating ? 'Saving...' : 'Update Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Create Seller modal (SuperAdmin only) ── */}
+      {showCreateSeller && (
+        <div className="fixed inset-0 bg-black/50 z-[9995] flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-800">Create Seller (Pre-Approved)</h3>
+              <button onClick={() => setShowCreateSeller(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">✕</button>
+            </div>
+            <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2 text-xs text-green-700">
+              ✅ Seller will be created with <strong>Approved</strong> status — no review needed.
+            </div>
+            {[
+              ['ownerName',     'Owner Name *',       'text', 'e.g. Rajan Kumar'],
+              ['businessName',  'Business Name *',    'text', 'e.g. Rajan Vegetables'],
+              ['contactPhone',  'Contact Phone *',    'tel',  '10-digit mobile'],
+              ['stallNumber',   'Stall Number',       'text', 'e.g. A-12'],
+              ['marketSection', 'Market Section',     'text', 'e.g. Vegetables, Flowers'],
+              ['contactEmail',  'Email (optional)',   'email',''],
+              ['commissionRate','Commission Rate (%)', 'number','e.g. 10'],
+              ['description',   'Description',        'text', 'Short note about seller'],
+            ].map(([field, label, type, ph]) => (
+              <div key={field}>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">{label}</label>
+                <input
+                  type={type}
+                  value={createSellerForm[field]}
+                  onChange={e => setCreateSellerForm(f => ({ ...f, [field]: e.target.value }))}
+                  placeholder={ph}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                />
+              </div>
+            ))}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Assign to Seller Admin (optional)</label>
+              <select
+                value={createSellerForm.assignedSellerAdminId}
+                onChange={e => setCreateSellerForm(f => ({ ...f, assignedSellerAdminId: e.target.value }))}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                <option value="">— None —</option>
+                {approvedSaList.map(sa => (
+                  <option key={sa._id} value={sa._id}>{sa.name} ({sa.businessName || sa.user?.email || 'SA'})</option>
+                ))}
+              </select>
+              {approvedSaList.length === 0 && (
+                <p className="text-xs text-gray-400 mt-1">No approved seller admins found.</p>
+              )}
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setShowCreateSeller(false)}
+                className="flex-1 border border-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={submitCreateSeller} disabled={createSellerSaving}
+                className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl text-sm hover:bg-green-700 disabled:opacity-50">
+                {createSellerSaving ? 'Creating…' : '✓ Create Seller'}
               </button>
             </div>
           </div>

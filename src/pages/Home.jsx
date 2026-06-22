@@ -119,7 +119,7 @@ function ProductGridCard({ product: p, accent = '#f4941c', index = 0 }) {
       <div className="p-2 flex flex-col gap-0.5 flex-1">
         <Link to={href}>
           <p className="text-[11px] font-bold text-gray-800 line-clamp-2 leading-snug">{p.name}</p>
-          {unit && <p className="text-[9.5px] text-gray-400 mt-0.5">{unit}</p>}
+          {unit && <p className="text-[9.5px] text-gray-600 mt-0.5">{unit}</p>}
         </Link>
         <div className="flex items-end justify-between mt-auto pt-1">
           <div>
@@ -275,58 +275,60 @@ const SOURCE_TILES = [
 function ShopBySource() {
   return (
     <div className="px-4 space-y-2">
-      {/* Koyambedu Daily — full-width hero tile */}
+      {/* Koyambedu Daily — full-width hero tile with real photo */}
       <Link to="/koyambedu"
-        className="relative flex items-center gap-4 rounded-2xl overflow-hidden active:scale-[0.98] transition-transform"
-        style={{
-          background: 'linear-gradient(135deg, #064e3b 0%, #065f46 55%, #16a34a 100%)',
-          boxShadow: '0 6px 20px rgba(6,78,59,0.38)',
-          minHeight: 90,
-        }}>
-        {/* Real market photo as faded right accent */}
-        <img src="/categories/koyambedu.jpg" alt="" aria-hidden
-          className="absolute right-0 top-0 h-full w-[45%] object-cover pointer-events-none select-none"
-          style={{
-            maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 100%)',
-            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 100%)',
-            opacity: 0.32,
-          }} />
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.10) 0%, transparent 55%)' }} />
-        <div className="pl-4 py-4 flex items-center gap-3 flex-1 relative z-10 min-w-0 pr-3">
+        className="relative flex items-center overflow-hidden rounded-2xl active:scale-[0.98] transition-transform"
+        style={{ minHeight: 100, boxShadow: '0 6px 20px rgba(6,78,59,0.40)' }}>
+        {/* Full photo background */}
+        <img src="/categories/koyambedu.jpg" alt="Koyambedu Market"
+          className="absolute inset-0 w-full h-full object-cover" />
+        {/* Dark gradient overlay so text is readable */}
+        <div className="absolute inset-0"
+          style={{ background: 'linear-gradient(90deg, rgba(6,78,59,0.88) 0%, rgba(6,78,59,0.65) 55%, rgba(6,78,59,0.25) 100%)' }} />
+        <div className="relative z-10 pl-4 pr-3 py-4 flex items-center gap-3 w-full">
           <div className="flex-1 min-w-0">
             <p className="text-emerald-300 text-[9px] font-black tracking-widest uppercase mb-0.5">MARKET FRESH · DAILY</p>
             <p className="text-white font-black text-[20px] leading-tight tracking-tight">Koyambedu Daily</p>
-            <p className="text-white/60 text-[11px] mt-0.5 font-medium">Fresh veggies, fruits &amp; flowers direct from market</p>
+            <p className="text-white/75 text-[11px] mt-0.5 font-medium">Veggies, fruits &amp; flowers direct from market</p>
           </div>
           <span className="bg-white text-emerald-700 font-black text-[11px] px-4 py-2.5 rounded-xl shrink-0 flex items-center gap-1"
-            style={{ boxShadow: '0 2px 10px rgba(0,0,0,0.15)' }}>
+            style={{ boxShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
             Shop <FiArrowRight size={12} />
           </span>
         </div>
       </Link>
 
-      {/* Farmer Fresh + Proteins — compact side tiles */}
+      {/* Farmer Fresh + Proteins — compact photo tiles */}
       <div className="grid grid-cols-2 gap-2">
         <Link to="/uzhavar"
-          className="relative flex items-center gap-2.5 rounded-xl px-3 py-3 overflow-hidden active:scale-[0.96] transition-transform"
-          style={{ background: 'linear-gradient(135deg, #134e4a 0%, #0f766e 100%)', boxShadow: '0 4px 12px rgba(13,148,136,0.28)', minHeight: 64 }}>
-          <span className="text-xl shrink-0">🌾</span>
-          <div className="min-w-0">
-            <p className="text-white font-extrabold text-[12px] leading-tight">Farmer Fresh</p>
-            <p className="text-teal-200 text-[9px] font-medium mt-0.5">Farm Direct</p>
+          className="relative flex items-center overflow-hidden rounded-xl active:scale-[0.96] transition-transform"
+          style={{ minHeight: 72, boxShadow: '0 4px 12px rgba(13,148,136,0.30)' }}>
+          <img src="/categories/uzhavar.jpg" alt="Farmer Fresh"
+            className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0"
+            style={{ background: 'linear-gradient(90deg, rgba(19,78,74,0.85) 0%, rgba(19,78,74,0.50) 100%)' }} />
+          <div className="relative z-10 px-3 py-3 flex items-center gap-2 w-full">
+            <div className="min-w-0 flex-1">
+              <p className="text-white font-extrabold text-[13px] leading-tight">Farmer Fresh</p>
+              <p className="text-teal-200 text-[9px] font-semibold mt-0.5">Farm Direct</p>
+            </div>
+            <FiChevronRight size={13} className="text-white/60 shrink-0" />
           </div>
-          <FiChevronRight size={13} className="text-white/50 ml-auto shrink-0" />
         </Link>
         <Link to="/eptofresh"
-          className="relative flex items-center gap-2.5 rounded-xl px-3 py-3 overflow-hidden active:scale-[0.96] transition-transform"
-          style={{ background: 'linear-gradient(135deg, #7c2d12 0%, #ea580c 100%)', boxShadow: '0 4px 12px rgba(234,88,12,0.28)', minHeight: 64 }}>
-          <span className="text-xl shrink-0">🥩</span>
-          <div className="min-w-0">
-            <p className="text-white font-extrabold text-[12px] leading-tight">Proteins</p>
-            <p className="text-orange-200 text-[9px] font-medium mt-0.5">Hyperlocal</p>
+          className="relative flex items-center overflow-hidden rounded-xl active:scale-[0.96] transition-transform"
+          style={{ minHeight: 72, boxShadow: '0 4px 12px rgba(234,88,12,0.30)' }}>
+          <img src="/categories/proteins.jpg" alt="Proteins"
+            className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0"
+            style={{ background: 'linear-gradient(90deg, rgba(124,45,18,0.88) 0%, rgba(124,45,18,0.50) 100%)' }} />
+          <div className="relative z-10 px-3 py-3 flex items-center gap-2 w-full">
+            <div className="min-w-0 flex-1">
+              <p className="text-white font-extrabold text-[13px] leading-tight">Proteins</p>
+              <p className="text-orange-200 text-[9px] font-semibold mt-0.5">Hyperlocal</p>
+            </div>
+            <FiChevronRight size={13} className="text-white/60 shrink-0" />
           </div>
-          <FiChevronRight size={13} className="text-white/50 ml-auto shrink-0" />
         </Link>
       </div>
     </div>
@@ -853,7 +855,7 @@ function MobileSearchBar() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-gray-800 line-clamp-1 group-hover:text-orange-600">{p.name}</p>
-                        <p className="text-[10px] text-gray-400">{p.category?.name || ''}</p>
+                        <p className="text-[10px] text-gray-600">{p.category?.name || ''}</p>
                       </div>
                       <span className="text-xs font-bold text-orange-500 flex-shrink-0">₹{(p.discountPrice || p.price)?.toLocaleString('en-IN')}</span>
                     </button>
@@ -865,7 +867,7 @@ function MobileSearchBar() {
               : query.length >= 3
                 ? <div className="px-4 py-4 text-center">
                     <p className="text-sm font-semibold text-gray-700 mb-0.5">No results for "{query}"</p>
-                    <p className="text-xs text-gray-400 mb-3">We don't have it yet — but we can source it!</p>
+                    <p className="text-xs text-gray-600 mb-3">We don't have it yet — but we can source it!</p>
                     <button onClick={() => submit(query)} className="bg-orange-500 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-orange-600 transition-colors inline-flex items-center gap-1.5"><FiSearch size={12} /> Notify Team & Search</button>
                   </div>
                 : null
@@ -1080,7 +1082,7 @@ export default function Home() {
         <div className="hidden md:block max-w-7xl mx-auto px-4 pb-12">
           <section className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
             <h2 className="text-xl font-extrabold text-center text-gray-900 mb-1">Why Shop at Eptomart?</h2>
-            <p className="text-center text-sm text-gray-400 mb-8">India's fastest growing multi-seller marketplace</p>
+            <p className="text-center text-sm text-gray-600 mb-8">India's fastest growing multi-seller marketplace</p>
             <div className="grid grid-cols-4 gap-6">
               {[
                 { Icon: FiShield, color: '#0d9488', title: 'Verified Sellers',   desc: 'KYC verified with GST & FSSAI compliance' },
@@ -1093,7 +1095,7 @@ export default function Home() {
                     <item.Icon size={24} style={{ color: item.color }} />
                   </div>
                   <h3 className="font-bold text-sm text-gray-800 mb-1">{item.title}</h3>
-                  <p className="text-xs text-gray-500 leading-relaxed">{item.desc}</p>
+                  <p className="text-xs text-gray-700 leading-relaxed">{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -1107,7 +1109,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Quick Links</h4>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-3">Quick Links</h4>
               <ul className="space-y-2">
                 {[['Home','/'],[' Shop','/shop'],['My Orders','/orders'],['My Profile','/profile'],['Wishlist','/wishlist']].map(([l,p]) => (
                   <li key={p}><Link to={p} className="text-sm text-gray-600 hover:text-orange-500 transition-colors">{l}</Link></li>
@@ -1115,7 +1117,7 @@ export default function Home() {
               </ul>
             </div>
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Categories</h4>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-3">Categories</h4>
               <ul className="space-y-2">
                 {[[' Vegetables','/shop?category=vegetables'],['Fruits','/shop?category=fruits'],['Fashion','/shop?category=fashion'],['Electronics','/shop?category=electronics'],['All Categories','/categories']].map(([l,p]) => (
                   <li key={p}><Link to={p} className="text-sm text-gray-600 hover:text-orange-500 transition-colors">{l}</Link></li>
@@ -1123,7 +1125,7 @@ export default function Home() {
               </ul>
             </div>
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Help & Support</h4>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-3">Help & Support</h4>
               <ul className="space-y-2">
                 {[['Contact Us','/contact'],['FAQ','/faq'],['Shipping Policy','/shipping-policy'],['Return Policy','/return-policy'],['Sell on Eptomart','/seller/profile']].map(([l,p]) => (
                   <li key={p}><Link to={p} className="text-sm text-gray-600 hover:text-orange-500 transition-colors">{l}</Link></li>
@@ -1131,7 +1133,7 @@ export default function Home() {
               </ul>
             </div>
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Policies</h4>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-3">Policies</h4>
               <ul className="space-y-2">
                 {[['Privacy Policy','/privacy-policy'],['Terms of Service','/terms'],['GST Invoices','/faq#gst'],['Farmer Fresh','/uzhavar'],['Koyambedu Daily','/koyambedu']].map(([l,p]) => (
                   <li key={p}><Link to={p} className="text-sm text-gray-600 hover:text-orange-500 transition-colors">{l}</Link></li>

@@ -67,7 +67,7 @@ function ProductCard({ product }) {
         <div className="flex items-center justify-between mt-1.5">
           <div>
             <span className="text-green-700 font-bold text-xs">₹{product.currentPrice}</span>
-            <span className="text-gray-400 text-[10px] ml-0.5">/{product.unitLabel}</span>
+            <span className="text-gray-600 text-[10px] ml-0.5">/{product.unitLabel}</span>
           </div>
           {qty === 0 ? (
             <button
@@ -87,7 +87,7 @@ function ProductCard({ product }) {
                 −
               </button>
               <span className="text-sm font-bold text-green-700 min-w-[28px] text-center">
-                {qty}<span className="text-[9px] font-medium text-gray-400 ml-0.5">{product.unitLabel}</span>
+                {qty}<span className="text-[9px] font-medium text-gray-600 ml-0.5">{product.unitLabel}</span>
               </span>
               <button
                 onClick={() => updateItem(product._id, Math.min(product.maxQty || 50, qty + step), 'tomorrow', { silent: true })}
@@ -171,24 +171,24 @@ function SpecialRequestModal({ onClose }) {
           <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
             <div className="text-5xl mb-3">🎊</div>
             <h3 className="font-black text-xl text-gray-900 mb-2">Request Submitted!</h3>
-            <p className="text-gray-500 text-sm mb-6">We'll contact you within 24 hours to confirm availability and pricing.</p>
+            <p className="text-gray-700 text-sm mb-6">We'll contact you within 24 hours to confirm availability and pricing.</p>
             <button onClick={onClose} className="bg-green-600 text-white font-bold px-8 py-3 rounded-xl">Done</button>
           </div>
         ) : (
           <form onSubmit={submit} className="px-5 py-4 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
-                <label className="text-xs font-medium text-gray-500">Your Name *</label>
+                <label className="text-xs font-medium text-gray-700">Your Name *</label>
                 <input value={form.buyerName} onChange={e => setField('buyerName', e.target.value)} required
                   className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300" />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500">Phone *</label>
+                <label className="text-xs font-medium text-gray-700">Phone *</label>
                 <input value={form.phone} onChange={e => setField('phone', e.target.value)} type="tel" required
                   className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300" />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500">Email</label>
+                <label className="text-xs font-medium text-gray-700">Email</label>
                 <input value={form.email} onChange={e => setField('email', e.target.value)} type="email"
                   className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300" />
               </div>
@@ -196,14 +196,14 @@ function SpecialRequestModal({ onClose }) {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-gray-500">Occasion Type</label>
+                <label className="text-xs font-medium text-gray-700">Occasion Type</label>
                 <select value={form.occasionType} onChange={e => setField('occasionType', e.target.value)}
                   className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300">
                   {OCCASION_TYPES.map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500">Required Date *</label>
+                <label className="text-xs font-medium text-gray-700">Required Date *</label>
                 <input type="date" value={form.requiredDate} onChange={e => setField('requiredDate', e.target.value)} required
                   min={new Date().toISOString().slice(0,10)}
                   className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300" />
@@ -213,7 +213,7 @@ function SpecialRequestModal({ onClose }) {
             {/* Items */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-medium text-gray-500">Required Items</label>
+                <label className="text-xs font-medium text-gray-700">Required Items</label>
                 <button type="button" onClick={addItem} className="text-xs text-green-600 font-semibold">+ Add Item</button>
               </div>
               <div className="space-y-2">
@@ -236,7 +236,7 @@ function SpecialRequestModal({ onClose }) {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-500">Additional Notes</label>
+              <label className="text-xs font-medium text-gray-700">Additional Notes</label>
               <textarea rows={2} value={form.additionalNotes} onChange={e => setField('additionalNotes', e.target.value)}
                 placeholder="Any special requirements…"
                 className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-300" />
@@ -405,7 +405,7 @@ export default function KoyambeduHome() {
             </div>
             <div className="text-left flex-1">
               <p className="text-gray-900 font-bold text-sm">Set your delivery area</p>
-              <p className="text-gray-400 text-xs mt-0.5">See if we deliver to you + estimate delivery</p>
+              <p className="text-gray-600 text-xs mt-0.5">See if we deliver to you + estimate delivery</p>
             </div>
             <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-green-50">
               <FiChevronRight size={14} className="text-green-700" />
@@ -431,7 +431,7 @@ export default function KoyambeduHome() {
               <div className="text-center py-16 px-4">
                 <FaLeaf size={48} className="text-emerald-300 mx-auto mb-3" />
                 <p className="font-bold text-gray-600 text-base">No products yet</p>
-                <p className="text-gray-400 text-sm mt-1">Sellers are stocking up — check back soon!</p>
+                <p className="text-gray-600 text-sm mt-1">Sellers are stocking up — check back soon!</p>
               </div>
             )}
           </>
@@ -453,7 +453,7 @@ export default function KoyambeduHome() {
                 </div>
                 <div className="pt-1">
                   <p className="font-bold text-gray-800 text-xs">{step.title}</p>
-                  <p className="text-gray-500 text-xs mt-0.5">{step.desc}</p>
+                  <p className="text-gray-700 text-xs mt-0.5">{step.desc}</p>
                 </div>
               </div>
             ))}
@@ -472,7 +472,7 @@ export default function KoyambeduHome() {
                 <item.Icon size={17} style={{ color: item.color }} />
               </div>
               <p className="font-semibold text-xs text-gray-700">{item.title}</p>
-              <p className="text-[10px] text-gray-400">{item.desc}</p>
+              <p className="text-[10px] text-gray-600">{item.desc}</p>
             </div>
           ))}
         </div>

@@ -474,11 +474,11 @@ export default function KoyambeduCheckout() {
       <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4 text-4xl"
         style={{ background: '#dcfce7' }}>✅</div>
       <h2 className="font-black text-2xl text-green-700 mb-1">Order Placed!</h2>
-      <p className="text-gray-500 text-sm mb-1">Order ID: <strong className="text-gray-800">{placedOrder.orderId}</strong></p>
-      <p className="text-gray-400 text-xs mb-4">
+      <p className="text-gray-700 text-sm mb-1">Order ID: <strong className="text-gray-900">{placedOrder.orderId}</strong></p>
+      <p className="text-gray-600 text-xs mb-4">
         Delivery on {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' })} · {SLOTS.find(s => s.key === selectedSlot)?.label || 'Slot 1: 9 AM–12 PM'}
       </p>
-      <p className="text-gray-500 text-sm mb-6">WhatsApp updates at each stage.</p>
+      <p className="text-gray-700 text-sm mb-6">WhatsApp updates at each stage.</p>
       <button onClick={() => navigate('/koyambedu/orders')}
         className="bg-green-600 text-white font-bold px-8 py-3 rounded-xl w-full max-w-xs">
         Track My Order
@@ -541,7 +541,7 @@ export default function KoyambeduCheckout() {
               <h2 className="font-bold text-gray-800 text-sm">Delivery Address</h2>
 
               <div>
-                <label className="text-xs text-gray-500 font-semibold">Full Name *</label>
+                <label className="text-xs text-gray-700 font-semibold">Full Name *</label>
                 <input
                   type="text" value={addr.fullName}
                   onChange={e => setAddr(a => ({ ...a, fullName: e.target.value }))}
@@ -551,7 +551,7 @@ export default function KoyambeduCheckout() {
               </div>
 
               <div>
-                <label className="text-xs text-gray-500 font-semibold">Phone Number *</label>
+                <label className="text-xs text-gray-700 font-semibold">Phone Number *</label>
                 <input
                   type="tel" inputMode="numeric" value={addr.phone}
                   onChange={e => setAddr(a => ({ ...a, phone: e.target.value.replace(/\D/g,'').slice(0,10) }))}
@@ -568,7 +568,7 @@ export default function KoyambeduCheckout() {
               </div>
 
               <div>
-                <label className="text-xs text-gray-500 font-semibold">Door No / Street *</label>
+                <label className="text-xs text-gray-700 font-semibold">Door No / Street *</label>
                 <input
                   type="text" value={addr.addressLine1}
                   onChange={e => setAddr(a => ({ ...a, addressLine1: e.target.value }))}
@@ -578,7 +578,7 @@ export default function KoyambeduCheckout() {
               </div>
 
               <div>
-                <label className="text-xs text-gray-500 font-semibold">Address Line 2</label>
+                <label className="text-xs text-gray-700 font-semibold">Address Line 2</label>
                 <input
                   type="text" value={addr.addressLine2}
                   onChange={e => setAddr(a => ({ ...a, addressLine2: e.target.value }))}
@@ -589,7 +589,7 @@ export default function KoyambeduCheckout() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-gray-500 font-semibold">City</label>
+                  <label className="text-xs text-gray-700 font-semibold">City</label>
                   <input
                     type="text" value={addr.city}
                     onChange={e => setAddr(a => ({ ...a, city: e.target.value }))}
@@ -597,7 +597,7 @@ export default function KoyambeduCheckout() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 font-semibold">Pincode *</label>
+                  <label className="text-xs text-gray-700 font-semibold">Pincode *</label>
                   <input
                     type="number" inputMode="numeric" value={addr.pincode}
                     onChange={e => setAddr(a => ({ ...a, pincode: e.target.value.slice(0,6) }))}
@@ -608,7 +608,7 @@ export default function KoyambeduCheckout() {
               </div>
 
               <div>
-                <label className="text-xs text-gray-500 font-semibold">Landmark (optional)</label>
+                <label className="text-xs text-gray-700 font-semibold">Landmark (optional)</label>
                 <input
                   type="text" value={addr.landmark}
                   onChange={e => setAddr(a => ({ ...a, landmark: e.target.value }))}
@@ -646,7 +646,7 @@ export default function KoyambeduCheckout() {
             <div className="bg-white rounded-2xl p-4 space-y-1"
               style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
               <h2 className="font-bold text-gray-800 text-sm">Pin Your Location</h2>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-600">
                 Drag the map so the green pin sits exactly on your building, then tap Confirm.
               </p>
             </div>
@@ -750,14 +750,14 @@ export default function KoyambeduCheckout() {
               style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
               <h2 className="font-bold text-gray-800 text-sm mb-1">Order Summary</h2>
               <div className="flex items-center justify-between text-sm border-b border-gray-50 pb-2">
-                <span className="text-gray-400 flex items-center gap-1.5"><FiMapPin size={13} /> Area</span>
+                <span className="text-gray-600 flex items-center gap-1.5"><FiMapPin size={13} /> Area</span>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-gray-700">{locationData?.areaName || '—'}</span>
                   <button onClick={() => setStep(1)} className="text-green-500 text-xs underline">Change</button>
                 </div>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">📅 Date</span>
+                <span className="text-gray-600">📅 Date</span>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-gray-700">
                     {deliveryDates.find(d => d.value === selectedDate)?.label || 'Tomorrow'} · {SLOTS.find(s => s.key === selectedSlot)?.label || 'Slot 1'}
@@ -784,7 +784,7 @@ export default function KoyambeduCheckout() {
                   <span className="text-2xl">{opt.icon}</span>
                   <div className="flex-1">
                     <p className="font-semibold text-gray-800 text-sm">{opt.label}</p>
-                    <p className="text-xs text-gray-400">{opt.sub}</p>
+                    <p className="text-xs text-gray-600">{opt.sub}</p>
                   </div>
                   {paymentMethod === opt.val && <FiCheck size={18} className="text-green-600" />}
                 </button>
@@ -796,14 +796,14 @@ export default function KoyambeduCheckout() {
               style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
               <h2 className="font-bold text-gray-800 text-sm mb-3">Bill Details</h2>
               {cart.items?.map((it, idx) => (
-                <div key={idx} className="flex justify-between text-xs text-gray-500 mb-1.5">
+                <div key={idx} className="flex justify-between text-xs text-gray-700 mb-1.5">
                   <span>{it.name} × {it.quantity} {it.unitLabel || it.unit}</span>
                   <span>₹{((it.unitPrice || 0) * it.quantity).toFixed(0)}</span>
                 </div>
               ))}
               <div className="border-t border-gray-100 mt-2 pt-2 space-y-1.5 text-sm">
-                <div className="flex justify-between text-gray-500"><span>Products Total</span><span>₹{subtotal.toFixed(2)}</span></div>
-                <div className="flex justify-between text-gray-500">
+                <div className="flex justify-between text-gray-700 font-medium"><span>Products Total</span><span>₹{subtotal.toFixed(2)}</span></div>
+                <div className="flex justify-between text-gray-700 font-medium">
                   <span className="flex items-center gap-1">
                     Delivery Charges
                     {distanceKm !== null && (
@@ -814,7 +814,7 @@ export default function KoyambeduCheckout() {
                   </span>
                   <span>₹{deliveryCharge}</span>
                 </div>
-                <div className="flex justify-between text-gray-500"><span>Platform Fee</span><span>₹{platformFee}</span></div>
+                <div className="flex justify-between text-gray-700 font-medium"><span>Platform Fee</span><span>₹{platformFee}</span></div>
                 {couponDiscount > 0 && (
                   <div className="flex justify-between font-semibold text-green-600">
                     <span>Promo ({couponApplied?.code})</span><span>−₹{couponDiscount.toFixed(2)}</span>
