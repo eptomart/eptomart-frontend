@@ -298,36 +298,31 @@ function ShopBySource() {
         </div>
       </Link>
 
-      {/* Farmer Fresh + Proteins — compact photo tiles */}
+      {/* Farmer Fresh + Proteins — photo-first tiles, bottom text overlay */}
       <div className="grid grid-cols-2 gap-2">
         <Link to="/uzhavar"
-          className="relative flex items-center overflow-hidden rounded-xl active:scale-[0.96] transition-transform"
-          style={{ minHeight: 72, boxShadow: '0 4px 12px rgba(13,148,136,0.30)' }}>
+          className="relative overflow-hidden rounded-xl active:scale-[0.96] transition-transform block"
+          style={{ height: 110, boxShadow: '0 4px 16px rgba(13,148,136,0.35)' }}>
           <img src="/categories/uzhavar.jpg" alt="Farmer Fresh"
             className="absolute inset-0 w-full h-full object-cover" />
+          {/* Light vignette top, heavy only at bottom for text */}
           <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(90deg, rgba(19,78,74,0.85) 0%, rgba(19,78,74,0.50) 100%)' }} />
-          <div className="relative z-10 px-3 py-3 flex items-center gap-2 w-full">
-            <div className="min-w-0 flex-1">
-              <p className="text-white font-extrabold text-[13px] leading-tight">Farmer Fresh</p>
-              <p className="text-teal-200 text-[9px] font-semibold mt-0.5">Farm Direct</p>
-            </div>
-            <FiChevronRight size={13} className="text-white/60 shrink-0" />
+            style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.10) 55%, transparent 100%)' }} />
+          <div className="absolute bottom-0 left-0 right-0 px-3 py-2.5">
+            <p className="text-white font-black text-[14px] leading-tight drop-shadow-sm">Farmer Fresh</p>
+            <p className="text-white/80 text-[10px] font-semibold">Farm Direct</p>
           </div>
         </Link>
         <Link to="/eptofresh"
-          className="relative flex items-center overflow-hidden rounded-xl active:scale-[0.96] transition-transform"
-          style={{ minHeight: 72, boxShadow: '0 4px 12px rgba(234,88,12,0.30)' }}>
+          className="relative overflow-hidden rounded-xl active:scale-[0.96] transition-transform block"
+          style={{ height: 110, boxShadow: '0 4px 16px rgba(234,88,12,0.35)' }}>
           <img src="/categories/proteins.jpg" alt="Proteins"
             className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(90deg, rgba(124,45,18,0.88) 0%, rgba(124,45,18,0.50) 100%)' }} />
-          <div className="relative z-10 px-3 py-3 flex items-center gap-2 w-full">
-            <div className="min-w-0 flex-1">
-              <p className="text-white font-extrabold text-[13px] leading-tight">Proteins</p>
-              <p className="text-orange-200 text-[9px] font-semibold mt-0.5">Hyperlocal</p>
-            </div>
-            <FiChevronRight size={13} className="text-white/60 shrink-0" />
+            style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.10) 55%, transparent 100%)' }} />
+          <div className="absolute bottom-0 left-0 right-0 px-3 py-2.5">
+            <p className="text-white font-black text-[14px] leading-tight drop-shadow-sm">Proteins</p>
+            <p className="text-white/80 text-[10px] font-semibold">Hyperlocal</p>
           </div>
         </Link>
       </div>
