@@ -19,7 +19,7 @@ const APP_CONFIG = {
     pages: {
       home: {
         title:       'Eptomart — Shop Everything Online | Fast Delivery in Chennai',
-        description: 'India's fast, affordable online shopping destination. Electronics, fashion, groceries and more — delivered to your door.',
+        description: "India's fast, affordable online shopping destination. Electronics, fashion, groceries and more — delivered to your door.",
         canonical:   `${BASE_URL}/`,
         keywords:    'online shopping, buy online India, electronics, fashion, groceries, Chennai delivery',
         image:       DEFAULT_IMAGE,
@@ -31,7 +31,7 @@ const APP_CONFIG = {
               '@id':   `${BASE_URL}/#website`,
               url:     `${BASE_URL}/`,
               name:    'Eptomart',
-              description: 'India's fast, affordable online shopping destination.',
+              description: "India's fast, affordable online shopping destination.",
               potentialAction: {
                 '@type':       'SearchAction',
                 target:        { '@type': 'EntryPoint', urlTemplate: `${BASE_URL}/shop?q={search_term_string}` },
@@ -83,7 +83,7 @@ const APP_CONFIG = {
     pages: {
       home: {
         title:       'Koyambedu Daily — Fresh Vegetables & Fruits Delivered | Eptomart',
-        description: 'Order fresh vegetables, fruits and groceries from Koyambedu Market — Asia's largest wholesale market — delivered to your doorstep in Chennai.',
+        description: "Order fresh vegetables, fruits and groceries from Koyambedu Market — Asia's largest wholesale market — delivered to your doorstep in Chennai.",
         canonical:   `${BASE_URL}/koyambedu`,
         keywords:    'koyambedu market, fresh vegetables online Chennai, fruits delivery, wholesale prices, daily groceries',
         image:       `${BASE_URL}/icons/koyambedu-og.png`,
