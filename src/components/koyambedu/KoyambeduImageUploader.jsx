@@ -64,23 +64,23 @@ export default function KoyambeduImageUploader({ images = [], onChange, maxImage
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2">
           {images.map((img, idx) => (
-            <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-gray-200 group">
-              <img src={img.url} alt="" className="w-full h-full object-cover" />
-              {/* Primary badge */}
+            <div key={idx} className="relative w-24 rounded-xl overflow-hidden border-2 border-gray-200"
+              style={{ border: img.isPrimary ? '2px solid #16a34a' : undefined }}>
+              <img src={img.url} alt="" className="w-full h-20 object-cover" />
               {img.isPrimary && (
-                <span className="absolute top-1 left-1 bg-green-500 text-white text-[9px] font-bold px-1 rounded">Main</span>
+                <span className="absolute top-1 left-1 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">Main</span>
               )}
-              {/* Hover actions */}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-1 transition">
+              {/* Always-visible action buttons (mobile-friendly) */}
+              <div className="flex gap-1 p-1 bg-gray-50 border-t border-gray-100">
                 {!img.isPrimary && (
                   <button type="button" onClick={() => setPrimary(idx)}
-                    className="text-[10px] bg-green-500 text-white px-2 py-0.5 rounded font-bold">
-                    Set Main
+                    className="flex-1 text-[9px] bg-green-500 text-white py-0.5 rounded font-bold text-center">
+                    Main
                   </button>
                 )}
                 <button type="button" onClick={() => remove(idx)}
-                  className="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded font-bold">
-                  Remove
+                  className="flex-1 text-[9px] bg-red-500 text-white py-0.5 rounded font-bold text-center">
+                  ✕ Del
                 </button>
               </div>
             </div>
@@ -113,7 +113,7 @@ export default function KoyambeduImageUploader({ images = [], onChange, maxImage
       />
 
       {images.length > 0 && (
-        <p className="text-[10px] text-gray-400 mt-1">Tap an image and click "Set Main" to set cover photo.</p>
+        <p className="text-[10px] text-gray-400 mt-1">Tap "Main" below any image to set it as the cover photo.</p>
       )}
     </div>
   );

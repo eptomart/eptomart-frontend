@@ -281,40 +281,41 @@ function ShopBySource() {
         style={{ height: 200, boxShadow: '0 8px 28px rgba(6,78,59,0.50)' }}>
         <img src="/categories/koyambedu.jpg" alt="Koyambedu Market"
           className="absolute inset-0 w-full h-full object-cover" />
-        {/* Subtle dark overlay — lets photo colours show, text stays readable */}
+        {/* Strong gradient left-to-right: solid dark on left (text), fades right (photo shows) */}
         <div className="absolute inset-0"
-          style={{ background: 'linear-gradient(135deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.28) 55%, rgba(0,0,0,0.08) 100%)' }} />
+          style={{ background: 'linear-gradient(100deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.55) 50%, rgba(0,0,0,0.15) 100%)' }} />
         {/* Content */}
         <div className="absolute inset-0 flex flex-col justify-between p-4">
-          {/* Top: label + market size badge */}
+          {/* Top: badges */}
           <div className="flex items-start justify-between">
-            <div>
-              <span className="bg-emerald-400/30 border border-emerald-400/50 text-emerald-200 text-[9px] font-black tracking-widest uppercase px-2 py-0.5 rounded-full">
-                MARKET FRESH · DAILY
-              </span>
-            </div>
-            <span className="bg-white/20 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/30">
-              🏆 Asia's Largest Market
+            <span className="bg-emerald-500 text-white text-[9px] font-black tracking-widest uppercase px-2.5 py-1 rounded-full shadow">
+              MARKET FRESH · DAILY
+            </span>
+            <span className="bg-black/40 text-white text-[9px] font-bold px-2 py-1 rounded-full border border-white/25">
+              🏆 Asia's Largest
             </span>
           </div>
           {/* Middle: headline + stats */}
           <div>
-            <p className="text-white font-black text-[26px] leading-tight tracking-tight drop-shadow-lg">Koyambedu Daily</p>
-            <p className="text-white/85 text-[12px] font-medium mt-0.5">Veggies, fruits &amp; flowers direct from market</p>
-            {/* Market size stats */}
-            <div className="flex gap-3 mt-2.5">
+            <p className="text-white font-black text-[28px] leading-tight tracking-tight"
+              style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>
+              Koyambedu Daily
+            </p>
+            <p className="text-white text-[12px] font-semibold mt-1 opacity-90">
+              Veggies, fruits &amp; flowers direct from market
+            </p>
+            <div className="flex gap-2 mt-3">
               {[['2,000+','Vendors'],['300+','Varieties'],['1,000T','Daily Trade']].map(([num, label]) => (
-                <div key={label} className="bg-white/15 backdrop-blur-sm rounded-lg px-2 py-1 border border-white/20">
-                  <p className="text-white font-black text-[12px] leading-tight">{num}</p>
-                  <p className="text-white/70 text-[9px]">{label}</p>
+                <div key={label} className="bg-white/20 rounded-lg px-2.5 py-1.5 border border-white/30">
+                  <p className="text-white font-black text-[13px] leading-tight">{num}</p>
+                  <p className="text-white text-[9px] opacity-80 font-medium">{label}</p>
                 </div>
               ))}
             </div>
           </div>
           {/* Bottom: CTA */}
-          <div className="flex justify-end">
-            <span className="bg-white text-emerald-700 font-black text-[12px] px-5 py-2.5 rounded-xl flex items-center gap-1.5"
-              style={{ boxShadow: '0 3px 12px rgba(0,0,0,0.25)' }}>
+          <div className="flex justify-start">
+            <span className="bg-emerald-500 text-white font-black text-[12px] px-5 py-2.5 rounded-xl flex items-center gap-1.5 shadow-lg">
               Shop Now <FiArrowRight size={13} />
             </span>
           </div>
