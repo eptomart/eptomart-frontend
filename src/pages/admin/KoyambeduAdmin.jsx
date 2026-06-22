@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
-const TAB_LIST = ['dashboard', 'orders', 'sellers', 'seller-admins', 'categories', 'danger'];
+const TAB_LIST = ['dashboard', 'orders', 'sellers', 'seller-admins', 'categories', 'products', 'danger'];
 
 // ── Danger Zone component ─────────────────────
 function DangerZone() {
@@ -162,6 +162,14 @@ export default function KoyambeduAdmin() {
   const [kbdProdForm,      setKbdProdForm]       = useState(EMPTY_KBD_PRODUCT);
   const [addProdSaving,    setAddProdSaving]      = useState(false);
 
+  // Products tab
+  const [products,       setProducts]       = useState([]);
+  const [prodSearch,     setProdSearch]     = useState('');
+  const [prodAvail,      setProdAvail]      = useState('');
+  const [editProduct,    setEditProduct]    = useState(null); // product being edited
+  const [editProdForm,   setEditProdForm]   = useState({});
+  const [editProdSaving, setEditProdSaving] = useState(false);
+
   useEffect(() => { loadTab(tab); }, [tab]);
 
   const loadTab = async (t) => {
@@ -188,6 +196,12 @@ export default function KoyambeduAdmin() {
         const params = catFilter ? `?status=${catFilter}` : '';
         const { data } = await api.get(`/koyambedu/admin/categories${params}`);
         setCats(data.categories || []);
+      } else if (t === 'products') {
+        const params = new URLSearchParams();
+        if (prodSearch) params.set('search', prodSearch);
+        if (prodAvail)  params.set('available', prodAvail);
+        const { data } = await api.get(`/koyambedu/admin/products?${params}`);
+        setProducts(data.products || []);
       }
     } catch { toast.error('Failed to load'); }
     finally { setLoading(false); }
@@ -373,6 +387,35 @@ export default function KoyambeduAdmin() {
       await api.put(`/koyambedu/admin/categories/${cat._id}`, { isActive: !cat.isActive });
       toast.success(cat.isActive ? 'Category hidden' : 'Category activated');
       loadTab('categories');
+    } catch { toast.error('Failed'); }
+  };
+
+  const openEditProduct = (p) => {
+    setEditProduct(p);
+    setEditProdForm({
+      name: p.name, nameTamil: p.nameTamil || '',
+      currentPrice: p.currentPrice, stockQty: p.stockQty,
+      minQty: p.minQty, maxQty: p.maxQty, isAvailable: p.isAvailable,
+      description: p.description || '',
+    });
+  };
+
+  const saveEditProduct = async () => {
+    setEditProdSaving(true);
+    try {
+      await api.put(`/koyambedu/admin/products/${editProduct._id}`, editProdForm);
+      toast.success('Product updated');
+      setEditProduct(null);
+      loadTab('products');
+    } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
+    finally { setEditProdSaving(false); }
+  };
+
+  const toggleProduct = async (productId) => {
+    try {
+      const { data } = await api.patch(`/koyambedu/admin/products/${productId}/toggle`);
+      toast.success(data.isAvailable ? 'Product enabled' : 'Product disabled');
+      setProducts(prev => prev.map(p => p._id === productId ? { ...p, isAvailable: data.isAvailable } : p));
     } catch { toast.error('Failed'); }
   };
 
@@ -713,7 +756,115 @@ export default function KoyambeduAdmin() {
             </div>
           </div>
         )}
+
+        {/* ── PRODUCTS ── */}
+        {tab === 'products' && !loading && (
+          <div>
+            <div className="flex gap-2 mb-4 flex-wrap">
+              <input value={prodSearch} onChange={e => setProdSearch(e.target.value)}
+                placeholder="Search product name…"
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm flex-1 min-w-[140px] focus:outline-none focus:ring-2 focus:ring-green-400" />
+              <select value={prodAvail} onChange={e => setProdAvail(e.target.value)}
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none">
+                <option value="">All</option>
+                <option value="true">Available</option>
+                <option value="false">Unavailable</option>
+              </select>
+              <button onClick={() => loadTab('products')}
+                className="bg-green-600 text-white font-bold px-4 py-2 rounded-xl text-sm">
+                Search
+              </button>
+            </div>
+            <div className="space-y-3">
+              {products.map(p => (
+                <div key={p._id} className={`bg-white rounded-2xl border p-3 ${!p.isAvailable ? 'opacity-60 border-gray-100' : 'border-gray-200'}`}>
+                  <div className="flex items-start gap-3">
+                    {p.images?.[0]?.url && (
+                      <img src={p.images[0].url} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-bold text-gray-800 text-sm leading-tight">{p.name}</p>
+                          {p.nameTamil && <p className="text-[11px] text-gray-400">{p.nameTamil}</p>}
+                          <p className="text-[11px] text-gray-500 mt-0.5">
+                            {p.category?.icon} {p.category?.name} · {p.seller?.businessName}
+                          </p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${p.isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {p.isAvailable ? 'Available' : 'Off'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-600">
+                        <span className="font-black text-gray-800">₹{p.currentPrice}</span>
+                        <span>/{p.unitLabel || p.unit}</span>
+                        <span className="text-gray-400">Stock: {p.stockQty}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-2.5">
+                    <button onClick={() => openEditProduct(p)}
+                      className="flex-1 border border-blue-200 text-blue-600 text-xs font-bold py-1.5 rounded-xl hover:bg-blue-50">
+                      ✏️ Edit
+                    </button>
+                    <button onClick={() => toggleProduct(p._id)}
+                      className={`flex-1 text-xs font-bold py-1.5 rounded-xl border ${p.isAvailable ? 'border-orange-200 text-orange-600 hover:bg-orange-50' : 'border-green-200 text-green-600 hover:bg-green-50'}`}>
+                      {p.isAvailable ? 'Disable' : 'Enable'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {products.length === 0 && <p className="text-center text-gray-500 py-8">No products found</p>}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* ── Edit Product modal ── */}
+      {editProduct && (
+        <div className="fixed inset-0 bg-black/50 z-[9995] flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-800">Edit Product</h3>
+              <button onClick={() => setEditProduct(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">✕</button>
+            </div>
+            <p className="text-xs text-gray-500">{editProduct.seller?.businessName}</p>
+            {[
+              ['Name (English)', 'name', 'text'],
+              ['Name (Tamil)', 'nameTamil', 'text'],
+              ['Price (₹)', 'currentPrice', 'number'],
+              ['Stock Qty', 'stockQty', 'number'],
+              ['Min Qty', 'minQty', 'number'],
+              ['Max Qty', 'maxQty', 'number'],
+            ].map(([label, key, type]) => (
+              <div key={key}>
+                <label className="text-xs text-gray-500 font-medium">{label}</label>
+                <input type={type} value={editProdForm[key] ?? ''}
+                  onChange={e => setEditProdForm(f => ({ ...f, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))}
+                  className="w-full mt-0.5 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+              </div>
+            ))}
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Description</label>
+              <textarea value={editProdForm.description || ''} rows={2}
+                onChange={e => setEditProdForm(f => ({ ...f, description: e.target.value }))}
+                className="w-full mt-0.5 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none resize-none" />
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={!!editProdForm.isAvailable}
+                onChange={e => setEditProdForm(f => ({ ...f, isAvailable: e.target.checked }))} />
+              <span className="text-sm font-medium text-gray-700">Available for sale</span>
+            </label>
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setEditProduct(null)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
+              <button onClick={saveEditProduct} disabled={editProdSaving}
+                className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
+                {editProdSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Order update modal ── */}
       {updateModal && (
