@@ -281,9 +281,9 @@ function ShopBySource() {
         style={{ height: 200, boxShadow: '0 8px 28px rgba(6,78,59,0.50)' }}>
         <img src="/categories/koyambedu.jpg" alt="Koyambedu Market"
           className="absolute inset-0 w-full h-full object-cover" />
-        {/* Gradient: light at top-right (photo shows), heavy at bottom-left (text readable) */}
+        {/* Subtle dark overlay — lets photo colours show, text stays readable */}
         <div className="absolute inset-0"
-          style={{ background: 'linear-gradient(135deg, rgba(6,78,59,0.82) 0%, rgba(6,78,59,0.60) 50%, rgba(6,78,59,0.20) 100%)' }} />
+          style={{ background: 'linear-gradient(135deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.28) 55%, rgba(0,0,0,0.08) 100%)' }} />
         {/* Content */}
         <div className="absolute inset-0 flex flex-col justify-between p-4">
           {/* Top: label + market size badge */}
