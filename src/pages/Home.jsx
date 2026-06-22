@@ -275,26 +275,49 @@ const SOURCE_TILES = [
 function ShopBySource() {
   return (
     <div className="px-4 space-y-2">
-      {/* Koyambedu Daily — full-width hero tile with real photo */}
+      {/* Koyambedu Daily — HERO tile, tall + prominent */}
       <Link to="/koyambedu"
-        className="relative flex items-center overflow-hidden rounded-2xl active:scale-[0.98] transition-transform"
-        style={{ minHeight: 100, boxShadow: '0 6px 20px rgba(6,78,59,0.40)' }}>
-        {/* Full photo background */}
+        className="relative overflow-hidden rounded-2xl active:scale-[0.98] transition-transform block"
+        style={{ height: 200, boxShadow: '0 8px 28px rgba(6,78,59,0.50)' }}>
         <img src="/categories/koyambedu.jpg" alt="Koyambedu Market"
           className="absolute inset-0 w-full h-full object-cover" />
-        {/* Dark gradient overlay so text is readable */}
+        {/* Gradient: light at top-right (photo shows), heavy at bottom-left (text readable) */}
         <div className="absolute inset-0"
-          style={{ background: 'linear-gradient(90deg, rgba(6,78,59,0.88) 0%, rgba(6,78,59,0.65) 55%, rgba(6,78,59,0.25) 100%)' }} />
-        <div className="relative z-10 pl-4 pr-3 py-4 flex items-center gap-3 w-full">
-          <div className="flex-1 min-w-0">
-            <p className="text-emerald-300 text-[9px] font-black tracking-widest uppercase mb-0.5">MARKET FRESH · DAILY</p>
-            <p className="text-white font-black text-[20px] leading-tight tracking-tight">Koyambedu Daily</p>
-            <p className="text-white/75 text-[11px] mt-0.5 font-medium">Veggies, fruits &amp; flowers direct from market</p>
+          style={{ background: 'linear-gradient(135deg, rgba(6,78,59,0.82) 0%, rgba(6,78,59,0.60) 50%, rgba(6,78,59,0.20) 100%)' }} />
+        {/* Content */}
+        <div className="absolute inset-0 flex flex-col justify-between p-4">
+          {/* Top: label + market size badge */}
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="bg-emerald-400/30 border border-emerald-400/50 text-emerald-200 text-[9px] font-black tracking-widest uppercase px-2 py-0.5 rounded-full">
+                MARKET FRESH · DAILY
+              </span>
+            </div>
+            <span className="bg-white/20 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/30">
+              🏆 Asia's Largest Market
+            </span>
           </div>
-          <span className="bg-white text-emerald-700 font-black text-[11px] px-4 py-2.5 rounded-xl shrink-0 flex items-center gap-1"
-            style={{ boxShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
-            Shop <FiArrowRight size={12} />
-          </span>
+          {/* Middle: headline + stats */}
+          <div>
+            <p className="text-white font-black text-[26px] leading-tight tracking-tight drop-shadow-lg">Koyambedu Daily</p>
+            <p className="text-white/85 text-[12px] font-medium mt-0.5">Veggies, fruits &amp; flowers direct from market</p>
+            {/* Market size stats */}
+            <div className="flex gap-3 mt-2.5">
+              {[['2,000+','Vendors'],['300+','Varieties'],['1,000T','Daily Trade']].map(([num, label]) => (
+                <div key={label} className="bg-white/15 backdrop-blur-sm rounded-lg px-2 py-1 border border-white/20">
+                  <p className="text-white font-black text-[12px] leading-tight">{num}</p>
+                  <p className="text-white/70 text-[9px]">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Bottom: CTA */}
+          <div className="flex justify-end">
+            <span className="bg-white text-emerald-700 font-black text-[12px] px-5 py-2.5 rounded-xl flex items-center gap-1.5"
+              style={{ boxShadow: '0 3px 12px rgba(0,0,0,0.25)' }}>
+              Shop Now <FiArrowRight size={13} />
+            </span>
+          </div>
         </div>
       </Link>
 
