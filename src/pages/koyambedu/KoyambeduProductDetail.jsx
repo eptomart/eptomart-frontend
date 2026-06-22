@@ -58,6 +58,7 @@ export default function KoyambeduProductDetail() {
   const [deliveryType, setDelivery] = useState('tomorrow');
   const [qty,          setQty]      = useState(1);
   const [dates,        setDates]    = useState(getDeliveryDates());
+  const [priceHistory, setPriceHistory] = useState([]);
 
   useEffect(() => {
     api.get(`/koyambedu/products/${productId}`)
@@ -65,12 +66,15 @@ export default function KoyambeduProductDetail() {
         const p = r.data.product;
         setProduct(p);
         setQty(Math.max(1, p.minQty || p.qtyStep || 1));
-        // Default to tomorrow; if cutoff already passed default to DAT
         const d = getDeliveryDates();
         setDelivery(d.tomorrowAvailable ? 'tomorrow' : 'dat');
       })
       .catch(() => toast.error('Product not found'))
       .finally(() => setLoading(false));
+
+    api.get(`/koyambedu/products/${productId}/price-history`)
+      .then(r => setPriceHistory(r.data.history || []))
+      .catch(() => {});
 
     // Refresh cutoff check every minute
     const id = setInterval(() => setDates(getDeliveryDates()), 60_000);
@@ -280,6 +284,27 @@ export default function KoyambeduProductDetail() {
             </div>
           )}
         </div>
+
+        {/* ══ Price History ══ */}
+        {priceHistory.length > 0 && (
+          <div className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <FiTrendingUp size={15} className="text-green-600" />
+              <p className="font-bold text-gray-800 text-sm">Price History <span className="text-xs text-gray-400 font-normal">(last 30 days)</span></p>
+            </div>
+            <div className="space-y-1.5 max-h-36 overflow-y-auto">
+              {priceHistory.map((h, i) => (
+                <div key={i} className="flex items-center justify-between py-1 border-b border-gray-50 last:border-0">
+                  <span className="text-xs text-gray-500">
+                    {new Date(h.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short' })}
+                  </span>
+                  <span className="text-sm font-bold text-green-700">₹{h.price}</span>
+                  {h.note && <span className="text-[10px] text-gray-400 italic truncate max-w-[80px]">{h.note}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ══ Delivery option ══ */}
         <div className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>

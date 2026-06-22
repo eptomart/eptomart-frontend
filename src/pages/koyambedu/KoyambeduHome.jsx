@@ -359,7 +359,7 @@ export default function KoyambeduHome() {
           <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide pb-0.5">
             <span className="shrink-0 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1"
               style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.2)' }}>
-              <FiTruck size={10} /> ₹249 per 8 km
+              <FiTruck size={10} /> ₹125 per 4 km
             </span>
             <span className="shrink-0 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1"
               style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.2)' }}>
@@ -413,6 +413,29 @@ export default function KoyambeduHome() {
           </button>
         )}
 
+
+        {/* ── Category Grid ── */}
+        {categories.length > 0 && (
+          <div className="mb-5">
+            <p className="text-gray-800 font-black text-sm mb-3">Shop by Category</p>
+            <div className="grid grid-cols-4 gap-2">
+              <Link to="/koyambedu/shop"
+                className="flex flex-col items-center gap-1 bg-white rounded-2xl py-3 px-1 active:scale-95 transition"
+                style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <span className="text-2xl">🛒</span>
+                <span className="text-[10px] font-bold text-gray-700 text-center leading-tight">All</span>
+              </Link>
+              {categories.slice(0, 11).map(cat => (
+                <Link key={cat._id} to={`/koyambedu/shop?category=${cat._id}`}
+                  className="flex flex-col items-center gap-1 bg-white rounded-2xl py-3 px-1 active:scale-95 transition"
+                  style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                  <span className="text-2xl">{cat.icon || CAT_ICONS[cat.slug] || '🌿'}</span>
+                  <span className="text-[10px] font-bold text-gray-700 text-center leading-tight line-clamp-1">{cat.name}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Product sections */}
         {loading ? (
