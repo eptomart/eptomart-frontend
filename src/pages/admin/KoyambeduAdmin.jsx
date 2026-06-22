@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
+import KoyambeduImageUploader from '../../components/koyambedu/KoyambeduImageUploader';
 import toast from 'react-hot-toast';
 
-const TAB_LIST = ['dashboard', 'orders', 'sellers', 'seller-admins', 'categories', 'products', 'danger'];
+const TAB_LIST = ['dashboard', 'orders', 'sellers', 'seller-admins', 'categories', 'products'];
 
 // ── Danger Zone component ─────────────────────
 function DangerZone() {
@@ -413,6 +414,7 @@ export default function KoyambeduAdmin() {
       currentPrice: p.currentPrice, stockQty: p.stockQty,
       minQty: p.minQty, maxQty: p.maxQty, isAvailable: p.isAvailable,
       description: p.description || '',
+      images: p.images || [],
     });
   };
 
@@ -874,6 +876,11 @@ export default function KoyambeduAdmin() {
                 onChange={e => setEditProdForm(f => ({ ...f, isAvailable: e.target.checked }))} />
               <span className="text-sm font-medium text-gray-700">Available for sale</span>
             </label>
+            {/* Images */}
+            <KoyambeduImageUploader
+              images={editProdForm.images || []}
+              onChange={(imgs) => setEditProdForm(f => ({ ...f, images: imgs }))}
+            />
             <div className="flex gap-3 pt-1">
               <button onClick={() => setEditProduct(null)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
               <button onClick={saveEditProduct} disabled={editProdSaving}

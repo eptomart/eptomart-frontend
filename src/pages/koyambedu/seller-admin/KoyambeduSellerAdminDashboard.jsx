@@ -257,6 +257,7 @@ export default function KoyambeduSellerAdminDashboard() {
       isSameDay:     p.isSameDay,
       isNextDay:     p.isNextDay,
       sameDayCutoff: p.sameDayCutoff || '08:00',
+      images:        p.images || [],
     });
   };
 
@@ -861,7 +862,13 @@ export default function KoyambeduSellerAdminDashboard() {
               <h3 className="font-bold text-gray-800">Edit: {editProduct.name}</h3>
               <button onClick={() => setEditProduct(null)} className="text-gray-400 text-xl">✕</button>
             </div>
-            <p className="text-xs text-gray-400">Update price, stock, and availability.</p>
+            <p className="text-xs text-gray-400">Update price, stock, availability, and images.</p>
+
+            {/* Images */}
+            <KoyambeduImageUploader
+              images={prodForm.images || []}
+              onChange={(imgs) => setProdForm(f => ({ ...f, images: imgs }))}
+            />
 
             <div className="grid grid-cols-2 gap-3">
               <div>
