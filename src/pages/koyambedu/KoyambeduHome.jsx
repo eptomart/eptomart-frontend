@@ -427,10 +427,13 @@ export default function KoyambeduHome() {
               </Link>
               {categories.slice(0, 11).map(cat => (
                 <Link key={cat._id} to={`/koyambedu/shop?category=${cat._id}`}
-                  className="flex flex-col items-center gap-1 bg-white rounded-2xl py-3 px-1 active:scale-95 transition"
+                  className="flex flex-col items-center gap-1 bg-white rounded-2xl py-2 px-1 active:scale-95 transition overflow-hidden"
                   style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                  <span className="text-2xl">{cat.icon || CAT_ICONS[cat.slug] || '🌿'}</span>
-                  <span className="text-[10px] font-bold text-gray-700 text-center leading-tight line-clamp-1">{cat.name}</span>
+                  {cat.image
+                    ? <img src={cat.image} alt={cat.name} className="w-full h-12 object-cover rounded-xl" />
+                    : <span className="text-2xl py-1">{cat.icon || CAT_ICONS[cat.slug] || '🌿'}</span>
+                  }
+                  <span className="text-[10px] font-bold text-gray-700 text-center leading-tight line-clamp-1 px-1">{cat.name}</span>
                 </Link>
               ))}
             </div>

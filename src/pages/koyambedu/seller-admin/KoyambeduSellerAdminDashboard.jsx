@@ -77,8 +77,9 @@ export default function KoyambeduSellerAdminDashboard() {
   // Categories tab
   const [catList,       setCatList]       = useState([]);
   const [showCatForm,   setShowCatForm]   = useState(false);
-  const [catForm,       setCatForm]       = useState({ name:'', nameTamil:'', icon:'🌿', description:'' });
+  const [catForm,       setCatForm]       = useState({ name:'', nameTamil:'', icon:'🌿', image:'', description:'' });
   const [catSaving,     setCatSaving]     = useState(false);
+  const [catImgUploading, setCatImgUploading] = useState(false);
 
   // Product create modal
   const [showAddProduct, setShowAddProduct] = useState(false);
@@ -148,6 +149,21 @@ export default function KoyambeduSellerAdminDashboard() {
     } catch { toast.error('Failed to load categories'); }
   };
 
+  const uploadCatImage = async (file) => {
+    if (!file) return;
+    setCatImgUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const { data } = await api.post('/koyambedu/upload-image', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setCatForm(f => ({ ...f, image: data.url }));
+      toast.success('Image uploaded');
+    } catch { toast.error('Image upload failed'); }
+    finally { setCatImgUploading(false); }
+  };
+
   const submitCategory = async () => {
     if (!catForm.name.trim()) { toast.error('Category name is required'); return; }
     setCatSaving(true);
@@ -155,7 +171,7 @@ export default function KoyambeduSellerAdminDashboard() {
       await api.post('/koyambedu/seller-admin/categories', catForm);
       toast.success('Category submitted for admin approval');
       setShowCatForm(false);
-      setCatForm({ name:'', nameTamil:'', icon:'🌿', description:'' });
+      setCatForm({ name:'', nameTamil:'', icon:'🌿', image:'', description:'' });
       loadCatList();
       // Also refresh the categories dropdown used in product form
       setCategories([]);
@@ -525,6 +541,24 @@ export default function KoyambeduSellerAdminDashboard() {
               <input value={catForm.icon} onChange={e => setCatForm(f => ({ ...f, icon: e.target.value }))}
                 placeholder="🌿"
                 className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Category Image</label>
+              {catForm.image ? (
+                <div className="relative w-full h-28 rounded-xl overflow-hidden border border-gray-200 mt-1">
+                  <img src={catForm.image} alt="" className="w-full h-full object-cover" />
+                  <button type="button" onClick={() => setCatForm(f => ({ ...f, image: '' }))}
+                    className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg">Remove</button>
+                </div>
+              ) : (
+                <label className="flex items-center gap-2 border-2 border-dashed border-green-300 rounded-xl px-4 py-3 mt-1 text-sm text-green-700 font-semibold hover:bg-green-50 cursor-pointer w-full justify-center">
+                  {catImgUploading
+                    ? <><span className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" /> Uploading…</>
+                    : <><span>🖼️</span> Upload Image</>}
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={e => uploadCatImage(e.target.files?.[0])} disabled={catImgUploading} />
+                </label>
+              )}
             </div>
             <div>
               <label className="text-xs text-gray-500 font-medium">Description</label>

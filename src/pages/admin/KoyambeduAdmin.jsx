@@ -113,7 +113,8 @@ export default function KoyambeduAdmin() {
   // Category create/edit modal
   const [showCatForm,  setShowCatForm]  = useState(false);
   const [catFormEdit,  setCatFormEdit]  = useState(null); // null = create, object = edit
-  const [catForm,      setCatForm]      = useState({ name:'', nameTamil:'', icon:'🌿', description:'', sortOrder:'0' });
+  const [catForm,      setCatForm]      = useState({ name:'', nameTamil:'', icon:'🌿', image:'', description:'', sortOrder:'0' });
+  const [catImgUploading, setCatImgUploading] = useState(false);
   const [catSaving,    setCatSaving]    = useState(false);
 
   // Order update modal
@@ -355,14 +356,29 @@ export default function KoyambeduAdmin() {
 
   const openCatCreate = () => {
     setCatFormEdit(null);
-    setCatForm({ name:'', nameTamil:'', icon:'🌿', description:'', sortOrder:'0' });
+    setCatForm({ name:'', nameTamil:'', icon:'🌿', image:'', description:'', sortOrder:'0' });
     setShowCatForm(true);
   };
 
   const openCatEdit = (cat) => {
     setCatFormEdit(cat);
-    setCatForm({ name: cat.name, nameTamil: cat.nameTamil || '', icon: cat.icon || '🌿', description: cat.description || '', sortOrder: String(cat.sortOrder || 0) });
+    setCatForm({ name: cat.name, nameTamil: cat.nameTamil || '', icon: cat.icon || '🌿', image: cat.image || '', description: cat.description || '', sortOrder: String(cat.sortOrder || 0) });
     setShowCatForm(true);
+  };
+
+  const uploadCatImage = async (file) => {
+    if (!file) return;
+    setCatImgUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const { data } = await api.post('/koyambedu/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setCatForm(f => ({ ...f, image: data.url }));
+      toast.success('Image uploaded');
+    } catch { toast.error('Image upload failed'); }
+    finally { setCatImgUploading(false); }
   };
 
   const saveCat = async () => {
@@ -719,7 +735,10 @@ export default function KoyambeduAdmin() {
             <div className="space-y-2">
               {cats.map(cat => (
                 <div key={cat._id} className={`bg-white rounded-2xl border p-3 flex items-center gap-3 ${!cat.isActive ? 'opacity-50' : 'border-gray-200'}`}>
-                  <span className="text-2xl w-9 text-center">{cat.icon || '🌿'}</span>
+                  {cat.image
+                    ? <img src={cat.image} alt={cat.name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
+                    : <span className="text-2xl w-9 text-center flex-shrink-0">{cat.icon || '🌿'}</span>
+                  }
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-bold text-gray-800 text-sm">{cat.name}</p>
@@ -922,6 +941,31 @@ export default function KoyambeduAdmin() {
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
               </div>
             ))}
+
+            {/* Category image upload */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Category Image</label>
+              {catForm.image ? (
+                <div className="relative w-full h-28 rounded-xl overflow-hidden border border-gray-200">
+                  <img src={catForm.image} alt="" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setCatForm(f => ({ ...f, image: '' }))}
+                    className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg">
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <label className="flex items-center gap-2 border-2 border-dashed border-green-300 rounded-xl px-4 py-3 text-sm text-green-700 font-semibold hover:bg-green-50 cursor-pointer w-full justify-center">
+                  {catImgUploading
+                    ? <><span className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" /> Uploading…</>
+                    : <><span className="text-lg">🖼️</span> Upload Image</>}
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={e => uploadCatImage(e.target.files?.[0])} disabled={catImgUploading} />
+                </label>
+              )}
+            </div>
+
             <div className="flex gap-2 pt-1">
               <button onClick={() => setShowCatForm(false)}
                 className="flex-1 border border-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm">Cancel</button>
