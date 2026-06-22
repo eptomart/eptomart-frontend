@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import EptoSEO from '../../components/common/EptoSEO';
 import {
   FiArrowLeft, FiShoppingBag, FiMapPin,
   FiZap, FiCalendar, FiTrash2,
@@ -140,6 +141,16 @@ export default function KoyambeduShop() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f7] pb-24" style={{ paddingBottom: itemCount > 0 ? 140 : 96 }}>
+      <EptoSEO
+        app="koyambedu"
+        page="shop"
+        title={activeCategory ? `${activeCategory.name} — Koyambedu Daily | Eptomart` : undefined}
+        breadcrumb={[
+          { name: 'Home', url: 'https://www.eptomart.com/' },
+          { name: 'Koyambedu Daily', url: 'https://www.eptomart.com/koyambedu' },
+          ...(activeCategory ? [{ name: activeCategory.name, url: `https://www.eptomart.com/koyambedu/shop?category=${activeCategory._id}` }] : []),
+        ]}
+      />
 
       {/* ── Compact sticky green header (no Navbar) ── */}
       <div className="sticky top-0 z-30 relative overflow-hidden" style={{

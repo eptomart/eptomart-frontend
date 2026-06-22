@@ -12,6 +12,7 @@ import {
 import { FaDrumstickBite, FaFish, FaBone, FaBacon, FaFireAlt, FaStore } from 'react-icons/fa';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
 import { useAuth } from '../../context/AuthContext';
+import EptoSEO from '../../components/common/EptoSEO';
 
 // ── Shop initial avatar (initial letter colored circle) ──
 function ShopAvatar({ name, image, size = 70 }) {
@@ -111,6 +112,7 @@ export default function EptoFreshHome() {
 
   return (
     <div className="min-h-screen pb-28 w-full overflow-x-hidden" style={{ background: '#F5F4F2' }}>
+      <EptoSEO app="eptofresh" page="home" />
 
       {/* ── BRANDED HERO — no Navbar, compact sticky ── */}
       <div className="sticky top-0 z-30 relative overflow-hidden" style={{

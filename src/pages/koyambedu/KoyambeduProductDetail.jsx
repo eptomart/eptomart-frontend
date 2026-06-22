@@ -8,6 +8,7 @@
 // ============================================
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import EptoSEO, { buildProductSchema } from '../../components/common/EptoSEO';
 import {
   FiArrowLeft, FiStar, FiShoppingBag, FiPackage, FiAlertTriangle,
   FiZap, FiCalendar, FiClock, FiTrendingUp, FiTag, FiMapPin,
@@ -117,6 +118,7 @@ export default function KoyambeduProductDetail() {
   };
 
   // ── Render ───────────────────────────────────────────────────
+  const primaryImage = images.find(i => i.isPrimary)?.url || images[0]?.url;
   return (
     <div
       style={{
@@ -126,6 +128,29 @@ export default function KoyambeduProductDetail() {
         overflowX: 'hidden',
       }}
     >
+      <EptoSEO
+        app="koyambedu"
+        page="product"
+        title={`${product.name} — Koyambedu Daily | Eptomart`}
+        description={product.description || `Buy fresh ${product.name} at ₹${product.currentPrice}/${product.unitLabel || product.unit}. Sourced from Koyambedu wholesale market.`}
+        canonical={`https://www.eptomart.com/koyambedu/product/${productId}`}
+        image={primaryImage}
+        jsonLd={buildProductSchema({
+          name:         product.name,
+          description:  product.description || `Fresh ${product.name} from Koyambedu Market`,
+          image:        images.map(i => i.url).filter(Boolean),
+          price:        product.currentPrice,
+          availability: product.isAvailable ? 'InStock' : 'OutOfStock',
+          url:          `https://www.eptomart.com/koyambedu/product/${productId}`,
+          seller:       product.seller?.businessName || 'Koyambedu Daily Seller',
+        })}
+        breadcrumb={[
+          { name: 'Home', url: 'https://www.eptomart.com/' },
+          { name: 'Koyambedu Daily', url: 'https://www.eptomart.com/koyambedu' },
+          { name: 'Shop', url: 'https://www.eptomart.com/koyambedu/shop' },
+          { name: product.name, url: `https://www.eptomart.com/koyambedu/product/${productId}` },
+        ]}
+      />
 
       {/* ══ Sticky header ══ */}
       <div className="sticky top-0 z-30 bg-white"

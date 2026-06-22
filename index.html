@@ -48,9 +48,15 @@
     <meta name="twitter:description" content="India's fast, affordable online shopping destination" />
     <meta name="twitter:image" content="https://eptomart.com/og-image.png" />
 
-    <!-- Google Fonts -->
+    <!-- Resource hints — CDN and third-party origins -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://res.cloudinary.com" crossorigin />
+    <link rel="preconnect" href="https://api.razorpay.com" crossorigin />
+    <link rel="dns-prefetch" href="https://lh3.googleusercontent.com" />
+    <link rel="dns-prefetch" href="https://checkout.razorpay.com" />
+
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
     <title>Eptomart — Online Shopping India | Buy Fresh, Fashion, Electronics</title>
@@ -105,6 +111,20 @@
       ]
     }
     </script>
+
+    <!-- ═══════════════════════════════════════════════════
+         GA4 — Google Analytics 4
+         To enable: replace G-XXXXXXXXXX with your real Measurement ID
+         and uncomment the two script tags below.
+    ════════════════════════════════════════════════════════
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX', { anonymize_ip: true, send_page_view: false });
+    </script>
+    ════════════════════════════════════════════════════════ -->
 
     <!-- KILL all service workers immediately — runs before anything else -->
     <script>

@@ -5,7 +5,7 @@
 // ============================================
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import EptoSEO from '../../components/common/EptoSEO';
 import {
   FiSearch, FiChevronRight, FiMapPin, FiShoppingBag, FiSun,
   FiTruck, FiPackage, FiCheckCircle, FiZap, FiUsers, FiGrid,
@@ -279,10 +279,7 @@ export default function KoyambeduHome() {
 
   return (
     <div className="min-h-screen pb-28 w-full overflow-x-hidden" style={{ background: '#F5F4F2' }}>
-      <Helmet>
-        <title>Koyambedu Daily — Fresh from the Market | Eptomart</title>
-        <meta name="description" content="Order fresh vegetables, fruits and flowers directly from Koyambedu wholesale market." />
-      </Helmet>
+      <EptoSEO app="koyambedu" page="home" />
 
       {/* ── Compact sticky green header ── */}
       <div className="sticky top-0 z-30 relative overflow-hidden" style={{

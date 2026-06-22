@@ -5,7 +5,7 @@
 // ============================================
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import EptoSEO from '../../components/common/EptoSEO';
 import {
   FiMapPin, FiSearch, FiStar, FiChevronRight, FiX,
   FiZap, FiUsers, FiPackage, FiArrowLeft, FiChevronDown,
@@ -184,10 +184,7 @@ export default function UzhavarHome() {
 
   return (
     <div className="min-h-screen pb-28 w-full overflow-x-hidden" style={{ background: '#F5F4F2' }}>
-      <Helmet>
-        <title>Farmer Fresh — Farm to Home | Eptomart</title>
-        <meta name="description" content="Buy fresh vegetables and fruits directly from farmers near you. Same-day delivery." />
-      </Helmet>
+      <EptoSEO app="uzhavar" page="home" />
 
       {/* ── Compact sticky green header ── */}
       <div className="sticky top-0 z-30 relative overflow-hidden" style={{

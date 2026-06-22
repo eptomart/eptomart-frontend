@@ -7,12 +7,17 @@ Allow: /product/
 Allow: /about
 Allow: /contact
 Allow: /faq
-Allow: /koyambedu
-Allow: /uzhavar
 Allow: /shipping-policy
 Allow: /return-policy
 Allow: /privacy-policy
-Allow: /terms
+Allow: /terms-of-service
+Allow: /koyambedu
+Allow: /koyambedu/shop
+Allow: /koyambedu/product/
+Allow: /eptofresh
+Allow: /eptofresh/shop/
+Allow: /uzhavar
+Allow: /uzhavar/farmer/
 
 Disallow: /admin
 Disallow: /admin/*
@@ -20,14 +25,22 @@ Disallow: /checkout
 Disallow: /cart
 Disallow: /profile
 Disallow: /orders
+Disallow: /wishlist
+Disallow: /seller
 Disallow: /seller/*
+Disallow: /koyambedu/seller
+Disallow: /koyambedu/seller-admin
+Disallow: /eptofresh/seller
+Disallow: /uzhavar/my-orders
 Disallow: /api/
 Disallow: /login
 Disallow: /delete-account
 
-# Crawl-delay for considerate crawling
 Crawl-delay: 1
 
-# Sitemaps
+# All sub-app sitemaps
 Sitemap: https://www.eptomart.com/sitemap.xml
-Sitemap: https://www.eptomart.com/api/sitemap/sitemap.xml
+Sitemap: https://www.eptomart.com/sitemap/main.xml
+Sitemap: https://www.eptomart.com/sitemap/koyambedu.xml
+Sitemap: https://www.eptomart.com/sitemap/eptofresh.xml
+Sitemap: https://www.eptomart.com/sitemap/uzhavar.xml
