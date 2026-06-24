@@ -403,12 +403,16 @@ export default function KoyambeduProductDetail() {
               {/* Editable qty input */}
               <div className="flex flex-col items-center">
                 <input
-                  type="number"
+                  type="text"
                   inputMode="numeric"
+                  pattern="[0-9]*"
                   value={qtyInput}
-                  min={minQty}
-                  max={maxQty ?? undefined}
-                  onChange={e => { setQtyInput(e.target.value); setQtyInvalid(false); }}
+                  onChange={e => {
+                    // Only allow digits
+                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                    setQtyInput(raw);
+                    setQtyInvalid(false);
+                  }}
                   onBlur={e => {
                     const val = parseInt(e.target.value, 10);
                     const withinMax = maxQty === null ? true : val <= maxQty;
@@ -509,6 +513,7 @@ export default function KoyambeduProductDetail() {
 
           {/* Add to Cart */}
           <button
+            onPointerDown={e => e.preventDefault()}
             onClick={handleAddToCart}
             disabled={cartLoading || qtyInvalid}
             className="flex items-center gap-1 font-bold px-3 py-2 rounded-xl text-xs transition active:scale-95 disabled:opacity-60 shrink-0"
@@ -524,6 +529,7 @@ export default function KoyambeduProductDetail() {
 
           {/* Buy Now */}
           <button
+            onPointerDown={e => e.preventDefault()}
             onClick={handleBuyNow}
             disabled={cartLoading || qtyInvalid}
             className="flex items-center gap-1 font-bold px-3 py-2 rounded-xl text-xs text-white transition active:scale-95 disabled:opacity-60 shrink-0"
