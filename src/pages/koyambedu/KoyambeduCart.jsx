@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FiArrowLeft, FiShoppingBag, FiMinus, FiPlus, FiTrash2,
-  FiZap, FiCalendar, FiAlertTriangle, FiLogIn,
+  FiAlertTriangle, FiLogIn,
 } from 'react-icons/fi';
 import { FaLeaf } from 'react-icons/fa';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
@@ -20,15 +20,6 @@ export default function KoyambeduCart() {
 
   useEffect(() => { fetchCart(); }, []);
 
-  // Weight-based delivery charge
-  const totalWeightKg = (cart.items || []).reduce((sum, item) => {
-    const wpu = item.product?.weightKg != null ? item.product.weightKg
-      : (item.unit === 'g' ? 0.001 : 1);
-    return sum + wpu * (item.quantity || 0);
-  }, 0);
-  const deliveryCharge = totalWeightKg >= 20 ? 249 : 149;
-  const serviceFee     = 10;
-  const total          = subtotal + deliveryCharge + serviceFee;
 
   // ── Empty state ──────────────────────────────────────────
   if (!cart.items?.length) return (
@@ -110,17 +101,6 @@ export default function KoyambeduCart() {
                   </Link>
                   <p className="text-xs text-gray-400 mt-0.5">₹{item.unitPrice} / {item.unitLabel}</p>
 
-                  {/* Delivery type badge */}
-                  <span className={`mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    item.deliveryType === 'today'
-                      ? 'bg-orange-100 text-orange-700'
-                      : 'bg-blue-100 text-blue-700'
-                  }`}>
-                    {item.deliveryType === 'today'
-                      ? <><FiZap size={9} /> Today</>
-                      : <><FiCalendar size={9} /> Tomorrow</>}
-                  </span>
-
                   {/* Stepper */}
                   <div className="flex items-center gap-1.5 mt-2">
                     <button
@@ -176,26 +156,13 @@ export default function KoyambeduCart() {
               <span>Subtotal ({itemCount} item{itemCount > 1 ? 's' : ''})</span>
               <span className="font-semibold text-gray-800">₹{subtotal.toFixed(0)}</span>
             </div>
-            <div className="flex justify-between text-gray-600">
-              <span>Delivery charge</span>
-              <span className="font-semibold text-gray-800">₹{deliveryCharge}</span>
-            </div>
-            <p className="text-[11px] text-gray-400">
-              ~{totalWeightKg.toFixed(1)} kg · ₹{deliveryCharge} for orders {totalWeightKg < 20 ? 'under 20 kg' : '20–90 kg'}
-            </p>
-            {totalWeightKg > 90 && (
-              <div className="rounded-xl px-3 py-2 text-xs font-medium"
-                style={{ background: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c' }}>
-                Orders above 90 kg require special handling. Please contact us.
-              </div>
-            )}
-            <div className="flex justify-between text-gray-600">
-              <span>Service fee</span>
-              <span className="font-semibold text-gray-800">₹{serviceFee}</span>
+            <div className="flex justify-between text-gray-400 text-xs">
+              <span>Delivery + platform fee</span>
+              <span>Calculated at checkout</span>
             </div>
             <div className="flex justify-between font-bold text-gray-800 pt-2.5 border-t border-gray-100">
-              <span>Total</span>
-              <span className="text-green-700 text-base">₹{total.toFixed(0)}</span>
+              <span>Subtotal</span>
+              <span className="text-green-700 text-base">₹{subtotal.toFixed(0)}</span>
             </div>
           </div>
         </div>
@@ -216,7 +183,7 @@ export default function KoyambeduCart() {
           onClick={() => navigate('/koyambedu/checkout')}
           className="w-full text-white font-bold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition"
           style={{ background: 'linear-gradient(135deg,#065f46,#16a34a)', boxShadow: '0 6px 20px rgba(22,163,74,0.4)' }}>
-          Proceed to Checkout · ₹{total.toFixed(0)}
+          Proceed to Checkout · ₹{subtotal.toFixed(0)}
         </button>
       </div>
     </div>

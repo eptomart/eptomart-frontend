@@ -21,33 +21,6 @@ import toast from 'react-hot-toast';
 
 const IMG_PLACEHOLDER = 'https://placehold.co/400x300/dcfce7/166534?text=Fresh';
 
-// ── Delivery date helpers ──────────────────────────────────────
-const getDeliveryDates = () => {
-  const now = new Date();
-
-  const tomorrow = new Date(now);
-  tomorrow.setDate(now.getDate() + 1);
-
-  const dat = new Date(now);
-  dat.setDate(now.getDate() + 2);
-
-  // Cutoff for "tomorrow" delivery: 8 AM TODAY
-  // Seller must know before 8 AM to source at market the following morning
-  const todayCutoff = new Date(now);
-  todayCutoff.setHours(8, 0, 0, 0);
-  const tomorrowAvailable = now < todayCutoff;
-
-  // DAT is always open — advance booking
-  const fmt = (d) =>
-    d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
-
-  return {
-    tomorrowLabel: fmt(tomorrow),
-    datLabel: fmt(dat),
-    tomorrowAvailable,
-  };
-};
-
 export default function KoyambeduProductDetail() {
   const { productId } = useParams();
   const navigate      = useNavigate();
@@ -56,10 +29,8 @@ export default function KoyambeduProductDetail() {
   const [product,      setProduct]  = useState(null);
   const [loading,      setLoading]  = useState(true);
   const [activeImg,    setActiveImg] = useState(0);
-  const [deliveryType, setDelivery] = useState('tomorrow');
-  const [qty,          setQty]      = useState(1);
-  const [qtyInput,     setQtyInput] = useState('1'); // local string for editable input
-  const [dates,        setDates]    = useState(getDeliveryDates());
+  const [qty,      setQty]      = useState(1);
+  const [qtyInput, setQtyInput] = useState('1'); // local string for editable input
   const [priceHistory, setPriceHistory] = useState([]);
 
   useEffect(() => {
@@ -70,8 +41,6 @@ export default function KoyambeduProductDetail() {
         const initQty = Math.max(1, p.minQty || p.qtyStep || 1);
         setQty(initQty);
         setQtyInput(String(initQty));
-        const d = getDeliveryDates();
-        setDelivery(d.tomorrowAvailable ? 'tomorrow' : 'dat');
       })
       .catch(() => toast.error('Product not found'))
       .finally(() => setLoading(false));
@@ -79,10 +48,6 @@ export default function KoyambeduProductDetail() {
     api.get(`/koyambedu/products/${productId}/price-history`)
       .then(r => setPriceHistory(r.data.history || []))
       .catch(() => {});
-
-    // Refresh cutoff check every minute
-    const id = setInterval(() => setDates(getDeliveryDates()), 60_000);
-    return () => clearInterval(id);
   }, [productId]);
 
   // Keep qtyInput display in sync whenever qty changes via +/− buttons or chips
@@ -136,11 +101,11 @@ export default function KoyambeduProductDetail() {
 
   // ── Handlers ─────────────────────────────────────────────────
   const handleAddToCart = () => {
-    updateItem(productId, qty, deliveryType, { productData: product });
+    updateItem(productId, qty, 'tomorrow', { productData: product });
   };
 
   const handleBuyNow = () => {
-    updateItem(productId, qty, deliveryType, { productData: product });
+    updateItem(productId, qty, 'tomorrow', { productData: product });
     navigate('/koyambedu/checkout');
   };
 
@@ -556,17 +521,6 @@ export default function KoyambeduProductDetail() {
             </p>
             <p className="font-black text-green-700 text-lg leading-tight">₹{total}</p>
           </div>
-          <span
-            className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-            style={{
-              background: deliveryType === 'tomorrow' ? '#f0fdf4' : '#eff6ff',
-              color: deliveryType === 'tomorrow' ? '#16a34a' : '#2563eb',
-            }}
-          >
-            {deliveryType === 'tomorrow'
-              ? `Tomorrow · ${dates.tomorrowLabel}`
-              : `Day After · ${dates.datLabel}`}
-          </span>
         </div>
 
         {/* Dual buttons */}

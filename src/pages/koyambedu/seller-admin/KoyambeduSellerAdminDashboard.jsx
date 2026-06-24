@@ -468,9 +468,8 @@ export default function KoyambeduSellerAdminDashboard() {
                       <p className="text-green-700 font-bold text-sm mt-0.5">₹{p.currentPrice}/{p.unitLabel}</p>
                       <div className="flex gap-2 mt-1 flex-wrap">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${p.isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                          {p.isAvailable ? 'In Stock' : 'Out of Stock'}
+                          {p.isAvailable ? 'Active' : 'Inactive'}
                         </span>
-                        <span className="text-[10px] text-gray-400">Stock: {p.stockQty} units</span>
                       </div>
                     </div>
                     <div className="flex flex-col gap-1 shrink-0 self-start">

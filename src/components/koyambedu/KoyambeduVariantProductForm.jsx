@@ -34,8 +34,6 @@ export const EMPTY_VARIANT_PRODUCT = {
     { ...EMPTY_VARIANT },
     { ...EMPTY_VARIANT },
   ],
-  stockQty: 0,
-  weightKg: 1,
   isSameDay: true,
   isNextDay: true,
   isAvailable: true,
@@ -234,22 +232,6 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
             </div>
           </div>
         )}
-      </div>
-
-      {/* ── Stock & Weight ── */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Stock Qty</label>
-          <input type="number" min="0" value={form.stockQty}
-            onChange={e => setField('stockQty', Number(e.target.value))}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Weight/unit (kg)</label>
-          <input type="number" min="0" step="0.001" value={form.weightKg}
-            onChange={e => setField('weightKg', e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
-        </div>
       </div>
 
       {/* ── Description ── */}

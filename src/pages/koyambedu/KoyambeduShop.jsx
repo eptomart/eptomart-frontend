@@ -2,8 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import EptoSEO from '../../components/common/EptoSEO';
 import {
-  FiArrowLeft, FiShoppingBag, FiMapPin,
-  FiZap, FiCalendar, FiTrash2,
+  FiArrowLeft, FiShoppingBag, FiMapPin, FiTrash2,
 } from 'react-icons/fi';
 import { FaLeaf } from 'react-icons/fa';
 import api from '../../utils/api';
@@ -56,9 +55,6 @@ const ProductCard = ({ product }) => {
           )}
           {hasVariants && (
             <span className="absolute top-1.5 right-1.5 bg-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full tracking-wide">BEST RATE</span>
-          )}
-          {product.isSameDay && (
-            <span className="absolute bottom-1.5 right-1.5 bg-orange-500 text-white text-[9px] px-1.5 py-0.5 rounded-full">Today ⚡</span>
           )}
         </div>
       </Link>
@@ -123,18 +119,16 @@ export default function KoyambeduShop() {
   const [total,      setTotal]      = useState(0);
   const [page,       setPage]       = useState(1);
 
-  const search       = searchParams.get('search')       || '';
-  const categoryId   = searchParams.get('category')     || '';
-  const deliveryType = searchParams.get('deliveryType') || '';
-  const sortBy       = searchParams.get('sort')         || 'default';
+  const search       = searchParams.get('search')   || '';
+  const categoryId   = searchParams.get('category') || '';
+  const sortBy       = searchParams.get('sort')      || 'default';
 
   const loadProducts = useCallback(async (pg = 1) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: pg, limit: 20, sort: sortBy });
-      if (search)       params.set('search',       search);
-      if (categoryId)   params.set('category',     categoryId);
-      if (deliveryType) params.set('deliveryType', deliveryType);
+      if (search)     params.set('search',   search);
+      if (categoryId) params.set('category', categoryId);
       const { data } = await api.get(`/koyambedu/products?${params}`);
       setProducts(pg === 1 ? data.products : prev => [...prev, ...data.products]);
       setTotal(data.total);
@@ -144,14 +138,14 @@ export default function KoyambeduShop() {
     } finally {
       setLoading(false);
     }
-  }, [search, categoryId, deliveryType, sortBy]);
+  }, [search, categoryId, sortBy]);
 
   useEffect(() => {
     fetchCart();
     api.get('/koyambedu/categories').then(r => setCategories(r.data.categories || [])).catch(() => {});
   }, []);
 
-  useEffect(() => { loadProducts(1); }, [search, categoryId, deliveryType, sortBy]);
+  useEffect(() => { loadProducts(1); }, [search, categoryId, sortBy]);
 
   const setParam = (key, val) => {
     const np = new URLSearchParams(searchParams);
@@ -205,7 +199,6 @@ export default function KoyambeduShop() {
               <p className="text-white/75 text-[11px] mt-0.5 flex items-center gap-1">
                 <FiMapPin size={9} />
                 {locationLabel ? `${locationLabel} · ` : ''}{distToMarket} km from market
-                {distToMarket <= 7 ? ' · Available ✓' : ' · Outside zone'}
               </p>
             )}
           </div>
@@ -233,23 +226,8 @@ export default function KoyambeduShop() {
           )}
         </div>
 
-        {/* Filters strip */}
+        {/* Sort strip */}
         <div className="px-4 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
-          {[
-            { val: '',         label: 'All',      Icon: null },
-            { val: 'today',    label: 'Today',    Icon: FiZap },
-            { val: 'tomorrow', label: 'Tomorrow', Icon: FiCalendar },
-          ].map(({ val, label, Icon }) => (
-            <button key={val}
-              onClick={() => setParam('deliveryType', val)}
-              className={`flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shrink-0 transition ${
-                deliveryType === val
-                  ? 'bg-white text-green-700'
-                  : 'bg-white/20 text-white border border-white/30'
-              }`}>
-              {Icon && <Icon size={10} />}{label}
-            </button>
-          ))}
           <select value={sortBy} onChange={e => setParam('sort', e.target.value)}
             className="text-xs font-bold px-3 py-1.5 rounded-full shrink-0 bg-white/20 text-white border border-white/30 focus:outline-none">
             <option value="default" className="text-gray-800">Default</option>

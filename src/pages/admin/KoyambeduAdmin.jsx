@@ -413,9 +413,8 @@ export default function KoyambeduAdmin() {
       name: p.name, nameTamil: p.nameTamil || '',
       unit: p.unit || 'kg', unitLabel: p.unitLabel || p.unit || 'kg',
       description: p.description || '',
-      stockQty: p.stockQty, isAvailable: p.isAvailable,
+      isAvailable: p.isAvailable,
       isSameDay: p.isSameDay, isNextDay: p.isNextDay,
-      weightKg: p.weightKg || 1,
       badges: p.badges || [],
       images: p.images || [],
       procurementChargePercent: p.procurementChargePercent || 15,
@@ -841,7 +840,6 @@ export default function KoyambeduAdmin() {
                       <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-600">
                         <span className="font-black text-gray-800">₹{p.currentPrice}</span>
                         <span>/{p.unitLabel || p.unit}</span>
-                        <span className="text-gray-400">Stock: {p.stockQty}</span>
                       </div>
                     </div>
                   </div>
