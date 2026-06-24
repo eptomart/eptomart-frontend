@@ -122,7 +122,7 @@ export default function KoyambeduShop() {
   const activeCategory = categories.find(c => c._id === categoryId);
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] pb-24" style={{ paddingBottom: itemCount > 0 ? 140 : 96 }}>
+    <div className="min-h-screen bg-[#f5f5f7]" style={{ paddingBottom: itemCount > 0 ? 160 : 100 }}>
       <EptoSEO
         app="koyambedu"
         page="shop"
@@ -267,7 +267,7 @@ export default function KoyambeduShop() {
       <BottomNav />
 
       {itemCount > 0 && (
-        <div className="fixed left-4 right-4 max-w-lg mx-auto z-40" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 68px)' }}>
+        <div className="fixed left-4 right-4 max-w-lg mx-auto z-[9985]" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 84px)' }}>
           <div className="bg-green-600 text-white px-4 py-3 flex items-center justify-between rounded-2xl shadow-xl">
             <div>
               <p className="text-xs opacity-80">{itemCount} item{itemCount > 1 ? 's' : ''}</p>
