@@ -974,20 +974,12 @@ export default function Home() {
         ══════════════════════════════════════════ */}
         <div className="md:hidden">
 
-          {/* 1. Search bar + hero */}
-          <MobileHero />
-
-          {/* 2. Shop by Source — Koyambedu · Farmer Fresh · Proteins */}
-          <div className="pt-2 px-0">
+          {/* 1. Shop by Source — Koyambedu · Farmer Fresh · Proteins */}
+          <div className="pt-3 px-0">
             <ShopBySource />
           </div>
 
-          {/* 4. Promo banner (includes Fresh Koyambedu Arrivals slide) */}
-          <div className="pt-2">
-            <PromoBanner />
-          </div>
-
-          {/* 5. Trust indicators */}
+          {/* 2. Trust indicators */}
           <div className="pt-2">
             <TrustStrip />
           </div>

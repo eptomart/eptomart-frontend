@@ -253,9 +253,17 @@ function SpecialRequestModal({ onClose }) {
   );
 }
 
+// IST = UTC+5:30 → check if current hour >= 9
+const getISTHour = () => {
+  const now = new Date();
+  const istMs = now.getTime() + (5.5 * 60 * 60 * 1000);
+  return new Date(istMs).getUTCHours();
+};
+
 export default function KoyambeduHome() {
   const { fetchCart, itemCount, subtotal, userLocation, locationLabel } = useKoyambeduCart();
   const navigate = useNavigate();
+  const isMarketClosed = getISTHour() >= 9;
 
   const distToMarket = userLocation
     ? Math.round(haversineKm(userLocation.lat, userLocation.lng, KOYAMBEDU_LAT, KOYAMBEDU_LNG) * 10) / 10
@@ -363,8 +371,10 @@ export default function KoyambeduHome() {
               <FiPackage size={10} /> + ₹15 platform fee
             </span>
             <span className="shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1"
-              style={{ background: 'rgba(250,204,21,0.85)', color: '#065f46' }}>
-              <FiSun size={10} /> Market Open
+              style={isMarketClosed
+                ? { background: 'rgba(239,68,68,0.85)', color: '#fff' }
+                : { background: 'rgba(250,204,21,0.85)', color: '#065f46' }}>
+              <FiSun size={10} /> {isMarketClosed ? 'Market Closed' : 'Market Open'}
             </span>
           </div>
         </div>
@@ -390,6 +400,34 @@ export default function KoyambeduHome() {
 
       {/* ── Content ── */}
       <div className="px-4 pt-4" style={{ background: '#F5F4F2' }}>
+
+        {/* ── Market Closed Banner ── */}
+        {isMarketClosed && (
+          <div className="mb-4 rounded-2xl overflow-hidden"
+            style={{ background: 'linear-gradient(135deg,#7f1d1d 0%,#b91c1c 60%,#ef4444 100%)', boxShadow: '0 4px 20px rgba(185,28,28,0.35)' }}>
+            <div className="p-4 relative overflow-hidden flex items-start gap-3">
+              <div className="absolute right-0 top-0 text-[80px] opacity-10 select-none pointer-events-none leading-none">🏪</div>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                style={{ background: 'rgba(255,255,255,0.2)' }}>
+                <FiSun size={18} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-black text-sm leading-tight">Wholesale Koyambedu market closed for today</p>
+                <p className="text-red-200 text-xs mt-1 leading-relaxed">
+                  Today's procurement window has ended (9:00 AM IST cutoff). Orders placed now will be scheduled for <strong className="text-white">tomorrow's delivery</strong>.
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2.5">
+                  <span className="bg-white/20 text-white text-[10px] font-bold px-2.5 py-1 rounded-full border border-white/25">
+                    🕘 Next pickup: Tomorrow 5 AM
+                  </span>
+                  <span className="bg-white/20 text-white text-[10px] font-bold px-2.5 py-1 rounded-full border border-white/25">
+                    📦 Still accepting orders
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* No location nudge */}
         {!locationLabel && (
