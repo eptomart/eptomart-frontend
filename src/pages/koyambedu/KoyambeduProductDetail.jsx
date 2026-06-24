@@ -85,6 +85,10 @@ export default function KoyambeduProductDetail() {
     return () => clearInterval(id);
   }, [productId]);
 
+  // Keep qtyInput display in sync whenever qty changes via +/− buttons or chips
+  // ⚠ Must be before any early returns so hook count is stable across renders
+  useEffect(() => { setQtyInput(String(qty)); }, [qty]);
+
   // ── Loading ──────────────────────────────────────────────────
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F4F2' }}>
@@ -139,9 +143,6 @@ export default function KoyambeduProductDetail() {
     updateItem(productId, qty, deliveryType, { productData: product });
     navigate('/koyambedu/checkout');
   };
-
-  // Keep qtyInput display in sync whenever qty changes via +/− buttons or chips
-  useEffect(() => { setQtyInput(String(qty)); }, [qty]);
 
   // Select a tier chip: keep current qty if it already falls in range, else set to fromQty
   const selectVariant = (v) => {
