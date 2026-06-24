@@ -11,7 +11,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import EptoSEO, { buildProductSchema } from '../../components/common/EptoSEO';
 import {
   FiArrowLeft, FiStar, FiShoppingBag, FiPackage, FiAlertTriangle,
-  FiZap, FiCalendar, FiClock, FiTrendingUp, FiTag, FiMapPin,
+  FiZap, FiClock, FiTrendingUp, FiTag, FiMapPin,
   FiCheckCircle, FiShoppingCart,
 } from 'react-icons/fi';
 import { FaLeaf } from 'react-icons/fa';
@@ -407,65 +407,6 @@ export default function KoyambeduProductDetail() {
             </div>
           </div>
         )}
-
-        {/* ══ Delivery option ══ */}
-        <div className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-          <p className="font-bold text-gray-800 text-sm mb-3">Choose Delivery</p>
-
-          <div className="grid grid-cols-2 gap-2">
-
-            {/* Tomorrow */}
-            <button
-              onClick={() => dates.tomorrowAvailable && setDelivery('tomorrow')}
-              className={`relative p-3.5 rounded-xl border-2 text-left transition active:scale-95 ${
-                !dates.tomorrowAvailable
-                  ? 'opacity-40 cursor-not-allowed border-gray-100 bg-gray-50'
-                  : deliveryType === 'tomorrow'
-                  ? 'border-green-500 bg-green-50'
-                  : 'border-gray-100 bg-gray-50'
-              }`}
-            >
-              <FiZap size={17} className={`mb-1.5 ${dates.tomorrowAvailable ? 'text-orange-500' : 'text-gray-400'}`} />
-              <p className="font-extrabold text-gray-900 text-sm">Tomorrow</p>
-              <p className="text-[11px] text-gray-500 font-medium mt-0.5">{dates.tomorrowLabel}</p>
-              {dates.tomorrowAvailable ? (
-                <p className="text-[10px] text-green-600 font-semibold mt-1">Order before 8:00 AM</p>
-              ) : (
-                <p className="text-[10px] text-red-400 font-semibold mt-1">Cutoff passed (8 AM)</p>
-              )}
-              {deliveryType === 'tomorrow' && dates.tomorrowAvailable && (
-                <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
-                  <FiCheckCircle size={10} className="text-white" />
-                </div>
-              )}
-            </button>
-
-            {/* Day After Tomorrow */}
-            <button
-              onClick={() => setDelivery('dat')}
-              className={`relative p-3.5 rounded-xl border-2 text-left transition active:scale-95 ${
-                deliveryType === 'dat'
-                  ? 'border-green-500 bg-green-50'
-                  : 'border-gray-100 bg-gray-50'
-              }`}
-            >
-              <FiCalendar size={17} className="mb-1.5 text-blue-500" />
-              <p className="font-extrabold text-gray-900 text-sm">Day After</p>
-              <p className="text-[11px] text-gray-500 font-medium mt-0.5">{dates.datLabel}</p>
-              <p className="text-[10px] text-blue-500 font-semibold mt-1">Always available</p>
-              {deliveryType === 'dat' && (
-                <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
-                  <FiCheckCircle size={10} className="text-white" />
-                </div>
-              )}
-            </button>
-
-          </div>
-
-          <p className="text-[10px] text-gray-400 mt-2.5 text-center">
-            Sourced fresh from Koyambedu market every morning · delivered by 10 AM
-          </p>
-        </div>
 
         {/* ══ Quantity ══ */}
         <div className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>

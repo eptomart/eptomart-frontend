@@ -247,24 +247,40 @@ export default function KoyambeduSellerAdminDashboard() {
   };
 
   // ── Edit Product ──────────────────────────────────────
-  const openEditProduct = (p) => {
+  const openEditProduct = async (p) => {
     setEditProduct(p);
+    await loadCategories(); // ensure categories are loaded
     setProdForm({
-      currentPrice:  p.currentPrice,
-      stockQty:      p.stockQty,
-      minQty:        p.minQty,
-      isAvailable:   p.isAvailable,
-      isSameDay:     p.isSameDay,
-      isNextDay:     p.isNextDay,
-      sameDayCutoff: p.sameDayCutoff || '08:00',
-      images:        p.images || [],
+      categoryId:               p.category?._id || p.categoryId || '',
+      name:                     p.name,
+      nameTamil:                p.nameTamil || '',
+      description:              p.description || '',
+      unit:                     p.unit || 'kg',
+      unitLabel:                p.unitLabel || p.unit || 'kg',
+      procurementChargePercent: p.procurementChargePercent || 15,
+      platformChargePercent:    p.platformChargePercent    || 10,
+      logisticsChargePercent:   p.logisticsChargePercent   || 10,
+      variants: p.variants?.length
+        ? p.variants.map(v => ({ basePrice: v.basePrice, fromQty: v.fromQty, toQty: v.toQty, finalPrice: String(v.finalPrice) }))
+        : [{ basePrice: p.currentPrice || '', fromQty: p.minQty || 1, toQty: p.maxQty || 50, finalPrice: String(p.currentPrice || '') }],
+      stockQty:    p.stockQty    || 0,
+      weightKg:    p.weightKg    || 1,
+      isSameDay:   p.isSameDay   ?? true,
+      isNextDay:   p.isNextDay   ?? true,
+      isAvailable: p.isAvailable ?? true,
+      badges:      p.badges      || [],
+      images:      p.images      || [],
     });
   };
 
   const saveProduct = async () => {
     setSaving(true);
     try {
-      await api.put(`/koyambedu/seller-admin/sellers/${sellerFilter}/products/${editProduct._id}`, prodForm);
+      const validVariants = (prodForm.variants || []).filter(v => v.basePrice && v.fromQty && v.toQty);
+      await api.put(`/koyambedu/seller-admin/sellers/${sellerFilter}/products/${editProduct._id}`, {
+        ...prodForm,
+        variants: validVariants.length > 0 ? validVariants : undefined,
+      });
       toast.success('Product updated');
       setEditProduct(null);
       loadProducts(sellerFilter);
@@ -762,56 +778,26 @@ export default function KoyambeduSellerAdminDashboard() {
       ══════════════════════════════════════════ */}
       {editProduct && (
         <div className="fixed inset-0 bg-black/50 z-[9995] flex items-end sm:items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-3 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-gray-800">Edit: {editProduct.name}</h3>
-              <button onClick={() => setEditProduct(null)} className="text-gray-400 text-xl">✕</button>
+          <div className="bg-white rounded-2xl w-full max-w-lg p-5 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-gray-800">Edit Product</h3>
+                <p className="text-xs text-gray-500">{editProduct.name}</p>
+              </div>
+              <button onClick={() => setEditProduct(null)} className="text-gray-400 text-xl font-bold">✕</button>
             </div>
-            <p className="text-xs text-gray-400">Update price, stock, availability, and images.</p>
 
-            {/* Images */}
-            <KoyambeduImageUploader
-              images={prodForm.images || []}
-              onChange={(imgs) => setProdForm(f => ({ ...f, images: imgs }))}
+            <KoyambeduVariantProductForm
+              form={prodForm}
+              onChange={setProdForm}
+              categories={categories}
             />
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-gray-500 font-medium">Price (₹) *</label>
-                <input type="number" value={prodForm.currentPrice} onChange={e => setProdForm(f => ({ ...f, currentPrice: e.target.value }))}
-                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 font-medium">Stock Qty</label>
-                <input type="number" value={prodForm.stockQty} onChange={e => setProdForm(f => ({ ...f, stockQty: e.target.value }))}
-                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 font-medium">Min Qty</label>
-                <input type="number" step="0.5" value={prodForm.minQty} onChange={e => setProdForm(f => ({ ...f, minQty: e.target.value }))}
-                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 font-medium">Same Day Cutoff</label>
-                <input type="time" value={prodForm.sameDayCutoff} onChange={e => setProdForm(f => ({ ...f, sameDayCutoff: e.target.value }))}
-                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              {[['isAvailable','In Stock'],['isSameDay','Same Day'],['isNextDay','Next Day']].map(([k, label]) => (
-                <label key={k} className="flex items-center gap-2 cursor-pointer bg-gray-50 rounded-xl px-3 py-2">
-                  <input type="checkbox" checked={prodForm[k]} onChange={e => setProdForm(f => ({ ...f, [k]: e.target.checked }))} className="w-4 h-4 accent-green-600" />
-                  <span className="text-xs text-gray-700 font-medium">{label}</span>
-                </label>
-              ))}
-            </div>
-
-            <div className="flex gap-3 pt-1">
+            <div className="flex gap-3 pt-4 mt-2 border-t border-gray-100">
               <button onClick={() => setEditProduct(null)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
               <button onClick={saveProduct} disabled={saving}
                 className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving ? 'Saving…' : 'Save Changes'}
               </button>
             </div>
           </div>
