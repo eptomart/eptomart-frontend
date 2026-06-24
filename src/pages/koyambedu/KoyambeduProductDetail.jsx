@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import EptoSEO, { buildProductSchema } from '../../components/common/EptoSEO';
 import {
-  FiArrowLeft, FiStar, FiShoppingBag, FiPackage,
+  FiArrowLeft, FiShoppingBag,
   FiZap, FiClock, FiTrendingUp, FiTag, FiMapPin,
   FiCheckCircle, FiShoppingCart,
 } from 'react-icons/fi';
@@ -342,32 +342,6 @@ export default function KoyambeduProductDetail() {
             </div>
           )}
 
-          {/* Vendor card */}
-          {product.seller?.businessName && (
-            <div className="mt-3 pt-3 border-t border-gray-50 flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                <FiPackage size={16} className="text-green-700" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-gray-400 font-medium">Sold by</p>
-                <p className="font-bold text-gray-800 text-sm truncate">{product.seller.businessName}</p>
-                {product.seller.stallNumber && (
-                  <p className="text-[10px] text-gray-400">
-                    Stall {product.seller.stallNumber}
-                    {product.seller.marketSection ? ` · ${product.seller.marketSection}` : ''}
-                  </p>
-                )}
-              </div>
-              {product.seller.rating > 0 && (
-                <div className="flex items-center gap-0.5 shrink-0 px-2 py-1 rounded-lg"
-                  style={{ background: '#fffbeb' }}>
-                  <FiStar size={11} className="text-amber-400" />
-                  <span className="text-xs font-bold text-amber-700">{product.seller.rating.toFixed(1)}</span>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* ══ Price History ══ */}
