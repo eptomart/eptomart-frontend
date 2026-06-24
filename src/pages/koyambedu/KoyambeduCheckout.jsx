@@ -12,6 +12,7 @@ import { FiMapPin, FiCheck, FiArrowLeft } from 'react-icons/fi';
 import api from '../../utils/api';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import { useAuth } from '../../context/AuthContext';
+import SavedAddressPicker from '../../components/common/SavedAddressPicker';
 import toast from 'react-hot-toast';
 
 const KOYAMBEDU_LAT = 13.0748;
@@ -323,6 +324,7 @@ export default function KoyambeduCheckout() {
   const [placedOrder, setPlaced]  = useState(null);
 
   // ── Address ────────────────────────────────
+  const [selectedSavedAddrId, setSelectedSavedAddrId] = useState(null);
   const [addr, setAddr] = useState({
     fullName:     user?.name || '',
     phone:        user?.phone || '',
@@ -332,6 +334,23 @@ export default function KoyambeduCheckout() {
     pincode:      '',
     landmark:     '',
   });
+
+  // Auto-select default saved address on first load
+  useEffect(() => {
+    const saved = user?.addresses || [];
+    if (!saved.length) return;
+    const def = saved.find(a => a.isDefault) || saved[0];
+    setSelectedSavedAddrId(String(def._id));
+    setAddr({
+      fullName:     def.fullName     || user?.name  || '',
+      phone:        def.phone        || user?.phone || '',
+      addressLine1: def.addressLine1 || '',
+      addressLine2: def.addressLine2 || '',
+      city:         def.city         || 'Chennai',
+      pincode:      def.pincode      || '',
+      landmark:     '',
+    });
+  }, [user]);
 
   // ── Location (set after map step) ─────────
   const [locationData, setLocationData] = useState(
@@ -564,9 +583,32 @@ export default function KoyambeduCheckout() {
         {/* ═════ STEP 0 — ADDRESS FORM ═════ */}
         {step === 0 && (
           <div className="space-y-4">
+            <SavedAddressPicker
+              addresses={user?.addresses || []}
+              selectedId={selectedSavedAddrId}
+              onSelect={a => {
+                setSelectedSavedAddrId(String(a._id));
+                setAddr({
+                  fullName:     a.fullName     || '',
+                  phone:        a.phone        || '',
+                  addressLine1: a.addressLine1 || '',
+                  addressLine2: a.addressLine2 || '',
+                  city:         a.city         || 'Chennai',
+                  pincode:      a.pincode      || '',
+                  landmark:     '',
+                });
+              }}
+              onNewAddress={() => {
+                setSelectedSavedAddrId(null);
+                setAddr({ fullName: user?.name || '', phone: user?.phone || '', addressLine1: '', addressLine2: '', city: 'Chennai', pincode: '', landmark: '' });
+              }}
+            />
+
             <div className="bg-white rounded-2xl p-4 space-y-3"
               style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
-              <h2 className="font-bold text-gray-800 text-sm">Delivery Address</h2>
+              <h2 className="font-bold text-gray-800 text-sm">
+                {selectedSavedAddrId ? 'Confirm Address' : 'Delivery Address'}
+              </h2>
 
               <div>
                 <label className="text-xs text-gray-700 font-semibold">Full Name *</label>
