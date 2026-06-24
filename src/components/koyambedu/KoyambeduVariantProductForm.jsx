@@ -68,8 +68,12 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
   };
 
   const addVariant = () => {
-    if ((form.variants || []).length >= 4) return;
-    onChange({ ...form, variants: [...(form.variants || []), { ...EMPTY_VARIANT }] });
+    const variants = form.variants || [];
+    if (variants.length >= 4) return;
+    // Block if last tier is open-ended (no toQty) — it's already the final tier
+    const last = variants[variants.length - 1];
+    if (last && !last.toQty) return;
+    onChange({ ...form, variants: [...variants, { ...EMPTY_VARIANT }] });
   };
 
   const removeVariant = (idx) => {
@@ -167,12 +171,27 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
       <div>
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs font-bold text-gray-700">Pricing Variants (up to 4)</p>
-          {(form.variants || []).length < 4 && (
-            <button type="button" onClick={addVariant}
-              className="text-xs font-bold text-green-700 border border-green-300 px-2.5 py-1 rounded-xl hover:bg-green-50">
-              + Add Tier
-            </button>
-          )}
+          {(form.variants || []).length < 4 && (() => {
+            const last = (form.variants || [])[(form.variants || []).length - 1];
+            const blocked = !!(last && !last.toQty);
+            return (
+              <div className="relative group">
+                <button type="button" onClick={addVariant} disabled={blocked}
+                  className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition ${
+                    blocked
+                      ? 'text-gray-400 border-gray-200 cursor-not-allowed opacity-50'
+                      : 'text-green-700 border-green-300 hover:bg-green-50'
+                  }`}>
+                  + Add Tier
+                </button>
+                {blocked && (
+                  <span className="absolute right-0 top-full mt-1.5 text-[10px] bg-gray-800 text-white px-2 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
+                    Fill "To Qty" in last tier first
+                  </span>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Table header */}

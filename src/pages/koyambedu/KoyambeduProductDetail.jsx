@@ -78,10 +78,13 @@ export default function KoyambeduProductDetail() {
   const hasVariants = product.variants?.length > 0;
 
   // Find which variant the current qty falls into
+  // Open-ended last tier: toQty is empty/0 → matches any qty >= fromQty
   const activeVariant = hasVariants
-    ? product.variants.find(v => qty >= v.fromQty && qty <= v.toQty) ||
+    ? product.variants.find(v => {
+        if (!v.toQty) return qty >= v.fromQty; // open-ended last tier
+        return qty >= v.fromQty && qty <= v.toQty;
+      }) ||
       product.variants.reduce((best, v) => {
-        // Default to variant with lowest finalPrice (best rate)
         if (!best || v.finalPrice < best.finalPrice) return v;
         return best;
       }, null)
@@ -89,9 +92,14 @@ export default function KoyambeduProductDetail() {
 
   const activeFinalPrice = activeVariant ? activeVariant.finalPrice : product.currentPrice;
   // For variant products, always step by 1 — fromQty is the *minimum*, not the increment
-  const step = hasVariants ? 1 : Math.max(1, product.qtyStep || 1);
-  const minQty  = hasVariants ? (product.variants[0]?.fromQty || 1) : Math.max(1, product.minQty || 1);
-  const maxQty  = hasVariants ? (product.variants[product.variants.length - 1]?.toQty || 500) : (product.maxQty || 500);
+  const step   = hasVariants ? 1 : Math.max(1, product.qtyStep || 1);
+  const minQty = hasVariants ? (product.variants[0]?.fromQty || 1) : Math.max(1, product.minQty || 1);
+  // If last variant is open-ended (no toQty) there's no upper cap
+  const lastVariant = hasVariants ? product.variants[product.variants.length - 1] : null;
+  const maxQty = hasVariants
+    ? (lastVariant?.toQty || 9999)
+    : (product.maxQty || 500);
+  const isOpenEndedActive = !!(activeVariant && !activeVariant.toQty);
   const total   = (qty * activeFinalPrice).toFixed(2);
 
   // Best variant = lowest finalPrice
@@ -111,7 +119,8 @@ export default function KoyambeduProductDetail() {
 
   // Select a tier chip: keep current qty if it already falls in range, else set to fromQty
   const selectVariant = (v) => {
-    if (qty >= v.fromQty && qty <= v.toQty) return;
+    const inRange = !v.toQty ? qty >= v.fromQty : (qty >= v.fromQty && qty <= v.toQty);
+    if (inRange) return;
     setQty(v.fromQty);
   };
 
@@ -252,7 +261,7 @@ export default function KoyambeduProductDetail() {
                   <span className="text-right">Savings</span>
                 </div>
                 {product.variants.map((v, i) => {
-                  const isActive = activeVariant === v || (qty >= v.fromQty && qty <= v.toQty);
+                  const isActive = activeVariant === v || (!v.toQty ? qty >= v.fromQty : (qty >= v.fromQty && qty <= v.toQty));
                   const baseLowest = product.variants[0].finalPrice;
                   const saving = i > 0 ? ((baseLowest - v.finalPrice) / baseLowest * 100).toFixed(0) : null;
                   return (
@@ -261,7 +270,7 @@ export default function KoyambeduProductDetail() {
                         isActive ? 'bg-green-50' : 'hover:bg-gray-50'
                       }`}>
                       <span className={`font-semibold ${isActive ? 'text-green-700' : 'text-gray-700'}`}>
-                        {v.fromQty}–{v.toQty}
+                        {v.toQty ? `${v.fromQty}–${v.toQty}` : `Above ${v.fromQty}`}
                       </span>
                       <span className={`text-center font-bold ${isActive ? 'text-green-700' : 'text-gray-800'}`}>
                         ₹{v.finalPrice}
@@ -387,7 +396,7 @@ export default function KoyambeduProductDetail() {
               <p className="font-bold text-gray-800 text-sm">Quantity</p>
               {hasVariants && activeVariant ? (
                 <p className="text-[11px] text-green-600 font-semibold mt-0.5">
-                  Range: {activeVariant.fromQty}–{activeVariant.toQty} {product.unit} · ₹{activeFinalPrice}/{product.unit}
+                  Range: {activeVariant.toQty ? `${activeVariant.fromQty}–${activeVariant.toQty}` : `${activeVariant.fromQty}+`} {product.unit} · ₹{activeFinalPrice}/{product.unit}
                 </p>
               ) : (
                 <p className="text-[11px] text-gray-400 mt-0.5">
@@ -434,7 +443,9 @@ export default function KoyambeduProductDetail() {
                     if (!isNaN(val) && val >= minQty && val <= maxQty) {
                       setQty(val);
                     } else {
-                      // snap back to current valid qty
+                      if (!isNaN(val) && val < minQty) {
+                        toast.error(`Minimum quantity is ${minQty} ${product.unit}`);
+                      }
                       setQtyInput(String(qty));
                     }
                   }}
@@ -449,19 +460,21 @@ export default function KoyambeduProductDetail() {
                 onClick={() => {
                   if (hasVariants) {
                     const newQty = qty + 1;
-                    if (activeVariant && newQty <= activeVariant.toQty) {
+                    if (isOpenEndedActive) {
+                      // open-ended last tier — no upper cap
+                      setQty(newQty);
+                    } else if (activeVariant && newQty <= activeVariant.toQty) {
                       setQty(newQty);
                     } else {
                       const idx = activeVariant ? product.variants.indexOf(activeVariant) : -1;
                       const nextVariant = product.variants[idx + 1];
                       if (nextVariant) setQty(nextVariant.fromQty);
-                      // else already at global max — do nothing
                     }
                   } else {
                     setQty(q => Math.min(product.maxQty || 9999, parseFloat((q + step).toFixed(2))));
                   }
                 }}
-                disabled={hasVariants ? qty >= maxQty : qty >= (product.maxQty || 9999)}
+                disabled={isOpenEndedActive ? false : (hasVariants ? qty >= maxQty : qty >= (product.maxQty || 9999))}
                 className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl text-white active:scale-90 transition disabled:opacity-40"
                 style={{ background: '#16a34a', boxShadow: '0 4px 12px rgba(22,163,74,0.35)' }}>
                 +
@@ -479,7 +492,7 @@ export default function KoyambeduProductDetail() {
                       ? 'bg-green-600 text-white border-green-600'
                       : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'
                   }`}>
-                  {v.fromQty}–{v.toQty} {product.unit}
+                  {v.toQty ? `${v.fromQty}–${v.toQty}` : `Above ${v.fromQty}`} {product.unit}
                   <span className="ml-1 text-[10px] opacity-80">₹{v.finalPrice}</span>
                 </button>
               ))}
