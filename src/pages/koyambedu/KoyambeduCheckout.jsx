@@ -18,7 +18,7 @@ const KOYAMBEDU_LAT = 13.0748;
 const KOYAMBEDU_LNG = 80.2136;
 const DEFAULT_CENTER = { lat: 13.0389, lng: 80.1730 }; // Valasaravakkam, Chennai
 
-const STEP_LABELS = ['Address', 'Map', 'Date', 'Payment'];
+const STEP_LABELS = ['Address', 'Map', 'Slot', 'Payment'];
 
 // ── Haversine distance ─────────────────────
 const haversineKm = (lat1, lon1, lat2, lon2) => {
@@ -31,34 +31,42 @@ const haversineKm = (lat1, lon1, lat2, lon2) => {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-// ── Delivery date options (8 AM cut-off) ──
-const getDeliveryDates = () => {
-  const now  = new Date();
-  const hour = now.getHours();
-  const pad  = (n) => String(n).padStart(2, '0');
-  const fmt  = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  const label = (d) => {
-    const today    = new Date(); today.setHours(0,0,0,0);
-    const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
-    const t = new Date(d); t.setHours(0,0,0,0);
-    if (t.getTime() === today.getTime()) return 'Today';
-    if (t.getTime() === tomorrow.getTime()) return 'Tomorrow';
-    return d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' });
-  };
-  const today    = new Date(); today.setHours(0,0,0,0);
-  const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
-  const dayAfter = new Date(today); dayAfter.setDate(today.getDate()+2);
-  if (hour < 8) {
-    return [
-      { value: fmt(today),    label: label(today),    subLabel: 'Book now (before 8 AM cut-off)', icon: '⚡' },
-      { value: fmt(tomorrow), label: label(tomorrow), subLabel: 'Morning delivery',               icon: '📅' },
-    ];
-  } else {
-    return [
-      { value: fmt(tomorrow), label: label(tomorrow), subLabel: 'Next day delivery',              icon: '📅' },
-      { value: fmt(dayAfter), label: label(dayAfter), subLabel: 'Day after tomorrow',             icon: '📅' },
-    ];
-  }
+// ── IST time helpers ──────────────────────
+const getISTDate = () => {
+  // IST = UTC+5:30
+  const now = new Date();
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+  return new Date(utcMs + (5 * 60 + 30) * 60000);
+};
+
+const getISTHour = () => getISTDate().getHours();
+
+const fmtDate = (d) => {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+const fmtDisplayDate = (d) =>
+  d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+// ── All 4 delivery slots ───────────────────
+const ALL_SLOTS = [
+  { key: 'slot1', label: '07:00 AM – 08:59 AM', display: 'Slot 1  ·  7:00 AM – 8:59 AM' },
+  { key: 'slot2', label: '09:00 AM – 11:59 AM', display: 'Slot 2  ·  9:00 AM – 11:59 AM' },
+  { key: 'slot3', label: '12:00 PM – 01:59 PM', display: 'Slot 3  ·  12:00 PM – 1:59 PM' },
+  { key: 'slot4', label: '02:00 PM – 03:59 PM', display: 'Slot 4  ·  2:00 PM – 3:59 PM'  },
+];
+
+// Return slot keys available for TODAY based on current IST hour.
+// Slot is available if there is still time to place the order before that slot ends.
+// Rule:
+//   00:00–03:59 → slots 2, 3, 4 available (slot 1 already started before market opens)
+//   04:00–08:59 → slots 3, 4 available   (slot 1 & 2 cutoff passed)
+//   09:00+      → no same-day slots       (Today tab disabled)
+const getTodayAvailableSlots = (istHour) => {
+  if (istHour < 4)  return ['slot2', 'slot3', 'slot4'];
+  if (istHour < 9)  return ['slot3', 'slot4'];
+  return [];
 };
 
 // ── Load Google Maps SDK (key from backend) ─
@@ -358,16 +366,35 @@ export default function KoyambeduCheckout() {
   // Pre-load Google Maps in background when checkout opens
   useEffect(() => { loadGoogleMaps().catch(() => {}); }, []);
 
-  // ── Date ───────────────────────────────────
-  const deliveryDates = getDeliveryDates();
-  const isBefore8     = new Date().getHours() < 8;
-  const [selectedDate, setSelectedDate] = useState(deliveryDates[0].value);
-  const [selectedSlot, setSelectedSlot] = useState('slot1');
-  const SLOTS = [
-    { key: 'slot1', label: 'Slot 1: 9 AM – 12 PM',  icon: '🌅' },
-    { key: 'slot2', label: 'Slot 2: 12 PM – 3 PM',  icon: '☀️' },
-    { key: 'slot3', label: 'Slot 3: 3 PM – 6 PM',   icon: '🌇' },
-  ];
+  // ── Delivery slot state (IST-aware) ────────
+  const istNow        = getISTDate();
+  const istHour       = getISTHour();
+  const todayDisabled = istHour >= 9; // 9 AM IST cutoff
+
+  // Date values
+  const todayIST    = new Date(istNow); todayIST.setHours(0,0,0,0);
+  const tomorrowIST = new Date(todayIST); tomorrowIST.setDate(todayIST.getDate() + 1);
+  const todayValue    = fmtDate(todayIST);
+  const tomorrowValue = fmtDate(tomorrowIST);
+
+  const [deliveryTab,  setDeliveryTab]  = useState(todayDisabled ? 'tomorrow' : 'today');
+  const [selectedSlot, setSelectedSlot] = useState(null); // null = no selection yet
+
+  // Derive the delivery date from the active tab
+  const selectedDate = deliveryTab === 'today' ? todayValue : tomorrowValue;
+
+  // Slots to show based on active tab
+  const todaySlotKeys    = getTodayAvailableSlots(istHour);
+  const visibleSlotKeys  = deliveryTab === 'tomorrow'
+    ? ['slot1','slot2','slot3','slot4']
+    : todaySlotKeys;
+  const visibleSlots     = ALL_SLOTS.filter(s => visibleSlotKeys.includes(s.key));
+
+  // Reset slot selection when tab changes (if current slot not available in new tab)
+  const handleTabChange = (tab) => {
+    setDeliveryTab(tab);
+    setSelectedSlot(null);
+  };
 
   // ── Payment ────────────────────────────────
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
@@ -407,10 +434,11 @@ export default function KoyambeduCheckout() {
     if (!locationData?.lat) { toast.error('Please confirm your delivery location on the map'); return; }
     setLoading(true);
     try {
+      const slotObj = ALL_SLOTS.find(s => s.key === selectedSlot);
       const { data } = await api.post('/koyambedu/orders', {
         shippingAddress: addr,
         paymentMethod,
-        deliverySlot:    SLOTS.find(s => s.key === selectedSlot)?.label || 'Slot 1: 9 AM – 12 PM',
+        deliverySlot:    slotObj?.label || '',
         deliverySlotKey: selectedSlot,
         deliveryDate:    selectedDate,
         buyerLocation: {
@@ -476,7 +504,8 @@ export default function KoyambeduCheckout() {
       <h2 className="font-black text-2xl text-green-700 mb-1">Order Placed!</h2>
       <p className="text-gray-700 text-sm mb-1">Order ID: <strong className="text-gray-900">{placedOrder.orderId}</strong></p>
       <p className="text-gray-600 text-xs mb-4">
-        Delivery on {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' })} · {SLOTS.find(s => s.key === selectedSlot)?.label || 'Slot 1: 9 AM–12 PM'}
+        {deliveryTab === 'today' ? 'Today' : 'Tomorrow'} · {fmtDisplayDate(deliveryTab === 'today' ? todayIST : tomorrowIST)}<br />
+        {ALL_SLOTS.find(s => s.key === selectedSlot)?.display || ''}
       </p>
       <p className="text-gray-700 text-sm mb-6">WhatsApp updates at each stage.</p>
       <button onClick={() => navigate('/koyambedu/orders')}
@@ -663,78 +692,134 @@ export default function KoyambeduCheckout() {
           </div>
         )}
 
-        {/* ═════ STEP 2 — DELIVERY DATE ═════ */}
+        {/* ═════ STEP 2 — DELIVERY SLOT ═════ */}
         {step === 2 && (
           <div className="space-y-4">
+
+            {/* Header */}
             <div className="bg-white rounded-2xl p-4"
               style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
-              <h2 className="font-bold text-gray-800 text-sm">Delivery Date</h2>
+              <h2 className="font-bold text-gray-800 text-sm">Choose Delivery Date & Slot</h2>
               <p className="text-xs text-gray-400 mt-0.5">
-                {isBefore8
-                  ? 'Book before 8 AM for today\'s delivery.'
-                  : 'Today\'s booking window (8 AM) has closed. Choose your delivery day.'}
+                {todayDisabled
+                  ? 'Same-day booking closed (after 9 AM). Showing tomorrow\'s slots.'
+                  : 'Select a delivery date and time slot.'}
               </p>
             </div>
 
-            {!isBefore8 && (
-              <div className="rounded-xl px-3 py-3 flex items-start gap-2.5"
-                style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
-                <span className="text-xl">⏰</span>
-                <div>
-                  <p className="font-bold text-sm" style={{ color: '#92400e' }}>Booking closed for today</p>
-                  <p className="text-xs mt-0.5" style={{ color: '#b45309' }}>Orders must be placed before 8 AM for same-day delivery.</p>
-                </div>
-              </div>
-            )}
-
-            {deliveryDates.map((d) => (
-              <button key={d.value} onClick={() => setSelectedDate(d.value)}
-                className="w-full p-4 rounded-2xl text-left flex items-center gap-4 transition"
-                style={{
-                  background: selectedDate === d.value ? '#f0fdf4' : '#fff',
-                  border: `2px solid ${selectedDate === d.value ? '#16a34a' : '#e5e7eb'}`,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                }}>
-                <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 text-2xl"
-                  style={{ background: selectedDate === d.value ? '#16a34a' : '#f3f4f6' }}>
-                  {d.icon}
-                </div>
-                <div className="flex-1">
-                  <p className="font-bold text-base" style={{ color: selectedDate === d.value ? '#166534' : '#1f2937' }}>{d.label}</p>
-                  <p className="text-xs mt-0.5" style={{ color: selectedDate === d.value ? '#16a34a' : '#9ca3af' }}>{d.subLabel}</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
-                    {new Date(d.value + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' })}
-                  </p>
-                </div>
-                {selectedDate === d.value && <FiCheck size={20} className="text-green-600 shrink-0" />}
-              </button>
-            ))}
-
-            {/* Slot Selection */}
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-gray-700">Select Delivery Slot *</p>
-              {SLOTS.map(sl => (
-                <button key={sl.key} onClick={() => setSelectedSlot(sl.key)}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all"
+            {/* ── Today / Tomorrow tabs ── */}
+            <div className="bg-white rounded-2xl overflow-hidden"
+              style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
+              <div className="flex">
+                {/* Today tab */}
+                <button
+                  disabled={todayDisabled}
+                  onClick={() => handleTabChange('today')}
+                  className="flex-1 py-4 flex flex-col items-center gap-0.5 transition relative"
                   style={{
-                    background: selectedSlot === sl.key ? '#f0fdf4' : '#fff',
-                    border: `2px solid ${selectedSlot === sl.key ? '#16a34a' : '#e5e7eb'}`,
-                    color: selectedSlot === sl.key ? '#166534' : '#374151',
+                    background: deliveryTab === 'today' ? '#f0fdf4' : '#fff',
+                    borderBottom: `3px solid ${deliveryTab === 'today' ? '#16a34a' : 'transparent'}`,
+                    opacity: todayDisabled ? 0.4 : 1,
+                    cursor: todayDisabled ? 'not-allowed' : 'pointer',
                   }}>
-                  <span className="text-xl">{sl.icon}</span>
-                  <span className="flex-1 text-left">{sl.label}</span>
-                  {selectedSlot === sl.key && <FiCheck size={18} className="text-green-600 shrink-0" />}
+                  <span className="text-xs font-black tracking-wide uppercase"
+                    style={{ color: deliveryTab === 'today' ? '#166534' : '#6b7280' }}>
+                    Today
+                  </span>
+                  <span className="text-[11px] font-semibold"
+                    style={{ color: deliveryTab === 'today' ? '#16a34a' : '#9ca3af' }}>
+                    {fmtDisplayDate(todayIST)}
+                  </span>
+                  {todayDisabled && (
+                    <span className="text-[9px] font-bold text-red-400 mt-0.5">CLOSED</span>
+                  )}
                 </button>
-              ))}
+
+                {/* Divider */}
+                <div className="w-px bg-gray-100 self-stretch" />
+
+                {/* Tomorrow tab */}
+                <button
+                  onClick={() => handleTabChange('tomorrow')}
+                  className="flex-1 py-4 flex flex-col items-center gap-0.5 transition"
+                  style={{
+                    background: deliveryTab === 'tomorrow' ? '#f0fdf4' : '#fff',
+                    borderBottom: `3px solid ${deliveryTab === 'tomorrow' ? '#16a34a' : 'transparent'}`,
+                  }}>
+                  <span className="text-xs font-black tracking-wide uppercase"
+                    style={{ color: deliveryTab === 'tomorrow' ? '#166534' : '#6b7280' }}>
+                    Tomorrow
+                  </span>
+                  <span className="text-[11px] font-semibold"
+                    style={{ color: deliveryTab === 'tomorrow' ? '#16a34a' : '#9ca3af' }}>
+                    {fmtDisplayDate(tomorrowIST)}
+                  </span>
+                </button>
+              </div>
             </div>
+
+            {/* ── Slot list ── */}
+            <div className="bg-white rounded-2xl p-4 space-y-2"
+              style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                Available Slots — {deliveryTab === 'today' ? fmtDisplayDate(todayIST) : fmtDisplayDate(tomorrowIST)}
+              </p>
+
+              {visibleSlots.length === 0 ? (
+                <div className="text-center py-6">
+                  <span className="text-3xl">⏰</span>
+                  <p className="text-sm font-bold text-gray-700 mt-2">No same-day slots available</p>
+                  <p className="text-xs text-gray-400 mt-1">Please select Tomorrow to book your delivery.</p>
+                  <button onClick={() => handleTabChange('tomorrow')}
+                    className="mt-3 text-green-600 text-sm font-bold underline">
+                    Switch to Tomorrow →
+                  </button>
+                </div>
+              ) : (
+                visibleSlots.map(sl => (
+                  <button key={sl.key} onClick={() => setSelectedSlot(sl.key)}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
+                    style={{
+                      background: selectedSlot === sl.key ? '#f0fdf4' : '#f9fafb',
+                      border: `2px solid ${selectedSlot === sl.key ? '#16a34a' : '#e5e7eb'}`,
+                      color: selectedSlot === sl.key ? '#166534' : '#374151',
+                    }}>
+                    {/* Radio circle */}
+                    <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition"
+                      style={{
+                        borderColor: selectedSlot === sl.key ? '#16a34a' : '#d1d5db',
+                        background: selectedSlot === sl.key ? '#16a34a' : 'white',
+                      }}>
+                      {selectedSlot === sl.key && (
+                        <div className="w-2 h-2 rounded-full bg-white" />
+                      )}
+                    </div>
+                    <span className="flex-1 text-left">{sl.display}</span>
+                    {selectedSlot === sl.key && <FiCheck size={16} className="text-green-600 shrink-0" />}
+                  </button>
+                ))
+              )}
+            </div>
+
+            {/* Validation hint */}
+            {!selectedSlot && visibleSlots.length > 0 && (
+              <p className="text-xs text-center text-amber-600 font-semibold">
+                Please select a delivery slot to continue.
+              </p>
+            )}
 
             <div className="flex gap-3">
               <button onClick={() => setStep(1)}
                 className="flex-1 border-2 border-green-200 text-green-700 font-bold py-3 rounded-xl text-sm bg-white">
                 ← Back
               </button>
-              <button onClick={() => setStep(3)} disabled={!selectedDate || !selectedSlot}
-                className="flex-1 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-60"
+              <button
+                onClick={() => {
+                  if (!selectedSlot) { toast.error('Please select a delivery slot.'); return; }
+                  setStep(3);
+                }}
+                disabled={!selectedSlot}
+                className="flex-1 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-50 transition"
                 style={{ background: 'linear-gradient(135deg, #16a34a, #059669)' }}>
                 Continue →
               </button>
@@ -757,11 +842,16 @@ export default function KoyambeduCheckout() {
                 </div>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">📅 Date</span>
+                <span className="text-gray-600">📅 Delivery</span>
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-700">
-                    {deliveryDates.find(d => d.value === selectedDate)?.label || 'Tomorrow'} · {SLOTS.find(s => s.key === selectedSlot)?.label || 'Slot 1'}
-                  </span>
+                  <div className="text-right">
+                    <p className="font-semibold text-gray-700 text-xs">
+                      {deliveryTab === 'today' ? 'Today' : 'Tomorrow'} · {fmtDisplayDate(deliveryTab === 'today' ? todayIST : tomorrowIST)}
+                    </p>
+                    <p className="text-[11px] text-green-600 font-medium">
+                      {ALL_SLOTS.find(s => s.key === selectedSlot)?.display || '—'}
+                    </p>
+                  </div>
                   <button onClick={() => setStep(2)} className="text-green-500 text-xs underline">Change</button>
                 </div>
               </div>
