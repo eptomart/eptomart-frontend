@@ -79,9 +79,15 @@ function KoyambeduOrderCard({ order, expanded, onToggle }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800 truncate">{item.name}</p>
-                  <p className="text-xs text-gray-500">{item.quantity} {item.unit} × ₹{item.unitPrice}</p>
+                  <p className="text-xs text-gray-500">{item.quantity} {item.unit} × ₹{item.orderedPrice ?? item.unitPrice ?? item.finalPrice ?? '—'}</p>
                 </div>
-                <span className="text-sm font-bold text-gray-700 shrink-0">₹{item.subtotal || (item.quantity * item.unitPrice)}</span>
+                <span className="text-sm font-bold text-gray-700 shrink-0">
+                  {(() => {
+                    const p = item.orderedPrice ?? item.unitPrice ?? item.finalPrice;
+                    const total = p != null ? item.quantity * p : null;
+                    return total != null ? `₹${total.toFixed(0)}` : '—';
+                  })()}
+                </span>
               </div>
             ))}
           </div>
