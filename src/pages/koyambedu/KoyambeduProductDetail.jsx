@@ -94,11 +94,11 @@ export default function KoyambeduProductDetail() {
   // For variant products, always step by 1 — fromQty is the *minimum*, not the increment
   const step   = hasVariants ? 1 : Math.max(1, product.qtyStep || 1);
   const minQty = hasVariants ? (product.variants[0]?.fromQty || 1) : Math.max(1, product.minQty || 1);
-  // If last variant is open-ended (no toQty) there's no upper cap
+  // Open-ended last tier: no upper cap (toQty is null)
   const lastVariant = hasVariants ? product.variants[product.variants.length - 1] : null;
   const isLastVariantOpen = hasVariants && !lastVariant?.toQty;
   const maxQty = hasVariants
-    ? (isLastVariantOpen ? Infinity : (lastVariant?.toQty || 9999))
+    ? (isLastVariantOpen ? null : (lastVariant?.toQty || 9999))
     : (product.maxQty || 500);
   const isOpenEndedActive = !!(activeVariant && !activeVariant.toQty);
   const total   = (qty * activeFinalPrice).toFixed(2);
@@ -437,11 +437,11 @@ export default function KoyambeduProductDetail() {
                   inputMode="numeric"
                   value={qtyInput}
                   min={minQty}
-                  max={isLastVariantOpen ? undefined : maxQty}
+                  max={maxQty ?? undefined}
                   onChange={e => setQtyInput(e.target.value)}
                   onBlur={e => {
                     const val = parseInt(e.target.value, 10);
-                    const withinMax = isLastVariantOpen ? true : val <= maxQty;
+                    const withinMax = maxQty === null ? true : val <= maxQty;
                     if (!isNaN(val) && val >= minQty && withinMax) {
                       setQty(val);
                     } else {
@@ -476,7 +476,7 @@ export default function KoyambeduProductDetail() {
                     setQty(q => Math.min(product.maxQty || 500, parseFloat((q + step).toFixed(2))));
                   }
                 }}
-                disabled={isOpenEndedActive ? false : (hasVariants ? qty >= maxQty : qty >= (product.maxQty || 9999))}
+                disabled={isOpenEndedActive ? false : (hasVariants ? qty >= (maxQty ?? Infinity) : qty >= (product.maxQty || 500))}
                 className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl text-white active:scale-90 transition disabled:opacity-40"
                 style={{ background: '#16a34a', boxShadow: '0 4px 12px rgba(22,163,74,0.35)' }}>
                 +
