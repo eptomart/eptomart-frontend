@@ -11,11 +11,11 @@ import KoyambeduImageUploader from './KoyambeduImageUploader';
 const UNITS   = ['kg','g','piece','bunch','dozen','litre','pack','leaf','box','bag','crate'];
 const BADGES  = ['fresh_arrival','low_stock','best_seller','seasonal','organic','festival_special','bulk_deal'];
 
-// Final price = basePrice × (1 + (proc + plat + log) / 100)
+// Final price = basePrice × (1 + (proc + plat + log) / 100) — always whole number
 const calcFinal = (base, proc, plat, log) => {
   if (!base || base <= 0) return '';
   const total = (Number(proc) || 0) + (Number(plat) || 0) + (Number(log) || 0);
-  return (Math.round(Number(base) * (1 + total / 100) * 100) / 100).toFixed(2);
+  return String(Math.round(Number(base) * (1 + total / 100)));
 };
 
 const EMPTY_VARIANT = { basePrice: '', fromQty: '', toQty: '', finalPrice: '' };
