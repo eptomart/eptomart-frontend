@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
 import KoyambeduImageUploader from '../../../components/koyambedu/KoyambeduImageUploader';
+import KoyambeduVariantProductForm, { EMPTY_VARIANT_PRODUCT } from '../../../components/koyambedu/KoyambeduVariantProductForm';
 
 // ── AI helpers ───────────────────────────────
 const useAI = () => {
@@ -53,14 +54,6 @@ const EMPTY_SELLER = {
   createAccount: false, accountPhone: '', accountEmail: '',
 };
 
-const EMPTY_PRODUCT = {
-  categoryId: '', name: '', nameTamil: '', unit: 'kg', unitLabel: 'kg',
-  currentPrice: '', stockQty: 0, minQty: 0.5, maxQty: 50,
-  weightKg: 1, marketPriceMin: '', marketPriceMax: '',
-  freshArrivalTime: '', sameDayCutoff: '08:00',
-  isSameDay: true, isNextDay: true, isAvailable: true,
-  badges: [], description: '', images: [],
-};
 
 export default function KoyambeduSellerAdminDashboard() {
   const navigate = useNavigate();
@@ -84,7 +77,7 @@ export default function KoyambeduSellerAdminDashboard() {
   // Product create modal
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [addProdSellerId, setAddProdSellerId] = useState('');
-  const [prodCreateForm,  setProdCreateForm]  = useState(EMPTY_PRODUCT);
+  const [prodCreateForm,  setProdCreateForm]  = useState(EMPTY_VARIANT_PRODUCT);
   const [categories,      setCategories]      = useState([]);
 
   // Edit seller (pending-approval flow)
@@ -227,18 +220,25 @@ export default function KoyambeduSellerAdminDashboard() {
   // ── Add Product (for a seller) ────────────────────────
   const openAddProduct = async (sellerId) => {
     setAddProdSellerId(sellerId);
-    setProdCreateForm(EMPTY_PRODUCT);
+    setProdCreateForm(EMPTY_VARIANT_PRODUCT);
     await loadCategories();
     setShowAddProduct(true);
   };
 
   const submitAddProduct = async () => {
-    if (!prodCreateForm.categoryId || !prodCreateForm.name || !prodCreateForm.currentPrice) {
-      toast.error('Category, name and price are required'); return;
+    if (!prodCreateForm.categoryId || !prodCreateForm.name) {
+      toast.error('Category and name are required'); return;
+    }
+    const validVariants = (prodCreateForm.variants || []).filter(v => v.basePrice && v.fromQty && v.toQty);
+    if (validVariants.length === 0) {
+      toast.error('At least one complete variant (base price + qty range) is required'); return;
     }
     setSaving(true);
     try {
-      await api.post(`/koyambedu/seller-admin/sellers/${addProdSellerId}/products`, prodCreateForm);
+      await api.post(`/koyambedu/seller-admin/sellers/${addProdSellerId}/products`, {
+        ...prodCreateForm,
+        variants: validVariants,
+      });
       toast.success('Product added!');
       setShowAddProduct(false);
       if (sellerFilter === addProdSellerId) loadProducts(addProdSellerId);
@@ -655,139 +655,44 @@ export default function KoyambeduSellerAdminDashboard() {
       {showAddProduct && (
         <div className="fixed inset-0 bg-black/50 z-[9995] overflow-y-auto">
           <div className="min-h-screen flex items-end sm:items-center justify-center p-4">
-            <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-3 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between">
+            <div className="bg-white rounded-2xl w-full max-w-lg p-5 max-h-[92vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-gray-800">Add Product</h3>
                 <button onClick={() => setShowAddProduct(false)} className="text-gray-400 text-xl">✕</button>
               </div>
 
-              <div>
-                <label className="text-xs text-gray-500 font-medium">Category *</label>
-                <select value={prodCreateForm.categoryId} onChange={e => setProdCreateForm(f => ({ ...f, categoryId: e.target.value }))}
-                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
-                  <option value="">Select category</option>
-                  {categories.map(c => <option key={c._id} value={c._id}>{c.icon} {c.name}</option>)}
-                </select>
-              </div>
-
-              {/* Product Name */}
-              <div>
-                <label className="text-xs text-gray-500 font-medium">Product Name *</label>
-                <input value={prodCreateForm.name} onChange={e => setProdCreateForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Tomato, Banana, Rose"
-                  className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-              </div>
-
-              {/* Tamil Name + Auto-Translate */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs text-gray-500 font-medium">Tamil Name</label>
+              {/* AI helper buttons for name */}
+              {prodCreateForm.name && (
+                <div className="flex gap-2 mb-3">
                   <button type="button"
                     onClick={() => translate(prodCreateForm.name, (tamil) => setProdCreateForm(f => ({ ...f, nameTamil: tamil })))}
-                    disabled={translating || !prodCreateForm.name?.trim()}
-                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 disabled:opacity-50 transition">
-                    {translating
-                      ? <><span className="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin inline-block" /> Translating...</>
-                      : <>🌐 Auto-Translate</>}
+                    disabled={translating}
+                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 disabled:opacity-50">
+                    {translating ? '...' : '🌐 Auto-Translate Name'}
                   </button>
-                </div>
-                <input value={prodCreateForm.nameTamil} onChange={e => setProdCreateForm(f => ({ ...f, nameTamil: e.target.value }))}
-                  placeholder="Tamil translation will appear here"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-              </div>
-
-              {/* Description + AI Write */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs text-gray-500 font-medium">Description</label>
                   <button type="button"
                     onClick={() => describe(
                       { name: prodCreateForm.name, nameTamil: prodCreateForm.nameTamil, category: categories.find(c => c._id === prodCreateForm.categoryId)?.name, unit: prodCreateForm.unit },
                       (desc) => setProdCreateForm(f => ({ ...f, description: desc }))
                     )}
-                    disabled={describing || !prodCreateForm.name?.trim()}
-                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 disabled:opacity-50 transition">
-                    {describing
-                      ? <><span className="w-3 h-3 border-2 border-purple-400 border-t-transparent rounded-full animate-spin inline-block" /> Writing...</>
-                      : <>✨ AI Write</>}
+                    disabled={describing}
+                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 disabled:opacity-50">
+                    {describing ? '...' : '✨ AI Description'}
                   </button>
                 </div>
-                <textarea value={prodCreateForm.description} onChange={e => setProdCreateForm(f => ({ ...f, description: e.target.value }))} rows={2}
-                  placeholder="Describe your product — or click ✨ AI Write to generate one"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none" />
-              </div>
+              )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-500 font-medium">Unit</label>
-                  <select value={prodCreateForm.unit} onChange={e => setProdCreateForm(f => ({ ...f, unit: e.target.value, unitLabel: e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none">
-                    {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 font-medium">Unit Label</label>
-                  <input value={prodCreateForm.unitLabel} onChange={e => setProdCreateForm(f => ({ ...f, unitLabel: e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none"
-                    placeholder="e.g. 500g, 1 bunch" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 font-medium">Price (₹) *</label>
-                  <input type="number" value={prodCreateForm.currentPrice} onChange={e => setProdCreateForm(f => ({ ...f, currentPrice: e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 font-medium">Stock Qty</label>
-                  <input type="number" value={prodCreateForm.stockQty} onChange={e => setProdCreateForm(f => ({ ...f, stockQty: e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 font-medium">Weight per unit (kg)</label>
-                  <input type="number" step="0.001" value={prodCreateForm.weightKg} onChange={e => setProdCreateForm(f => ({ ...f, weightKg: e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none"
-                    placeholder="e.g. 1, 0.5" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 font-medium">Same Day Cutoff</label>
-                  <input type="time" value={prodCreateForm.sameDayCutoff} onChange={e => setProdCreateForm(f => ({ ...f, sameDayCutoff: e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
-                </div>
-              </div>
-
-              {/* Images */}
-              <KoyambeduImageUploader
-                images={prodCreateForm.images || []}
-                onChange={(imgs) => setProdCreateForm(f => ({ ...f, images: imgs }))}
+              <KoyambeduVariantProductForm
+                form={prodCreateForm}
+                onChange={setProdCreateForm}
+                categories={categories}
               />
 
-              <div>
-                <label className="text-xs text-gray-500 font-medium">Badges</label>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {BADGES.map(b => (
-                    <button key={b} type="button"
-                      onClick={() => setProdCreateForm(f => ({ ...f, badges: f.badges.includes(b) ? f.badges.filter(x => x !== b) : [...f.badges, b] }))}
-                      className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border transition ${prodCreateForm.badges.includes(b) ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200'}`}>
-                      {b.replace(/_/g,' ')}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                {[['isSameDay','Same Day'],['isNextDay','Next Day'],['isAvailable','In Stock']].map(([k, label]) => (
-                  <label key={k} className="flex items-center gap-2 cursor-pointer bg-gray-50 rounded-xl px-3 py-2">
-                    <input type="checkbox" checked={prodCreateForm[k]} onChange={e => setProdCreateForm(f => ({ ...f, [k]: e.target.checked }))} className="w-4 h-4 accent-green-600" />
-                    <span className="text-xs text-gray-700 font-medium">{label}</span>
-                  </label>
-                ))}
-              </div>
-
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-4 mt-2 border-t border-gray-100">
                 <button onClick={() => setShowAddProduct(false)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
-                <button onClick={submitAddProduct}
-                  disabled={saving || !prodCreateForm.categoryId || !prodCreateForm.name || !prodCreateForm.currentPrice}
+                <button onClick={submitAddProduct} disabled={saving}
                   className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
-                  {saving ? 'Adding...' : 'Add Product'}
+                  {saving ? 'Adding…' : 'Add Product'}
                 </button>
               </div>
             </div>

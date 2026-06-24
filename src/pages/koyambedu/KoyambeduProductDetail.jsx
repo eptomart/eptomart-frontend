@@ -101,11 +101,30 @@ export default function KoyambeduProductDetail() {
   );
 
   // ── Derived values ───────────────────────────────────────────
-  const cartQty = getQty(productId);
-  const images  = product.images?.filter(i => i.url)?.length ? product.images : [{ url: IMG_PLACEHOLDER }];
-  const step    = Math.max(1, product.qtyStep || 1);
-  const minQty  = Math.max(1, product.minQty  || 1);
-  const total   = (qty * product.currentPrice).toFixed(2);
+  const cartQty    = getQty(productId);
+  const images     = product.images?.filter(i => i.url)?.length ? product.images : [{ url: IMG_PLACEHOLDER }];
+  const hasVariants = product.variants?.length > 0;
+
+  // Find which variant the current qty falls into
+  const activeVariant = hasVariants
+    ? product.variants.find(v => qty >= v.fromQty && qty <= v.toQty) ||
+      product.variants.reduce((best, v) => {
+        // Default to variant with lowest finalPrice (best rate)
+        if (!best || v.finalPrice < best.finalPrice) return v;
+        return best;
+      }, null)
+    : null;
+
+  const activeFinalPrice = activeVariant ? activeVariant.finalPrice : product.currentPrice;
+  const step    = hasVariants && activeVariant ? activeVariant.fromQty : Math.max(1, product.qtyStep || 1);
+  const minQty  = hasVariants ? (product.variants[0]?.fromQty || 1) : Math.max(1, product.minQty || 1);
+  const maxQty  = hasVariants ? (product.variants[product.variants.length - 1]?.toQty || 500) : (product.maxQty || 500);
+  const total   = (qty * activeFinalPrice).toFixed(2);
+
+  // Best variant = lowest finalPrice
+  const bestVariant = hasVariants
+    ? product.variants.reduce((b, v) => (!b || v.finalPrice < b.finalPrice) ? v : b, null)
+    : null;
 
   // ── Handlers ─────────────────────────────────────────────────
   const handleAddToCart = () => {
@@ -115,6 +134,11 @@ export default function KoyambeduProductDetail() {
   const handleBuyNow = () => {
     updateItem(productId, qty, deliveryType, { productData: product });
     navigate('/koyambedu/checkout');
+  };
+
+  // Jump qty to a variant's MOQ when user selects that tier
+  const selectVariant = (v) => {
+    setQty(v.fromQty);
   };
 
   // ── Render ───────────────────────────────────────────────────
@@ -237,13 +261,64 @@ export default function KoyambeduProductDetail() {
           )}
 
           {/* Price row */}
-          <div className="flex items-baseline gap-2 mt-3">
-            <span className="text-green-700 font-black text-3xl">₹{product.currentPrice}</span>
-            <span className="text-gray-400 text-sm font-medium">per {product.unitLabel}</span>
-            {product.originalPrice > product.currentPrice && (
-              <span className="text-gray-400 text-sm line-through">₹{product.originalPrice}</span>
-            )}
-          </div>
+          {hasVariants ? (
+            <div className="mt-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="bg-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full tracking-wide">BEST RATE</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-green-700 font-black text-2xl">₹{activeFinalPrice}</span>
+                  <span className="text-gray-400 text-sm">/ {product.unitLabel || product.unit}</span>
+                </div>
+              </div>
+              {/* Variant pricing table */}
+              <div className="rounded-xl overflow-hidden border border-gray-100 mt-2">
+                <div className="grid grid-cols-3 gap-0 text-[10px] font-bold text-gray-500 uppercase bg-gray-50 px-3 py-1.5">
+                  <span>Qty ({product.unit})</span>
+                  <span className="text-center">Final / {product.unit}</span>
+                  <span className="text-right">Savings</span>
+                </div>
+                {product.variants.map((v, i) => {
+                  const isActive = activeVariant === v || (qty >= v.fromQty && qty <= v.toQty);
+                  const baseLowest = product.variants[0].finalPrice;
+                  const saving = i > 0 ? ((baseLowest - v.finalPrice) / baseLowest * 100).toFixed(0) : null;
+                  return (
+                    <button key={i} onClick={() => selectVariant(v)}
+                      className={`w-full grid grid-cols-3 gap-0 px-3 py-2 text-sm border-t border-gray-50 transition text-left ${
+                        isActive ? 'bg-green-50' : 'hover:bg-gray-50'
+                      }`}>
+                      <span className={`font-semibold ${isActive ? 'text-green-700' : 'text-gray-700'}`}>
+                        {v.fromQty}–{v.toQty}
+                      </span>
+                      <span className={`text-center font-bold ${isActive ? 'text-green-700' : 'text-gray-800'}`}>
+                        ₹{v.finalPrice}
+                        {isActive && <span className="ml-1 text-[9px] font-bold bg-green-600 text-white px-1 rounded">Selected</span>}
+                      </span>
+                      <span className="text-right text-[11px]">
+                        {saving ? (
+                          <span className="text-orange-600 font-bold">Save {saving}%</span>
+                        ) : (
+                          <span className="text-gray-400">Base</span>
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {bestVariant && (
+                <p className="text-[10px] text-green-600 font-semibold mt-1.5">
+                  💡 Best deal: order {bestVariant.fromQty}+ {product.unit} at ₹{bestVariant.finalPrice}/{product.unit}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-baseline gap-2 mt-3">
+              <span className="text-green-700 font-black text-3xl">₹{product.currentPrice}</span>
+              <span className="text-gray-400 text-sm font-medium">per {product.unitLabel}</span>
+              {product.originalPrice > product.currentPrice && (
+                <span className="text-gray-400 text-sm line-through">₹{product.originalPrice}</span>
+              )}
+            </div>
+          )}
 
           {/* Market rate */}
           {product.marketPriceMin > 0 && (
@@ -395,23 +470,56 @@ export default function KoyambeduProductDetail() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-bold text-gray-800 text-sm">Quantity</p>
-              <p className="text-[11px] text-gray-400 mt-0.5">
-                Min {minQty} {product.unitLabel}
-                {product.maxQty ? ` · Max ${product.maxQty} ${product.unitLabel}` : ''}
-              </p>
+              {hasVariants && activeVariant ? (
+                <p className="text-[11px] text-green-600 font-semibold mt-0.5">
+                  Range: {activeVariant.fromQty}–{activeVariant.toQty} {product.unit} · ₹{activeFinalPrice}/{product.unit}
+                </p>
+              ) : (
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  Min {minQty} {product.unitLabel}
+                  {product.maxQty ? ` · Max ${product.maxQty} ${product.unitLabel}` : ''}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setQty(q => Math.max(minQty, parseFloat((q - step).toFixed(2))))}
+                onClick={() => {
+                  if (hasVariants && activeVariant) {
+                    // Jump to previous variant if at its min, else decrement by fromQty step
+                    const prevVariant = product.variants.find((v, i) => i < product.variants.indexOf(activeVariant) &&
+                      product.variants[product.variants.indexOf(activeVariant) - 1] === v);
+                    if (qty <= activeVariant.fromQty && prevVariant) {
+                      setQty(prevVariant.fromQty);
+                    } else {
+                      setQty(q => Math.max(minQty, q - activeVariant.fromQty));
+                    }
+                  } else {
+                    setQty(q => Math.max(minQty, parseFloat((q - step).toFixed(2))));
+                  }
+                }}
                 className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl active:scale-90 transition"
                 style={{ background: '#f0fdf4', color: '#15803d' }}>
                 −
               </button>
               <span className="font-black text-gray-900 min-w-[52px] text-center text-base">
-                {qty} <span className="text-xs font-semibold text-gray-400">{product.unitLabel}</span>
+                {qty} <span className="text-xs font-semibold text-gray-400">{product.unitLabel || product.unit}</span>
               </span>
               <button
-                onClick={() => setQty(q => Math.min(product.maxQty || 99, parseFloat((q + step).toFixed(2))))}
+                onClick={() => {
+                  if (hasVariants && activeVariant) {
+                    const newQty = qty + activeVariant.fromQty;
+                    // If exceeds current variant's toQty, jump to next variant's fromQty
+                    if (newQty > activeVariant.toQty) {
+                      const idx = product.variants.indexOf(activeVariant);
+                      const nextVariant = product.variants[idx + 1];
+                      if (nextVariant) setQty(nextVariant.fromQty);
+                    } else {
+                      setQty(Math.min(maxQty, newQty));
+                    }
+                  } else {
+                    setQty(q => Math.min(product.maxQty || 99, parseFloat((q + step).toFixed(2))));
+                  }
+                }}
                 className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl text-white active:scale-90 transition"
                 style={{ background: '#16a34a', boxShadow: '0 4px 12px rgba(22,163,74,0.35)' }}>
                 +
@@ -419,14 +527,20 @@ export default function KoyambeduProductDetail() {
             </div>
           </div>
 
-          {/* Bulk pricing */}
-          {product.isBulkAvailable && product.bulkMinQty && (
-            <div className="mt-3 flex items-center gap-1.5 rounded-xl px-3 py-2"
-              style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-              <FiPackage size={12} className="text-green-700 shrink-0" />
-              <p className="text-xs text-green-700 font-semibold">
-                Bulk price ₹{product.bulkPricePerUnit}/{product.unitLabel} for {product.bulkMinQty}+ {product.unitLabel}
-              </p>
+          {/* Variant quick-select chips */}
+          {hasVariants && (
+            <div className="flex gap-2 mt-3 flex-wrap">
+              {product.variants.map((v, i) => (
+                <button key={i} onClick={() => selectVariant(v)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition ${
+                    activeVariant === v
+                      ? 'bg-green-600 text-white border-green-600'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'
+                  }`}>
+                  {v.fromQty}–{v.toQty} {product.unit}
+                  <span className="ml-1 text-[10px] opacity-80">₹{v.finalPrice}</span>
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -461,7 +575,7 @@ export default function KoyambeduProductDetail() {
         <div className="flex items-center justify-between mb-2.5">
           <div>
             <p className="text-[11px] text-gray-400">
-              {qty} {product.unitLabel} × ₹{product.currentPrice}
+              {qty} {product.unitLabel || product.unit} × ₹{activeFinalPrice}
             </p>
             <p className="font-black text-green-700 text-lg leading-tight">₹{total}</p>
           </div>

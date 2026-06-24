@@ -23,10 +23,24 @@ const haversineKm = (lat1, lon1, lat2, lon2) => {
 // No external placeholder — avoids giant "Fresh" text rendering in card
 const IMG_PLACEHOLDER = null;
 
+// Best variant = lowest finalPrice
+const getBestVariant = (product) => {
+  if (!product.variants?.length) return null;
+  return product.variants.reduce((best, v) => {
+    if (!best || v.finalPrice < best.finalPrice) return v;
+    return best;
+  }, null);
+};
+
 const ProductCard = ({ product }) => {
   const { getQty, updateItem, loading } = useKoyambeduCart();
   const qty = getQty(product._id);
   const img = product.images?.find(i => i.isPrimary)?.url || product.images?.[0]?.url || null;
+  const bestVariant = getBestVariant(product);
+  // For add-to-cart, use the MOQ (fromQty of best/cheapest variant)
+  const moq = bestVariant ? bestVariant.fromQty : (product.minQty || 1);
+  const displayPrice = bestVariant ? bestVariant.finalPrice : product.currentPrice;
+  const hasVariants = product.variants?.length > 0;
 
   return (
     <div className="bg-white rounded-2xl border border-green-100 shadow-sm overflow-hidden">
@@ -40,6 +54,9 @@ const ProductCard = ({ product }) => {
           {product.badges?.includes('fresh_arrival') && (
             <span className="absolute top-1.5 left-1.5 bg-green-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">Fresh</span>
           )}
+          {hasVariants && (
+            <span className="absolute top-1.5 right-1.5 bg-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full tracking-wide">BEST RATE</span>
+          )}
           {product.isSameDay && (
             <span className="absolute bottom-1.5 right-1.5 bg-orange-500 text-white text-[9px] px-1.5 py-0.5 rounded-full">Today ⚡</span>
           )}
@@ -50,21 +67,26 @@ const ProductCard = ({ product }) => {
           <p className="text-xs font-semibold text-gray-800 line-clamp-1">{product.name}</p>
           {product.nameTamil && <p className="text-[10px] text-gray-400 leading-tight">{product.nameTamil}</p>}
         </Link>
-        <div className="flex items-center justify-between mt-2">
-          <div>
-            <span className="text-green-700 font-bold text-xs">₹{product.currentPrice}</span>
-            <span className="text-gray-400 text-[10px] ml-0.5">/{product.unitLabel}</span>
+        <div className="mt-1.5">
+          <div className="flex items-baseline gap-0.5">
+            <span className="text-green-700 font-bold text-xs">₹{displayPrice}</span>
+            <span className="text-gray-400 text-[10px]">/{product.unitLabel || product.unit}</span>
           </div>
+          {hasVariants && bestVariant?.fromQty && (
+            <p className="text-[9px] text-gray-400 leading-tight">MOQ: {bestVariant.fromQty} {product.unit}</p>
+          )}
+        </div>
+        <div className="flex items-center justify-between mt-1.5">
+          <span />
           {qty === 0 ? (
             <button
-              onClick={() => updateItem(product._id, product.qtyStep || 1)}
+              onClick={() => updateItem(product._id, moq)}
               disabled={loading}
               className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-green-700 active:scale-95 transition">
               + Add
             </button>
           ) : (
             <div className="flex items-center gap-1">
-              {/* Delete button */}
               <button
                 onClick={() => updateItem(product._id, 0)}
                 disabled={loading}
@@ -72,10 +94,10 @@ const ProductCard = ({ product }) => {
                 title="Remove from cart">
                 <FiTrash2 size={11} />
               </button>
-              <button onClick={() => updateItem(product._id, Math.max(product.qtyStep || 1, qty - (product.qtyStep || 1)))}
+              <button onClick={() => updateItem(product._id, Math.max(moq, qty - moq))}
                 className="w-6 h-6 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center">−</button>
-              <span className="text-xs font-bold text-green-700 w-6 text-center">{qty}</span>
-              <button onClick={() => updateItem(product._id, Math.min(product.maxQty || 50, qty + (product.qtyStep || 1)))}
+              <span className="text-xs font-bold text-green-700 w-8 text-center">{qty}</span>
+              <button onClick={() => updateItem(product._id, Math.min(product.maxQty || 500, qty + moq))}
                 className="w-6 h-6 rounded-full bg-green-600 text-white font-bold flex items-center justify-center">+</button>
             </div>
           )}
