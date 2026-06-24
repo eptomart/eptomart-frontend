@@ -250,7 +250,7 @@ function EmbeddedMapPicker({ initialCenter, onLocationConfirmed }) {
         {/* Distance badge */}
         {mapReady && distKm !== null && (
           <div className="absolute top-2 right-2 z-10 bg-white rounded-xl px-2.5 py-1.5 shadow-md flex items-center gap-1.5">
-            <span className={`text-xs font-black ${distKm > 30 ? 'text-orange-500' : 'text-green-600'}`}>
+            <span className="text-xs font-black text-green-600">
               {distKm} km
             </span>
             <span className="text-gray-400 text-[10px]">from market</span>
@@ -280,9 +280,8 @@ function EmbeddedMapPicker({ initialCenter, onLocationConfirmed }) {
               {mapMoving ? 'Keep dragging…' : shortAddr}
             </p>
             {distKm !== null && !mapMoving && (
-              <p className={`text-xs mt-0.5 font-medium ${distKm > 30 ? 'text-orange-500' : 'text-green-600'}`}>
+              <p className="text-xs mt-0.5 font-medium text-green-600">
                 {distKm} km from Koyambedu market
-                {distKm > 30 ? ' · Long-distance charges may apply' : ' · Within delivery range'}
               </p>
             )}
           </div>

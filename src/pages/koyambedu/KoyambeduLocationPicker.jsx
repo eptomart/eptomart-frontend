@@ -317,9 +317,8 @@ export default function KoyambeduLocationPicker() {
             )}
             {/* Distance — always shown once we have a centre, regardless of geocoder */}
             {distKm !== null && (
-              <p className={`text-xs mt-1.5 font-semibold ${distKm <= 30 ? 'text-green-600' : 'text-orange-500'}`}>
+              <p className="text-xs mt-1.5 font-semibold text-green-600">
                 📍 {distKm} km from Koyambedu market
-                {distKm > 30 && ' · Long distance charges may apply'}
               </p>
             )}
           </div>

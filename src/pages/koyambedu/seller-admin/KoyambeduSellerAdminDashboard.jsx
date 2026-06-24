@@ -273,6 +273,16 @@ export default function KoyambeduSellerAdminDashboard() {
     });
   };
 
+  const toggleProductAvail = async (p) => {
+    try {
+      const { data } = await api.patch(
+        `/koyambedu/seller-admin/sellers/${sellerFilter}/products/${p._id}/toggle`
+      );
+      setProducts(prev => prev.map(x => x._id === p._id ? { ...x, isAvailable: data.isAvailable } : x));
+      toast.success(data.isAvailable ? 'Product activated' : 'Product deactivated');
+    } catch { toast.error('Failed to update product status'); }
+  };
+
   const saveProduct = async () => {
     setSaving(true);
     try {
@@ -463,10 +473,16 @@ export default function KoyambeduSellerAdminDashboard() {
                         <span className="text-[10px] text-gray-400">Stock: {p.stockQty} units</span>
                       </div>
                     </div>
-                    <button onClick={() => openEditProduct(p)}
-                      className="text-xs text-blue-600 font-semibold flex-shrink-0 self-start">
-                      Edit
-                    </button>
+                    <div className="flex flex-col gap-1 shrink-0 self-start">
+                      <button onClick={() => openEditProduct(p)}
+                        className="text-xs text-blue-600 font-semibold border border-blue-200 px-2.5 py-1 rounded-lg hover:bg-blue-50">
+                        ✏️ Edit
+                      </button>
+                      <button onClick={() => toggleProductAvail(p)}
+                        className={`text-xs font-semibold border px-2.5 py-1 rounded-lg ${p.isAvailable ? 'text-orange-600 border-orange-200 hover:bg-orange-50' : 'text-green-600 border-green-200 hover:bg-green-50'}`}>
+                        {p.isAvailable ? '⏸ Deactivate' : '▶ Activate'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

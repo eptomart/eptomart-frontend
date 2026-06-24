@@ -450,6 +450,15 @@ export default function KoyambeduAdmin() {
     } catch { toast.error('Failed'); }
   };
 
+  const deleteProduct = async (p) => {
+    if (!window.confirm(`Permanently delete "${p.name}"? This cannot be undone.`)) return;
+    try {
+      await api.delete(`/koyambedu/admin/products/${p._id}`);
+      toast.success('Product deleted');
+      setProducts(prev => prev.filter(x => x._id !== p._id));
+    } catch (err) { toast.error(err?.response?.data?.message || 'Delete failed'); }
+  };
+
   const openCreateSeller = async () => {
     setCreateSellerForm({ ownerName:'', businessName:'', stallNumber:'', marketSection:'', contactPhone:'', contactEmail:'', commissionRate:'10', description:'', assignedSellerAdminId:'' });
     // Load approved seller admins for the dropdown
@@ -844,6 +853,10 @@ export default function KoyambeduAdmin() {
                     <button onClick={() => toggleProduct(p._id)}
                       className={`flex-1 text-xs font-bold py-1.5 rounded-xl border ${p.isAvailable ? 'border-orange-200 text-orange-600 hover:bg-orange-50' : 'border-green-200 text-green-600 hover:bg-green-50'}`}>
                       {p.isAvailable ? 'Disable' : 'Enable'}
+                    </button>
+                    <button onClick={() => deleteProduct(p)}
+                      className="border border-red-200 text-red-500 text-xs font-bold px-2.5 py-1.5 rounded-xl hover:bg-red-50">
+                      🗑
                     </button>
                   </div>
                 </div>
