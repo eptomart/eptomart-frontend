@@ -97,12 +97,12 @@ export default function KoyambeduCart() {
                   {/* Stepper */}
                   <div className="flex items-center gap-1.5 mt-2">
                     <button
-                      onClick={() => updateItem(
-                        String(prod?._id || item.product),
-                        Math.max(0, item.quantity - step),
-                        item.deliveryType || 'tomorrow',
-                        { silent: true }
-                      )}
+                      onClick={() => {
+                        const pid = String(prod?._id || item.product);
+                        const newQty = item.quantity - step;
+                        // If dropping below 1 (or below first variant min), remove item
+                        updateItem(pid, Math.max(0, newQty), item.deliveryType || 'tomorrow', { silent: true });
+                      }}
                       className="w-7 h-7 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center active:scale-90 transition-transform">
                       <FiMinus size={12} />
                     </button>
