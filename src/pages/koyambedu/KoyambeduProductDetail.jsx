@@ -58,6 +58,7 @@ export default function KoyambeduProductDetail() {
   const [activeImg,    setActiveImg] = useState(0);
   const [deliveryType, setDelivery] = useState('tomorrow');
   const [qty,          setQty]      = useState(1);
+  const [qtyInput,     setQtyInput] = useState('1'); // local string for editable input
   const [dates,        setDates]    = useState(getDeliveryDates());
   const [priceHistory, setPriceHistory] = useState([]);
 
@@ -66,7 +67,9 @@ export default function KoyambeduProductDetail() {
       .then(r => {
         const p = r.data.product;
         setProduct(p);
-        setQty(Math.max(1, p.minQty || p.qtyStep || 1));
+        const initQty = Math.max(1, p.minQty || p.qtyStep || 1);
+        setQty(initQty);
+        setQtyInput(String(initQty));
         const d = getDeliveryDates();
         setDelivery(d.tomorrowAvailable ? 'tomorrow' : 'dat');
       })
@@ -137,9 +140,12 @@ export default function KoyambeduProductDetail() {
     navigate('/koyambedu/checkout');
   };
 
+  // Keep qtyInput display in sync whenever qty changes via +/− buttons or chips
+  useEffect(() => { setQtyInput(String(qty)); }, [qty]);
+
   // Select a tier chip: keep current qty if it already falls in range, else set to fromQty
   const selectVariant = (v) => {
-    if (qty >= v.fromQty && qty <= v.toQty) return; // already in range, no jump
+    if (qty >= v.fromQty && qty <= v.toQty) return;
     setQty(v.fromQty);
   };
 
@@ -452,15 +458,22 @@ export default function KoyambeduProductDetail() {
               <div className="flex flex-col items-center">
                 <input
                   type="number"
-                  value={qty}
+                  inputMode="numeric"
+                  value={qtyInput}
                   min={minQty}
                   max={maxQty}
-                  onChange={e => {
+                  onChange={e => setQtyInput(e.target.value)}
+                  onBlur={e => {
                     const val = parseInt(e.target.value, 10);
-                    if (!isNaN(val) && val >= minQty && val <= maxQty) setQty(val);
+                    if (!isNaN(val) && val >= minQty && val <= maxQty) {
+                      setQty(val);
+                    } else {
+                      // snap back to current valid qty
+                      setQtyInput(String(qty));
+                    }
                   }}
-                  className="font-black text-gray-900 w-[56px] text-center text-base bg-transparent border-b-2 border-green-400 focus:outline-none focus:border-green-600"
-                  style={{ appearance: 'textfield', MozAppearance: 'textfield' }}
+                  className="font-black text-gray-900 w-[64px] text-center text-lg bg-white border-2 border-green-400 rounded-xl px-1 py-1 focus:outline-none focus:border-green-600"
+                  style={{ appearance: 'textfield', MozAppearance: 'textfield', WebkitAppearance: 'none' }}
                 />
                 <span className="text-[10px] font-semibold text-gray-400 mt-0.5">{product.unitLabel || product.unit}</span>
               </div>
