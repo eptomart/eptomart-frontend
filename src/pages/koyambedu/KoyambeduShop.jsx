@@ -48,7 +48,7 @@ const ProductCard = ({ product }) => {
           {product.badges?.includes('fresh_arrival') && (
             <span className="absolute top-1.5 left-1.5 bg-green-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">Fresh</span>
           )}
-          {hasVariants && (
+          {product.variants?.length > 0 && (
             <span className="absolute top-1.5 right-1.5 bg-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full tracking-wide">BEST RATE</span>
           )}
         </div>
