@@ -396,11 +396,10 @@ export default function KoyambeduProductDetail() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-bold text-gray-800 text-sm">Quantity</p>
-              {hasVariants && activeVariant ? (
+              {hasVariants && activeVariant && (
                 <p className="text-[11px] text-green-600 font-semibold mt-0.5">
                   Range: {activeVariant.toQty ? `${activeVariant.fromQty}–${activeVariant.toQty}` : `${activeVariant.fromQty}+`} {product.unit} · ₹{activeFinalPrice}/{product.unit}
                 </p>
-              ) : (
               )}
             </div>
             <div className="flex items-center gap-3">
