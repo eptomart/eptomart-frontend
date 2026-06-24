@@ -316,12 +316,13 @@ export default function KoyambeduCheckout() {
     userLocation, setUserLocation,
     locationLabel, setLocationLabel,
   } = useKoyambeduCart();
-  const { user }  = useAuth();
+  const { user, loadUser }  = useAuth();
   const navigate  = useNavigate();
 
-  const [step,        setStep]    = useState(0);
-  const [loading,     setLoading] = useState(false);
-  const [placedOrder, setPlaced]  = useState(null);
+  const [step,           setStep]    = useState(0);
+  const [loading,        setLoading] = useState(false);
+  const [placedOrder,    setPlaced]  = useState(null);
+  const [saveAddrChecked, setSaveAddrChecked] = useState(true); // default: save new addresses
 
   // ── Address ────────────────────────────────
   const [selectedSavedAddrId, setSelectedSavedAddrId] = useState(null);
@@ -578,14 +579,6 @@ export default function KoyambeduCheckout() {
         </div>
       </div>
 
-      {/* Market hours notice */}
-      <div className="mx-4 mt-3 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2">
-        <span className="text-amber-500 text-sm shrink-0">🕘</span>
-        <p className="text-amber-700 text-[11px] leading-snug">
-          Orders for the current day must be placed before <strong>9:00 AM</strong> — Koyambedu wholesale market closes early.
-        </p>
-      </div>
-
       <div className="px-4 mt-4 space-y-4">
 
         {/* ═════ STEP 0 — ADDRESS FORM ═════ */}
@@ -701,13 +694,40 @@ export default function KoyambeduCheckout() {
               🔒 Your exact address is <strong>never</strong> shared with sellers. Only your area name is visible to them.
             </div>
 
+            {/* Save address checkbox — only shown when entering a new address */}
+            {user && !selectedSavedAddrId && (
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={saveAddrChecked}
+                  onChange={e => setSaveAddrChecked(e.target.checked)}
+                  className="w-4 h-4 accent-green-600"
+                />
+                <span className="text-xs text-gray-600 font-medium">Save this address to my account</span>
+              </label>
+            )}
+
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (!addr.fullName || !addr.addressLine1 || !addr.pincode || !addr.phone) {
                   toast.error('Please fill all required fields'); return;
                 }
                 if (!/^[6-9]\d{9}$/.test(addr.phone)) {
                   toast.error('Enter a valid 10-digit Indian mobile number'); return;
+                }
+                // Save new address if opted in
+                if (user && !selectedSavedAddrId && saveAddrChecked) {
+                  try {
+                    await api.post('/auth/add-address', {
+                      fullName:     addr.fullName,
+                      phone:        addr.phone,
+                      addressLine1: addr.addressLine1,
+                      addressLine2: addr.addressLine2,
+                      city:         addr.city,
+                      pincode:      addr.pincode,
+                    });
+                    await loadUser(); // refresh user so next visit shows saved address
+                  } catch { /* non-blocking */ }
                 }
                 goToMapStep();
               }}
@@ -744,6 +764,14 @@ export default function KoyambeduCheckout() {
         {/* ═════ STEP 2 — DELIVERY SLOT ═════ */}
         {step === 2 && (
           <div className="space-y-4">
+
+            {/* Market hours notice */}
+            <div className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2">
+              <span className="text-amber-500 text-sm shrink-0">🕘</span>
+              <p className="text-amber-700 text-[11px] leading-snug">
+                Orders for the current day must be placed before <strong>9:00 AM</strong> — Koyambedu wholesale market closes early.
+              </p>
+            </div>
 
             {/* Header */}
             <div className="bg-white rounded-2xl p-4"

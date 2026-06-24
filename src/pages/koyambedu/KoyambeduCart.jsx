@@ -5,8 +5,10 @@ import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FiArrowLeft, FiShoppingBag, FiMinus, FiPlus, FiTrash2,
-  FiAlertTriangle, FiLogIn,
+  FiLogIn,
 } from 'react-icons/fi';
+
+const MIN_ORDER = 1500;
 import { FaLeaf } from 'react-icons/fa';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import { useAuth } from '../../context/AuthContext';
@@ -69,15 +71,6 @@ export default function KoyambeduCart() {
 
       {/* ── Page content ── */}
       <div className="pb-32" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 120px)' }}>
-
-        {/* Price note */}
-        <div className="mx-4 mt-4 rounded-xl px-3 py-2.5 flex items-start gap-2"
-          style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
-          <FiAlertTriangle size={13} className="text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-amber-700 text-[11px] leading-relaxed">
-            Final prices may vary slightly based on daily market rates. You'll be notified before dispatch if any change occurs.
-          </p>
-        </div>
 
         {/* ── Cart items ── */}
         <div className="mx-4 mt-4 space-y-3">
@@ -179,9 +172,15 @@ export default function KoyambeduCart() {
             <span>Login required to place order · cart is saved</span>
           </div>
         )}
+        {subtotal < MIN_ORDER && (
+          <p className="text-center text-xs text-red-500 font-semibold mb-2">
+            Minimum order is ₹{MIN_ORDER.toLocaleString('en-IN')} — add ₹{(MIN_ORDER - subtotal).toFixed(0)} more to checkout
+          </p>
+        )}
         <button
           onClick={() => navigate('/koyambedu/checkout')}
-          className="w-full text-white font-bold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition"
+          disabled={subtotal < MIN_ORDER}
+          className="w-full text-white font-bold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ background: 'linear-gradient(135deg,#065f46,#16a34a)', boxShadow: '0 6px 20px rgba(22,163,74,0.4)' }}>
           Proceed to Checkout · ₹{subtotal.toFixed(0)}
         </button>
