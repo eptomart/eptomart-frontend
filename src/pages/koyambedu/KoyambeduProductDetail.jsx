@@ -400,10 +400,6 @@ export default function KoyambeduProductDetail() {
                   Range: {activeVariant.toQty ? `${activeVariant.fromQty}–${activeVariant.toQty}` : `${activeVariant.fromQty}+`} {product.unit} · ₹{activeFinalPrice}/{product.unit}
                 </p>
               ) : (
-                <p className="text-[11px] text-gray-400 mt-0.5">
-                  Min {minQty} {product.unit}
-                  {product.maxQty ? ` · Max ${product.maxQty} ${product.unit}` : ''}
-                </p>
               )}
             </div>
             <div className="flex items-center gap-3">

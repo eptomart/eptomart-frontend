@@ -240,7 +240,6 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
             <span className="bg-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full">BEST RATE</span>
             <div className="text-xs text-gray-700">
               Starting from <strong className="text-orange-600">₹{bestVariant.finalPrice}/{form.unit || 'unit'}</strong>
-              {' · '}MOQ: <strong>{bestVariant.fromQty} {form.unit || 'unit'}</strong>
             </div>
           </div>
         )}

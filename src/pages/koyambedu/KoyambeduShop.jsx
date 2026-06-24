@@ -69,7 +69,6 @@ const ProductCard = ({ product }) => {
             <span className="text-gray-400 text-[10px]">/{product.unit}</span>
           </div>
           {hasVariants && bestVariant?.fromQty && (
-            <p className="text-[9px] text-gray-400 leading-tight">MOQ: {bestVariant.fromQty} {product.unit}</p>
           )}
         </div>
         <div className="flex items-center justify-between mt-1.5">
