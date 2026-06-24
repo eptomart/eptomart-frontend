@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import EptoSEO, { buildProductSchema } from '../../components/common/EptoSEO';
 import {
-  FiArrowLeft, FiStar, FiShoppingBag, FiPackage, FiAlertTriangle,
+  FiArrowLeft, FiStar, FiShoppingBag, FiPackage,
   FiZap, FiClock, FiTrendingUp, FiTag, FiMapPin,
   FiCheckCircle, FiShoppingCart,
 } from 'react-icons/fi';
@@ -505,13 +505,6 @@ export default function KoyambeduProductDetail() {
         </div>
 
         {/* ══ Price fluctuation notice ══ */}
-        <div className="rounded-xl px-3 py-2.5 flex items-start gap-2"
-          style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
-          <FiAlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-amber-700 text-[11px] leading-relaxed">
-            Fresh produce prices may vary based on daily market arrivals. We'll notify you before dispatch if the price changes.
-          </p>
-        </div>
 
       </div>
 
