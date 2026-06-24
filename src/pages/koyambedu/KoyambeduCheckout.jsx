@@ -578,6 +578,14 @@ export default function KoyambeduCheckout() {
         </div>
       </div>
 
+      {/* Market hours notice */}
+      <div className="mx-4 mt-3 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2">
+        <span className="text-amber-500 text-sm shrink-0">🕘</span>
+        <p className="text-amber-700 text-[11px] leading-snug">
+          Orders for the current day must be placed before <strong>9:00 AM</strong> — Koyambedu wholesale market closes early.
+        </p>
+      </div>
+
       <div className="px-4 mt-4 space-y-4">
 
         {/* ═════ STEP 0 — ADDRESS FORM ═════ */}
