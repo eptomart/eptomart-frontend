@@ -133,7 +133,7 @@ export default function KoyambeduProductDetail() {
       style={{
         minHeight: '100vh',
         background: '#F5F4F2',
-        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 160px)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 120px)',
         overflowX: 'hidden',
       }}
     >
@@ -490,51 +490,49 @@ export default function KoyambeduProductDetail() {
         className="fixed left-0 right-0 bottom-0 bg-white z-[9990]"
         style={{
           borderTop: '1px solid #e5e7eb',
-          boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
+          boxShadow: '0 -2px 12px rgba(0,0,0,0.06)',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 68px)',
-          paddingTop: 12,
-          paddingLeft: 16,
-          paddingRight: 16,
+          paddingTop: 8,
+          paddingLeft: 12,
+          paddingRight: 12,
         }}
       >
-        {/* Price summary */}
-        <div className="flex items-center justify-between mb-2.5">
-          <div>
-            <p className="text-[11px] text-gray-400">
+        {/* Price + buttons in one compact row */}
+        <div className="flex items-center gap-2">
+          {/* Price summary */}
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-gray-400 leading-none">
               {qty} {product.unit} × ₹{activeFinalPrice}
             </p>
-            <p className="font-black text-green-700 text-lg leading-tight">₹{total}</p>
+            <p className="font-black text-green-700 text-base leading-tight">₹{total}</p>
           </div>
-        </div>
 
-        {/* Dual buttons */}
-        <div className="flex gap-2">
-          {/* Add to Cart — outlined */}
+          {/* Add to Cart */}
           <button
             onClick={handleAddToCart}
             disabled={cartLoading || qtyInvalid}
-            className="flex-1 flex items-center justify-center gap-1.5 font-extrabold py-3.5 rounded-2xl text-sm transition active:scale-95 disabled:opacity-60"
+            className="flex items-center gap-1 font-bold px-3 py-2 rounded-xl text-xs transition active:scale-95 disabled:opacity-60 shrink-0"
             style={{
               background: '#f0fdf4',
               color: '#16a34a',
-              border: '2px solid #16a34a',
+              border: '1.5px solid #16a34a',
             }}
           >
-            <FiShoppingCart size={14} />
-            {cartLoading ? '…' : cartQty > 0 ? 'Update Cart' : 'Add to Cart'}
+            <FiShoppingCart size={12} />
+            {cartLoading ? '…' : cartQty > 0 ? 'Update' : 'Add to Cart'}
           </button>
 
-          {/* Buy Now — filled */}
+          {/* Buy Now */}
           <button
             onClick={handleBuyNow}
             disabled={cartLoading || qtyInvalid}
-            className="flex-1 flex items-center justify-center gap-1.5 font-extrabold py-3.5 rounded-2xl text-sm text-white transition active:scale-95 disabled:opacity-60"
+            className="flex items-center gap-1 font-bold px-3 py-2 rounded-xl text-xs text-white transition active:scale-95 disabled:opacity-60 shrink-0"
             style={{
               background: 'linear-gradient(135deg, #064e3b 0%, #065f46 50%, #059669 100%)',
-              boxShadow: '0 4px 14px rgba(22,163,74,0.4)',
+              boxShadow: '0 2px 8px rgba(22,163,74,0.35)',
             }}
           >
-            <FiZap size={14} />
+            <FiZap size={12} />
             Buy Now
           </button>
         </div>
