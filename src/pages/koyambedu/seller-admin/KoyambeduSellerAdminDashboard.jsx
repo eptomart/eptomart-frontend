@@ -229,7 +229,7 @@ export default function KoyambeduSellerAdminDashboard() {
     if (!prodCreateForm.categoryId || !prodCreateForm.name) {
       toast.error('Category and name are required'); return;
     }
-    const validVariants = (prodCreateForm.variants || []).filter(v => v.basePrice && v.fromQty && v.toQty);
+    const validVariants = (prodCreateForm.variants || []).filter((v, i, arr) => v.basePrice && v.fromQty && (v.toQty || i === arr.length - 1));
     if (validVariants.length === 0) {
       toast.error('At least one complete variant (base price + qty range) is required'); return;
     }
@@ -286,7 +286,7 @@ export default function KoyambeduSellerAdminDashboard() {
   const saveProduct = async () => {
     setSaving(true);
     try {
-      const validVariants = (prodForm.variants || []).filter(v => v.basePrice && v.fromQty && v.toQty);
+      const validVariants = (prodForm.variants || []).filter((v, i, arr) => v.basePrice && v.fromQty && (v.toQty || i === arr.length - 1));
       await api.put(`/koyambedu/seller-admin/sellers/${sellerFilter}/products/${editProduct._id}`, {
         ...prodForm,
         variants: validVariants.length > 0 ? validVariants : undefined,

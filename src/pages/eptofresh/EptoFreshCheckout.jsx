@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { FiArrowLeft, FiMapPin, FiAlertTriangle, FiCheck, FiTag } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
+import SavedAddressPicker from '../../components/common/SavedAddressPicker';
 
 const STEPS = ['Address', 'Delivery', 'Payment'];
 
@@ -18,6 +19,7 @@ export default function EptoFreshCheckout() {
   const { cart, items, cartTotal, clearCart, userLocation } = useEptoFreshCart();
 
   const [step, setStep]                 = useState(0);
+  const [selectedSavedAddrId, setSelectedSavedAddrId] = useState(null);
   const [address, setAddress]           = useState({ fullName: '', phone: '', addressLine1: '', addressLine2: '', city: 'Chennai', state: 'Tamil Nadu', pincode: '', landmark: '' });
   const [deliveryInfo, setDeliveryInfo] = useState(null);
   const [checkingDelivery, setCheckingDelivery] = useState(false);
@@ -36,6 +38,24 @@ export default function EptoFreshCheckout() {
     if (user) {
       api.get('/eptofresh/wallet').then(r => setWalletBalance(r.data.wallet?.balance || 0)).catch(() => {});
     }
+  }, [user]);
+
+  // Auto-select default saved address on first load
+  useEffect(() => {
+    const saved = user?.addresses || [];
+    if (!saved.length) return;
+    const def = saved.find(a => a.isDefault) || saved[0];
+    setSelectedSavedAddrId(String(def._id));
+    setAddress({
+      fullName:     def.fullName     || user?.name  || '',
+      phone:        def.phone        || user?.phone || '',
+      addressLine1: def.addressLine1 || '',
+      addressLine2: def.addressLine2 || '',
+      city:         def.city         || 'Chennai',
+      state:        def.state        || 'Tamil Nadu',
+      pincode:      def.pincode      || '',
+      landmark:     '',
+    });
   }, [user]);
 
   const loadRazorpay = () => {
@@ -262,7 +282,30 @@ export default function EptoFreshCheckout() {
         {/* Step 0 — Address */}
         {step === 0 && (
           <div className="space-y-3">
-            <h2 className="text-gray-900 font-semibold">Delivery Address</h2>
+            <SavedAddressPicker
+              addresses={user?.addresses || []}
+              selectedId={selectedSavedAddrId}
+              onSelect={a => {
+                setSelectedSavedAddrId(String(a._id));
+                setAddress({
+                  fullName:     a.fullName     || '',
+                  phone:        a.phone        || '',
+                  addressLine1: a.addressLine1 || '',
+                  addressLine2: a.addressLine2 || '',
+                  city:         a.city         || 'Chennai',
+                  state:        a.state        || 'Tamil Nadu',
+                  pincode:      a.pincode      || '',
+                  landmark:     '',
+                });
+              }}
+              onNewAddress={() => {
+                setSelectedSavedAddrId(null);
+                setAddress({ fullName: user?.name || '', phone: user?.phone || '', addressLine1: '', addressLine2: '', city: 'Chennai', state: 'Tamil Nadu', pincode: '', landmark: '' });
+              }}
+            />
+            <h2 className="text-gray-900 font-semibold">
+              {selectedSavedAddrId ? 'Confirm Address' : 'Delivery Address'}
+            </h2>
             {[
               { key: 'fullName', label: 'Full Name', type: 'text' },
               { key: 'phone', label: 'Mobile Number', type: 'tel' },

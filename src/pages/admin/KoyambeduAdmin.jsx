@@ -339,7 +339,7 @@ export default function KoyambeduAdmin() {
     if (!kbdProdForm.categoryId || !kbdProdForm.name) {
       toast.error('Category and name are required'); return;
     }
-    const validVariants = (kbdProdForm.variants || []).filter(v => v.basePrice && v.fromQty && v.toQty);
+    const validVariants = (kbdProdForm.variants || []).filter((v, i, arr) => v.basePrice && v.fromQty && (v.toQty || i === arr.length - 1));
     if (validVariants.length === 0) {
       toast.error('At least one complete variant (base price + qty range) is required'); return;
     }
@@ -410,13 +410,17 @@ export default function KoyambeduAdmin() {
   const openEditProduct = (p) => {
     setEditProduct(p);
     setEditProdForm({
-      name: p.name, nameTamil: p.nameTamil || '',
-      unit: p.unit || 'kg', unitLabel: p.unitLabel || p.unit || 'kg',
-      description: p.description || '',
-      isAvailable: p.isAvailable,
-      isSameDay: p.isSameDay, isNextDay: p.isNextDay,
-      badges: p.badges || [],
-      images: p.images || [],
+      categoryId:               p.category?._id || p.categoryId || '',
+      name:                     p.name,
+      nameTamil:                p.nameTamil || '',
+      unit:                     p.unit || 'kg',
+      unitLabel:                p.unitLabel || p.unit || 'kg',
+      description:              p.description || '',
+      isAvailable:              p.isAvailable,
+      isSameDay:                p.isSameDay,
+      isNextDay:                p.isNextDay,
+      badges:                   p.badges || [],
+      images:                   p.images || [],
       procurementChargePercent: p.procurementChargePercent || 15,
       platformChargePercent:    p.platformChargePercent    || 10,
       logisticsChargePercent:   p.logisticsChargePercent   || 10,
@@ -429,7 +433,7 @@ export default function KoyambeduAdmin() {
   const saveEditProduct = async () => {
     setEditProdSaving(true);
     try {
-      const validVariants = (editProdForm.variants || []).filter(v => v.basePrice && v.fromQty && v.toQty);
+      const validVariants = (editProdForm.variants || []).filter((v, i, arr) => v.basePrice && v.fromQty && (v.toQty || i === arr.length - 1));
       await api.put(`/koyambedu/admin/products/${editProduct._id}`, {
         ...editProdForm,
         variants: validVariants.length > 0 ? validVariants : undefined,

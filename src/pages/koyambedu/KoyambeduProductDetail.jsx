@@ -96,8 +96,9 @@ export default function KoyambeduProductDetail() {
   const minQty = hasVariants ? (product.variants[0]?.fromQty || 1) : Math.max(1, product.minQty || 1);
   // If last variant is open-ended (no toQty) there's no upper cap
   const lastVariant = hasVariants ? product.variants[product.variants.length - 1] : null;
+  const isLastVariantOpen = hasVariants && !lastVariant?.toQty;
   const maxQty = hasVariants
-    ? (lastVariant?.toQty || 9999)
+    ? (isLastVariantOpen ? Infinity : (lastVariant?.toQty || 9999))
     : (product.maxQty || 500);
   const isOpenEndedActive = !!(activeVariant && !activeVariant.toQty);
   const total   = (qty * activeFinalPrice).toFixed(2);
@@ -436,11 +437,12 @@ export default function KoyambeduProductDetail() {
                   inputMode="numeric"
                   value={qtyInput}
                   min={minQty}
-                  max={maxQty}
+                  max={isLastVariantOpen ? undefined : maxQty}
                   onChange={e => setQtyInput(e.target.value)}
                   onBlur={e => {
                     const val = parseInt(e.target.value, 10);
-                    if (!isNaN(val) && val >= minQty && val <= maxQty) {
+                    const withinMax = isLastVariantOpen ? true : val <= maxQty;
+                    if (!isNaN(val) && val >= minQty && withinMax) {
                       setQty(val);
                     } else {
                       if (!isNaN(val) && val < minQty) {
@@ -471,7 +473,7 @@ export default function KoyambeduProductDetail() {
                       if (nextVariant) setQty(nextVariant.fromQty);
                     }
                   } else {
-                    setQty(q => Math.min(product.maxQty || 9999, parseFloat((q + step).toFixed(2))));
+                    setQty(q => Math.min(product.maxQty || 500, parseFloat((q + step).toFixed(2))));
                   }
                 }}
                 disabled={isOpenEndedActive ? false : (hasVariants ? qty >= maxQty : qty >= (product.maxQty || 9999))}
