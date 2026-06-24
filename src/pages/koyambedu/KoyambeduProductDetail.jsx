@@ -31,6 +31,7 @@ export default function KoyambeduProductDetail() {
   const [activeImg,    setActiveImg] = useState(0);
   const [qty,      setQty]      = useState(1);
   const [qtyInput, setQtyInput] = useState('1'); // local string for editable input
+  const [qtyInvalid, setQtyInvalid] = useState(false); // true when typed value is below minQty
   const [priceHistory, setPriceHistory] = useState([]);
 
   useEffect(() => {
@@ -52,7 +53,7 @@ export default function KoyambeduProductDetail() {
 
   // Keep qtyInput display in sync whenever qty changes via +/− buttons or chips
   // ⚠ Must be before any early returns so hook count is stable across renders
-  useEffect(() => { setQtyInput(String(qty)); }, [qty]);
+  useEffect(() => { setQtyInput(String(qty)); setQtyInvalid(false); }, [qty]);
 
   // ── Loading ──────────────────────────────────────────────────
   if (loading) return (
@@ -434,20 +435,26 @@ export default function KoyambeduProductDetail() {
                   value={qtyInput}
                   min={minQty}
                   max={maxQty ?? undefined}
-                  onChange={e => setQtyInput(e.target.value)}
+                  onChange={e => { setQtyInput(e.target.value); setQtyInvalid(false); }}
                   onBlur={e => {
                     const val = parseInt(e.target.value, 10);
                     const withinMax = maxQty === null ? true : val <= maxQty;
                     if (!isNaN(val) && val >= minQty && withinMax) {
                       setQty(val);
+                      setQtyInvalid(false);
+                    } else if (!isNaN(val) && val < minQty) {
+                      toast.error(`Minimum quantity is ${minQty} ${product.unit}`);
+                      setQtyInvalid(true);
                     } else {
-                      if (!isNaN(val) && val < minQty) {
-                        toast.error(`Minimum quantity is ${minQty} ${product.unit}`);
-                      }
                       setQtyInput(String(qty));
+                      setQtyInvalid(false);
                     }
                   }}
-                  className="font-black text-gray-900 w-[64px] text-center text-lg bg-white border-2 border-green-400 rounded-xl px-1 py-1 focus:outline-none focus:border-green-600"
+                  className={`font-black w-[64px] text-center text-lg bg-white border-2 rounded-xl px-1 py-1 focus:outline-none transition ${
+                    qtyInvalid
+                      ? 'border-red-500 text-red-600 focus:border-red-600'
+                      : 'border-green-400 text-gray-900 focus:border-green-600'
+                  }`}
                   style={{ appearance: 'textfield', MozAppearance: 'textfield', WebkitAppearance: 'none' }}
                 />
                 <span className="text-[10px] font-semibold text-gray-400 mt-0.5">{product.unit}</span>
@@ -539,7 +546,7 @@ export default function KoyambeduProductDetail() {
           {/* Add to Cart — outlined */}
           <button
             onClick={handleAddToCart}
-            disabled={cartLoading}
+            disabled={cartLoading || qtyInvalid}
             className="flex-1 flex items-center justify-center gap-1.5 font-extrabold py-3.5 rounded-2xl text-sm transition active:scale-95 disabled:opacity-60"
             style={{
               background: '#f0fdf4',
@@ -554,7 +561,7 @@ export default function KoyambeduProductDetail() {
           {/* Buy Now — filled */}
           <button
             onClick={handleBuyNow}
-            disabled={cartLoading}
+            disabled={cartLoading || qtyInvalid}
             className="flex-1 flex items-center justify-center gap-1.5 font-extrabold py-3.5 rounded-2xl text-sm text-white transition active:scale-95 disabled:opacity-60"
             style={{
               background: 'linear-gradient(135deg, #064e3b 0%, #065f46 50%, #059669 100%)',
