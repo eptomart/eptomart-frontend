@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import EptoSEO from '../../components/common/EptoSEO';
 import {
-  FiArrowLeft, FiShoppingBag, FiMapPin, FiTrash2,
+  FiArrowLeft, FiShoppingBag, FiMapPin,
 } from 'react-icons/fi';
 import { FaLeaf } from 'react-icons/fa';
 import api from '../../utils/api';
@@ -32,14 +32,9 @@ const getBestVariant = (product) => {
 };
 
 const ProductCard = ({ product }) => {
-  const { getQty, updateItem, loading } = useKoyambeduCart();
-  const qty = getQty(product._id);
   const img = product.images?.find(i => i.isPrimary)?.url || product.images?.[0]?.url || null;
   const bestVariant = getBestVariant(product);
-  // For add-to-cart, use the MOQ (fromQty of best/cheapest variant)
-  const moq = bestVariant ? bestVariant.fromQty : (product.minQty || 1);
   const displayPrice = bestVariant ? bestVariant.finalPrice : product.currentPrice;
-  const hasVariants = product.variants?.length > 0;
 
   return (
     <div className="bg-white rounded-2xl border border-green-100 shadow-sm overflow-hidden">
@@ -68,32 +63,6 @@ const ProductCard = ({ product }) => {
             <span className="text-green-700 font-bold text-xs">₹{displayPrice}</span>
             <span className="text-gray-400 text-[10px]">/{product.unit}</span>
           </div>
-        </div>
-        <div className="flex items-center justify-between mt-1.5">
-          <span />
-          {qty === 0 ? (
-            <button
-              onClick={() => updateItem(product._id, moq)}
-              disabled={loading}
-              className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-green-700 active:scale-95 transition">
-              + Add
-            </button>
-          ) : (
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => updateItem(product._id, 0)}
-                disabled={loading}
-                className="w-6 h-6 rounded-full bg-red-50 text-red-500 flex items-center justify-center active:scale-90 transition"
-                title="Remove from cart">
-                <FiTrash2 size={11} />
-              </button>
-              <button onClick={() => updateItem(product._id, Math.max(moq, qty - moq))}
-                className="w-6 h-6 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center">−</button>
-              <span className="text-xs font-bold text-green-700 w-8 text-center">{qty}</span>
-              <button onClick={() => updateItem(product._id, Math.min(product.maxQty || 500, qty + moq))}
-                className="w-6 h-6 rounded-full bg-green-600 text-white font-bold flex items-center justify-center">+</button>
-            </div>
-          )}
         </div>
       </div>
     </div>
