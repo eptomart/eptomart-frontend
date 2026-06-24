@@ -264,7 +264,7 @@ export default function KoyambeduSellerDashboard() {
             <div className="space-y-1 mb-3">
               {order.items.map((it, i) => (
                 <div key={i} className="flex justify-between text-sm">
-                  <span className="text-gray-700">{it.name} × {it.quantity}{it.unitLabel || it.unit}</span>
+                  <span className="text-gray-700">{it.name} × {it.quantity}{it.unit}</span>
                   <span className="text-gray-400">₹{it.sellerPayout?.toFixed(0)} payout</span>
                 </div>
               ))}

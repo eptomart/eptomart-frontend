@@ -104,8 +104,8 @@ export default function ProductCard({ product }) {
           <h3 className="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug hover:text-primary-600 transition-colors">{name}</h3>
         </Link>
 
-        {product.unitLabel && (
-          <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{product.unitLabel}</p>
+        {product.unit && (
+          <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{product.unit}</p>
         )}
 
         {/* Price row + Add button */}

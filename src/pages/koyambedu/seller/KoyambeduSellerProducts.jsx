@@ -39,7 +39,7 @@ const BADGES = ['fresh_arrival','low_stock','best_seller','seasonal','organic','
 
 const EMPTY_FORM = {
   name:'', nameTamil:'', description:'', categoryId:'',
-  unit:'kg', unitLabel:'kg', minQty:0.5, maxQty:50, qtyStep:0.5,
+  unit:'kg', minQty:0.5, maxQty:50, qtyStep:0.5,
   weightKg:1,
   marketPriceMin:0, marketPriceMax:0, currentPrice:'', stockQty:0,
   freshArrivalTime:'', isSameDay:true, isNextDay:true, sameDayCutoff:'08:00',
@@ -169,7 +169,7 @@ export default function KoyambeduSellerProducts() {
                   </button>
                 </div>
               </div>
-              <p className="text-green-700 font-bold text-sm mt-1">₹{p.currentPrice}/{p.unitLabel}</p>
+              <p className="text-green-700 font-bold text-sm mt-1">₹{p.currentPrice}/{p.unit}</p>
               <p className="text-xs text-gray-400">{p.category?.name}</p>
               <div className="flex gap-2 mt-2">
                 <button onClick={() => openEdit(p)} className="text-xs text-blue-600 font-semibold">Edit</button>
@@ -269,16 +269,10 @@ export default function KoyambeduSellerProducts() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-500 font-medium">Unit</label>
-                  <select value={form.unit} onChange={e => { set('unit', e.target.value); set('unitLabel', e.target.value); }}
+                  <select value={form.unit} onChange={e => set('unit', e.target.value)}
                     className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none">
                     {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 font-medium">Unit Label</label>
-                  <input value={form.unitLabel} onChange={e => set('unitLabel', e.target.value)}
-                    className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none"
-                    placeholder="e.g. 500g, 1 bunch" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 font-medium">Price (₹) *</label>

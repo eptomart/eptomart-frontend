@@ -66,7 +66,7 @@ const ProductCard = ({ product }) => {
         <div className="mt-1.5">
           <div className="flex items-baseline gap-0.5">
             <span className="text-green-700 font-bold text-xs">₹{displayPrice}</span>
-            <span className="text-gray-400 text-[10px]">/{product.unitLabel || product.unit}</span>
+            <span className="text-gray-400 text-[10px]">/{product.unit}</span>
           </div>
           {hasVariants && bestVariant?.fromQty && (
             <p className="text-[9px] text-gray-400 leading-tight">MOQ: {bestVariant.fromQty} {product.unit}</p>

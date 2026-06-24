@@ -99,7 +99,7 @@ export default function KoyambeduCart() {
                   <Link to={`/koyambedu/product/${prod?._id}`}>
                     <p className="font-semibold text-gray-800 text-sm line-clamp-1">{item.name}</p>
                   </Link>
-                  <p className="text-xs text-gray-400 mt-0.5">₹{item.unitPrice} / {item.unitLabel}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">₹{item.unitPrice} / {item.unit}</p>
 
                   {/* Stepper */}
                   <div className="flex items-center gap-1.5 mt-2">
@@ -114,7 +114,7 @@ export default function KoyambeduCart() {
                       <FiMinus size={12} />
                     </button>
                     <span className="text-sm font-bold text-gray-800 min-w-[40px] text-center">
-                      {item.quantity} {item.unitLabel}
+                      {item.quantity} {item.unit}
                     </span>
                     <button
                       onClick={() => updateItem(

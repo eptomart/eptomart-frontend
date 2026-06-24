@@ -26,7 +26,6 @@ export const EMPTY_VARIANT_PRODUCT = {
   nameTamil: '',
   description: '',
   unit: 'kg',
-  unitLabel: 'kg',
   procurementChargePercent: 15,
   platformChargePercent: 10,
   logisticsChargePercent: 10,
@@ -131,12 +130,6 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
             className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none">
             {UNITS.map(u => <option key={u} value={u}>{u.charAt(0).toUpperCase() + u.slice(1)}</option>)}
           </select>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Unit Label</label>
-          <input value={form.unitLabel} onChange={e => setField('unitLabel', e.target.value)}
-            placeholder="e.g. kg, bunch"
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none" />
         </div>
       </div>
 

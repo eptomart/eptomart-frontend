@@ -56,7 +56,7 @@ function ProcurementTab() {
     const rows = [
       ['Procurement Summary — ' + date],
       ['Product', 'Total Qty', 'Unit', 'Order Count'],
-      ...(data.summary || []).map(s => [s.productName, s.totalQty, s.unitLabel || s.unit, s.orderCount]),
+      ...(data.summary || []).map(s => [s.productName, s.totalQty, s.unit, s.orderCount]),
       [],
       ['Total Orders', data.totalOrders],
     ];
@@ -100,7 +100,7 @@ function ProcurementTab() {
                 <tr key={i} className="border-t border-gray-100">
                   <td className="border border-gray-200 px-3 py-2 font-medium">{s.productName}</td>
                   <td className="border border-gray-200 px-3 py-2 text-right font-bold text-green-700">{s.totalQty}</td>
-                  <td className="border border-gray-200 px-3 py-2 text-gray-500">{s.unitLabel || s.unit}</td>
+                  <td className="border border-gray-200 px-3 py-2 text-gray-500">{s.unit}</td>
                   <td className="border border-gray-200 px-3 py-2 text-right text-gray-500">{s.orderCount}</td>
                 </tr>
               ))}

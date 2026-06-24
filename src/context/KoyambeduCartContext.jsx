@@ -13,7 +13,7 @@ const KBD_AREA_KEY    = 'kbd_area';
 const GUEST_CART_KEY  = 'kbd_guest_cart';   // { [productId]: GuestEntry }
 const DEBOUNCE_MS     = 700;
 
-// GuestEntry: { qty, deliveryType, name, unitPrice, unitLabel, images, weightKg, qtyStep }
+// GuestEntry: { qty, deliveryType, name, unitPrice, unit, images, weightKg, qtyStep }
 
 const isLoggedIn = () => !!localStorage.getItem('eptomart_token');
 
@@ -35,7 +35,7 @@ const guestToCart = (guestMap) => ({
       name:        e.name        || 'Product',
       quantity:    e.qty,
       unitPrice:   e.unitPrice   || 0,
-      unitLabel:   e.unitLabel   || '',
+      unit:        e.unit        || '',
       deliveryType: e.deliveryType || 'tomorrow',
     })),
 });
@@ -134,7 +134,7 @@ export const KoyambeduCartProvider = ({ children }) => {
           // Keep existing product data if not provided (for stepper taps in cart)
           name:        productData?.name        || guestMap[pid]?.name        || 'Product',
           unitPrice:   productData?.currentPrice || guestMap[pid]?.unitPrice   || 0,
-          unitLabel:   productData?.unitLabel    || guestMap[pid]?.unitLabel   || '',
+          unit:        productData?.unit          || guestMap[pid]?.unit        || '',
           images:      productData?.images       || guestMap[pid]?.images      || [],
           weightKg:    productData?.weightKg     || guestMap[pid]?.weightKg    || 1,
           qtyStep:     productData?.qtyStep      || guestMap[pid]?.qtyStep     || 1,

@@ -130,7 +130,7 @@ export default function KoyambeduOrders() {
                 <div className="space-y-1.5 mb-3">
                   {order.items?.slice(0, 3).map((it, i) => (
                     <div key={i} className="flex justify-between text-sm">
-                      <span className="text-gray-700">{it.name} × {it.quantity}{it.unitLabel || it.unit}</span>
+                      <span className="text-gray-700">{it.name} × {it.quantity}{it.unit}</span>
                       <span className="text-gray-500 shrink-0 ml-2">₹{((it.finalPrice || it.orderedPrice || 0) * it.quantity).toFixed(0)}</span>
                     </div>
                   ))}

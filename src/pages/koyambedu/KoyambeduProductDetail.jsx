@@ -140,7 +140,7 @@ export default function KoyambeduProductDetail() {
         app="koyambedu"
         page="product"
         title={`${product.name} — Koyambedu Daily | Eptomart`}
-        description={product.description || `Buy fresh ${product.name} at ₹${product.currentPrice}/${product.unitLabel || product.unit}. Sourced from Koyambedu wholesale market.`}
+        description={product.description || `Buy fresh ${product.name} at ₹${product.currentPrice}/${product.unit}. Sourced from Koyambedu wholesale market.`}
         canonical={`https://www.eptomart.com/koyambedu/product/${productId}`}
         image={primaryImage}
         jsonLd={buildProductSchema({
@@ -207,7 +207,7 @@ export default function KoyambeduProductDetail() {
           {/* In-cart indicator */}
           {cartQty > 0 && (
             <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-green-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-lg">
-              <FiCheckCircle size={11} /> {cartQty} {product.unitLabel} in cart
+              <FiCheckCircle size={11} /> {cartQty} {product.unit} in cart
             </div>
           )}
         </div>
@@ -251,7 +251,7 @@ export default function KoyambeduProductDetail() {
                 <span className="bg-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full tracking-wide">BEST RATE</span>
                 <div className="flex items-baseline gap-1">
                   <span className="text-green-700 font-black text-2xl">₹{activeFinalPrice}</span>
-                  <span className="text-gray-400 text-sm">/ {product.unitLabel || product.unit}</span>
+                  <span className="text-gray-400 text-sm">/ {product.unit}</span>
                 </div>
               </div>
               {/* Variant pricing table */}
@@ -297,7 +297,7 @@ export default function KoyambeduProductDetail() {
           ) : (
             <div className="flex items-baseline gap-2 mt-3">
               <span className="text-green-700 font-black text-3xl">₹{product.currentPrice}</span>
-              <span className="text-gray-400 text-sm font-medium">per {product.unitLabel}</span>
+              <span className="text-gray-400 text-sm font-medium">per {product.unit}</span>
               {product.originalPrice > product.currentPrice && (
                 <span className="text-gray-400 text-sm line-through">₹{product.originalPrice}</span>
               )}
@@ -310,7 +310,7 @@ export default function KoyambeduProductDetail() {
               style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
               <FiTrendingUp size={12} className="text-amber-600 shrink-0" />
               <span className="text-amber-700 text-[11px] font-semibold">
-                Market rate: ₹{product.marketPriceMin}–₹{product.marketPriceMax}/{product.unitLabel}
+                Market rate: ₹{product.marketPriceMin}–₹{product.marketPriceMax}/{product.unit}
               </span>
             </div>
           )}
@@ -401,8 +401,8 @@ export default function KoyambeduProductDetail() {
                 </p>
               ) : (
                 <p className="text-[11px] text-gray-400 mt-0.5">
-                  Min {minQty} {product.unitLabel}
-                  {product.maxQty ? ` · Max ${product.maxQty} ${product.unitLabel}` : ''}
+                  Min {minQty} {product.unit}
+                  {product.maxQty ? ` · Max ${product.maxQty} ${product.unit}` : ''}
                 </p>
               )}
             </div>
@@ -454,7 +454,7 @@ export default function KoyambeduProductDetail() {
                   className="font-black text-gray-900 w-[64px] text-center text-lg bg-white border-2 border-green-400 rounded-xl px-1 py-1 focus:outline-none focus:border-green-600"
                   style={{ appearance: 'textfield', MozAppearance: 'textfield', WebkitAppearance: 'none' }}
                 />
-                <span className="text-[10px] font-semibold text-gray-400 mt-0.5">{product.unitLabel || product.unit}</span>
+                <span className="text-[10px] font-semibold text-gray-400 mt-0.5">{product.unit}</span>
               </div>
 
               {/* + button: step by 1; cross tier boundary up */}
@@ -532,7 +532,7 @@ export default function KoyambeduProductDetail() {
         <div className="flex items-center justify-between mb-2.5">
           <div>
             <p className="text-[11px] text-gray-400">
-              {qty} {product.unitLabel || product.unit} × ₹{activeFinalPrice}
+              {qty} {product.unit} × ₹{activeFinalPrice}
             </p>
             <p className="font-black text-green-700 text-lg leading-tight">₹{total}</p>
           </div>

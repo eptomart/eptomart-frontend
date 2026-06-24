@@ -414,7 +414,6 @@ export default function KoyambeduAdmin() {
       name:                     p.name,
       nameTamil:                p.nameTamil || '',
       unit:                     p.unit || 'kg',
-      unitLabel:                p.unitLabel || p.unit || 'kg',
       description:              p.description || '',
       isAvailable:              p.isAvailable,
       isSameDay:                p.isSameDay,
@@ -570,7 +569,7 @@ export default function KoyambeduAdmin() {
                   </div>
                   <div className="text-xs text-gray-600 mb-2">
                     {order.items?.slice(0,3).map((it,i) => (
-                      <span key={i}>{it.name} ×{it.quantity}{it.unitLabel || it.unit}{i < order.items.length-1 ? ', ' : ''}</span>
+                      <span key={i}>{it.name} ×{it.quantity}{it.unit}{i < order.items.length-1 ? ', ' : ''}</span>
                     ))}
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t border-gray-50">
@@ -843,7 +842,7 @@ export default function KoyambeduAdmin() {
                       </div>
                       <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-600">
                         <span className="font-black text-gray-800">₹{p.currentPrice}</span>
-                        <span>/{p.unitLabel || p.unit}</span>
+                        <span>/{p.unit}</span>
                       </div>
                     </div>
                   </div>

@@ -256,7 +256,6 @@ export default function KoyambeduSellerAdminDashboard() {
       nameTamil:                p.nameTamil || '',
       description:              p.description || '',
       unit:                     p.unit || 'kg',
-      unitLabel:                p.unitLabel || p.unit || 'kg',
       procurementChargePercent: p.procurementChargePercent || 15,
       platformChargePercent:    p.platformChargePercent    || 10,
       logisticsChargePercent:   p.logisticsChargePercent   || 10,
@@ -465,7 +464,7 @@ export default function KoyambeduSellerAdminDashboard() {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-800 text-sm">{p.name}</p>
                       {p.nameTamil && <p className="text-[10px] text-gray-400">{p.nameTamil}</p>}
-                      <p className="text-green-700 font-bold text-sm mt-0.5">₹{p.currentPrice}/{p.unitLabel}</p>
+                      <p className="text-green-700 font-bold text-sm mt-0.5">₹{p.currentPrice}/{p.unit}</p>
                       <div className="flex gap-2 mt-1 flex-wrap">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${p.isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                           {p.isAvailable ? 'Active' : 'Inactive'}
