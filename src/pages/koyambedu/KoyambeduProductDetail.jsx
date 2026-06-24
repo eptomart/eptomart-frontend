@@ -116,7 +116,8 @@ export default function KoyambeduProductDetail() {
     : null;
 
   const activeFinalPrice = activeVariant ? activeVariant.finalPrice : product.currentPrice;
-  const step    = hasVariants && activeVariant ? activeVariant.fromQty : Math.max(1, product.qtyStep || 1);
+  // For variant products, always step by 1 — fromQty is the *minimum*, not the increment
+  const step = hasVariants ? 1 : Math.max(1, product.qtyStep || 1);
   const minQty  = hasVariants ? (product.variants[0]?.fromQty || 1) : Math.max(1, product.minQty || 1);
   const maxQty  = hasVariants ? (product.variants[product.variants.length - 1]?.toQty || 500) : (product.maxQty || 500);
   const total   = (qty * activeFinalPrice).toFixed(2);
@@ -136,8 +137,9 @@ export default function KoyambeduProductDetail() {
     navigate('/koyambedu/checkout');
   };
 
-  // Jump qty to a variant's MOQ when user selects that tier
+  // Select a tier chip: keep current qty if it already falls in range, else set to fromQty
   const selectVariant = (v) => {
+    if (qty >= v.fromQty && qty <= v.toQty) return; // already in range, no jump
     setQty(v.fromQty);
   };
 
@@ -482,45 +484,65 @@ export default function KoyambeduProductDetail() {
               )}
             </div>
             <div className="flex items-center gap-3">
+              {/* − button: step by 1; cross tier boundary down */}
               <button
                 onClick={() => {
-                  if (hasVariants && activeVariant) {
-                    // Jump to previous variant if at its min, else decrement by fromQty step
-                    const prevVariant = product.variants.find((v, i) => i < product.variants.indexOf(activeVariant) &&
-                      product.variants[product.variants.indexOf(activeVariant) - 1] === v);
-                    if (qty <= activeVariant.fromQty && prevVariant) {
-                      setQty(prevVariant.fromQty);
+                  if (hasVariants) {
+                    const newQty = qty - 1;
+                    if (activeVariant && newQty >= activeVariant.fromQty) {
+                      setQty(newQty);
                     } else {
-                      setQty(q => Math.max(minQty, q - activeVariant.fromQty));
+                      const idx = activeVariant ? product.variants.indexOf(activeVariant) : product.variants.length;
+                      const prevVariant = product.variants[idx - 1];
+                      if (prevVariant) setQty(prevVariant.toQty);
+                      // else already at global min — do nothing
                     }
                   } else {
                     setQty(q => Math.max(minQty, parseFloat((q - step).toFixed(2))));
                   }
                 }}
-                className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl active:scale-90 transition"
+                disabled={hasVariants ? qty <= minQty : qty <= minQty}
+                className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl active:scale-90 transition disabled:opacity-40"
                 style={{ background: '#f0fdf4', color: '#15803d' }}>
                 −
               </button>
-              <span className="font-black text-gray-900 min-w-[52px] text-center text-base">
-                {qty} <span className="text-xs font-semibold text-gray-400">{product.unitLabel || product.unit}</span>
-              </span>
+
+              {/* Editable qty input */}
+              <div className="flex flex-col items-center">
+                <input
+                  type="number"
+                  value={qty}
+                  min={minQty}
+                  max={maxQty}
+                  onChange={e => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val) && val >= minQty && val <= maxQty) setQty(val);
+                  }}
+                  className="font-black text-gray-900 w-[56px] text-center text-base bg-transparent border-b-2 border-green-400 focus:outline-none focus:border-green-600"
+                  style={{ appearance: 'textfield', MozAppearance: 'textfield' }}
+                />
+                <span className="text-[10px] font-semibold text-gray-400 mt-0.5">{product.unitLabel || product.unit}</span>
+              </div>
+
+              {/* + button: step by 1; cross tier boundary up */}
               <button
                 onClick={() => {
-                  if (hasVariants && activeVariant) {
-                    const newQty = qty + activeVariant.fromQty;
-                    // If exceeds current variant's toQty, jump to next variant's fromQty
-                    if (newQty > activeVariant.toQty) {
-                      const idx = product.variants.indexOf(activeVariant);
+                  if (hasVariants) {
+                    const newQty = qty + 1;
+                    if (activeVariant && newQty <= activeVariant.toQty) {
+                      setQty(newQty);
+                    } else {
+                      const idx = activeVariant ? product.variants.indexOf(activeVariant) : -1;
                       const nextVariant = product.variants[idx + 1];
                       if (nextVariant) setQty(nextVariant.fromQty);
-                    } else {
-                      setQty(Math.min(maxQty, newQty));
+                      // else already at global max — do nothing
                     }
                   } else {
-                    setQty(q => Math.min(product.maxQty || 99, parseFloat((q + step).toFixed(2))));
+                    setQty(q => Math.min(product.maxQty || 9999, parseFloat((q + step).toFixed(2))));
                   }
                 }}
-                className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl text-white active:scale-90 transition"
+                disabled={hasVariants ? qty >= maxQty : qty >= (product.maxQty || 9999)}
+                className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl text-white active:scale-90 transition disabled:opacity-40"
                 style={{ background: '#16a34a', boxShadow: '0 4px 12px rgba(22,163,74,0.35)' }}>
                 +
               </button>
