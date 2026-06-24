@@ -68,8 +68,6 @@ const ProductCard = ({ product }) => {
             <span className="text-green-700 font-bold text-xs">₹{displayPrice}</span>
             <span className="text-gray-400 text-[10px]">/{product.unit}</span>
           </div>
-          {hasVariants && bestVariant?.fromQty && (
-          )}
         </div>
         <div className="flex items-center justify-between mt-1.5">
           <span />
