@@ -141,7 +141,7 @@ export default function KoyambeduHome() {
               style={isMarketClosed
                 ? { background: 'rgba(239,68,68,0.85)', color: '#fff' }
                 : { background: 'rgba(250,204,21,0.85)', color: '#065f46' }}>
-              <FiSun size={10} /> {isMarketClosed ? 'Market Closed' : 'Market Open'}
+              <FiSun size={10} /> {isMarketClosed ? 'Order for Tomorrow' : 'Market Open'}
             </span>
           </div>
         </div>
@@ -179,18 +179,10 @@ export default function KoyambeduHome() {
                 <FiSun size={18} className="text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-black text-sm leading-tight">Wholesale Koyambedu market closed for today</p>
+                <p className="text-white font-black text-sm leading-tight">Today's orders go for tomorrow's delivery</p>
                 <p className="text-red-200 text-xs mt-1 leading-relaxed">
-                  Today's procurement window has ended (9:00 AM IST cutoff). Orders placed now will be scheduled for <strong className="text-white">tomorrow's delivery</strong>.
+                  Order now and receive fresh produce <strong className="text-white">tomorrow</strong>. Next pickup at 5 AM.
                 </p>
-                <div className="flex flex-wrap gap-2 mt-2.5">
-                  <span className="bg-white/20 text-white text-[10px] font-bold px-2.5 py-1 rounded-full border border-white/25">
-                    🕘 Next pickup: Tomorrow 5 AM
-                  </span>
-                  <span className="bg-white/20 text-white text-[10px] font-bold px-2.5 py-1 rounded-full border border-white/25">
-                    📦 Still accepting orders
-                  </span>
-                </div>
               </div>
             </div>
           </div>
