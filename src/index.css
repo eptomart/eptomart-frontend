@@ -12,7 +12,8 @@
   html {
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
-    /* Prevent iOS from zooming when inputs are focused */
+    /* Lock base font size so Android system font scale doesn't inflate rem-based layouts */
+    font-size: 16px;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }

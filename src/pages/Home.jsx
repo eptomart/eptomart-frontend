@@ -278,7 +278,7 @@ function ShopBySource() {
       {/* Koyambedu Daily — HERO tile, tall + prominent */}
       <Link to="/koyambedu"
         className="relative overflow-hidden rounded-2xl active:scale-[0.98] transition-transform block"
-        style={{ height: 200, boxShadow: '0 8px 28px rgba(6,78,59,0.50)' }}>
+        style={{ aspectRatio: '2/1', maxHeight: 220, boxShadow: '0 8px 28px rgba(6,78,59,0.50)' }}>
         <img src="/categories/koyambedu.jpg" alt="Koyambedu Market"
           className="absolute inset-0 w-full h-full object-cover" />
         {/* Strong gradient left-to-right: solid dark on left (text), fades right (photo shows) */}
@@ -326,7 +326,7 @@ function ShopBySource() {
       <div className="grid grid-cols-2 gap-2">
         <Link to="/uzhavar"
           className="relative overflow-hidden rounded-xl active:scale-[0.96] transition-transform block"
-          style={{ height: 110, boxShadow: '0 4px 16px rgba(13,148,136,0.35)' }}>
+          style={{ aspectRatio: '16/9', maxHeight: 130, boxShadow: '0 4px 16px rgba(13,148,136,0.35)' }}>
           <img src="/categories/uzhavar.jpg" alt="Farmer Fresh"
             className="absolute inset-0 w-full h-full object-cover" />
           {/* Light vignette top, heavy only at bottom for text */}
@@ -339,7 +339,7 @@ function ShopBySource() {
         </Link>
         <Link to="/eptofresh"
           className="relative overflow-hidden rounded-xl active:scale-[0.96] transition-transform block"
-          style={{ height: 110, boxShadow: '0 4px 16px rgba(234,88,12,0.35)' }}>
+          style={{ aspectRatio: '16/9', maxHeight: 130, boxShadow: '0 4px 16px rgba(234,88,12,0.35)' }}>
           <img src="/categories/proteins.jpg" alt="Proteins"
             className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0"
