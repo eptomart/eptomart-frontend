@@ -20,6 +20,18 @@ const calcFinal = (base, proc, plat, log) => {
 
 const EMPTY_VARIANT = { basePrice: '', fromQty: '', toQty: '', finalPrice: '' };
 
+/** Returns error message string if overlap found, null if clean */
+export const getVariantOverlapError = (variants = []) => {
+  for (let i = 1; i < variants.length; i++) {
+    const prevTo = (variants[i - 1].toQty !== '' && variants[i - 1].toQty != null)
+      ? Number(variants[i - 1].toQty) : null;
+    if (prevTo !== null && Number(variants[i].fromQty) <= prevTo) {
+      return `Variant ${i + 1} qty range overlaps with the previous tier — it must start at ${prevTo + 1} or higher`;
+    }
+  }
+  return null;
+};
+
 export const EMPTY_VARIANT_PRODUCT = {
   categoryId: '',
   name: '',
@@ -92,6 +104,18 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
     if (!best || Number(v.finalPrice) < Number(best.finalPrice)) return v;
     return best;
   }, null);
+
+  // Overlap errors — variant[i].fromQty must be > variant[i-1].toQty
+  const overlapErrors = (form.variants || []).map((v, i) => {
+    if (i === 0) return null;
+    const prev = form.variants[i - 1];
+    const prevTo = prev.toQty !== '' && prev.toQty != null ? Number(prev.toQty) : null;
+    if (prevTo !== null && Number(v.fromQty) <= prevTo) {
+      return `Must start at ${prevTo + 1} or higher (previous tier ends at ${prevTo})`;
+    }
+    return null;
+  });
+  const hasOverlap = overlapErrors.some(Boolean);
 
   return (
     <div className="space-y-4">
@@ -196,9 +220,18 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
           <span />
         </div>
 
+        {hasOverlap && (
+          <div className="mb-2 px-3 py-2 rounded-xl bg-red-50 border border-red-300 text-xs text-red-700 font-semibold">
+            ⚠️ Variant ranges must not overlap — each tier's "From Qty" must be higher than the previous tier's "To Qty" + 1
+          </div>
+        )}
+
         <div className="space-y-2">
           {(form.variants || []).map((v, idx) => (
-            <div key={idx} className={`grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-1 items-center rounded-xl px-2 py-2 border ${idx === 0 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+            <div key={idx}>
+            <div className={`grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-1 items-center rounded-xl px-2 py-2 border ${
+              overlapErrors[idx] ? 'bg-red-50 border-red-400' : idx === 0 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
+            }`}>
               {/* Base Price */}
               <div className="relative">
                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
@@ -230,6 +263,10 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
                 className="w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 disabled:opacity-30 transition text-sm">
                 ✕
               </button>
+            </div>
+            {overlapErrors[idx] && (
+              <p className="text-[10px] text-red-600 font-semibold mt-0.5 px-1">⚠️ {overlapErrors[idx]}</p>
+            )}
             </div>
           ))}
         </div>

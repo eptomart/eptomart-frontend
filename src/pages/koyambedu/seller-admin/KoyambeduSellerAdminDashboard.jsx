@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
 import KoyambeduImageUploader from '../../../components/koyambedu/KoyambeduImageUploader';
-import KoyambeduVariantProductForm, { EMPTY_VARIANT_PRODUCT } from '../../../components/koyambedu/KoyambeduVariantProductForm';
+import KoyambeduVariantProductForm, { EMPTY_VARIANT_PRODUCT, getVariantOverlapError } from '../../../components/koyambedu/KoyambeduVariantProductForm';
 
 // ── AI helpers ───────────────────────────────
 const useAI = () => {
@@ -233,6 +233,8 @@ export default function KoyambeduSellerAdminDashboard() {
     if (validVariants.length === 0) {
       toast.error('At least one complete variant (base price + qty range) is required'); return;
     }
+    const overlapErr = getVariantOverlapError(validVariants);
+    if (overlapErr) { toast.error(overlapErr); return; }
     setSaving(true);
     try {
       await api.post(`/koyambedu/seller-admin/sellers/${addProdSellerId}/products`, {
@@ -283,9 +285,11 @@ export default function KoyambeduSellerAdminDashboard() {
   };
 
   const saveProduct = async () => {
+    const validVariants = (prodForm.variants || []).filter((v, i, arr) => v.basePrice && v.fromQty && (v.toQty || i === arr.length - 1));
+    const overlapErr = getVariantOverlapError(validVariants);
+    if (overlapErr) { toast.error(overlapErr); return; }
     setSaving(true);
     try {
-      const validVariants = (prodForm.variants || []).filter((v, i, arr) => v.basePrice && v.fromQty && (v.toQty || i === arr.length - 1));
       await api.put(`/koyambedu/seller-admin/sellers/${sellerFilter}/products/${editProduct._id}`, {
         ...prodForm,
         variants: validVariants.length > 0 ? validVariants : undefined,
