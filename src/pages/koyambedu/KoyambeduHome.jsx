@@ -137,12 +137,6 @@ export default function KoyambeduHome() {
               style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.2)' }}>
               <FiPackage size={10} /> + ₹15 platform fee
             </span>
-            <span className="shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1"
-              style={isMarketClosed
-                ? { background: 'rgba(239,68,68,0.85)', color: '#fff' }
-                : { background: 'rgba(250,204,21,0.85)', color: '#065f46' }}>
-              <FiSun size={10} /> {isMarketClosed ? 'Order for Tomorrow' : 'Market Open'}
-            </span>
           </div>
         </div>
 
