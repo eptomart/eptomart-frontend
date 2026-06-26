@@ -8,7 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import EptoSEO from '../../components/common/EptoSEO';
 import {
   FiSearch, FiChevronRight, FiMapPin, FiShoppingBag, FiSun,
-  FiTruck, FiPackage, FiArrowLeft, FiChevronDown,
+  FiArrowLeft, FiChevronDown,
 } from 'react-icons/fi';
 import { FaLeaf } from 'react-icons/fa';
 import BottomNav from '../../components/common/BottomNav';
@@ -127,16 +127,18 @@ export default function KoyambeduHome() {
             <FiChevronDown size={13} className="text-white opacity-70 shrink-0" />
           </button>
 
-          {/* Delivery info pills */}
+          {/* Market info pills */}
           <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide pb-0.5">
-            <span className="shrink-0 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1"
-              style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.2)' }}>
-              <FiTruck size={10} /> ₹125 per 4 km
-            </span>
-            <span className="shrink-0 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1"
-              style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.2)' }}>
-              <FiPackage size={10} /> + ₹15 platform fee
-            </span>
+            {[
+              { icon: '🏪', label: '2,000+ Vendors' },
+              { icon: '🥦', label: '300+ Varieties' },
+              { icon: '⏰', label: 'Order by 9 AM' },
+            ].map(({ icon, label }) => (
+              <span key={label} className="shrink-0 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1"
+                style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                {icon} {label}
+              </span>
+            ))}
           </div>
         </div>
 
