@@ -275,48 +275,43 @@ const SOURCE_TILES = [
 function ShopBySource() {
   return (
     <div className="px-4 space-y-2">
-      {/* Koyambedu Daily — HERO tile, tall + prominent */}
+      {/* Koyambedu Daily — HERO tile */}
       <Link to="/koyambedu"
         className="relative overflow-hidden rounded-2xl active:scale-[0.98] transition-transform block"
-        style={{ aspectRatio: '2/1', maxHeight: 220, boxShadow: '0 8px 28px rgba(6,78,59,0.50)' }}>
+        style={{ aspectRatio: '2.4/1', maxHeight: 165, boxShadow: '0 8px 28px rgba(6,78,59,0.50)' }}>
         <img src="/categories/koyambedu.jpg" alt="Koyambedu Market"
           className="absolute inset-0 w-full h-full object-cover" />
-        {/* Strong gradient left-to-right: solid dark on left (text), fades right (photo shows) */}
         <div className="absolute inset-0"
           style={{ background: 'linear-gradient(100deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.55) 50%, rgba(0,0,0,0.15) 100%)' }} />
-        {/* Content */}
-        <div className="absolute inset-0 flex flex-col justify-between p-4">
+        <div className="absolute inset-0 flex flex-col justify-between p-3">
           {/* Top: badges */}
           <div className="flex items-start justify-between">
-            <span className="bg-emerald-500 text-white text-[9px] font-black tracking-widest uppercase px-2.5 py-1 rounded-full shadow">
+            <span className="bg-emerald-500 text-white text-[9px] font-black tracking-widest uppercase px-2 py-0.5 rounded-full shadow">
               MARKET FRESH · DAILY
             </span>
-            <span className="bg-black/40 text-white text-[9px] font-bold px-2 py-1 rounded-full border border-white/25">
+            <span className="bg-black/40 text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/25">
               🏆 Asia's Largest
             </span>
           </div>
           {/* Middle: headline + stats */}
           <div>
-            <p className="text-white font-black text-[28px] leading-tight tracking-tight"
+            <p className="text-white font-black text-[22px] leading-tight tracking-tight"
               style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>
               Koyambedu Daily
             </p>
-            <p className="text-white text-[12px] font-semibold mt-1 opacity-90">
-              Veggies, fruits &amp; flowers direct from market
-            </p>
-            <div className="flex gap-2 mt-3">
+            <div className="flex gap-1.5 mt-2">
               {[['2,000+','Vendors'],['300+','Varieties'],['1,000T','Daily Trade']].map(([num, label]) => (
-                <div key={label} className="bg-white/20 rounded-lg px-2.5 py-1.5 border border-white/30">
-                  <p className="text-white font-black text-[13px] leading-tight">{num}</p>
-                  <p className="text-white text-[9px] opacity-80 font-medium">{label}</p>
+                <div key={label} className="bg-white/20 rounded-lg px-2 py-1 border border-white/30">
+                  <p className="text-white font-black text-[11px] leading-tight">{num}</p>
+                  <p className="text-white text-[8px] opacity-80 font-medium">{label}</p>
                 </div>
               ))}
             </div>
           </div>
           {/* Bottom: CTA */}
           <div className="flex justify-start">
-            <span className="bg-emerald-500 text-white font-black text-[12px] px-5 py-2.5 rounded-xl flex items-center gap-1.5 shadow-lg">
-              Shop Now <FiArrowRight size={13} />
+            <span className="bg-emerald-500 text-white font-black text-[11px] px-4 py-1.5 rounded-xl flex items-center gap-1.5 shadow-lg">
+              Shop Now <FiArrowRight size={11} />
             </span>
           </div>
         </div>
@@ -326,26 +321,25 @@ function ShopBySource() {
       <div className="grid grid-cols-2 gap-2">
         <Link to="/uzhavar"
           className="relative overflow-hidden rounded-xl active:scale-[0.96] transition-transform block"
-          style={{ aspectRatio: '16/9', maxHeight: 130, boxShadow: '0 4px 16px rgba(13,148,136,0.35)' }}>
+          style={{ aspectRatio: '2/1', maxHeight: 100, boxShadow: '0 4px 16px rgba(13,148,136,0.35)' }}>
           <img src="/categories/uzhavar.jpg" alt="Farmer Fresh"
             className="absolute inset-0 w-full h-full object-cover" />
-          {/* Light vignette top, heavy only at bottom for text */}
           <div className="absolute inset-0"
             style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.10) 55%, transparent 100%)' }} />
-          <div className="absolute bottom-0 left-0 right-0 px-3 py-2.5">
-            <p className="text-white font-black text-[14px] leading-tight drop-shadow-sm">Farmer Fresh</p>
+          <div className="absolute bottom-0 left-0 right-0 px-2.5 py-2">
+            <p className="text-white font-black text-[13px] leading-tight drop-shadow-sm">Farmer Fresh</p>
             <p className="text-white/80 text-[10px] font-semibold">Farm Direct</p>
           </div>
         </Link>
         <Link to="/eptofresh"
           className="relative overflow-hidden rounded-xl active:scale-[0.96] transition-transform block"
-          style={{ aspectRatio: '16/9', maxHeight: 130, boxShadow: '0 4px 16px rgba(234,88,12,0.35)' }}>
+          style={{ aspectRatio: '2/1', maxHeight: 100, boxShadow: '0 4px 16px rgba(234,88,12,0.35)' }}>
           <img src="/categories/proteins.jpg" alt="Proteins"
             className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0"
             style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.10) 55%, transparent 100%)' }} />
-          <div className="absolute bottom-0 left-0 right-0 px-3 py-2.5">
-            <p className="text-white font-black text-[14px] leading-tight drop-shadow-sm">Proteins</p>
+          <div className="absolute bottom-0 left-0 right-0 px-2.5 py-2">
+            <p className="text-white font-black text-[13px] leading-tight drop-shadow-sm">Proteins</p>
             <p className="text-white/80 text-[10px] font-semibold">Hyperlocal</p>
           </div>
         </Link>
