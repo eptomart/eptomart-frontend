@@ -326,17 +326,23 @@ export default function KoyambeduCheckout() {
 
   // ── Address ────────────────────────────────
   const [selectedSavedAddrId, setSelectedSavedAddrId] = useState(null);
+
+  // Pre-fill from localStorage cache (works for guests too)
+  const cachedAddr = (() => {
+    try { return JSON.parse(localStorage.getItem('kbd_last_addr') || 'null'); } catch { return null; }
+  })();
+
   const [addr, setAddr] = useState({
-    fullName:     user?.name || '',
-    phone:        user?.phone || '',
-    addressLine1: '',
-    addressLine2: '',
-    city:         'Chennai',
-    pincode:      '',
+    fullName:     user?.name          || cachedAddr?.fullName     || '',
+    phone:        user?.phone         || cachedAddr?.phone        || '',
+    addressLine1: cachedAddr?.addressLine1 || '',
+    addressLine2: cachedAddr?.addressLine2 || '',
+    city:         cachedAddr?.city         || 'Chennai',
+    pincode:      cachedAddr?.pincode      || '',
     landmark:     '',
   });
 
-  // Auto-select default saved address on first load
+  // Auto-select default saved address on first load (logged-in users)
   useEffect(() => {
     const saved = user?.addresses || [];
     if (!saved.length) return;
@@ -538,7 +544,7 @@ export default function KoyambeduCheckout() {
   );
 
   return (
-    <div className="min-h-screen pb-12" style={{ background: '#F5F4F2' }}>
+    <div className="min-h-screen" style={{ background: '#F5F4F2', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
 
       {/* Header */}
       <div className="sticky top-0 z-20"
@@ -715,7 +721,15 @@ export default function KoyambeduCheckout() {
                 if (!/^[6-9]\d{9}$/.test(addr.phone)) {
                   toast.error('Enter a valid 10-digit Indian mobile number'); return;
                 }
-                // Save new address if opted in
+                // Always cache address in localStorage (works for guests too)
+                try {
+                  localStorage.setItem('kbd_last_addr', JSON.stringify({
+                    fullName: addr.fullName, phone: addr.phone,
+                    addressLine1: addr.addressLine1, addressLine2: addr.addressLine2,
+                    city: addr.city, pincode: addr.pincode,
+                  }));
+                } catch { /* non-blocking */ }
+                // Save to account if logged-in and opted in
                 if (user && !selectedSavedAddrId && saveAddrChecked) {
                   try {
                     await api.post('/auth/add-address', {
@@ -726,7 +740,7 @@ export default function KoyambeduCheckout() {
                       city:         addr.city,
                       pincode:      addr.pincode,
                     });
-                    await loadUser(); // refresh user so next visit shows saved address
+                    await loadUser();
                   } catch { /* non-blocking */ }
                 }
                 goToMapStep();
