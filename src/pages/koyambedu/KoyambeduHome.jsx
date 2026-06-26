@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import EptoSEO from '../../components/common/EptoSEO';
 import {
-  FiSearch, FiChevronRight, FiMapPin, FiShoppingBag, FiSun,
+  FiSearch, FiChevronRight, FiMapPin, FiShoppingBag,
   FiArrowLeft, FiChevronDown,
 } from 'react-icons/fi';
 import { FaLeaf } from 'react-icons/fa';
@@ -154,18 +154,12 @@ export default function KoyambeduHome() {
         {/* ── Market Closed Banner ── */}
         {isMarketClosed && (
           <div className="mb-4 rounded-2xl overflow-hidden"
-            style={{ background: 'linear-gradient(135deg,#7f1d1d 0%,#b91c1c 60%,#ef4444 100%)', boxShadow: '0 4px 20px rgba(185,28,28,0.35)' }}>
-            <div className="p-4 relative overflow-hidden flex items-start gap-3">
-              <div className="absolute right-0 top-0 text-[80px] opacity-10 select-none pointer-events-none leading-none">🏪</div>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                style={{ background: 'rgba(255,255,255,0.2)' }}>
-                <FiSun size={18} className="text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-xs leading-relaxed">
-                  As the wholesale market closes early, orders placed after <strong className="text-white">9:00 AM</strong> will be delivered the <strong className="text-white">next day</strong>.
-                </p>
-              </div>
+            style={{ background: '#fffbeb', border: '1.5px solid #fde68a', boxShadow: '0 2px 8px rgba(234,179,8,0.10)' }}>
+            <div className="px-4 py-3 flex items-start gap-3">
+              <span className="text-xl mt-0.5 shrink-0">⏰</span>
+              <p className="text-amber-800 text-xs leading-relaxed">
+                Orders placed after <strong>9:00 AM</strong> will be delivered the <strong>next day</strong>.
+              </p>
             </div>
           </div>
         )}
