@@ -173,9 +173,8 @@ export default function KoyambeduHome() {
                 <FiSun size={18} className="text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-black text-sm leading-tight">Today's orders go for tomorrow's delivery</p>
-                <p className="text-red-200 text-xs mt-1 leading-relaxed">
-                  Order now and receive fresh produce <strong className="text-white">tomorrow</strong>. Next pickup at 5 AM.
+                <p className="text-white text-xs leading-relaxed">
+                  As the wholesale market closes early, orders placed after <strong className="text-white">9:00 AM</strong> will be delivered the <strong className="text-white">next day</strong>.
                 </p>
               </div>
             </div>
