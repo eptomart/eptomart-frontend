@@ -158,7 +158,7 @@ export default function KoyambeduHome() {
             <div className="px-4 py-3 flex items-start gap-3">
               <span className="text-xl mt-0.5 shrink-0">⏰</span>
               <p className="text-amber-800 text-xs leading-relaxed">
-                Orders placed after <strong>9:00 AM</strong> will be delivered the <strong>next day</strong>.
+                Wholesale market closes by <strong>9:00 AM</strong>. Orders placed after 9 AM will be delivered the <strong>next day</strong>.
               </p>
             </div>
           </div>
