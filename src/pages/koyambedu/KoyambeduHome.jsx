@@ -235,26 +235,7 @@ export default function KoyambeduHome() {
           </div>
         </Link>
 
-        {/* ── How it works ── */}
-        <div className="mt-5 mb-2">
-          <p className="text-gray-800 font-black text-sm mb-3">How it works</p>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { emoji: '🛒', title: 'Order by 9 AM', desc: 'Place your order before the market closes' },
-              { emoji: '🏪', title: 'We Procure', desc: 'Fresh produce picked directly from Koyambedu' },
-              { emoji: '🚚', title: 'Next Morning', desc: 'Delivered fresh to your doorstep by 9 AM' },
-            ].map(({ emoji, title, desc }) => (
-              <div key={title} className="bg-white rounded-2xl p-3 flex flex-col items-center text-center"
-                style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                <span className="text-2xl mb-1.5">{emoji}</span>
-                <p className="text-gray-800 font-bold text-[11px] leading-tight">{title}</p>
-                <p className="text-gray-400 text-[10px] mt-1 leading-snug">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Trust badges ── */}
+{/* ── Trust badges ── */}
         <div className="mt-3 bg-white rounded-2xl px-4 py-3 flex items-center justify-between"
           style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           {[
