@@ -165,18 +165,6 @@ export default function KoyambeduHome() {
                 <p className="text-white text-xs leading-relaxed">
                   As the wholesale market closes early, orders placed after <strong className="text-white">9:00 AM</strong> will be delivered the <strong className="text-white">next day</strong>.
                 </p>
-                <div className="flex gap-2 mt-2 flex-wrap">
-                  {[
-                    { icon: '🏪', label: '2,000+ Vendors' },
-                    { icon: '🥦', label: '300+ Varieties' },
-                    { icon: '⏰', label: 'Order by 9 AM' },
-                  ].map(({ icon, label }) => (
-                    <span key={label} className="text-white text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1"
-                      style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.25)' }}>
-                      {icon} {label}
-                    </span>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
