@@ -6,7 +6,49 @@ import KoyambeduImageUploader from '../../components/koyambedu/KoyambeduImageUpl
 import KoyambeduVariantProductForm, { EMPTY_VARIANT_PRODUCT, getVariantOverlapError } from '../../components/koyambedu/KoyambeduVariantProductForm';
 import toast from 'react-hot-toast';
 
-const TAB_LIST = ['dashboard', 'orders', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'daily-price', 'refund-requests'];
+const TAB_LIST = ['dashboard', 'orders', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'daily-price', 'refund-requests', 'reports'];
+
+const DELIVERY_SLOTS = [
+  '06:00 AM – 08:59 AM',
+  '09:00 AM – 11:59 AM',
+  '12:00 PM – 02:59 PM',
+  '03:00 PM – 05:59 PM',
+];
+
+// ── PDF generation helper ────────────────────────────────────────
+function generateReportHtml(title, subtitle, content) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8"/>
+  <title>${title}</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #1a1a1a; margin: 20px; }
+    h1 { font-size: 18px; color: #14532d; margin-bottom: 4px; }
+    h2 { font-size: 14px; color: #374151; margin: 16px 0 6px; }
+    h3 { font-size: 12px; color: #6b7280; margin: 12px 0 4px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+    .subtitle { color: #6b7280; font-size: 11px; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; }
+    th { background: #f0fdf4; color: #14532d; font-weight: bold; padding: 6px 8px; text-align: left; border: 1px solid #d1fae5; }
+    td { padding: 5px 8px; border: 1px solid #e5e7eb; }
+    tr:nth-child(even) td { background: #f9fafb; }
+    .summary-box { background: #f0fdf4; border: 1px solid #d1fae5; border-radius: 6px; padding: 10px; margin-bottom: 16px; }
+    .summary-row { display: flex; justify-content: space-between; padding: 3px 0; }
+    .label { color: #6b7280; }
+    .value { font-weight: bold; color: #14532d; }
+    .sa-header { background: #ecfdf5; padding: 6px 10px; margin: 14px 0 6px; border-left: 3px solid #16a34a; font-weight: bold; font-size: 13px; }
+    .page-break { page-break-before: always; }
+    @media print { button { display: none; } }
+  </style>
+</head>
+<body>
+  <h1>${title}</h1>
+  <div class="subtitle">${subtitle}</div>
+  ${content}
+  <script>window.onload=()=>window.print();</script>
+</body>
+</html>`;
+}
 
 // ── Danger Zone component ─────────────────────
 function DangerZone() {
@@ -193,6 +235,19 @@ export default function KoyambeduAdmin() {
   const [refundRequests,   setRefundRequests]   = useState([]);
   const [refundStatusFilter, setRefundStatusFilter] = useState('pending');
   const [refundUpdating,   setRefundUpdating]   = useState(null);
+
+  // Admin costs (per order — internal only)
+  const [costsModal,    setCostsModal]    = useState(null); // order object
+  const [costsForm,     setCostsForm]     = useState({ actualDeliveryCost: '', miscExpenses: '', costNote: '' });
+  const [costsSaving,   setCostsSaving]   = useState(false);
+
+  // Reports tab
+  const [rptType,       setRptType]       = useState('order-report');   // 'order-report' | 'product-consolidation' | 'cashflow'
+  const [rptDate,       setRptDate]       = useState('');
+  const [rptSlot,       setRptSlot]       = useState('');
+  const [rptSa,         setRptSa]         = useState('');
+  const [rptData,       setRptData]       = useState(null);
+  const [rptLoading,    setRptLoading]    = useState(false);
 
   useEffect(() => { loadTab(tab); }, [tab]);
 
@@ -632,6 +687,114 @@ export default function KoyambeduAdmin() {
     finally { setCreateSellerSaving(false); }
   };
 
+  // ── Admin costs save ──────────────────────────────────────────
+  const saveCosts = async () => {
+    if (!costsModal) return;
+    setCostsSaving(true);
+    try {
+      await api.patch(`/koyambedu/admin/orders/${costsModal._id}/costs`, {
+        actualDeliveryCost: Number(costsForm.actualDeliveryCost) || 0,
+        miscExpenses:       Number(costsForm.miscExpenses) || 0,
+        costNote:           costsForm.costNote,
+      });
+      toast.success('Costs saved');
+      setOrders(prev => prev.map(o => o._id === costsModal._id
+        ? { ...o, adminCosts: { actualDeliveryCost: Number(costsForm.actualDeliveryCost)||0, miscExpenses: Number(costsForm.miscExpenses)||0, costNote: costsForm.costNote } }
+        : o
+      ));
+      setCostsModal(null);
+    } catch { toast.error('Failed to save costs'); }
+    finally { setCostsSaving(false); }
+  };
+
+  // ── Report fetch ─────────────────────────────────────────────
+  const fetchReport = async () => {
+    if (!rptDate) { toast.error('Select a delivery date'); return; }
+    if (rptType === 'product-consolidation' && !rptSlot) { toast.error('Select a slot for product consolidation'); return; }
+    setRptLoading(true);
+    setRptData(null);
+    try {
+      const params = new URLSearchParams({ deliveryDate: rptDate });
+      if (rptSlot) params.set('slot', rptSlot);
+      if (rptSa)   params.set('sellerAdmin', rptSa);
+      const { data } = await api.get(`/koyambedu/admin/reports/${rptType}?${params}`);
+      setRptData(data);
+    } catch (err) { toast.error(err?.response?.data?.message || 'Report failed'); }
+    finally { setRptLoading(false); }
+  };
+
+  // ── Print/Share report ────────────────────────────────────────
+  const shareReport = async () => {
+    if (!rptData) return;
+    let content = '';
+    const dateLabel = `${rptDate}${rptSlot ? ' · ' + rptSlot : ''}`;
+
+    if (rptType === 'order-report') {
+      rptData.report?.forEach(group => {
+        const saName = group.sa?.businessName || group.sa?.name || 'Unknown SA';
+        content += `<div class="sa-header">📦 ${saName}</div>`;
+        content += `<table><thead><tr><th>Order ID</th><th>Items</th><th>Total</th><th>Delivery Date</th><th>Slot</th><th>Address</th></tr></thead><tbody>`;
+        group.orders?.forEach(o => {
+          const itemRows = o.items.map(it => `${it.name} × ${it.quantity}${it.unit || ''} @ ₹${it.orderedPrice} = ₹${it.lineTotal?.toFixed(0)}`).join('<br/>');
+          const addr = o.shippingAddress;
+          content += `<tr><td>${o.orderId}</td><td>${itemRows}</td><td>₹${o.saSubtotal?.toFixed(0)}</td><td>${o.deliveryDate ? new Date(o.deliveryDate).toLocaleDateString('en-IN') : '-'}</td><td>${o.deliverySlot || '-'}</td><td>${addr?.addressLine1 || ''}, ${addr?.city || ''} - ${addr?.pincode || ''}</td></tr>`;
+        });
+        content += `</tbody></table>`;
+      });
+    } else if (rptType === 'product-consolidation') {
+      const saLabel = typeof rptData.sellerAdmin === 'string' ? rptData.sellerAdmin : (rptData.sellerAdmin?.businessName || rptData.sellerAdmin?.name || 'All SA');
+      content += `<div class="summary-box"><div class="summary-row"><span class="label">Seller Admin</span><span class="value">${saLabel}</span></div><div class="summary-row"><span class="label">Orders</span><span class="value">${rptData.orderCount}</span></div></div>`;
+      content += `<table><thead><tr><th>Product</th><th>Total Qty</th><th>Unit</th><th>Total Value</th><th>Orders</th></tr></thead><tbody>`;
+      rptData.products?.forEach(p => {
+        content += `<tr><td>${p.name}</td><td><strong>${p.totalQty.toFixed(2)}</strong></td><td>${p.unit}</td><td>₹${p.totalValue?.toFixed(0)}</td><td>${p.orderCount}</td></tr>`;
+      });
+      content += `</tbody></table>`;
+    } else if (rptType === 'cashflow') {
+      const s = rptData.summary || {};
+      content += `<div class="summary-box">
+        <div class="summary-row"><span class="label">Total Orders</span><span class="value">${s.orderCount}</span></div>
+        <div class="summary-row"><span class="label">Amount Received</span><span class="value">₹${s.totalReceived?.toFixed(0)}</span></div>
+        <div class="summary-row"><span class="label">Procurement Cost (to SA)</span><span class="value">₹${s.totalProcurement?.toFixed(0)}</span></div>
+        <div class="summary-row"><span class="label">SA Commission</span><span class="value">₹${s.totalSaCommission?.toFixed(0)}</span></div>
+        <div class="summary-row"><span class="label">Eptomart Commission</span><span class="value">₹${s.totalEptomartCommission?.toFixed(0)}</span></div>
+        <div class="summary-row"><span class="label">Delivery Collected</span><span class="value">₹${s.totalDeliveryCollected?.toFixed(0)}</span></div>
+        <div class="summary-row"><span class="label">Actual Delivery Cost</span><span class="value">₹${s.totalActualDelivery?.toFixed(0)}</span></div>
+        <div class="summary-row"><span class="label">Misc Expenses</span><span class="value">₹${s.totalMiscExpenses?.toFixed(0)}</span></div>
+        <div class="summary-row"><span class="label">Net Delivery Profit</span><span class="value">₹${s.netDeliveryProfit?.toFixed(0)}</span></div>
+        <div class="summary-row"><span class="label" style="font-weight:bold">Eptomart Net Profit</span><span class="value" style="font-size:14px">₹${s.eptomartNetProfit?.toFixed(0)}</span></div>
+      </div>`;
+      content += `<h2>Per Seller Admin Breakdown</h2><table><thead><tr><th>Seller Admin</th><th>Orders</th><th>Procurement</th><th>SA Commission</th><th>Total to SA</th><th>Eptomart Commission</th></tr></thead><tbody>`;
+      rptData.saSummary?.forEach(sa => {
+        content += `<tr><td>${sa.sa?.businessName || sa.sa?.name}</td><td>${sa.orderCount}</td><td>₹${sa.procurementCost?.toFixed(0)}</td><td>₹${sa.saCommission?.toFixed(0)}</td><td>₹${sa.totalToSA?.toFixed(0)}</td><td>₹${sa.eptomartCommission?.toFixed(0)}</td></tr>`;
+      });
+      content += `</tbody></table>`;
+      content += `<h2>Delivery Expense per Order</h2><table><thead><tr><th>Order ID</th><th>Slot</th><th>Delivery Charged</th><th>Actual Cost</th><th>Misc</th><th>Net</th></tr></thead><tbody>`;
+      rptData.deliveryExpenses?.forEach(d => {
+        content += `<tr><td>${d.orderId}</td><td>${d.deliverySlot || '-'}</td><td>₹${d.deliveryCharge?.toFixed(0)}</td><td>₹${d.actualDeliveryCost?.toFixed(0)}</td><td>₹${d.miscExpenses?.toFixed(0)}</td><td>₹${d.netDeliveryProfit?.toFixed(0)}</td></tr>`;
+      });
+      content += `</tbody></table>`;
+    }
+
+    const rptTitle = rptType === 'order-report' ? 'Order Report' : rptType === 'product-consolidation' ? 'Product Consolidation Report' : 'Cash Flow Report';
+    const html = generateReportHtml(`Koyambedu Daily — ${rptTitle}`, `Delivery Date: ${dateLabel} · Generated: ${new Date().toLocaleString('en-IN')}`, content);
+    const blob = new Blob([html], { type: 'text/html' });
+    const url  = URL.createObjectURL(blob);
+
+    if (navigator.share && navigator.canShare) {
+      try {
+        const file = new File([blob], `koyambedu-report-${rptType}-${rptDate}.html`, { type: 'text/html' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: rptTitle });
+          return;
+        }
+      } catch {}
+    }
+    // Fallback: open for print
+    const win = window.open(url, '_blank');
+    if (win) win.focus();
+    else { const a = document.createElement('a'); a.href = url; a.download = `report-${rptDate}.html`; a.click(); }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -648,7 +811,7 @@ export default function KoyambeduAdmin() {
           {TAB_LIST.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white hover:bg-white/30'}`}>
-              {t === 'seller-admins' ? 'Seller Admins' : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'daily-price' ? '🏷️ Daily Price' : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'seller-admins' ? 'Seller Admins' : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'reports' ? '📊 Reports' : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -735,10 +898,14 @@ export default function KoyambeduAdmin() {
                       </div>
                       <div className="flex items-center justify-between pt-2 border-t border-gray-50">
                         <p className="text-xs text-gray-500">₹{order.pricing?.total?.toFixed(2)} · {order.items?.length} items</p>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap justify-end">
                           <button onClick={() => setExpandedOrderId(isExp ? null : order._id)}
                             className="text-xs text-green-700 font-bold border border-green-200 px-2 py-1 rounded-lg">
                             {isExp ? 'Hide' : 'Items ▾'}
+                          </button>
+                          <button onClick={() => { setCostsModal(order); setCostsForm({ actualDeliveryCost: order.adminCosts?.actualDeliveryCost || '', miscExpenses: order.adminCosts?.miscExpenses || '', costNote: order.adminCosts?.costNote || '' }); }}
+                            className="text-xs text-orange-700 font-bold border border-orange-200 px-2 py-1 rounded-lg">
+                            💰 Costs
                           </button>
                           <button onClick={() => { setUpdateModal(order); setNewStatus(order.orderStatus); setDelivPartner(order.deliveryPartner || ''); setAdminNotes(order.adminNotes || ''); }}
                             className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-green-700">
@@ -1734,6 +1901,261 @@ export default function KoyambeduAdmin() {
 
       {/* ── DANGER ZONE TAB ── */}
       {tab === 'danger' && <DangerZone />}
+
+      {/* ══════════════════════════════════════════════
+          📊 REPORTS TAB
+      ══════════════════════════════════════════════ */}
+      {tab === 'reports' && (
+        <div className="space-y-4 pb-6">
+          {/* Report type selector */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-4">
+            <p className="text-xs font-bold text-gray-500 uppercase mb-3">Report Type</p>
+            <div className="grid grid-cols-1 gap-2">
+              {[
+                ['order-report',           '📋 Order Report',            'Delivery date wise — orders grouped by Seller Admin'],
+                ['product-consolidation',  '📦 Product Consolidation',   'Products & quantities to procure for a date + slot'],
+                ['cashflow',               '💰 Cash Flow Report',        'Revenue, procurement, commissions, delivery expenses'],
+              ].map(([val, label, desc]) => (
+                <button key={val} onClick={() => { setRptType(val); setRptData(null); }}
+                  className={`text-left p-3 rounded-xl border-2 transition ${rptType === val ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'}`}>
+                  <p className={`font-bold text-sm ${rptType === val ? 'text-green-700' : 'text-gray-700'}`}>{label}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+            <p className="text-xs font-bold text-gray-500 uppercase">Filters</p>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Delivery Date *</label>
+              <input type="date" value={rptDate} onChange={e => setRptDate(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">
+                Delivery Slot {rptType === 'product-consolidation' ? '*' : '(optional)'}
+              </label>
+              <select value={rptSlot} onChange={e => setRptSlot(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500">
+                <option value="">All slots</option>
+                {DELIVERY_SLOTS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Seller Admin (optional)</label>
+              <select value={rptSa} onChange={e => setRptSa(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500">
+                <option value="">All Seller Admins</option>
+                {saAdminList.map(sa => <option key={sa._id} value={sa._id}>{sa.businessName || sa.name}</option>)}
+              </select>
+            </div>
+            <button onClick={fetchReport} disabled={rptLoading}
+              className="w-full bg-green-600 text-white font-bold py-2.5 rounded-xl disabled:opacity-50 transition active:scale-95">
+              {rptLoading ? 'Generating…' : '▶ Generate Report'}
+            </button>
+          </div>
+
+          {/* Results */}
+          {rptData && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="font-bold text-green-700 text-sm">
+                    {rptType === 'order-report' ? '📋 Order Report' : rptType === 'product-consolidation' ? '📦 Product Consolidation' : '💰 Cash Flow'}
+                  </p>
+                  <p className="text-xs text-gray-400">{rptDate}{rptSlot ? ' · ' + rptSlot : ''}</p>
+                </div>
+                <button onClick={shareReport}
+                  className="flex items-center gap-1.5 bg-green-600 text-white text-xs font-bold px-3 py-2 rounded-xl active:scale-95 transition">
+                  📤 Share / Print
+                </button>
+              </div>
+
+              {/* ORDER REPORT */}
+              {rptType === 'order-report' && (
+                <div className="space-y-4">
+                  {(rptData.report || []).map((group, gi) => (
+                    <div key={gi}>
+                      <div className="flex items-center gap-2 mb-2 px-2 py-1.5 rounded-lg" style={{ background: '#f0fdf4', border: '1px solid #d1fae5' }}>
+                        <span className="font-bold text-green-800 text-sm">📦 {group.sa?.businessName || group.sa?.name || 'Unknown SA'}</span>
+                        <span className="text-xs text-green-600 ml-auto">{group.orders?.length} orders</span>
+                      </div>
+                      <div className="space-y-2">
+                        {(group.orders || []).map((o, oi) => (
+                          <div key={oi} className="border border-gray-100 rounded-xl overflow-hidden">
+                            <div className="px-3 py-2 bg-gray-50 flex justify-between items-center">
+                              <div>
+                                <p className="text-xs font-bold text-gray-800">{o.orderId}</p>
+                                <p className="text-[10px] text-gray-500">{o.deliveryDate ? new Date(o.deliveryDate).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) : '-'} · {o.deliverySlot || '-'}</p>
+                                <p className="text-[10px] text-gray-500">{o.shippingAddress?.addressLine1 || ''}, {o.shippingAddress?.city || ''} {o.shippingAddress?.pincode || ''}</p>
+                              </div>
+                              <p className="text-sm font-bold text-green-700">₹{o.saSubtotal?.toFixed(0)}</p>
+                            </div>
+                            {(o.items || []).map((it, ii) => (
+                              <div key={ii} className="px-3 py-1.5 flex justify-between border-t border-gray-50 text-xs">
+                                <span className="text-gray-700">{it.name} × {it.quantity}{it.unit}</span>
+                                <span className="text-gray-500">₹{it.orderedPrice} → ₹{it.lineTotal?.toFixed(0)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {(!rptData.report || rptData.report.length === 0) && <p className="text-center text-gray-400 py-4">No orders found for the selected filters</p>}
+                </div>
+              )}
+
+              {/* PRODUCT CONSOLIDATION */}
+              {rptType === 'product-consolidation' && (
+                <div>
+                  <div className="flex gap-4 mb-3 text-sm">
+                    <div className="bg-green-50 rounded-xl px-3 py-2 flex-1 text-center">
+                      <p className="text-xs text-gray-500">SA</p>
+                      <p className="font-bold text-green-700 text-xs truncate">{typeof rptData.sellerAdmin === 'string' ? rptData.sellerAdmin : (rptData.sellerAdmin?.businessName || rptData.sellerAdmin?.name || 'All')}</p>
+                    </div>
+                    <div className="bg-blue-50 rounded-xl px-3 py-2 flex-1 text-center">
+                      <p className="text-xs text-gray-500">Orders</p>
+                      <p className="font-bold text-blue-700">{rptData.orderCount}</p>
+                    </div>
+                    <div className="bg-purple-50 rounded-xl px-3 py-2 flex-1 text-center">
+                      <p className="text-xs text-gray-500">Products</p>
+                      <p className="font-bold text-purple-700">{rptData.products?.length}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {(rptData.products || []).map((p, pi) => (
+                      <div key={pi} className="flex items-center justify-between border border-gray-100 rounded-xl px-3 py-2.5">
+                        <div>
+                          <p className="text-sm font-bold text-gray-800">{p.name}</p>
+                          <p className="text-xs text-gray-400">{p.orderCount} orders · ₹{p.totalValue?.toFixed(0)} value</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-base font-black text-green-700">{p.totalQty.toFixed(2)}</p>
+                          <p className="text-xs text-gray-500">{p.unit}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* CASH FLOW */}
+              {rptType === 'cashflow' && (() => {
+                const s = rptData.summary || {};
+                return (
+                  <div className="space-y-4">
+                    {/* Summary cards */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        ['Amount Received',    `₹${s.totalReceived?.toFixed(0)}`,          '#f0fdf4','#16a34a'],
+                        ['Procurement to SA',  `₹${s.totalProcurement?.toFixed(0)}`,        '#eff6ff','#2563eb'],
+                        ['SA Commission',      `₹${s.totalSaCommission?.toFixed(0)}`,       '#faf5ff','#9333ea'],
+                        ['Eptomart Comm.',     `₹${s.totalEptomartCommission?.toFixed(0)}`, '#fff7ed','#ea580c'],
+                        ['Delivery Collected', `₹${s.totalDeliveryCollected?.toFixed(0)}`,  '#f0fdf4','#059669'],
+                        ['Actual Delivery',    `₹${s.totalActualDelivery?.toFixed(0)}`,     '#fef2f2','#dc2626'],
+                        ['Misc Expenses',      `₹${s.totalMiscExpenses?.toFixed(0)}`,       '#fef9c3','#ca8a04'],
+                        ['Eptomart Net',       `₹${s.eptomartNetProfit?.toFixed(0)}`,       '#f0fdf4','#14532d'],
+                      ].map(([label, value, bg, color]) => (
+                        <div key={label} className="rounded-xl p-3 text-center" style={{ background: bg }}>
+                          <p className="text-[10px] text-gray-500">{label}</p>
+                          <p className="font-black text-sm" style={{ color }}>{value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Per SA */}
+                    <div>
+                      <p className="text-xs font-bold text-gray-500 uppercase mb-2">Per Seller Admin</p>
+                      <div className="space-y-2">
+                        {(rptData.saSummary || []).map((sa, si) => (
+                          <div key={si} className="border border-gray-100 rounded-xl p-3">
+                            <p className="font-bold text-green-700 text-sm mb-2">{sa.sa?.businessName || sa.sa?.name}</p>
+                            <div className="grid grid-cols-3 gap-1 text-center text-[10px]">
+                              <div className="bg-blue-50 rounded-lg p-1.5"><p className="text-gray-500">Procurement</p><p className="font-bold text-blue-700">₹{sa.procurementCost?.toFixed(0)}</p></div>
+                              <div className="bg-purple-50 rounded-lg p-1.5"><p className="text-gray-500">SA Comm.</p><p className="font-bold text-purple-700">₹{sa.saCommission?.toFixed(0)}</p></div>
+                              <div className="bg-green-50 rounded-lg p-1.5"><p className="text-gray-500">Total to SA</p><p className="font-bold text-green-700">₹{sa.totalToSA?.toFixed(0)}</p></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Delivery expense per order */}
+                    <div>
+                      <p className="text-xs font-bold text-gray-500 uppercase mb-2">Delivery Expense per Order</p>
+                      <div className="space-y-1.5">
+                        {(rptData.deliveryExpenses || []).map((d, di) => (
+                          <div key={di} className="border border-gray-100 rounded-xl px-3 py-2 flex items-center justify-between">
+                            <div>
+                              <p className="text-xs font-bold text-gray-700">{d.orderId}</p>
+                              <p className="text-[10px] text-gray-400">{d.deliverySlot || 'No slot'}</p>
+                            </div>
+                            <div className="text-right text-[10px] space-y-0.5">
+                              <p className="text-gray-500">Charged: <strong>₹{d.deliveryCharge?.toFixed(0)}</strong></p>
+                              <p className="text-gray-500">Actual: <strong className="text-red-600">₹{d.actualDeliveryCost?.toFixed(0)}</strong></p>
+                              <p className={`font-bold ${d.netDeliveryProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>Net: ₹{d.netDeliveryProfit?.toFixed(0)}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {(!rptData.deliveryExpenses || rptData.deliveryExpenses.length === 0) && (
+                          <p className="text-xs text-gray-400 text-center py-3">No delivery cost data. Enter costs from the Orders tab.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Admin Costs Modal ── */}
+      {costsModal && (
+        <div className="fixed inset-0 bg-black/50 z-[9997] flex items-end justify-center">
+          <div className="bg-white rounded-t-3xl w-full max-w-lg p-5 space-y-4" style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-black text-gray-800">💰 Internal Costs</h3>
+                <p className="text-xs text-gray-400">{costsModal.orderId} — not shown to customer</p>
+              </div>
+              <button onClick={() => setCostsModal(null)} className="text-gray-400 text-xl font-bold">✕</button>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Actual Delivery Cost (₹)</label>
+              <input type="number" min="0" value={costsForm.actualDeliveryCost}
+                onChange={e => setCostsForm(f => ({ ...f, actualDeliveryCost: e.target.value }))}
+                placeholder="e.g. 120"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-500" />
+              <p className="text-[10px] text-gray-400 mt-0.5">Delivery charged to customer: ₹{costsModal.pricing?.deliveryCharge || 0}</p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Misc / Packing Expenses (₹)</label>
+              <input type="number" min="0" value={costsForm.miscExpenses}
+                onChange={e => setCostsForm(f => ({ ...f, miscExpenses: e.target.value }))}
+                placeholder="e.g. 30"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-500" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Note (optional)</label>
+              <input type="text" value={costsForm.costNote}
+                onChange={e => setCostsForm(f => ({ ...f, costNote: e.target.value }))}
+                placeholder="e.g. Porter + packing bags"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-500" />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setCostsModal(null)} className="flex-1 border-2 border-gray-200 text-gray-600 font-bold py-3 rounded-xl">Cancel</button>
+              <button onClick={saveCosts} disabled={costsSaving}
+                className="flex-1 bg-green-600 text-white font-bold py-3 rounded-xl disabled:opacity-50">
+                {costsSaving ? 'Saving…' : 'Save Costs'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Reject reason modal ── */}
       {rejectModal && (
