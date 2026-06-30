@@ -717,6 +717,7 @@ export default function KoyambeduAdmin() {
   const submitPartialRefund = async () => {
     const amount = Number(refundAmt);
     if (!amount || amount <= 0) { toast.error('Enter a valid amount'); return; }
+    if (!refundReason.trim()) { toast.error('Reason is required before initiating a refund'); return; }
     if (!window.confirm(`Initiate ₹${amount} refund to source for order ${refundModal.orderId}?`)) return;
     setRefunding(true);
     try {
@@ -2252,13 +2253,13 @@ export default function KoyambeduAdmin() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-600 mb-1 block">Reason (optional)</label>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Reason <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 value={refundReason}
                 onChange={e => setRefundReason(e.target.value)}
                 placeholder="e.g. Item declined, Price revision adjustment"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-purple-400"
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-purple-400 ${!refundReason.trim() ? 'border-red-300' : 'border-gray-200'}`}
               />
             </div>
 
