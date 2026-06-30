@@ -241,6 +241,12 @@ export default function KoyambeduAdmin() {
   const [costsForm,     setCostsForm]     = useState({ actualDeliveryCost: '', miscExpenses: '', costNote: '' });
   const [costsSaving,   setCostsSaving]   = useState(false);
 
+  // Partial refund modal
+  const [refundModal,   setRefundModal]   = useState(null); // order object
+  const [refundAmt,     setRefundAmt]     = useState('');
+  const [refundReason,  setRefundReason]  = useState('');
+  const [refunding,     setRefunding]     = useState(false);
+
   // Reports tab
   const [rptType,       setRptType]       = useState('order-report');   // 'order-report' | 'product-consolidation' | 'cashflow'
   const [rptDate,       setRptDate]       = useState('');
@@ -707,6 +713,32 @@ export default function KoyambeduAdmin() {
     finally { setCostsSaving(false); }
   };
 
+  // ── Partial refund ───────────────────────────────────────────
+  const submitPartialRefund = async () => {
+    const amount = Number(refundAmt);
+    if (!amount || amount <= 0) { toast.error('Enter a valid amount'); return; }
+    if (!window.confirm(`Initiate ₹${amount} refund to source for order ${refundModal.orderId}?`)) return;
+    setRefunding(true);
+    try {
+      const { data } = await api.patch(`/koyambedu/admin/orders/${refundModal._id}/partial-refund`, {
+        amount, reason: refundReason,
+      });
+      toast.success(data.message);
+      // Update local order with new partialRefunds list
+      setOrders(prev => prev.map(o => o._id === refundModal._id
+        ? { ...o, partialRefunds: data.partialRefunds }
+        : o
+      ));
+      setRefundModal(null);
+      setRefundAmt('');
+      setRefundReason('');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Refund failed');
+    } finally {
+      setRefunding(false);
+    }
+  };
+
   // ── Report fetch ─────────────────────────────────────────────
   const fetchReport = async () => {
     if (!rptDate) { toast.error('Select a delivery date'); return; }
@@ -907,6 +939,12 @@ export default function KoyambeduAdmin() {
                             className="text-xs text-orange-700 font-bold border border-orange-200 px-2 py-1 rounded-lg">
                             💰 Costs
                           </button>
+                          {isSuperAdmin && order.paymentMethod === 'razorpay' && order.paymentStatus === 'paid' && (
+                            <button onClick={() => { setRefundModal(order); setRefundAmt(''); setRefundReason(''); }}
+                              className="text-xs text-purple-700 font-bold border border-purple-200 px-2 py-1 rounded-lg">
+                              💳 Refund
+                            </button>
+                          )}
                           <button onClick={() => { setUpdateModal(order); setNewStatus(order.orderStatus); setDelivPartner(order.deliveryPartner || ''); setAdminNotes(order.adminNotes || ''); }}
                             className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-green-700">
                             Update
@@ -916,6 +954,18 @@ export default function KoyambeduAdmin() {
                     </div>
                     {isExp && (
                       <div className="border-t border-gray-100 divide-y divide-gray-50">
+                        {/* Partial refund history */}
+                        {order.partialRefunds?.length > 0 && (
+                          <div className="px-4 py-2 bg-purple-50">
+                            <p className="text-[10px] font-bold text-purple-700 uppercase mb-1">Partial Refunds</p>
+                            {order.partialRefunds.map((r, ri) => (
+                              <div key={ri} className="flex justify-between text-xs text-purple-700 py-0.5">
+                                <span>₹{r.amount} {r.reason ? `— ${r.reason}` : ''}</span>
+                                <span className="text-purple-400">{new Date(r.initiatedAt).toLocaleDateString('en-IN',{day:'numeric',month:'short'})} · {r.razorpayRefundId ? r.razorpayRefundId.slice(-8) : r.status}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {order.items?.map((item, idx) => {
                           const price = item.finalPrice || item.orderedPrice || 0;
                           return (
@@ -2151,6 +2201,79 @@ export default function KoyambeduAdmin() {
               <button onClick={saveCosts} disabled={costsSaving}
                 className="flex-1 bg-green-600 text-white font-bold py-3 rounded-xl disabled:opacity-50">
                 {costsSaving ? 'Saving…' : 'Save Costs'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Partial Refund Modal ── */}
+      {refundModal && (
+        <div className="fixed inset-0 bg-black/50 z-[9998] flex items-end justify-center">
+          <div className="bg-white rounded-t-3xl w-full max-w-lg p-5 space-y-4"
+            style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-black text-gray-800">💳 Partial Refund to Source</h3>
+                <p className="text-xs text-gray-400">{refundModal.orderId} · Paid via Razorpay · Total ₹{refundModal.pricing?.total?.toFixed(2)}</p>
+              </div>
+              <button onClick={() => setRefundModal(null)} className="text-gray-400 text-xl font-bold leading-none">✕</button>
+            </div>
+
+            {/* Already refunded summary */}
+            {refundModal.partialRefunds?.length > 0 && (
+              <div className="bg-purple-50 rounded-xl p-3 text-xs space-y-1">
+                <p className="font-bold text-purple-700">Previous partial refunds</p>
+                {refundModal.partialRefunds.map((r, i) => (
+                  <div key={i} className="flex justify-between text-purple-600">
+                    <span>₹{r.amount} {r.reason ? `— ${r.reason}` : ''}</span>
+                    <span>{new Date(r.initiatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                  </div>
+                ))}
+                <div className="border-t border-purple-200 pt-1 flex justify-between font-bold text-purple-800">
+                  <span>Total refunded so far</span>
+                  <span>₹{(refundModal.partialRefunds.filter(r=>r.status==='initiated').reduce((s,r)=>s+r.amount,0)).toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Refund Amount (₹) *</label>
+              <input
+                type="number" min="1" step="0.01"
+                value={refundAmt}
+                onChange={e => setRefundAmt(e.target.value)}
+                placeholder="e.g. 250"
+                className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-purple-400 font-bold text-gray-800"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">
+                Max refundable: ₹{Math.max(0, (refundModal.pricing?.total || 0) - (refundModal.partialRefunds?.filter(r=>r.status==='initiated').reduce((s,r)=>s+r.amount,0)||0)).toFixed(2)}
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Reason (optional)</label>
+              <input
+                type="text"
+                value={refundReason}
+                onChange={e => setRefundReason(e.target.value)}
+                placeholder="e.g. Item declined, Price revision adjustment"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-purple-400"
+              />
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
+              ⚠️ This will immediately initiate a refund to the customer's original payment source (card/UPI/net-banking) via Razorpay. This action cannot be reversed.
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => setRefundModal(null)}
+                className="flex-1 border-2 border-gray-200 text-gray-600 font-bold py-3 rounded-xl">
+                Cancel
+              </button>
+              <button onClick={submitPartialRefund} disabled={refunding || !refundAmt}
+                className="flex-1 bg-purple-600 text-white font-bold py-3 rounded-xl disabled:opacity-50 transition active:scale-95">
+                {refunding ? 'Processing…' : `Refund ₹${refundAmt || '–'}`}
               </button>
             </div>
           </div>

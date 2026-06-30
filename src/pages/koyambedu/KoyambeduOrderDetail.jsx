@@ -33,7 +33,6 @@ export default function KoyambeduOrderDetail() {
   const [order,    setOrder]    = useState(null);
   const [loading,  setLoading]  = useState(true);
   const [revising, setRevising] = useState(false);
-  const [dlLoading, setDlLoading] = useState(false);
 
   useEffect(() => {
     api.get(`/koyambedu/my-orders/${orderId}`)
@@ -55,25 +54,93 @@ export default function KoyambeduOrderDetail() {
     }
   };
 
-  const handleInvoice = async (action) => {
-    setDlLoading(true);
-    try {
-      const res = await api.get(`/koyambedu/orders/${orderId}/invoice`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
-      if (action === 'view') {
-        window.open(url, '_blank');
-      } else {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Invoice-${order?.orderId || orderId}.pdf`;
-        a.click();
-      }
-      window.URL.revokeObjectURL(url);
-    } catch {
-      toast.error('Invoice not available yet');
-    } finally {
-      setDlLoading(false);
+  const handleInvoice = (action) => {
+    if (!order) return;
+    const addr   = order.shippingAddress || {};
+    const pricing = order.pricing || {};
+    const date   = new Date(order.placedAt || order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const dDate  = order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+
+    const itemRows = (order.items || []).map((it, i) => {
+      const price = it.finalPrice || it.orderedPrice || 0;
+      const line  = price * it.quantity;
+      const declined = it.status === 'declined';
+      const bg = declined ? '#fef2f2' : (i % 2 === 0 ? '#f9fafb' : '#fff');
+      return `<tr style="background:${bg};${declined ? 'color:#9ca3af;text-decoration:line-through;' : ''}">
+        <td style="padding:6px 8px;border:1px solid #e5e7eb;">${it.name}${declined ? ' <em>(Declined)</em>' : ''}</td>
+        <td style="padding:6px 8px;border:1px solid #e5e7eb;">${it.quantity} ${it.unit || ''}</td>
+        <td style="padding:6px 8px;border:1px solid #e5e7eb;">₹${price.toFixed(2)}</td>
+        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-weight:bold;">${declined ? '—' : '₹' + line.toFixed(2)}</td>
+      </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Invoice ${order.orderId}</title>
+<style>
+  body{font-family:Arial,sans-serif;font-size:13px;color:#111;margin:32px;max-width:700px;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #065f46;}
+  .brand{font-size:22px;font-weight:900;color:#065f46;}
+  .sub{font-size:11px;color:#6b7280;margin-top:2px;}
+  .inv-title{font-size:20px;font-weight:bold;color:#111;text-align:right;}
+  .inv-num{font-size:11px;color:#6b7280;text-align:right;}
+  .section{margin-bottom:16px;}
+  .label{font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:bold;margin-bottom:4px;}
+  table{width:100%;border-collapse:collapse;margin:12px 0;}
+  th{background:#065f46;color:#fff;padding:8px;text-align:left;font-size:12px;}
+  .totals td{padding:5px 8px;font-size:12px;}
+  .total-row{font-size:15px;font-weight:900;color:#065f46;}
+  .footer{margin-top:32px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:10px;color:#9ca3af;text-align:center;}
+  @media print{button{display:none!important;}}
+</style></head>
+<body>
+  <div class="header">
+    <div><div class="brand">EPTOMART</div><div class="sub">Koyambedu Daily</div></div>
+    <div><div class="inv-title">TAX INVOICE</div><div class="inv-num">${order.orderId}</div><div class="inv-num">Date: ${date}</div></div>
+  </div>
+  <div style="display:flex;gap:40px;margin-bottom:20px;">
+    <div class="section" style="flex:1;">
+      <div class="label">Bill To</div>
+      <div style="font-weight:bold;">${addr.fullName || order.buyer?.name || '-'}</div>
+      <div>${[addr.addressLine1, addr.addressLine2].filter(Boolean).join(', ')}</div>
+      <div>${addr.city || ''}${addr.pincode ? ' – ' + addr.pincode : ''}</div>
+      ${addr.landmark ? `<div>Landmark: ${addr.landmark}</div>` : ''}
+      <div>Phone: ${addr.phone || '-'}</div>
+    </div>
+    <div class="section">
+      <div class="label">Delivery</div>
+      <div>Date: <strong>${dDate}</strong></div>
+      <div>Slot: ${order.deliverySlot || '-'}</div>
+      <div>Payment: ${order.paymentMethod?.toUpperCase() || '-'}</div>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Item</th><th>Qty</th><th>Unit Price</th><th>Amount</th></tr></thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+  <table class="totals" style="width:280px;margin-left:auto;">
+    <tr><td>Subtotal</td><td style="text-align:right;">₹${(pricing.subtotal || 0).toFixed(2)}</td></tr>
+    ${pricing.deliveryCharge > 0 ? `<tr><td>Delivery Charge</td><td style="text-align:right;">₹${pricing.deliveryCharge.toFixed(2)}</td></tr>` : ''}
+    ${pricing.platformFee > 0 ? `<tr><td>Platform Fee</td><td style="text-align:right;">₹${pricing.platformFee.toFixed(2)}</td></tr>` : ''}
+    ${pricing.discount > 0 ? `<tr><td>Discount</td><td style="text-align:right;color:#16a34a;">−₹${pricing.discount.toFixed(2)}</td></tr>` : ''}
+    <tr class="total-row"><td><strong>TOTAL</strong></td><td style="text-align:right;"><strong>₹${(pricing.total || 0).toFixed(2)}</strong></td></tr>
+  </table>
+  <div class="footer">
+    Thank you for shopping with Eptomart — Koyambedu Daily<br/>
+    This is a computer-generated invoice and does not require a signature.
+  </div>
+  <script>window.onload=()=>{ ${action === 'view' ? '' : 'window.print();'} }</script>
+</body></html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url  = URL.createObjectURL(blob);
+    if (action === 'download') {
+      const a = document.createElement('a');
+      a.href = url; a.download = `Invoice-${order.orderId}.html`; a.click();
+    } else {
+      const win = window.open(url, '_blank');
+      if (win) win.focus();
     }
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   };
 
   if (loading) return (
@@ -324,15 +391,13 @@ export default function KoyambeduOrderDetail() {
             <div className="flex gap-2">
               <button
                 onClick={() => handleInvoice('view')}
-                disabled={dlLoading}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-green-700 active:scale-[0.98] transition disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-green-700 active:scale-[0.98] transition"
                 style={{ background: '#f0fdf4', border: '1.5px solid rgba(22,163,74,0.3)' }}>
                 <FiEye size={14} /> View
               </button>
               <button
                 onClick={() => handleInvoice('download')}
-                disabled={dlLoading}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-white active:scale-[0.98] transition disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-white active:scale-[0.98] transition"
                 style={{ background: 'linear-gradient(135deg,#065f46,#16a34a)' }}>
                 <FiDownload size={14} /> Download
               </button>
