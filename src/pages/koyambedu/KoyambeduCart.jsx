@@ -77,7 +77,7 @@ export default function KoyambeduCart() {
           {cart.items.map((item, i) => {
             const prod = item.product;
             const img  = prod?.images?.find(im => im.isPrimary)?.url || prod?.images?.[0]?.url || IMG_PH;
-            const step = Math.max(1, prod?.qtyStep || 1);
+            const step = 1;
             const line = (item.unitPrice || 0) * (item.quantity || 0);
 
             return (
