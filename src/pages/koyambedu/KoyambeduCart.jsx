@@ -138,6 +138,15 @@ export default function KoyambeduCart() {
           })}
         </div>
 
+        {/* ── Add more products ── */}
+        <div className="mx-4 mt-3">
+          <Link to="/koyambedu/shop"
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl font-semibold text-sm text-green-700 active:scale-[0.98] transition"
+            style={{ background: '#f0fdf4', border: '1.5px dashed rgba(22,163,74,0.35)' }}>
+            <FiPlus size={15} /> Add more products
+          </Link>
+        </div>
+
         {/* ── Order summary ── */}
         <div className="mx-4 mt-4 bg-white rounded-2xl p-4"
           style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)' }}>

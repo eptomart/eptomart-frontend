@@ -93,10 +93,11 @@ export default function KoyambeduOrders() {
             <h1 className="text-white font-extrabold text-base leading-tight">My Orders</h1>
             <p className="text-emerald-100 text-[10px] opacity-80">Koyambedu Daily</p>
           </div>
-          <div className="w-9 h-9 rounded-full flex items-center justify-center"
+          <Link to="/koyambedu/wallet"
+            className="flex items-center gap-1 text-xs font-bold text-white/90 px-3 py-1.5 rounded-full active:scale-95 transition"
             style={{ background: 'rgba(255,255,255,0.2)' }}>
-            <FiPackage size={15} className="text-white" />
-          </div>
+            💳 Wallet
+          </Link>
         </div>
       </div>
 
@@ -135,20 +136,38 @@ export default function KoyambeduOrders() {
                     </div>
                   ))}
                   {order.items?.length > 3 && (
-                    <p className="text-xs text-gray-400">+{order.items.length - 3} more items</p>
+                    <Link to={`/koyambedu/orders/${order._id}`} className="text-xs text-green-600 font-semibold">
+                      +{order.items.length - 3} more items — view all
+                    </Link>
                   )}
                 </div>
 
-                {/* Pricing */}
+                {/* Pricing + delivery info */}
                 <div className="flex justify-between items-center pt-3 border-t border-gray-50">
                   <div>
                     <p className="text-[10px] text-gray-400">Total paid</p>
                     <p className="font-bold text-green-700 text-sm">₹{order.pricing?.total?.toFixed(2)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-gray-400">Delivery slot</p>
+                    {order.deliveryDate && (
+                      <>
+                        <p className="text-[10px] text-gray-400">Delivery date</p>
+                        <p className="text-xs text-gray-700 font-semibold">
+                          {new Date(order.deliveryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                      </>
+                    )}
+                    <p className="text-[10px] text-gray-400 mt-1">Slot</p>
                     <p className="text-xs text-gray-600 font-medium">{order.deliverySlot}</p>
                   </div>
+                </div>
+
+                {/* View details */}
+                <div className="mt-3 pt-3 border-t border-gray-50 flex justify-end">
+                  <Link to={`/koyambedu/orders/${order._id}`}
+                    className="text-xs font-bold text-green-700 flex items-center gap-1 active:opacity-70">
+                    View full details →
+                  </Link>
                 </div>
 
                 {/* Price revision alert */}

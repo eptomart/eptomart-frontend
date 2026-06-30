@@ -68,11 +68,14 @@ const KoyambeduProductDetail= lazy(() => import('./pages/koyambedu/KoyambeduProd
 const KoyambeduCart             = lazy(() => import('./pages/koyambedu/KoyambeduCart'));
 const KoyambeduCheckout         = lazy(() => import('./pages/koyambedu/KoyambeduCheckout'));
 const KoyambeduOrders           = lazy(() => import('./pages/koyambedu/KoyambeduOrders'));
+const KoyambeduOrderDetail      = lazy(() => import('./pages/koyambedu/KoyambeduOrderDetail'));
+const KoyambeduWallet           = lazy(() => import('./pages/koyambedu/KoyambeduWallet'));
 const KoyambeduLocationPicker   = lazy(() => import('./pages/koyambedu/KoyambeduLocationPicker'));
 const KoyambeduSellerRegister      = lazy(() => import('./pages/koyambedu/seller/KoyambeduSellerRegister'));
 const KoyambeduSellerDashboard     = lazy(() => import('./pages/koyambedu/seller/KoyambeduSellerDashboard'));
 const KoyambeduSellerProducts      = lazy(() => import('./pages/koyambedu/seller/KoyambeduSellerProducts'));
 const KoyambeduSellerAdminDashboard= lazy(() => import('./pages/koyambedu/seller-admin/KoyambeduSellerAdminDashboard'));
+const KoyambeduSellerAdminOrders   = lazy(() => import('./pages/koyambedu/seller-admin/KoyambeduSellerAdminOrders'));
 const KoyambeduDailyPrice          = lazy(() => import('./pages/koyambedu/seller-admin/KoyambeduDailyPrice'));
 const KoyambeduReports             = lazy(() => import('./pages/koyambedu/seller-admin/KoyambeduReports'));
 const KoyambeduSpecialRequests     = lazy(() => import('./pages/koyambedu/seller-admin/KoyambeduSpecialRequests'));
@@ -253,10 +256,13 @@ function AppRoutes() {
           <Route path="/koyambedu/cart"                      element={<KoyambeduCart />} />
           <Route path="/koyambedu/checkout"                  element={<KoyambeduCheckout />} />
           <Route path="/koyambedu/orders"                    element={<ProtectedRoute><KoyambeduOrders /></ProtectedRoute>} />
+          <Route path="/koyambedu/orders/:orderId"           element={<ProtectedRoute><KoyambeduOrderDetail /></ProtectedRoute>} />
+          <Route path="/koyambedu/wallet"                    element={<ProtectedRoute><KoyambeduWallet /></ProtectedRoute>} />
           <Route path="/koyambedu/seller"                    element={<ProtectedRoute><KoyambeduSellerDashboard /></ProtectedRoute>} />
           <Route path="/koyambedu/seller/register"           element={<ProtectedRoute><KoyambeduSellerRegister /></ProtectedRoute>} />
           <Route path="/koyambedu/seller/products"           element={<ProtectedRoute><KoyambeduSellerProducts /></ProtectedRoute>} />
           <Route path="/koyambedu/seller-admin"                    element={<ProtectedRoute><KoyambeduSellerAdminDashboard /></ProtectedRoute>} />
+          <Route path="/koyambedu/seller-admin/orders"           element={<ProtectedRoute><KoyambeduSellerAdminOrders /></ProtectedRoute>} />
           <Route path="/koyambedu/seller-admin/daily-price"        element={<ProtectedRoute><KoyambeduDailyPrice /></ProtectedRoute>} />
           <Route path="/koyambedu/seller-admin/reports"            element={<ProtectedRoute><KoyambeduReports /></ProtectedRoute>} />
           <Route path="/koyambedu/seller-admin/special-requests"   element={<ProtectedRoute><KoyambeduSpecialRequests /></ProtectedRoute>} />

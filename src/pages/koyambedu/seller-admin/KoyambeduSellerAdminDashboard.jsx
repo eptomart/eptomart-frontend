@@ -348,6 +348,10 @@ export default function KoyambeduSellerAdminDashboard() {
               {t === 'sellers' ? '🏪 Sellers' : t === 'products' ? '📦 Products' : '🏷️ Categories'}
             </button>
           ))}
+          <button onClick={() => navigate('/koyambedu/seller-admin/orders')}
+            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white/20 text-white hover:bg-white/30">
+            📋 Orders
+          </button>
           <button onClick={() => navigate('/koyambedu/seller-admin/daily-price')}
             className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white/20 text-white hover:bg-white/30">
             🏷️ Daily Price
