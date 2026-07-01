@@ -1,148 +1,249 @@
 // ============================================
-// KOYAMBEDU ORDER DETAIL — Full order view
+// KOYAMBEDU — UNIFIED ORDER DETAIL PAGE
+// Roles: Customer | Seller Admin | Super Admin
+// Shows: Items Ordered → Items Declined → Items Confirmed
+//        Payment Summary (from backend) → Timeline → Invoices
 // ============================================
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   FiArrowLeft, FiPackage, FiCheckCircle, FiClock, FiAlertTriangle,
-  FiTruck, FiHome, FiXCircle, FiRefreshCw, FiList, FiDownload, FiEye,
-  FiMapPin,
+  FiTruck, FiHome, FiXCircle, FiRefreshCw, FiList, FiDownload,
+  FiFileText, FiShare2, FiChevronDown, FiChevronUp, FiMapPin,
 } from 'react-icons/fi';
-import { FaLeaf, FaFileInvoice } from 'react-icons/fa';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
+// ── Status config ─────────────────────────────
 const STATUS_CONFIG = {
-  placed:                 { label: 'Order Placed',          color: '#3b82f6', bg: '#eff6ff',   Icon: FiList },
-  pending_confirmation:   { label: 'Awaiting Confirmation', color: '#d97706', bg: '#fffbeb',   Icon: FiClock },
-  price_revision_pending: { label: 'Price Revision',        color: '#ea580c', bg: '#fff7ed',   Icon: FiAlertTriangle },
-  confirmed:              { label: 'Confirmed',             color: '#16a34a', bg: '#f0fdf4',   Icon: FiCheckCircle },
-  packing:                { label: 'Packing',               color: '#9333ea', bg: '#faf5ff',   Icon: FiPackage },
-  dispatched:             { label: 'On the Way',            color: '#0284c7', bg: '#e0f2fe',   Icon: FiTruck },
-  delivered:              { label: 'Delivered',             color: '#059669', bg: '#d1fae5',   Icon: FiHome },
-  cancelled:              { label: 'Cancelled',             color: '#dc2626', bg: '#fef2f2',   Icon: FiXCircle },
-  refund_initiated:       { label: 'Refund Initiated',      color: '#6b7280', bg: '#f3f4f6',   Icon: FiRefreshCw },
+  placed:                { label: 'Order Placed',          color: '#3b82f6', bg: '#eff6ff',   Icon: FiList },
+  pending_confirmation:  { label: 'Awaiting SA Review',    color: '#d97706', bg: '#fffbeb',   Icon: FiClock },
+  sa_review_submitted:   { label: 'Awaiting Approval',     color: '#9333ea', bg: '#faf5ff',   Icon: FiClock },
+  price_revision_pending:{ label: 'Price Revision',        color: '#ea580c', bg: '#fff7ed',   Icon: FiAlertTriangle },
+  confirmed:             { label: 'Confirmed',             color: '#16a34a', bg: '#f0fdf4',   Icon: FiCheckCircle },
+  packing:               { label: 'Packing',               color: '#9333ea', bg: '#faf5ff',   Icon: FiPackage },
+  dispatched:            { label: 'On the Way',            color: '#0284c7', bg: '#e0f2fe',   Icon: FiTruck },
+  delivered:             { label: 'Delivered',             color: '#059669', bg: '#d1fae5',   Icon: FiHome },
+  cancelled:             { label: 'Cancelled',             color: '#dc2626', bg: '#fef2f2',   Icon: FiXCircle },
+  refund_initiated:      { label: 'Refund Initiated',      color: '#6b7280', bg: '#f3f4f6',   Icon: FiRefreshCw },
 };
 
-const PROGRESS_STEPS = ['placed', 'confirmed', 'packing', 'dispatched', 'delivered'];
-const ALL_STATUSES   = ['placed', 'pending_confirmation', 'price_revision_pending', 'confirmed', 'packing', 'dispatched', 'delivered'];
+const TIMELINE_LABELS = {
+  order_placed:           '🛒 Order Placed',
+  item_confirmed:         '✅ Item Confirmed',
+  item_declined:          '❌ Item Declined',
+  qty_reduced:            '📉 Quantity Reduced',
+  sa_review_submitted:    '📤 Submitted to Super Admin',
+  review_rejected:        '🔄 Review Sent for Revision',
+  admin_approved:         '✅ Super Admin Approved',
+  refund_credited_wallet: '💰 Refund Credited to Wallet',
+  packing:                '📦 Packing Started',
+  dispatched:             '🚚 Out for Delivery',
+  delivered:              '🏠 Delivered',
+  order_cancelled:        '❌ Order Cancelled',
+};
+
+const fmt     = n => `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmtDate = d => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+const fmtTime = d => d ? new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+
+// ── Invoice HTML generator ────────────────────
+const buildInvoiceHtml = (order, type = 'proforma') => {
+  const calc    = order.calculatedPricing || {};
+  const pricing = order.pricing || {};
+  const addr    = order.shippingAddress || {};
+  const invoiceNo = type === 'tax'
+    ? (order.invoices?.tax?.number    || `TAX-${order.orderId}`)
+    : type === 'confirmation'
+    ? (order.invoices?.confirmation?.number || `CONF-${order.orderId}`)
+    : (order.invoices?.proforma?.number     || `PRO-${order.orderId}`);
+
+  const title = type === 'tax' ? 'FINAL TAX INVOICE' : type === 'confirmation' ? 'ORDER CONFIRMATION' : 'PROFORMA INVOICE';
+
+  const sourceItems = type === 'tax'
+    ? (order.items || []).filter(it => it.itemStatus !== 'declined')
+    : (order.itemsOrdered?.length ? order.itemsOrdered : order.items || []);
+
+  const rows = sourceItems.map(it => {
+    const qty   = it.orderedQty || it.confirmedQty || it.quantity || 0;
+    const price = it.unitPrice || it.orderedPrice || it.finalPrice || 0;
+    return `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6">${it.name}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:center">${qty} ${it.unit || ''}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right">${fmt(price)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right">${fmt(price * qty)}</td>
+    </tr>`;
+  }).join('');
+
+  const declinedItems = (order.items || []).filter(it => it.itemStatus === 'declined' || it.itemStatus === 'partial');
+  const declinedRows = type !== 'tax' ? declinedItems.map(it => {
+    const decQty = it.declinedQty || (it.orderedQty || it.quantity || 0);
+    const price  = it.orderedPrice || it.finalPrice || 0;
+    return `<tr style="color:#dc2626">
+      <td style="padding:6px 8px">${it.name}</td>
+      <td style="padding:6px 8px;text-align:center">${decQty} ${it.unit || ''}</td>
+      <td style="padding:6px 8px;text-align:right">${fmt(price)}</td>
+      <td style="padding:6px 8px;text-align:right">${fmt(price * decQty)}</td>
+      <td style="padding:6px 8px;text-align:center">${it.declinedReason || 'Unavailable'}</td>
+    </tr>`;
+  }).join('') : '';
+
+  const disclaimer = type === 'proforma'
+    ? '<p style="color:#6b7280;font-size:11px;margin-top:12px">⚠️ This is a Proforma Invoice. It is <b>not a tax invoice</b>. The Final Tax Invoice will be generated only after successful delivery.</p>'
+    : type === 'confirmation'
+    ? '<p style="color:#6b7280;font-size:11px;margin-top:12px">This document confirms items for delivery after seller review. Final Tax Invoice issued upon delivery.</p>'
+    : '<p style="color:#6b7280;font-size:11px;margin-top:12px">GST: Fresh vegetables and fruits are exempt under Indian GST law (0% applicable).</p>';
+
+  const finalAmt  = calc.finalPayableAmount || pricing.total || 0;
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+  <style>body{font-family:Arial,sans-serif;font-size:13px;color:#111;margin:0;padding:20px}@media print{.no-print{display:none!important}}</style></head><body>
+  <div class="no-print" style="margin-bottom:16px;display:flex;gap:8px">
+    <button onclick="window.print()" style="background:#065f46;color:#fff;padding:8px 16px;border:none;border-radius:8px;cursor:pointer;font-size:14px">🖨 Print / Save PDF</button>
+    <button onclick="window.close()" style="background:#f3f4f6;color:#374151;padding:8px 16px;border:none;border-radius:8px;cursor:pointer;font-size:14px">✕ Close</button>
+  </div>
+  <table width="100%" style="margin-bottom:16px"><tr>
+    <td><div style="color:#065f46;font-size:22px;font-weight:bold">EPTOMART</div><div style="color:#6b7280;font-size:12px">Koyambedu Daily — Fresh from the Market</div></td>
+    <td style="text-align:right">
+      <div style="font-size:16px;font-weight:bold">${title}</div>
+      <div style="color:#6b7280;font-size:12px"># ${invoiceNo}</div>
+      <div style="color:#6b7280;font-size:12px">Order: ${order.orderId}</div>
+      <div style="color:#6b7280;font-size:12px">Date: ${fmtDate(order.placedAt || order.createdAt)}</div>
+    </td>
+  </tr></table>
+  <hr style="border:1px solid #e5e7eb;margin-bottom:12px">
+  <table width="100%"><tr>
+    <td valign="top" width="55%">
+      <b>Delivered To:</b><br>${addr.fullName || ''}<br>
+      ${[addr.addressLine1, addr.addressLine2, addr.city, addr.pincode].filter(Boolean).join(', ')}<br>
+      ${addr.landmark ? `Landmark: ${addr.landmark}<br>` : ''}
+    </td>
+    <td valign="top" width="45%" style="text-align:right">
+      <div><b>Delivery:</b> ${fmtDate(order.deliveryDate)} | ${order.deliverySlot || '—'}</div>
+      <div><b>Payment:</b> ${(order.paymentMethod || '').toUpperCase()}</div>
+    </td>
+  </tr></table>
+  <div style="font-weight:bold;margin:14px 0 6px;font-size:14px">${type === 'tax' ? 'Items Delivered' : 'Items Ordered'}</div>
+  <table width="100%" style="border-collapse:collapse;border:1px solid #e5e7eb">
+    <thead><tr style="background:#065f46;color:#fff">
+      <th style="padding:8px;text-align:left">Product</th><th style="padding:8px;text-align:center">Qty</th>
+      <th style="padding:8px;text-align:right">Unit Price</th><th style="padding:8px;text-align:right">Amount</th>
+    </tr></thead><tbody>${rows}</tbody>
+  </table>
+  ${declinedRows ? `
+  <div style="font-weight:bold;margin:14px 0 6px;font-size:14px;color:#dc2626">Items Declined (Refund Applicable)</div>
+  <table width="100%" style="border-collapse:collapse;border:1px solid #fecaca"><thead><tr style="background:#fef2f2">
+    <th style="padding:8px;text-align:left">Product</th><th style="padding:8px;text-align:center">Declined Qty</th>
+    <th style="padding:8px;text-align:right">Unit Price</th><th style="padding:8px;text-align:right">Refund</th>
+    <th style="padding:8px;text-align:center">Reason</th>
+  </tr></thead><tbody>${declinedRows}</tbody></table>` : ''}
+  <table width="100%" style="margin-top:16px"><tr><td></td>
+    <td width="280" style="border:1px solid #e5e7eb;border-radius:8px;padding:12px;font-size:13px">
+      ${(calc.originalOrderValue||pricing.subtotal||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Original Order Value</span><span>${fmt(calc.originalOrderValue||pricing.subtotal)}</span></div>`:''}
+      ${(calc.declinedRefundAmount||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px;color:#dc2626"><span>Declined Refund (−)</span><span>${fmt(calc.declinedRefundAmount)}</span></div>`:''}
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Confirmed Items Total</span><span>${fmt(calc.confirmedItemsTotal||pricing.subtotal)}</span></div>
+      ${(calc.platformFee||pricing.platformFee||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Platform Fee</span><span>${fmt(calc.platformFee||pricing.platformFee)}</span></div>`:''}
+      ${(calc.packingLogisticsFee||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Packing & Logistics</span><span>${fmt(calc.packingLogisticsFee)}</span></div>`:''}
+      ${(calc.deliveryCharge||pricing.deliveryCharge||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Delivery Charge</span><span>${fmt(calc.deliveryCharge||pricing.deliveryCharge)}</span></div>`:''}
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>GST</span><span>0% (Exempt)</span></div>
+      ${(calc.couponDiscount||pricing.discount||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px;color:#16a34a"><span>Coupon Discount</span><span>−${fmt(calc.couponDiscount||pricing.discount)}</span></div>`:''}
+      ${(calc.walletAdjustment||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px;color:#16a34a"><span>Wallet Adjustment</span><span>−${fmt(calc.walletAdjustment)}</span></div>`:''}
+      <hr style="border:1px solid #e5e7eb;margin:8px 0">
+      <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:15px;color:#065f46">
+        <span>Final Payable Amount</span><span>${fmt(finalAmt)}</span>
+      </div>
+    </td>
+  </tr></table>
+  ${disclaimer}
+  <div style="margin-top:24px;text-align:center;color:#9ca3af;font-size:11px">Eptomart — Koyambedu Daily | eptomart.com</div>
+  </body></html>`;
+};
+
+const openInvoice = (order, type) => {
+  const html = buildInvoiceHtml(order, type);
+  const blob = new Blob([html], { type: 'text/html' });
+  window.open(URL.createObjectURL(blob), '_blank');
+};
+
+const shareInvoice = async (order, type) => {
+  const html = buildInvoiceHtml(order, type);
+  if (navigator.share) {
+    const file = new File([new Blob([html], { type: 'text/html' })], `Invoice-${order.orderId}.html`, { type: 'text/html' });
+    try { await navigator.share({ files: [file], title: `Invoice ${order.orderId}` }); return; } catch {}
+  }
+  openInvoice(order, type);
+};
+
+// ── Reusable card ─────────────────────────────
+const Card = ({ title, titleColor = '#065f46', badge, children }) => (
+  <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e5e7eb', marginBottom: 12, overflow: 'hidden' }}>
+    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #f3f4f6' }}>
+      <span style={{ fontWeight: 700, fontSize: 14, color: titleColor }}>{title}</span>
+      {badge && <span style={{ fontSize: 11, background: badge.bg, color: badge.color, padding: '2px 8px', borderRadius: 99, fontWeight: 600 }}>{badge.label}</span>}
+    </div>
+    <div style={{ padding: 16 }}>{children}</div>
+  </div>
+);
+
+const PayRow = ({ label, value, bold, color, divider }) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', padding: divider ? '10px 0 6px' : '5px 0', borderTop: divider ? '1px solid #f3f4f6' : 'none' }}>
+    <span style={{ fontSize: 13, color: bold ? '#111' : '#6b7280', fontWeight: bold ? 700 : 400 }}>{label}</span>
+    <span style={{ fontSize: 13, fontWeight: bold ? 700 : 500, color: color || (bold ? '#065f46' : '#111') }}>{value}</span>
+  </div>
+);
 
 export default function KoyambeduOrderDetail() {
   const { orderId } = useParams();
-  const navigate = useNavigate();
-  const [order,    setOrder]    = useState(null);
-  const [loading,  setLoading]  = useState(true);
-  const [revising, setRevising] = useState(false);
+  const navigate    = useNavigate();
+  const location    = useLocation();
 
-  useEffect(() => {
-    api.get(`/koyambedu/my-orders/${orderId}`)
-      .then(r => setOrder(r.data.order))
-      .catch(() => toast.error('Failed to load order'))
-      .finally(() => setLoading(false));
+  const [order,        setOrder]        = useState(null);
+  const [calc,         setCalc]         = useState(null);
+  const [timeline,     setTimeline]     = useState(null); // null = not loaded yet
+  const [loading,      setLoading]      = useState(true);
+  const [showTimeline, setShowTimeline] = useState(false);
+
+  const isAdmin   = location.pathname.includes('koyambedu-admin') || location.pathname.includes('admin');
+  const isSA      = location.pathname.includes('seller-admin');
+  const isCustomer = !isAdmin && !isSA;
+
+  const loadOrder = useCallback(async () => {
+    try {
+      let orderData;
+      if (isCustomer) {
+        const { data } = await api.get(`/koyambedu/my-orders/${orderId}`);
+        orderData = data.order;
+      } else {
+        // Admin/SA fetch all orders filtered by orderId
+        const { data } = await api.get(`/koyambedu/admin/orders`, { params: { search: orderId } });
+        orderData = (data.orders || []).find(o => o._id === orderId || o.orderId === orderId);
+      }
+      setOrder(orderData);
+    } catch {
+      toast.error('Failed to load order');
+    } finally {
+      setLoading(false);
+    }
+  }, [orderId, isCustomer]);
+
+  const loadCalc = useCallback(async () => {
+    try {
+      const { data } = await api.get(`/koyambedu/orders/${orderId}/calculation`);
+      setCalc(data.calculatedPricing);
+    } catch {}
   }, [orderId]);
 
-  const handleRevision = async (approve) => {
-    setRevising(true);
+  const loadTimeline = useCallback(async () => {
+    if (timeline !== null) return; // already loaded
     try {
-      const { data } = await api.post(`/koyambedu/orders/${orderId}/approve-revision`, { approve });
-      toast.success(data.message);
-      setOrder(prev => ({ ...prev, ...data.order }));
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to respond');
-    } finally {
-      setRevising(false);
-    }
-  };
+      const { data } = await api.get(`/koyambedu/orders/${orderId}/timeline`);
+      setTimeline(data.timeline || []);
+    } catch { setTimeline([]); }
+  }, [orderId, timeline]);
 
-  const handleInvoice = (action) => {
-    if (!order) return;
-    const addr   = order.shippingAddress || {};
-    const pricing = order.pricing || {};
-    const date   = new Date(order.placedAt || order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-    const dDate  = order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+  useEffect(() => { loadOrder(); loadCalc(); }, [loadOrder, loadCalc]);
 
-    const itemRows = (order.items || []).map((it, i) => {
-      const price = it.finalPrice || it.orderedPrice || 0;
-      const line  = price * it.quantity;
-      const declined = it.status === 'declined';
-      const bg = declined ? '#fef2f2' : (i % 2 === 0 ? '#f9fafb' : '#fff');
-      return `<tr style="background:${bg};${declined ? 'color:#9ca3af;text-decoration:line-through;' : ''}">
-        <td style="padding:6px 8px;border:1px solid #e5e7eb;">${it.name}${declined ? ' <em>(Declined)</em>' : ''}</td>
-        <td style="padding:6px 8px;border:1px solid #e5e7eb;">${it.quantity} ${it.unit || ''}</td>
-        <td style="padding:6px 8px;border:1px solid #e5e7eb;">₹${price.toFixed(2)}</td>
-        <td style="padding:6px 8px;border:1px solid #e5e7eb;font-weight:bold;">${declined ? '—' : '₹' + line.toFixed(2)}</td>
-      </tr>`;
-    }).join('');
-
-    const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Invoice ${order.orderId}</title>
-<style>
-  body{font-family:Arial,sans-serif;font-size:13px;color:#111;margin:32px;max-width:700px;}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #065f46;}
-  .brand{font-size:22px;font-weight:900;color:#065f46;}
-  .sub{font-size:11px;color:#6b7280;margin-top:2px;}
-  .inv-title{font-size:20px;font-weight:bold;color:#111;text-align:right;}
-  .inv-num{font-size:11px;color:#6b7280;text-align:right;}
-  .section{margin-bottom:16px;}
-  .label{font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:bold;margin-bottom:4px;}
-  table{width:100%;border-collapse:collapse;margin:12px 0;}
-  th{background:#065f46;color:#fff;padding:8px;text-align:left;font-size:12px;}
-  .totals td{padding:5px 8px;font-size:12px;}
-  .total-row{font-size:15px;font-weight:900;color:#065f46;}
-  .footer{margin-top:32px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:10px;color:#9ca3af;text-align:center;}
-  @media print{button{display:none!important;}}
-</style></head>
-<body>
-  <div class="header">
-    <div><div class="brand">EPTOMART</div><div class="sub">Koyambedu Daily</div></div>
-    <div><div class="inv-title">TAX INVOICE</div><div class="inv-num">${order.orderId}</div><div class="inv-num">Date: ${date}</div></div>
-  </div>
-  <div style="display:flex;gap:40px;margin-bottom:20px;">
-    <div class="section" style="flex:1;">
-      <div class="label">Bill To</div>
-      <div style="font-weight:bold;">${addr.fullName || order.buyer?.name || '-'}</div>
-      <div>${[addr.addressLine1, addr.addressLine2].filter(Boolean).join(', ')}</div>
-      <div>${addr.city || ''}${addr.pincode ? ' – ' + addr.pincode : ''}</div>
-      ${addr.landmark ? `<div>Landmark: ${addr.landmark}</div>` : ''}
-      <div>Phone: ${addr.phone || '-'}</div>
-    </div>
-    <div class="section">
-      <div class="label">Delivery</div>
-      <div>Date: <strong>${dDate}</strong></div>
-      <div>Slot: ${order.deliverySlot || '-'}</div>
-      <div>Payment: ${order.paymentMethod?.toUpperCase() || '-'}</div>
-    </div>
-  </div>
-  <table>
-    <thead><tr><th>Item</th><th>Qty</th><th>Unit Price</th><th>Amount</th></tr></thead>
-    <tbody>${itemRows}</tbody>
-  </table>
-  <table class="totals" style="width:280px;margin-left:auto;">
-    <tr><td>Subtotal</td><td style="text-align:right;">₹${(pricing.subtotal || 0).toFixed(2)}</td></tr>
-    ${pricing.deliveryCharge > 0 ? `<tr><td>Delivery Charge</td><td style="text-align:right;">₹${pricing.deliveryCharge.toFixed(2)}</td></tr>` : ''}
-    ${pricing.platformFee > 0 ? `<tr><td>Platform Fee</td><td style="text-align:right;">₹${pricing.platformFee.toFixed(2)}</td></tr>` : ''}
-    ${pricing.discount > 0 ? `<tr><td>Discount</td><td style="text-align:right;color:#16a34a;">−₹${pricing.discount.toFixed(2)}</td></tr>` : ''}
-    <tr class="total-row"><td><strong>TOTAL</strong></td><td style="text-align:right;"><strong>₹${(pricing.total || 0).toFixed(2)}</strong></td></tr>
-  </table>
-  <div class="footer">
-    Thank you for shopping with Eptomart — Koyambedu Daily<br/>
-    This is a computer-generated invoice and does not require a signature.
-  </div>
-  <script>window.onload=()=>{ ${action === 'view' ? '' : 'window.print();'} }</script>
-</body></html>`;
-
-    const blob = new Blob([html], { type: 'text/html' });
-    const url  = URL.createObjectURL(blob);
-    if (action === 'download') {
-      const a = document.createElement('a');
-      a.href = url; a.download = `Invoice-${order.orderId}.html`; a.click();
-    } else {
-      const win = window.open(url, '_blank');
-      if (win) win.focus();
-    }
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-  };
-
+  // ──────────────────────────────────────────────
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F4F2' }}>
       <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
@@ -150,264 +251,273 @@ export default function KoyambeduOrderDetail() {
   );
 
   if (!order) return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8 text-center" style={{ background: '#F5F4F2' }}>
-      <p className="font-bold text-gray-800">Order not found</p>
-      <button onClick={() => navigate('/koyambedu/orders')}
-        className="bg-green-600 text-white font-bold px-6 py-3 rounded-xl text-sm">
-        Back to Orders
-      </button>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8" style={{ background: '#F5F4F2' }}>
+      <FiXCircle size={40} className="text-red-400" />
+      <p className="text-gray-600">Order not found</p>
+      <button onClick={() => navigate(-1)} style={{ color: '#065f46', fontWeight: 600, fontSize: 14 }}>← Go Back</button>
     </div>
   );
 
-  const cfg = STATUS_CONFIG[order.orderStatus] || { label: order.orderStatus, color: '#6b7280', bg: '#f3f4f6', Icon: FiList };
-  const isCancelled     = ['cancelled', 'refund_initiated'].includes(order.orderStatus);
-  const isPriceRevision = order.orderStatus === 'price_revision_pending';
-  const currentIdx      = ALL_STATUSES.indexOf(order.orderStatus);
-  const isDelivered     = order.orderStatus === 'delivered';
+  const statusCfg  = STATUS_CONFIG[order.orderStatus] || STATUS_CONFIG.placed;
+  const pricing    = order.pricing || {};
+  const effective  = calc || order.calculatedPricing || {};
+  const addr       = order.shippingAddress || {};
+
+  const itemsOrdered = order.itemsOrdered?.length
+    ? order.itemsOrdered
+    : (order.items || []).map(it => ({
+        ...it, orderedQty: it.orderedQty || it.quantity, unitPrice: it.orderedPrice || it.finalPrice,
+      }));
+
+  const itemsDeclined  = (order.items || []).filter(it => it.itemStatus === 'declined' || it.itemStatus === 'partial');
+  const itemsConfirmed = (order.items || []).filter(it => it.itemStatus !== 'declined');
+  const hasDeclines    = itemsDeclined.length > 0;
+  const isDelivered    = order.orderStatus === 'delivered';
+  const isConfirmed    = ['confirmed','packing','dispatched','delivered'].includes(order.orderStatus);
+
+  const fullAddress = [addr.addressLine1, addr.addressLine2, addr.city, addr.pincode, addr.landmark].filter(Boolean).join(', ');
+  const bestInvoiceType = isDelivered && order.invoices?.tax?.isAvailable ? 'tax'
+    : isConfirmed && order.invoices?.confirmation?.isAvailable ? 'confirmation'
+    : 'proforma';
 
   return (
-    <div className="min-h-screen pb-10" style={{ background: '#F5F4F2' }}>
+    <div className="min-h-screen pb-16" style={{ background: '#F5F4F2' }}>
 
       {/* ── Header ── */}
-      <div className="sticky top-0 z-30" style={{
-        background: 'linear-gradient(135deg, #064e3b 0%, #065f46 50%, #059669 100%)',
-        boxShadow: '0 4px 24px rgba(6,95,70,0.3)',
-        paddingTop: 'env(safe-area-inset-top)',
-      }}>
-        <div className="px-4 py-3.5 flex items-center gap-3">
-          <button onClick={() => navigate(-1)}
-            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition"
-            style={{ background: 'rgba(255,255,255,0.2)' }}>
-            <FiArrowLeft size={16} className="text-white" />
-          </button>
-          <div className="flex-1">
-            <h1 className="text-white font-extrabold text-base leading-tight">Order Details</h1>
-            <p className="text-emerald-100 text-[10px] opacity-80">{order.orderId}</p>
-          </div>
-          <span className="text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1"
-            style={{ background: cfg.bg, color: cfg.color }}>
-            {cfg.Icon && <cfg.Icon size={10} />} {cfg.label}
-          </span>
+      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: '#065f46', padding: '12px 16px', paddingTop: `calc(12px + env(safe-area-inset-top))`, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button onClick={() => navigate(-1)} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 10, padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+          <FiArrowLeft size={20} />
+        </button>
+        <div style={{ flex: 1 }}>
+          <p style={{ color: '#fff', fontWeight: 700, fontSize: 16, margin: 0 }}>Order #{order.orderId}</p>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, margin: 0 }}>{fmtDate(order.placedAt || order.createdAt)}</p>
+        </div>
+        <div style={{ background: statusCfg.bg, color: statusCfg.color, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 99, whiteSpace: 'nowrap' }}>
+          {statusCfg.label}
         </div>
       </div>
 
-      <div className="px-4 mt-4 space-y-4">
+      <div style={{ padding: '16px 16px 0' }}>
 
-        {/* ── Order meta ── */}
-        <div className="bg-white rounded-2xl p-4"
-          style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)' }}>
-          <div className="grid grid-cols-2 gap-3">
+        {/* ── Delivery info ── */}
+        <Card title="Delivery Information">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
             <div>
-              <p className="text-[10px] text-gray-400">Order ID</p>
-              <p className="text-sm font-bold text-gray-800">{order.orderId}</p>
+              <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 2px' }}>Delivery Date</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#111', margin: 0 }}>{fmtDate(order.deliveryDate)}</p>
             </div>
             <div>
-              <p className="text-[10px] text-gray-400">Order Date</p>
-              <p className="text-sm font-semibold text-gray-700">
-                {new Date(order.placedAt || order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </p>
+              <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 2px' }}>Time Slot</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#111', margin: 0 }}>{order.deliverySlot || '—'}</p>
             </div>
-            {order.deliveryDate && (
-              <div>
-                <p className="text-[10px] text-gray-400">Delivery Date</p>
-                <p className="text-sm font-semibold text-gray-700">
-                  {new Date(order.deliveryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </p>
+          </div>
+          {fullAddress && (
+            <div style={{ padding: '10px 12px', background: '#f9fafb', borderRadius: 10, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <FiMapPin size={14} style={{ color: '#9ca3af', marginTop: 2, flexShrink: 0 }} />
+              <p style={{ fontSize: 13, color: '#374151', margin: 0, lineHeight: 1.5 }}>{fullAddress}</p>
+            </div>
+          )}
+        </Card>
+
+        {/* ── SECTION 1: Items Ordered (immutable original) ── */}
+        <Card
+          title="Items Ordered"
+          titleColor="#1d4ed8"
+          badge={{ label: `${itemsOrdered.length} item${itemsOrdered.length !== 1 ? 's' : ''}`, bg: '#eff6ff', color: '#3b82f6' }}
+        >
+          <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 10px' }}>Your original order — this record never changes.</p>
+          {itemsOrdered.map((it, i) => {
+            const qty   = it.orderedQty || it.quantity || 0;
+            const price = it.unitPrice || it.orderedPrice || it.finalPrice || 0;
+            return (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < itemsOrdered.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#111', margin: 0 }}>{it.name}</p>
+                  <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>{qty} {it.unit} × {fmt(price)}</p>
+                </div>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8', margin: 0 }}>{fmt(price * qty)}</p>
               </div>
-            )}
-            {order.deliverySlot && (
-              <div>
-                <p className="text-[10px] text-gray-400">Delivery Slot</p>
-                <p className="text-sm font-semibold text-gray-700">{order.deliverySlot}</p>
-              </div>
-            )}
-          </div>
-        </div>
+            );
+          })}
+        </Card>
 
-        {/* ── Progress tracker ── */}
-        {!isCancelled && (
-          <div className="bg-white rounded-2xl p-4"
-            style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)' }}>
-            <p className="text-xs font-bold text-gray-700 mb-3 flex items-center gap-2">
-              <FiTruck size={13} className="text-green-600" /> Order Progress
-            </p>
-            <div className="flex items-center gap-1 overflow-x-auto">
-              {PROGRESS_STEPS.map((s, i, arr) => {
-                const thisIdx = ALL_STATUSES.indexOf(s);
-                const done    = currentIdx >= thisIdx;
-                const label   = STATUS_CONFIG[s]?.label || s;
-                return (
-                  <div key={s} className="flex items-center gap-1 shrink-0">
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition"
-                        style={{ background: done ? '#16a34a' : '#e5e7eb', color: done ? '#fff' : '#9ca3af' }}>
-                        {i + 1}
-                      </div>
-                      <p className="text-[8px] text-center w-12 leading-tight" style={{ color: done ? '#16a34a' : '#9ca3af' }}>
-                        {label}
-                      </p>
-                    </div>
-                    {i < arr.length - 1 && (
-                      <div className="w-6 h-0.5 rounded-full mb-4" style={{ background: done ? '#16a34a' : '#e5e7eb' }} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── Price revision alert ── */}
-        {isPriceRevision && order.priceRevision?.revisedTotal && (
-          <div className="rounded-2xl p-4" style={{ background: '#fff7ed', border: '1.5px solid #fed7aa' }}>
-            <p className="font-bold text-orange-700 text-sm mb-1 flex items-center gap-1.5">
-              <FiAlertTriangle size={13} /> Price Revision Request
-            </p>
-            <p className="text-xs text-orange-600 mb-3">
-              Market prices changed. New total: <strong>₹{order.priceRevision.revisedTotal.toFixed(2)}</strong>
-            </p>
-            <div className="flex gap-2">
-              <button onClick={() => handleRevision(true)} disabled={revising}
-                className="flex-1 bg-green-600 text-white text-xs font-bold py-2.5 rounded-xl active:scale-95 transition disabled:opacity-60">
-                ✓ Approve
-              </button>
-              <button onClick={() => handleRevision(false)} disabled={revising}
-                className="flex-1 bg-red-500 text-white text-xs font-bold py-2.5 rounded-xl active:scale-95 transition disabled:opacity-60">
-                ✕ Cancel Order
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── All products ── */}
-        <div className="bg-white rounded-2xl overflow-hidden"
-          style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)' }}>
-          <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
-            <FaLeaf size={12} className="text-green-600" />
-            <p className="text-sm font-bold text-gray-800">
-              Items Ordered ({order.items?.length || 0})
-            </p>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {order.items?.map((item, i) => {
-              const unitPrice  = item.finalPrice || item.orderedPrice || 0;
-              const lineTotal  = unitPrice * item.quantity;
-              const declined   = item.status === 'declined';
+        {/* ── SECTION 2: Items Declined ── */}
+        {hasDeclines && (
+          <Card
+            title="Items Declined"
+            titleColor="#dc2626"
+            badge={{ label: `${itemsDeclined.length} declined`, bg: '#fef2f2', color: '#dc2626' }}
+          >
+            <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 10px' }}>Cannot be supplied. Refund will be processed.</p>
+            {itemsDeclined.map((it, i) => {
+              const decQty = it.declinedQty || (it.orderedQty || it.quantity || 0);
+              const price  = it.orderedPrice || it.finalPrice || 0;
               return (
-                <div key={i} className={`px-4 py-3 flex items-center gap-3 ${declined ? 'opacity-50' : ''}`}>
-                  {item.image
-                    ? <img src={item.image} alt={item.name} className="w-12 h-12 rounded-xl object-cover shrink-0" />
-                    : <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
-                        <FaLeaf size={16} className="text-green-300" />
-                      </div>
-                  }
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-800 text-sm leading-snug">{item.name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {item.quantity}{item.unit} × ₹{unitPrice}/{item.unit}
-                    </p>
-                    {declined && (
-                      <span className="text-[10px] font-bold text-red-500 mt-0.5 block">Declined — refunded to wallet</span>
-                    )}
+                <div key={i} style={{ padding: '8px 0', borderBottom: i < itemsDeclined.length - 1 ? '1px solid #fef2f2' : 'none' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#dc2626', margin: 0 }}>{it.name}</p>
+                      <p style={{ fontSize: 12, color: '#9ca3af', margin: '2px 0 0' }}>Declined: {decQty} {it.unit} × {fmt(price)}</p>
+                      <p style={{ fontSize: 11, color: '#9ca3af', margin: '1px 0 0' }}>Reason: {it.declinedReason || 'Unavailable'}</p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#dc2626', margin: 0 }}>−{fmt(price * decQty)}</p>
+                      <p style={{ fontSize: 11, color: '#9ca3af', margin: 0 }}>Refund</p>
+                    </div>
                   </div>
-                  <p className="font-bold text-green-700 text-sm shrink-0">
-                    {declined ? <span className="line-through text-gray-300">₹{lineTotal.toFixed(0)}</span> : `₹${lineTotal.toFixed(0)}`}
-                  </p>
                 </div>
               );
             })}
-          </div>
-        </div>
-
-        {/* ── Payment summary ── */}
-        <div className="bg-white rounded-2xl p-4"
-          style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)' }}>
-          <p className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <FaLeaf size={12} className="text-green-600" /> Payment Summary
-          </p>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between text-gray-600">
-              <span>Subtotal</span>
-              <span>₹{order.pricing?.subtotal?.toFixed(2)}</span>
+            <div style={{ marginTop: 10, padding: '8px 12px', background: '#fef2f2', borderRadius: 8, display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#dc2626' }}>Total Refund Amount</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#dc2626' }}>{fmt(effective.declinedRefundAmount)}</span>
             </div>
-            {order.pricing?.deliveryFee > 0 && (
-              <div className="flex justify-between text-gray-600">
-                <span>Delivery fee</span>
-                <span>₹{order.pricing.deliveryFee.toFixed(2)}</span>
-              </div>
-            )}
-            {order.pricing?.platformFee > 0 && (
-              <div className="flex justify-between text-gray-600">
-                <span>Platform fee</span>
-                <span>₹{order.pricing.platformFee.toFixed(2)}</span>
-              </div>
-            )}
-            {order.pricing?.walletCredit > 0 && (
-              <div className="flex justify-between text-green-600 font-semibold">
-                <span>Wallet credit used</span>
-                <span>-₹{order.pricing.walletCredit.toFixed(2)}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-bold text-gray-800 pt-2 border-t border-gray-100">
-              <span>Total</span>
-              <span className="text-green-700 text-base">₹{order.pricing?.total?.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>Payment method</span>
-              <span className="capitalize">{order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Delivery address ── */}
-        {order.shippingAddress && (
-          <div className="bg-white rounded-2xl p-4"
-            style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)' }}>
-            <p className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
-              <FiMapPin size={12} className="text-green-600" /> Delivery Address
-            </p>
-            <p className="text-sm font-semibold text-gray-700">{order.shippingAddress.fullName}</p>
-            <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-              {[
-                order.shippingAddress.address,
-                order.shippingAddress.city,
-                order.shippingAddress.state,
-                order.shippingAddress.pincode,
-              ].filter(Boolean).join(', ')}
-            </p>
-            {order.shippingAddress.phone && (
-              <p className="text-xs text-gray-500 mt-1">📞 {order.shippingAddress.phone}</p>
-            )}
-          </div>
+          </Card>
         )}
 
-        {/* ── Invoice ── */}
-        <div className="bg-white rounded-2xl p-4"
-          style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)' }}>
-          <p className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <FaFileInvoice size={13} className="text-green-600" /> Invoice
-          </p>
-          {(isDelivered || order.orderStatus === 'confirmed' || order.orderStatus === 'packing' || order.orderStatus === 'dispatched') ? (
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleInvoice('view')}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-green-700 active:scale-[0.98] transition"
-                style={{ background: '#f0fdf4', border: '1.5px solid rgba(22,163,74,0.3)' }}>
-                <FiEye size={14} /> View
-              </button>
-              <button
-                onClick={() => handleInvoice('download')}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-white active:scale-[0.98] transition"
-                style={{ background: 'linear-gradient(135deg,#065f46,#16a34a)' }}>
-                <FiDownload size={14} /> Download
-              </button>
-            </div>
-          ) : (
-            <p className="text-xs text-gray-400 text-center py-2">
-              Invoice will be available once your order is confirmed
-            </p>
+        {/* ── SECTION 3: Items Confirmed ── */}
+        <Card
+          title={isDelivered ? 'Items Delivered' : 'Items Confirmed'}
+          titleColor="#065f46"
+          badge={{ label: `${itemsConfirmed.filter(i => i.itemStatus !== 'declined').length} items`, bg: '#f0fdf4', color: '#16a34a' }}
+        >
+          {!isConfirmed && !hasDeclines && (
+            <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 10px' }}>Pending Seller Admin review. All items confirmed by default.</p>
           )}
-        </div>
+          {(hasDeclines || isConfirmed
+            ? itemsConfirmed.filter(it => it.itemStatus !== 'declined')
+            : itemsOrdered
+          ).map((it, i, arr) => {
+            const confirmedQty = it.confirmedQty != null ? it.confirmedQty : (it.orderedQty || it.quantity || 0);
+            const price        = it.orderedPrice || it.unitPrice || it.finalPrice || 0;
+            const isPartial    = it.itemStatus === 'partial';
+            return (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < arr.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#111', margin: 0 }}>
+                    {it.name}
+                    {isPartial && <span style={{ marginLeft: 6, fontSize: 10, background: '#fff7ed', color: '#d97706', padding: '1px 6px', borderRadius: 99 }}>Partial</span>}
+                  </p>
+                  <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>
+                    {confirmedQty} {it.unit} × {fmt(price)}
+                    {isPartial ? ` (ordered: ${it.orderedQty || it.quantity})` : ''}
+                  </p>
+                </div>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#065f46', margin: 0 }}>{fmt(price * confirmedQty)}</p>
+              </div>
+            );
+          })}
+        </Card>
+
+        {/* ── PAYMENT SUMMARY ── */}
+        <Card title="Payment Summary" titleColor="#374151">
+          {(effective.originalOrderValue || pricing.subtotal || 0) > 0 && (
+            <PayRow label="Original Order Value" value={fmt(effective.originalOrderValue || pricing.subtotal)} />
+          )}
+          {(effective.declinedRefundAmount || 0) > 0 && (
+            <PayRow label="Declined Refund (−)" value={`−${fmt(effective.declinedRefundAmount)}`} color="#dc2626" />
+          )}
+          <PayRow label="Confirmed Items Total" value={fmt(effective.confirmedItemsTotal || pricing.subtotal)} />
+          {(effective.platformFee || pricing.platformFee || 0) > 0 && (
+            <PayRow label="Platform Fee" value={fmt(effective.platformFee || pricing.platformFee)} />
+          )}
+          {(effective.packingLogisticsFee || 0) > 0 && (
+            <PayRow label="Packing & Logistics Fee" value={fmt(effective.packingLogisticsFee)} />
+          )}
+          {(effective.deliveryCharge || pricing.deliveryCharge || 0) > 0 && (
+            <PayRow label="Delivery Charge" value={fmt(effective.deliveryCharge || pricing.deliveryCharge)} />
+          )}
+          <PayRow label="GST" value="0% (Exempt)" />
+          {(effective.couponDiscount || pricing.discount || 0) > 0 && (
+            <PayRow label="Coupon Discount" value={`−${fmt(effective.couponDiscount || pricing.discount)}`} color="#16a34a" />
+          )}
+          {(effective.walletAdjustment || 0) > 0 && (
+            <PayRow label="Wallet Adjustment (−)" value={`−${fmt(effective.walletAdjustment)}`} color="#16a34a" />
+          )}
+          <PayRow
+            label="Final Payable Amount"
+            value={fmt(effective.finalPayableAmount || pricing.total)}
+            bold divider
+          />
+          <PayRow label="Payment Method" value={(order.paymentMethod || '').toUpperCase()} />
+        </Card>
+
+        {/* ── DOCUMENTS ── */}
+        <Card title="Documents & Invoices" titleColor="#374151">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+            {/* Proforma — always available */}
+            <button onClick={() => openInvoice(order, 'proforma')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, cursor: 'pointer', width: '100%' }}>
+              <FiFileText size={18} style={{ color: '#3b82f6' }} />
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#1d4ed8', margin: 0 }}>Proforma Invoice</p>
+                <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>Order summary at placement</p>
+              </div>
+              <FiDownload size={16} style={{ color: '#3b82f6' }} />
+            </button>
+
+            {/* Order Confirmation — after Super Admin approval */}
+            {order.invoices?.confirmation?.isAvailable && (
+              <button onClick={() => openInvoice(order, 'confirmation')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, cursor: 'pointer', width: '100%' }}>
+                <FiCheckCircle size={18} style={{ color: '#16a34a' }} />
+                <div style={{ flex: 1, textAlign: 'left' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#065f46', margin: 0 }}>Order Confirmation</p>
+                  <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>Confirmed items after review</p>
+                </div>
+                <FiDownload size={16} style={{ color: '#16a34a' }} />
+              </button>
+            )}
+
+            {/* Final Tax Invoice — only after delivery */}
+            {order.invoices?.tax?.isAvailable && isDelivered && (
+              <button onClick={() => openInvoice(order, 'tax')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', width: '100%' }}>
+                <FiFileText size={18} style={{ color: '#065f46' }} />
+                <div style={{ flex: 1, textAlign: 'left' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#065f46', margin: 0 }}>Final Tax Invoice</p>
+                  <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>Delivered items only · GST 0%</p>
+                </div>
+                <FiDownload size={16} style={{ color: '#065f46' }} />
+              </button>
+            )}
+
+            {/* Share best available */}
+            <button onClick={() => shareInvoice(order, bestInvoiceType)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#dcfce7', border: '1px solid #86efac', borderRadius: 10, cursor: 'pointer', width: '100%' }}>
+              <FiShare2 size={18} style={{ color: '#16a34a' }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#065f46' }}>Share via WhatsApp</span>
+            </button>
+
+          </div>
+        </Card>
+
+        {/* ── ORDER TIMELINE ── */}
+        <Card title="Order Timeline" titleColor="#374151">
+          <button
+            onClick={() => { loadTimeline(); setShowTimeline(v => !v); }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            <span style={{ fontSize: 13, color: '#065f46', fontWeight: 600 }}>
+              {showTimeline ? 'Hide Timeline' : 'View Timeline'} ({order.timeline?.length || 0} events)
+            </span>
+            {showTimeline ? <FiChevronUp size={16} style={{ color: '#6b7280' }} /> : <FiChevronDown size={16} style={{ color: '#6b7280' }} />}
+          </button>
+
+          {showTimeline && (
+            <div style={{ marginTop: 14, paddingLeft: 20, position: 'relative' }}>
+              <div style={{ position: 'absolute', left: 7, top: 0, bottom: 0, width: 2, background: '#e5e7eb' }} />
+              {(timeline !== null ? timeline : order.timeline || []).map((ev, i) => (
+                <div key={i} style={{ position: 'relative', marginBottom: 16 }}>
+                  <div style={{ position: 'absolute', left: -20, top: 3, width: 10, height: 10, borderRadius: '50%', background: '#065f46', border: '2px solid #fff', boxShadow: '0 0 0 2px #065f46' }} />
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#374151', margin: 0 }}>{TIMELINE_LABELS[ev.event] || ev.event}</p>
+                  {ev.description && <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0', lineHeight: 1.4 }}>{ev.description}</p>}
+                  <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>{fmtTime(ev.timestamp)}</p>
+                </div>
+              ))}
+              {!(timeline?.length || order.timeline?.length) && (
+                <p style={{ fontSize: 12, color: '#9ca3af' }}>No events yet.</p>
+              )}
+            </div>
+          )}
+        </Card>
 
       </div>
     </div>

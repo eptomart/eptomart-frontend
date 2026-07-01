@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FiArrowLeft, FiPackage, FiCheckCircle, FiClock, FiAlertTriangle,
-  FiTruck, FiHome, FiXCircle, FiRefreshCw, FiList,
+  FiTruck, FiHome, FiXCircle, FiRefreshCw, FiList, FiFileText,
 } from 'react-icons/fi';
 import { FaLeaf } from 'react-icons/fa';
 import api from '../../utils/api';
@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 const STATUS_CONFIG = {
   placed:                 { label: 'Order Placed',          color: '#3b82f6', bg: '#eff6ff',   Icon: FiList },
   pending_confirmation:   { label: 'Awaiting Confirmation', color: '#d97706', bg: '#fffbeb',   Icon: FiClock },
+  sa_review_submitted:    { label: 'Under Review',          color: '#9333ea', bg: '#faf5ff',   Icon: FiClock },
   price_revision_pending: { label: 'Price Revision',        color: '#ea580c', bg: '#fff7ed',   Icon: FiAlertTriangle },
   confirmed:              { label: 'Confirmed',             color: '#16a34a', bg: '#f0fdf4',   Icon: FiCheckCircle },
   packing:                { label: 'Packing',               color: '#9333ea', bg: '#faf5ff',   Icon: FiPackage },
@@ -129,12 +130,21 @@ export default function KoyambeduOrders() {
 
                 {/* Items preview */}
                 <div className="space-y-1.5 mb-3">
-                  {order.items?.slice(0, 3).map((it, i) => (
-                    <div key={i} className="flex justify-between text-sm">
-                      <span className="text-gray-700">{it.name} × {it.quantity}{it.unit}</span>
-                      <span className="text-gray-500 shrink-0 ml-2">₹{((it.finalPrice || it.orderedPrice || 0) * it.quantity).toFixed(0)}</span>
-                    </div>
-                  ))}
+                  {order.items?.slice(0, 3).map((it, i) => {
+                    const confirmedQty = it.confirmedQty != null ? it.confirmedQty : (it.quantity || it.orderedQty || 0);
+                    const isDeclined = it.itemStatus === 'declined';
+                    return (
+                      <div key={i} className="flex justify-between text-sm">
+                        <span className={isDeclined ? 'text-red-400 line-through' : 'text-gray-700'}>
+                          {it.name} × {confirmedQty}{it.unit}
+                          {isDeclined && ' (declined)'}
+                        </span>
+                        <span className="text-gray-500 shrink-0 ml-2">
+                          {isDeclined ? '—' : `₹${((it.finalPrice || it.orderedPrice || 0) * confirmedQty).toFixed(0)}`}
+                        </span>
+                      </div>
+                    );
+                  })}
                   {order.items?.length > 3 && (
                     <Link to={`/koyambedu/orders/${order._id}`} className="text-xs text-green-600 font-semibold">
                       +{order.items.length - 3} more items — view all
@@ -142,31 +152,67 @@ export default function KoyambeduOrders() {
                   )}
                 </div>
 
-                {/* Pricing + delivery info */}
-                <div className="flex justify-between items-center pt-3 border-t border-gray-50">
-                  <div>
-                    <p className="text-[10px] text-gray-400">Total paid</p>
-                    <p className="font-bold text-green-700 text-sm">₹{order.pricing?.total?.toFixed(2)}</p>
-                  </div>
-                  <div className="text-right">
-                    {order.deliveryDate && (
-                      <>
-                        <p className="text-[10px] text-gray-400">Delivery date</p>
-                        <p className="text-xs text-gray-700 font-semibold">
-                          {new Date(order.deliveryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </p>
-                      </>
-                    )}
-                    <p className="text-[10px] text-gray-400 mt-1">Slot</p>
-                    <p className="text-xs text-gray-600 font-medium">{order.deliverySlot}</p>
-                  </div>
-                </div>
+                {/* Pricing summary */}
+                {(() => {
+                  const calc = order.calculatedPricing || {};
+                  const pricing = order.pricing || {};
+                  const total = calc.finalPayableAmount || pricing.total || 0;
+                  const delivery = calc.deliveryCharge || pricing.deliveryCharge || 0;
+                  const declined = calc.declinedRefundAmount || 0;
+                  return (
+                    <div className="pt-3 border-t border-gray-50 space-y-1 mb-2">
+                      {declined > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-red-500">Declined refund</span>
+                          <span className="text-red-600 font-semibold">−₹{declined.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {delivery > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-400">Delivery charge</span>
+                          <span className="text-gray-600">₹{delivery.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-[10px] text-gray-400">Total paid</p>
+                          <p className="font-bold text-green-700 text-sm">₹{total.toFixed(2)}</p>
+                        </div>
+                        <div className="text-right">
+                          {order.deliveryDate && (
+                            <p className="text-xs text-gray-700 font-semibold">
+                              📅 {new Date(order.deliveryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                            </p>
+                          )}
+                          {order.deliverySlot && <p className="text-xs text-gray-500">{order.deliverySlot}</p>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
-                {/* View details */}
-                <div className="mt-3 pt-3 border-t border-gray-50 flex justify-end">
+                {/* Delivery address — full */}
+                {order.shippingAddress && (
+                  <div className="text-xs text-gray-400 mb-2 leading-relaxed">
+                    📍 {[
+                      order.shippingAddress.addressLine1,
+                      order.shippingAddress.addressLine2,
+                      order.shippingAddress.city,
+                      order.shippingAddress.pincode,
+                    ].filter(Boolean).join(', ')}
+                  </div>
+                )}
+
+                {/* View details + Invoice button */}
+                <div className="mt-2 pt-3 border-t border-gray-50 flex items-center justify-between">
                   <Link to={`/koyambedu/orders/${order._id}`}
                     className="text-xs font-bold text-green-700 flex items-center gap-1 active:opacity-70">
                     View full details →
+                  </Link>
+                  <Link to={`/koyambedu/orders/${order._id}`}
+                    className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg active:scale-95 transition"
+                    style={{ background: '#eff6ff', color: '#3b82f6', border: '1px solid #bfdbfe' }}>
+                    <FiFileText size={11} /> Invoice
                   </Link>
                 </div>
 

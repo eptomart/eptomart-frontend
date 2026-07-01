@@ -6,7 +6,7 @@ import KoyambeduImageUploader from '../../components/koyambedu/KoyambeduImageUpl
 import KoyambeduVariantProductForm, { EMPTY_VARIANT_PRODUCT, getVariantOverlapError } from '../../components/koyambedu/KoyambeduVariantProductForm';
 import toast from 'react-hot-toast';
 
-const TAB_LIST = ['dashboard', 'orders', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'daily-price', 'refund-requests', 'reports'];
+const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'daily-price', 'refund-requests', 'reports'];
 
 const DELIVERY_SLOTS = [
   '06:00 AM – 08:59 AM',
@@ -227,6 +227,16 @@ export default function KoyambeduAdmin() {
   const [qtyUpdating,      setQtyUpdating]        = useState(false);
   const [decliningItem,    setDecliningItem]       = useState(null); // {orderId, itemIdx, itemName}
 
+  // Pending approval tab (sa_review_submitted orders)
+  const [pendingApprovalOrders, setPendingApprovalOrders] = useState([]);
+  const [approveModal,   setApproveModal]   = useState(null); // order object
+  const [approveAction,  setApproveAction]  = useState('approve'); // 'approve' | 'reject'
+  const [approveNotes,   setApproveNotes]   = useState('');
+  const [approving,      setApproving]      = useState(false);
+  const [cancelOrderModal, setCancelOrderModal] = useState(null); // order object
+  const [cancelReason,   setCancelReason]   = useState('');
+  const [cancelling,     setCancelling]     = useState(false);
+
   // Cancelled orders tab
   const [cancelledOrders,  setCancelledOrders]  = useState([]);
   const [cancelledExpanded, setCancelledExpanded] = useState({});
@@ -277,6 +287,9 @@ export default function KoyambeduAdmin() {
         if (orderSaFilter)       params.set('sellerAdmin', orderSaFilter);
         const { data } = await api.get(`/koyambedu/admin/orders?${params}&limit=100`);
         setOrders(data.orders || []);
+      } else if (t === 'pending-approval') {
+        const { data } = await api.get('/koyambedu/admin/orders/pending-approval');
+        setPendingApprovalOrders(data.orders || []);
       } else if (t === 'cancelled-orders') {
         const { data } = await api.get('/koyambedu/admin/orders?status=cancelled&limit=200');
         const partial  = await api.get('/koyambedu/admin/orders?itemStatus=declined&limit=200');
@@ -355,6 +368,45 @@ export default function KoyambeduAdmin() {
       setOrders(prev => prev.map(o => o._id === data.order._id ? data.order : o));
       setDecliningItem(null);
     } catch (e) { toast.error(e?.response?.data?.message || 'Failed'); setDecliningItem(null); }
+  };
+
+  // ── Approve / reject SA review ──────────────────────────────────
+  const handleApproveReview = async () => {
+    if (!approveModal) return;
+    setApproving(true);
+    try {
+      const { data } = await api.patch(`/koyambedu/admin/orders/${approveModal._id}/approve-review`, {
+        action: approveAction,
+        notes:  approveNotes,
+      });
+      toast.success(data.message);
+      setApproveModal(null);
+      setApproveNotes('');
+      // Remove from pending list
+      setPendingApprovalOrders(prev => prev.filter(o => o._id !== approveModal._id));
+      // Refresh orders tab if visible
+      if (tab === 'orders') loadTab('orders');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Action failed');
+    } finally { setApproving(false); }
+  };
+
+  // ── Cancel order (Super Admin only) ─────────────────────────────
+  const handleCancelOrder = async () => {
+    if (!cancelOrderModal) return;
+    if (!cancelReason.trim()) { toast.error('Cancel reason is required'); return; }
+    setCancelling(true);
+    try {
+      const { data } = await api.patch(`/koyambedu/admin/orders/${cancelOrderModal._id}/cancel`, {
+        reason: cancelReason,
+      });
+      toast.success(data.message);
+      setCancelOrderModal(null);
+      setCancelReason('');
+      loadTab(tab);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Cancel failed');
+    } finally { setCancelling(false); }
   };
 
   const handleRefundAction = async (walletId, requestId, action) => {
@@ -844,7 +896,7 @@ export default function KoyambeduAdmin() {
           {TAB_LIST.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white hover:bg-white/30'}`}>
-              {t === 'seller-admins' ? 'Seller Admins' : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'reports' ? '📊 Reports' : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'reports' ? '📊 Reports' : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -930,7 +982,17 @@ export default function KoyambeduAdmin() {
                         </span>
                       </div>
                       <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                        <p className="text-xs text-gray-500">₹{order.pricing?.total?.toFixed(2)} · {order.items?.length} items</p>
+                        <div>
+                          <p className="text-xs text-gray-500">
+                            {order.calculatedPricing?.finalPayableAmount != null
+                              ? `₹${order.calculatedPricing.finalPayableAmount.toFixed(2)}`
+                              : `₹${order.pricing?.total?.toFixed(2)}`
+                            } · {order.items?.length} items
+                          </p>
+                          {(order.calculatedPricing?.declinedRefundAmount || 0) > 0 && (
+                            <p className="text-[10px] text-red-500">Refund: ₹{order.calculatedPricing.declinedRefundAmount.toFixed(2)}</p>
+                          )}
+                        </div>
                         <div className="flex gap-2 flex-wrap justify-end">
                           <button onClick={() => setExpandedOrderId(isExp ? null : order._id)}
                             className="text-xs text-green-700 font-bold border border-green-200 px-2 py-1 rounded-lg">
@@ -944,6 +1006,12 @@ export default function KoyambeduAdmin() {
                             <button onClick={() => { setRefundModal(order); setRefundAmt(''); setRefundReason(''); }}
                               className="text-xs text-purple-700 font-bold border border-purple-200 px-2 py-1 rounded-lg">
                               💳 Refund
+                            </button>
+                          )}
+                          {isSuperAdmin && !['cancelled','delivered'].includes(order.orderStatus) && (
+                            <button onClick={() => { setCancelOrderModal(order); setCancelReason(''); }}
+                              className="text-xs text-red-600 font-bold border border-red-200 px-2 py-1 rounded-lg">
+                              ✕ Cancel
                             </button>
                           )}
                           <button onClick={() => { setUpdateModal(order); setNewStatus(order.orderStatus); setDelivPartner(order.deliveryPartner || ''); setAdminNotes(order.adminNotes || ''); }}
@@ -998,6 +1066,116 @@ export default function KoyambeduAdmin() {
                 );
               })}
               {orders.length === 0 && <p className="text-center text-gray-500 py-8">No orders found</p>}
+            </div>
+          </div>
+        )}
+
+        {/* ── PENDING APPROVAL (sa_review_submitted) ── */}
+        {tab === 'pending-approval' && !loading && (
+          <div>
+            <p className="text-sm font-bold text-gray-600 mb-3">
+              {pendingApprovalOrders.length} order{pendingApprovalOrders.length !== 1 ? 's' : ''} awaiting Super Admin approval
+            </p>
+            {pendingApprovalOrders.length === 0 && (
+              <div className="text-center py-16 text-gray-400">
+                <p className="text-3xl mb-3">✅</p>
+                <p className="font-bold">All clear — no pending reviews</p>
+              </div>
+            )}
+            <div className="space-y-3">
+              {pendingApprovalOrders.map(order => {
+                const calc = order.calculatedPricing || {};
+                const saReview = order.saReview || {};
+                const itemsDeclined = (order.items || []).filter(it => it.itemStatus === 'declined' || it.itemStatus === 'partial');
+                return (
+                  <div key={order._id} className="bg-white rounded-2xl border border-purple-200 overflow-hidden">
+                    <div className="p-4">
+                      {/* Header */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="font-bold text-gray-800 text-sm">{order.orderId}</p>
+                          <p className="text-xs text-gray-500">{order.buyer?.name}</p>
+                          {order.deliveryDate && (
+                            <p className="text-xs text-blue-600">📅 {new Date(order.deliveryDate).toLocaleDateString('en-IN',{day:'numeric',month:'short'})} · {order.deliverySlot}</p>
+                          )}
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                          Awaiting Approval
+                        </span>
+                      </div>
+
+                      {/* Declined items summary */}
+                      {itemsDeclined.length > 0 && (
+                        <div className="mb-3 space-y-1.5">
+                          <p className="text-[10px] font-bold text-red-600 uppercase tracking-wide">Declined / Reduced Items</p>
+                          {itemsDeclined.map((it, i) => {
+                            const decQty = it.declinedQty || (it.orderedQty || it.quantity || 0);
+                            const price  = it.orderedPrice || it.finalPrice || 0;
+                            return (
+                              <div key={i} className="flex justify-between text-xs">
+                                <span className="text-red-600">
+                                  {it.name} — {it.itemStatus === 'partial' ? `reduced to ${it.confirmedQty}${it.unit}` : `${decQty}${it.unit} declined`}
+                                </span>
+                                <span className="text-red-600 font-semibold">−₹{(price * decQty).toFixed(0)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Pricing summary */}
+                      <div className="bg-gray-50 rounded-xl p-3 mb-3 space-y-1">
+                        {calc.originalOrderValue > 0 && (
+                          <div className="flex justify-between text-xs"><span className="text-gray-500">Original Order Value</span><span>₹{calc.originalOrderValue?.toFixed(2)}</span></div>
+                        )}
+                        {calc.declinedRefundAmount > 0 && (
+                          <div className="flex justify-between text-xs"><span className="text-red-500">Declined Refund (−)</span><span className="text-red-600 font-semibold">₹{calc.declinedRefundAmount?.toFixed(2)}</span></div>
+                        )}
+                        {calc.deliveryCharge > 0 && (
+                          <div className="flex justify-between text-xs"><span className="text-gray-500">Delivery Charge</span><span>₹{calc.deliveryCharge?.toFixed(2)}</span></div>
+                        )}
+                        <div className="flex justify-between text-xs pt-1 border-t border-gray-200">
+                          <span className="font-bold text-gray-700">Final Payable</span>
+                          <span className="font-bold text-green-700">₹{calc.finalPayableAmount?.toFixed(2)}</span>
+                        </div>
+                        {saReview.refundMethod && saReview.refundMethod !== 'none' && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-500">Refund Method</span>
+                            <span className="font-semibold uppercase text-purple-700">{saReview.refundMethod}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {saReview.notes && (
+                        <p className="text-xs text-gray-500 mb-3 italic">SA Note: {saReview.notes}</p>
+                      )}
+
+                      {/* Action buttons — Super Admin only */}
+                      {isSuperAdmin ? (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => { setApproveModal(order); setApproveAction('approve'); setApproveNotes(''); }}
+                            className="flex-1 bg-green-600 text-white text-xs font-bold py-2.5 rounded-xl active:scale-95 transition">
+                            ✅ Approve Review
+                          </button>
+                          <button
+                            onClick={() => { setApproveModal(order); setApproveAction('reject'); setApproveNotes(''); }}
+                            className="flex-1 border-2 border-orange-400 text-orange-600 text-xs font-bold py-2.5 rounded-xl active:scale-95 transition">
+                            🔄 Send Back
+                          </button>
+                          <button
+                            onClick={() => { setCancelOrderModal(order); setCancelReason(''); }}
+                            className="px-3 border-2 border-red-300 text-red-600 text-xs font-bold py-2.5 rounded-xl active:scale-95 transition">
+                            ✕ Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400 text-center py-2">Super Admin approval required</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -2275,6 +2453,118 @@ export default function KoyambeduAdmin() {
               <button onClick={submitPartialRefund} disabled={refunding || !refundAmt}
                 className="flex-1 bg-purple-600 text-white font-bold py-3 rounded-xl disabled:opacity-50 transition active:scale-95">
                 {refunding ? 'Processing…' : `Refund ₹${refundAmt || '–'}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Approve / Reject Review Modal ── */}
+      {approveModal && (
+        <div className="fixed inset-0 bg-black/50 z-[9997] flex items-end justify-center">
+          <div className="bg-white rounded-t-3xl w-full max-w-lg p-5 space-y-4"
+            style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-black text-gray-800">
+                  {approveAction === 'approve' ? '✅ Approve SA Review' : '🔄 Send Back for Revision'}
+                </h3>
+                <p className="text-xs text-gray-400">{approveModal.orderId}</p>
+              </div>
+              <button onClick={() => setApproveModal(null)} className="text-gray-400 text-xl font-bold leading-none">✕</button>
+            </div>
+
+            {/* Toggle approve / reject */}
+            <div className="flex gap-2">
+              <button onClick={() => setApproveAction('approve')}
+                className={`flex-1 py-2 rounded-xl text-sm font-bold border-2 transition ${approveAction === 'approve' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500'}`}>
+                ✅ Approve
+              </button>
+              <button onClick={() => setApproveAction('reject')}
+                className={`flex-1 py-2 rounded-xl text-sm font-bold border-2 transition ${approveAction === 'reject' ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-200 text-gray-500'}`}>
+                🔄 Send Back
+              </button>
+            </div>
+
+            {approveAction === 'approve' && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-xs text-green-700 space-y-1">
+                <p className="font-bold">On approval:</p>
+                <p>• Order status → Confirmed</p>
+                <p>• Declined item refund processed to customer wallet</p>
+                <p>• Order Confirmation invoice generated</p>
+                <p>• Customer notified via WhatsApp</p>
+              </div>
+            )}
+
+            {approveAction === 'reject' && (
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 text-xs text-orange-700">
+                <p>The Seller Admin will be asked to re-review and resubmit. No refund is processed at this stage.</p>
+              </div>
+            )}
+
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">
+                {approveAction === 'reject' ? 'Reason for revision (required)' : 'Notes (optional)'}
+              </label>
+              <textarea
+                value={approveNotes} onChange={e => setApproveNotes(e.target.value)} rows={3}
+                placeholder={approveAction === 'reject' ? 'Tell SA what to fix…' : 'Any notes for the record…'}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => setApproveModal(null)}
+                className="flex-1 border-2 border-gray-200 text-gray-600 font-bold py-3 rounded-xl">
+                Cancel
+              </button>
+              <button onClick={handleApproveReview} disabled={approving || (approveAction === 'reject' && !approveNotes.trim())}
+                className={`flex-1 text-white font-bold py-3 rounded-xl disabled:opacity-50 transition active:scale-95 ${approveAction === 'approve' ? 'bg-green-600' : 'bg-orange-500'}`}>
+                {approving ? 'Processing…' : approveAction === 'approve' ? 'Approve & Confirm Order' : 'Send Back for Revision'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Cancel Order Modal (Super Admin only) ── */}
+      {cancelOrderModal && (
+        <div className="fixed inset-0 bg-black/50 z-[9997] flex items-end justify-center">
+          <div className="bg-white rounded-t-3xl w-full max-w-lg p-5 space-y-4"
+            style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-black text-red-700">❌ Cancel Order</h3>
+                <p className="text-xs text-gray-400">{cancelOrderModal.orderId}</p>
+              </div>
+              <button onClick={() => setCancelOrderModal(null)} className="text-gray-400 text-xl font-bold leading-none">✕</button>
+            </div>
+
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 space-y-1">
+              <p className="font-bold">Cancelling this order will:</p>
+              <p>• Mark order as Cancelled</p>
+              <p>• Process full refund to customer wallet (if paid online)</p>
+              <p>• Notify customer via WhatsApp</p>
+              <p>• This action is irreversible</p>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-red-600 mb-1 block">Cancellation Reason <span className="text-red-500">*</span></label>
+              <textarea
+                value={cancelReason} onChange={e => setCancelReason(e.target.value)} rows={3}
+                placeholder="e.g. Seller unavailable, market closed, supply issue…"
+                className="w-full border-2 border-red-200 rounded-xl px-3 py-2 text-sm focus:outline-none resize-none focus:border-red-400"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => setCancelOrderModal(null)}
+                className="flex-1 border-2 border-gray-200 text-gray-600 font-bold py-3 rounded-xl">
+                Keep Order
+              </button>
+              <button onClick={handleCancelOrder} disabled={cancelling || !cancelReason.trim()}
+                className="flex-1 bg-red-600 text-white font-bold py-3 rounded-xl disabled:opacity-50 transition active:scale-95">
+                {cancelling ? 'Cancelling…' : 'Cancel Order'}
               </button>
             </div>
           </div>
