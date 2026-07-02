@@ -172,7 +172,7 @@ export default function KoyambeduCart() {
       </div>
 
       {/* ── Fixed checkout bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-green-100 px-4 pt-3 z-[9990]"
+      <div className="fixed bottom-0 left-0 right-0 above-bottom-nav bg-white border-t border-green-100 px-4 pt-3 z-[9970]"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}>
         {!user && (
           <div className="flex items-center gap-2 justify-center py-2 px-3 rounded-xl text-xs font-semibold text-amber-700 mb-2"

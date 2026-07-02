@@ -5,7 +5,9 @@
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96x96.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    <!-- maximum-scale=1 + user-scalable=no prevents accidental pinch/double-tap zoom
+         leaving the app "blown up" on Android (system accessibility zoom still works) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta name="theme-color" content="#0B1729" />

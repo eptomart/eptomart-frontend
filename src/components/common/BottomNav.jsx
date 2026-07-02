@@ -2,12 +2,20 @@
 // PREMIUM DARK BOTTOM NAV — 5 tabs (no search)
 // Navy glass matches main Navbar (#0B1729)
 // ============================================
+import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FiHome, FiGrid, FiShoppingCart, FiPackage, FiUser } from 'react-icons/fi';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 
 export default function BottomNav() {
+  // Flag body so global CSS can add content clearance + lift fixed CTA bars
+  // above this nav on mobile (see index.css: .has-bottom-nav / .above-bottom-nav)
+  useEffect(() => {
+    document.body.classList.add('has-bottom-nav');
+    return () => document.body.classList.remove('has-bottom-nav');
+  }, []);
+
   const location       = useLocation();
   const navigate       = useNavigate();
   const { cartCount }  = useCart();

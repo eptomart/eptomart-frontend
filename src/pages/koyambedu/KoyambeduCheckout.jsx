@@ -8,7 +8,7 @@
 // ============================================
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiMapPin, FiCheck, FiArrowLeft } from 'react-icons/fi';
+import { FiMapPin, FiCheck, FiArrowLeft, FiSearch, FiX } from 'react-icons/fi';
 import api from '../../utils/api';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import { useAuth } from '../../context/AuthContext';
@@ -127,6 +127,8 @@ function EmbeddedMapPicker({ initialCenter, onLocationConfirmed }) {
   const mapDivRef  = useRef(null);
   const mapRef     = useRef(null);
   const geoTimer   = useRef(null);
+  const acRef      = useRef(null);
+  const tokenRef   = useRef(null);
 
   const [mapReady,   setMapReady]   = useState(false);
   const [loadError,  setLoadError]  = useState(false);
@@ -134,6 +136,42 @@ function EmbeddedMapPicker({ initialCenter, onLocationConfirmed }) {
   const [shortAddr,  setShortAddr]  = useState('');
   const [mapMoving,  setMapMoving]  = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [query,       setQuery]       = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSugg,    setShowSugg]    = useState(false);
+
+  // ── Address search (Places autocomplete) ──
+  useEffect(() => {
+    if (!query || query.length < 2 || !acRef.current) { setSuggestions([]); return; }
+    const t = setTimeout(() => {
+      acRef.current.getPlacePredictions(
+        { input: query, sessionToken: tokenRef.current, componentRestrictions: { country: 'in' }, types: ['geocode', 'establishment'] },
+        (preds, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && preds?.length) {
+            setSuggestions(preds); setShowSugg(true);
+          } else setSuggestions([]);
+        },
+      );
+    }, 350);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const pickSuggestion = useCallback((pred) => {
+    setQuery(pred.structured_formatting?.main_text || pred.description);
+    setSuggestions([]); setShowSugg(false);
+    const svc = new window.google.maps.places.PlacesService(mapRef.current);
+    svc.getDetails(
+      { placeId: pred.place_id, fields: ['geometry'], sessionToken: tokenRef.current },
+      (place, status) => {
+        tokenRef.current = new window.google.maps.places.AutocompleteSessionToken();
+        if (status !== window.google.maps.places.PlacesServiceStatus.OK || !place?.geometry) {
+          toast.error('Could not load that location'); return;
+        }
+        mapRef.current.panTo(place.geometry.location);
+        mapRef.current.setZoom(16);
+      },
+    );
+  }, []);
 
   const distKm = center
     ? Math.round(haversineKm(center.lat, center.lng, KOYAMBEDU_LAT, KOYAMBEDU_LNG) * 10) / 10
@@ -169,7 +207,9 @@ function EmbeddedMapPicker({ initialCenter, onLocationConfirmed }) {
           }, 400);
         });
 
-        mapRef.current = map;
+        mapRef.current  = map;
+        acRef.current   = new window.google.maps.places.AutocompleteService();
+        tokenRef.current= new window.google.maps.places.AutocompleteSessionToken();
         reverseGeocode(startCenter.lat, startCenter.lng).then(name => {
           if (alive) setShortAddr(name);
         });
@@ -213,6 +253,47 @@ function EmbeddedMapPicker({ initialCenter, onLocationConfirmed }) {
 
   return (
     <div className="space-y-3">
+      {/* ── Address search ── */}
+      <div className="relative">
+        <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" size={16} />
+        <input
+          type="text"
+          value={query}
+          onChange={e => { setQuery(e.target.value); setShowSugg(true); }}
+          onFocus={() => suggestions.length && setShowSugg(true)}
+          placeholder="Search area, street or landmark…"
+          disabled={!mapReady}
+          className="w-full py-3 pl-10 pr-9 rounded-2xl text-gray-800 placeholder-gray-400 outline-none border border-green-200 focus:border-green-500 bg-white"
+          style={{ fontSize: '16px' }}
+        />
+        {query && (
+          <button type="button" onClick={() => { setQuery(''); setSuggestions([]); setShowSugg(false); }}
+            className="absolute right-3 top-1/2 -translate-y-1/2">
+            <FiX size={16} className="text-gray-400" />
+          </button>
+        )}
+        {showSugg && suggestions.length > 0 && (
+          <div className="absolute left-0 right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden bg-white"
+            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.18)' }}>
+            {suggestions.map((pred, i) => (
+              <button key={pred.place_id} type="button" onClick={() => pickSuggestion(pred)}
+                className="w-full flex items-start gap-3 px-4 py-3 text-left active:bg-gray-50"
+                style={{ borderBottom: i < suggestions.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                <FiMapPin size={14} className="text-green-600 shrink-0 mt-1" />
+                <div className="min-w-0">
+                  <p className="text-gray-800 text-sm font-semibold truncate">
+                    {pred.structured_formatting?.main_text || pred.description.split(',')[0]}
+                  </p>
+                  {pred.structured_formatting?.secondary_text && (
+                    <p className="text-gray-400 text-xs truncate mt-0.5">{pred.structured_formatting.secondary_text}</p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Map container */}
       <div className="relative rounded-2xl overflow-hidden" style={{ height: 300, border: '2px solid #bbf7d0' }}>
         <div ref={mapDivRef} style={{ width: '100%', height: '100%' }} />

@@ -2,13 +2,13 @@
 // UZHAVAR FRESH — Farmer Registration
 // Multi-step onboarding, same pattern as seller
 // ============================================
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   FiUser, FiPhone, FiMapPin, FiUploadCloud,
   FiCreditCard, FiCheckCircle, FiChevronRight, FiChevronLeft,
-  FiAlertCircle, FiLoader,
+  FiAlertCircle, FiLoader, FiSearch, FiX,
 } from 'react-icons/fi';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
@@ -23,6 +23,122 @@ const STEPS = [
   { id: 4, label: 'Bank Details', icon: FiCreditCard },
   { id: 5, label: 'Review',       icon: FiCheckCircle },
 ];
+
+// Load Google Maps JS SDK (key from backend — same loader as location pickers)
+function loadGoogleMaps() {
+  return new Promise((resolve, reject) => {
+    if (window.google?.maps) { resolve(); return; }
+    api.get('/eptofresh/maps/config')
+      .then(({ data }) => {
+        if (!data.key) { reject(new Error('No key')); return; }
+        const cb = '__gmFarm_' + Date.now();
+        window[cb] = () => { resolve(); delete window[cb]; };
+        const s = document.createElement('script');
+        s.src = `https://maps.googleapis.com/maps/api/js?key=${data.key}&libraries=places&callback=${cb}`;
+        s.async = true;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      })
+      .catch(reject);
+  });
+}
+
+// ── Address search → fills GPS coordinates ──
+function FarmAddressSearch({ onPick }) {
+  const acRef    = useRef(null);
+  const tokenRef = useRef(null);
+  const [ready, setReady]             = useState(false);
+  const [failed, setFailed]           = useState(false);
+  const [query, setQuery]             = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSugg, setShowSugg]       = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    loadGoogleMaps()
+      .then(() => {
+        if (!alive) return;
+        acRef.current    = new window.google.maps.places.AutocompleteService();
+        tokenRef.current = new window.google.maps.places.AutocompleteSessionToken();
+        setReady(true);
+      })
+      .catch(() => alive && setFailed(true));
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!query || query.length < 2 || !acRef.current) { setSuggestions([]); return; }
+    const t = setTimeout(() => {
+      acRef.current.getPlacePredictions(
+        { input: query, sessionToken: tokenRef.current, componentRestrictions: { country: 'in' }, types: ['geocode', 'establishment'] },
+        (preds, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && preds?.length) {
+            setSuggestions(preds); setShowSugg(true);
+          } else setSuggestions([]);
+        },
+      );
+    }, 350);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const pick = (pred) => {
+    setQuery(pred.structured_formatting?.main_text || pred.description);
+    setSuggestions([]); setShowSugg(false);
+    new window.google.maps.Geocoder().geocode({ placeId: pred.place_id }, (results, status) => {
+      tokenRef.current = new window.google.maps.places.AutocompleteSessionToken();
+      if (status !== 'OK' || !results?.[0]?.geometry?.location) {
+        toast.error('Could not load that location'); return;
+      }
+      const loc = results[0].geometry.location;
+      onPick({ lat: loc.lat(), lng: loc.lng(), description: pred.description });
+      toast.success('Farm location set from address ✓');
+    });
+  };
+
+  if (failed) return null; // maps unavailable — GPS + manual entry still work
+
+  return (
+    <div className="relative">
+      <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" size={15} />
+      <input
+        type="text"
+        value={query}
+        onChange={e => { setQuery(e.target.value); setShowSugg(true); }}
+        onFocus={() => suggestions.length && setShowSugg(true)}
+        placeholder={ready ? 'Search your farm address / village…' : 'Loading address search…'}
+        disabled={!ready}
+        className="w-full py-3 pl-9 pr-9 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none border border-gray-200 focus:border-green-400 bg-white disabled:opacity-60"
+        style={{ fontSize: '16px' }}
+      />
+      {query && (
+        <button type="button" onClick={() => { setQuery(''); setSuggestions([]); setShowSugg(false); }}
+          className="absolute right-3 top-1/2 -translate-y-1/2">
+          <FiX size={15} className="text-gray-400" />
+        </button>
+      )}
+      {showSugg && suggestions.length > 0 && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-30 rounded-xl overflow-hidden bg-white"
+          style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.18)' }}>
+          {suggestions.map((pred, i) => (
+            <button key={pred.place_id} type="button" onClick={() => pick(pred)}
+              className="w-full flex items-start gap-2.5 px-3.5 py-2.5 text-left active:bg-gray-50"
+              style={{ borderBottom: i < suggestions.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+              <FiMapPin size={13} className="text-green-600 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-gray-800 text-sm font-semibold truncate">
+                  {pred.structured_formatting?.main_text || pred.description.split(',')[0]}
+                </p>
+                {pred.structured_formatting?.secondary_text && (
+                  <p className="text-gray-400 text-xs truncate">{pred.structured_formatting.secondary_text}</p>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const DISTRICTS_TN = [
   'Chennai','Coimbatore','Madurai','Tiruchirappalli','Salem','Tirunelveli',
@@ -328,6 +444,14 @@ export default function FarmerRegister() {
             <div className="space-y-4">
               <h2 className="font-black text-gray-800 text-lg mb-1">Your Farm Location</h2>
               <p className="text-xs text-gray-400 mb-4">Help buyers find you</p>
+
+              {/* Address search → fills GPS automatically */}
+              <FarmAddressSearch onPick={({ lat, lng }) => {
+                set('gpsLat', lat.toFixed(6));
+                set('gpsLng', lng.toFixed(6));
+              }} />
+
+              <p className="text-center text-[10px] text-gray-400 -my-1">— or —</p>
 
               {/* GPS button */}
               <button onClick={detectGPS} disabled={locLoading}

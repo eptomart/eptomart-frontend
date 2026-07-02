@@ -23,6 +23,14 @@
     font-size: max(16px, 1em) !important;
   }
 
+  /* Kill horizontal overflow — a single too-wide element on small-width
+     Android phones otherwise lets the page pan/zoom sideways ("blown up") */
+  html, body {
+    overflow-x: hidden;
+    overflow-x: clip;
+    max-width: 100%;
+  }
+
   body {
     font-family: 'Inter', system-ui, sans-serif;
     background-color: #f8f9fa;
@@ -97,6 +105,20 @@
   /* PWA safe areas */
   .safe-top { padding-top: env(safe-area-inset-top); }
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+  /* ── Bottom-nav overlap fixes ─────────────────────────────
+     BottomNav (mobile only) adds .has-bottom-nav to <body>.
+     1. Content clearance: page content can always scroll past the nav.
+     2. .above-bottom-nav: fixed CTA bars sit ABOVE the nav on mobile,
+        and at the true bottom on desktop (nav is md:hidden). */
+  @media (max-width: 767px) {
+    body.has-bottom-nav {
+      padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    }
+    body.has-bottom-nav .above-bottom-nav {
+      bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+  }
 
   /* Dropdown / popover entrance */
   .pop-in {

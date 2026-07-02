@@ -6,7 +6,7 @@ const WA_POS_KEY = 'eptomart_wa_pos';
 
 const defaultWaPos = () => ({
   x: typeof window !== 'undefined' ? window.innerWidth  - 88 : 300,  // right side
-  y: typeof window !== 'undefined' ? window.innerHeight - 80 : 500,  // same bottom line as AI widget
+  y: typeof window !== 'undefined' ? window.innerHeight - 170 : 500, // clear of the mobile BottomNav
 });
 
 const loadWaPos = () => {
@@ -15,7 +15,7 @@ const loadWaPos = () => {
     if (saved && typeof saved.x === 'number' && typeof saved.y === 'number') {
       return {
         x: Math.max(0, Math.min(saved.x, window.innerWidth  - 60)),
-        y: Math.max(0, Math.min(saved.y, window.innerHeight - 60)),
+        y: Math.max(0, Math.min(saved.y, window.innerHeight - 150)), // never inside the BottomNav zone
       };
     }
   } catch {}
