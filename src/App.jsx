@@ -175,7 +175,13 @@ function GlobalBottomNav() {
                  pathname.startsWith('/koyambedu/seller') ||
                  pathname.startsWith('/koyambedu/seller-admin') ||
                  pathname.startsWith('/eptofresh/seller') ||
-                 pathname === '/eptofresh/location';
+                 pathname === '/eptofresh/location' ||
+                 // Focused purchase flows: the page's own CTA bar must
+                 // never compete with the bottom nav for the same space
+                 pathname === '/koyambedu/cart' ||
+                 pathname === '/koyambedu/checkout' ||
+                 pathname === '/eptofresh/checkout' ||
+                 pathname === '/checkout';
   if (hidden) return null;
   return <BottomNav />;
 }

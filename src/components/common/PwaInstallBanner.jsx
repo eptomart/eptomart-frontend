@@ -58,7 +58,7 @@ export default function PwaInstallBanner() {
     <>
       {/* Install PWA Banner */}
       {showInstall && installPrompt && (
-        <div className="fixed bottom-4 left-4 right-4 md:left-auto md:w-80 bg-gray-900 text-white rounded-2xl p-4 shadow-2xl z-50 flex items-center gap-3">
+        <div className="fixed left-4 right-4 md:left-auto md:w-80 bg-gray-900 text-white rounded-2xl p-4 shadow-2xl z-50 flex items-center gap-3" style={{ bottom: 'calc(var(--bottom-nav-h, 0px) + 16px)' }}>
           <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center flex-shrink-0">
             <span className="font-bold">E</span>
           </div>
@@ -82,7 +82,7 @@ export default function PwaInstallBanner() {
 
       {/* Notification Permission Prompt */}
       {showNotifPrompt && (
-        <div className="fixed bottom-4 left-4 right-4 md:left-auto md:w-80 bg-white border border-gray-200 rounded-2xl p-4 shadow-2xl z-50">
+        <div className="fixed left-4 right-4 md:left-auto md:w-80 bg-white border border-gray-200 rounded-2xl p-4 shadow-2xl z-50" style={{ bottom: 'calc(var(--bottom-nav-h, 0px) + 16px)' }}>
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
               <FiBell className="text-primary-500" size={20} />

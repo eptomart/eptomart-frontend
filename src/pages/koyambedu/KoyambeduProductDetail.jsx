@@ -491,7 +491,7 @@ export default function KoyambeduProductDetail() {
           z-[9990] sits ABOVE BottomNav (z-[9980])
           paddingBottom clears the BottomNav height (68px) + safe area  */}
       <div
-        className="fixed left-0 right-0 bottom-0 bg-white z-[9990]"
+        className="fixed left-0 right-0 bottom-0 above-bottom-nav bg-white z-[9970]"
         style={{
           borderTop: '1px solid #e5e7eb',
           boxShadow: '0 -2px 12px rgba(0,0,0,0.06)',

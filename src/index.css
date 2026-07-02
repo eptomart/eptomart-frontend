@@ -107,17 +107,16 @@
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
 
   /* ── Bottom-nav overlap fixes ─────────────────────────────
-     BottomNav (mobile only) adds .has-bottom-nav to <body>.
+     BottomNav measures its real rendered height into --bottom-nav-h
+     (0px when hidden/unmounted — e.g. desktop or checkout flows).
      1. Content clearance: page content can always scroll past the nav.
-     2. .above-bottom-nav: fixed CTA bars sit ABOVE the nav on mobile,
-        and at the true bottom on desktop (nav is md:hidden). */
-  @media (max-width: 767px) {
-    body.has-bottom-nav {
-      padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-    }
-    body.has-bottom-nav .above-bottom-nav {
-      bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
-    }
+     2. .above-bottom-nav: fixed CTA bars always sit ABOVE the nav. */
+  :root { --bottom-nav-h: 0px; }
+  body.has-bottom-nav {
+    padding-bottom: var(--bottom-nav-h, 0px);
+  }
+  .above-bottom-nav {
+    bottom: var(--bottom-nav-h, 0px) !important;
   }
 
   /* Dropdown / popover entrance */
