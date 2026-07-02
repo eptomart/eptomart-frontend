@@ -1,5 +1,11 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+
+// Redirect legacy per-vertical order detail URLs → unified module
+function RedirectOrderDetail({ vertical }) {
+  const { orderId } = useParams();
+  return <Navigate to={`/orders/${vertical}/${orderId}`} replace />;
+}
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
@@ -20,7 +26,8 @@ const ProductPage    = lazy(() => import('./pages/ProductPage'));
 const SellerStore    = lazy(() => import('./pages/SellerStore'));
 const Cart           = lazy(() => import('./pages/Cart'));
 const Checkout       = lazy(() => import('./pages/Checkout'));
-const Orders         = lazy(() => import('./pages/Orders'));
+const Orders             = lazy(() => import('./pages/orders/UnifiedOrders'));        // Unified My Orders (all verticals)
+const UnifiedOrderDetail = lazy(() => import('./pages/orders/UnifiedOrderDetail'));   // Unified Order Details
 const Login          = lazy(() => import('./pages/Login'));
 const Profile        = lazy(() => import('./pages/Profile'));
 const Wishlist       = lazy(() => import('./pages/Wishlist'));
@@ -67,8 +74,7 @@ const KoyambeduShop         = lazy(() => import('./pages/koyambedu/KoyambeduShop
 const KoyambeduProductDetail= lazy(() => import('./pages/koyambedu/KoyambeduProductDetail'));
 const KoyambeduCart             = lazy(() => import('./pages/koyambedu/KoyambeduCart'));
 const KoyambeduCheckout         = lazy(() => import('./pages/koyambedu/KoyambeduCheckout'));
-const KoyambeduOrders           = lazy(() => import('./pages/koyambedu/KoyambeduOrders'));
-const KoyambeduOrderDetail      = lazy(() => import('./pages/koyambedu/KoyambeduOrderDetail'));
+// KoyambeduOrders / KoyambeduOrderDetail retired — unified Orders module handles these
 const KoyambeduWallet           = lazy(() => import('./pages/koyambedu/KoyambeduWallet'));
 const KoyambeduLocationPicker   = lazy(() => import('./pages/koyambedu/KoyambeduLocationPicker'));
 const KoyambeduSellerRegister      = lazy(() => import('./pages/koyambedu/seller/KoyambeduSellerRegister'));
@@ -85,7 +91,7 @@ const UzhavarHome       = lazy(() => import('./pages/uzhavar/UzhavarHome'));
 const FarmerDetail      = lazy(() => import('./pages/uzhavar/FarmerDetail'));
 const FarmerDashboard   = lazy(() => import('./pages/uzhavar/FarmerDashboard'));
 const FarmerRegister    = lazy(() => import('./pages/uzhavar/FarmerRegister'));
-const MyUzhavarOrders   = lazy(() => import('./pages/uzhavar/MyUzhavarOrders'));
+// MyUzhavarOrders retired — unified Orders module handles these
 const UzhavarSubscribe  = lazy(() => import('./pages/uzhavar/UzhavarSubscribe'));
 
 // ── EptoFresh Proteins pages ──────────────────
@@ -93,8 +99,7 @@ const EptoFreshHome            = lazy(() => import('./pages/eptofresh/EptoFreshH
 const EptoFreshShop            = lazy(() => import('./pages/eptofresh/EptoFreshShop'));
 const EptoFreshCart            = lazy(() => import('./pages/eptofresh/EptoFreshCart'));
 const EptoFreshCheckout        = lazy(() => import('./pages/eptofresh/EptoFreshCheckout'));
-const EptoFreshOrders          = lazy(() => import('./pages/eptofresh/EptoFreshOrders'));
-const EptoFreshOrderDetail     = lazy(() => import('./pages/eptofresh/EptoFreshOrders').then(m => ({ default: m.EptoFreshOrderDetail })));
+// EptoFreshOrders / EptoFreshOrderDetail retired — unified Orders module handles these
 const EptoFreshTracking        = lazy(() => import('./pages/eptofresh/EptoFreshTracking'));
 const EptoFreshSellerRegister  = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerRegister'));
 const EptoFreshSellerDashboard = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerDashboard'));
@@ -204,7 +209,8 @@ function AppRoutes() {
 
           {/* Protected customer */}
           <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-          <Route path="/orders"   element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+          <Route path="/orders"                element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+          <Route path="/orders/:vertical/:id"  element={<ProtectedRoute><UnifiedOrderDetail /></ProtectedRoute>} />
           <Route path="/profile"  element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
           <Route path="/invoice/:id" element={<ProtectedRoute><InvoiceView /></ProtectedRoute>} />
@@ -255,8 +261,9 @@ function AppRoutes() {
           <Route path="/koyambedu/product/:productId"        element={<KoyambeduProductDetail />} />
           <Route path="/koyambedu/cart"                      element={<KoyambeduCart />} />
           <Route path="/koyambedu/checkout"                  element={<KoyambeduCheckout />} />
-          <Route path="/koyambedu/orders"                    element={<ProtectedRoute><KoyambeduOrders /></ProtectedRoute>} />
-          <Route path="/koyambedu/orders/:orderId"           element={<ProtectedRoute><KoyambeduOrderDetail /></ProtectedRoute>} />
+          {/* Legacy → unified Orders module */}
+          <Route path="/koyambedu/orders"                    element={<Navigate to="/orders?tab=koyambedu" replace />} />
+          <Route path="/koyambedu/orders/:orderId"           element={<RedirectOrderDetail vertical="koyambedu" />} />
           <Route path="/koyambedu/wallet"                    element={<ProtectedRoute><KoyambeduWallet /></ProtectedRoute>} />
           <Route path="/koyambedu/seller"                    element={<ProtectedRoute><KoyambeduSellerDashboard /></ProtectedRoute>} />
           <Route path="/koyambedu/seller/register"           element={<ProtectedRoute><KoyambeduSellerRegister /></ProtectedRoute>} />
@@ -272,7 +279,9 @@ function AppRoutes() {
           <Route path="/uzhavar/farmer/register"    element={<ProtectedRoute><FarmerRegister /></ProtectedRoute>} />
           <Route path="/uzhavar/farmer/:farmerId"   element={<FarmerDetail />} />
           <Route path="/uzhavar/farmer"             element={<ProtectedRoute><FarmerDashboard /></ProtectedRoute>} />
-          <Route path="/uzhavar/my-orders"          element={<ProtectedRoute><MyUzhavarOrders /></ProtectedRoute>} />
+          {/* Legacy → unified Orders module (also fixes previously broken /uzhavar/orders link) */}
+          <Route path="/uzhavar/my-orders"          element={<Navigate to="/orders?tab=uzhavar" replace />} />
+          <Route path="/uzhavar/orders"             element={<Navigate to="/orders?tab=uzhavar" replace />} />
           <Route path="/uzhavar/subscribe"          element={<UzhavarSubscribe />} />
 
           {/* ── EptoFresh Proteins ──────────────── */}
@@ -281,8 +290,9 @@ function AppRoutes() {
           <Route path="/eptofresh/shop/:sellerId"               element={<EptoFreshShop />} />
           <Route path="/eptofresh/cart"                         element={<ProtectedRoute><EptoFreshCart /></ProtectedRoute>} />
           <Route path="/eptofresh/checkout"                     element={<ProtectedRoute><EptoFreshCheckout /></ProtectedRoute>} />
-          <Route path="/eptofresh/orders"                       element={<ProtectedRoute><EptoFreshOrders /></ProtectedRoute>} />
-          <Route path="/eptofresh/orders/:orderId"              element={<ProtectedRoute><EptoFreshOrderDetail /></ProtectedRoute>} />
+          {/* Legacy → unified Orders module (live tracking page retained) */}
+          <Route path="/eptofresh/orders"                       element={<Navigate to="/orders?tab=eptofresh" replace />} />
+          <Route path="/eptofresh/orders/:orderId"              element={<RedirectOrderDetail vertical="eptofresh" />} />
           <Route path="/eptofresh/orders/:orderId/tracking"     element={<ProtectedRoute><EptoFreshTracking /></ProtectedRoute>} />
           <Route path="/eptofresh/seller/register"              element={<ProtectedRoute><EptoFreshSellerRegister /></ProtectedRoute>} />
           <Route path="/eptofresh/seller/location"              element={<ProtectedRoute><EptoFreshSellerLocationPicker /></ProtectedRoute>} />
