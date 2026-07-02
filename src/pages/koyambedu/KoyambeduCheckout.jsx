@@ -52,10 +52,10 @@ const fmtDisplayDate = (d) =>
 
 // ── All 4 delivery slots ───────────────────
 const ALL_SLOTS = [
-  { key: 'slot1', label: '07:00 AM – 08:59 AM', display: 'Slot 1  ·  7:00 AM – 8:59 AM' },
-  { key: 'slot2', label: '09:00 AM – 11:59 AM', display: 'Slot 2  ·  9:00 AM – 11:59 AM' },
-  { key: 'slot3', label: '12:00 PM – 01:59 PM', display: 'Slot 3  ·  12:00 PM – 1:59 PM' },
-  { key: 'slot4', label: '02:00 PM – 03:59 PM', display: 'Slot 4  ·  2:00 PM – 3:59 PM'  },
+  { key: 'slot1', label: '7 AM – 9 AM',   display: 'Slot 1  ·  7 AM – 9 AM' },
+  { key: 'slot2', label: '9 AM – 12 PM',  display: 'Slot 2  ·  9 AM – 12 PM' },
+  { key: 'slot3', label: '12 PM – 2 PM',  display: 'Slot 3  ·  12 PM – 2 PM' },
+  { key: 'slot4', label: '2 PM – 4 PM',   display: 'Slot 4  ·  2 PM – 4 PM' },
 ];
 
 // Return slot keys available for TODAY based on current IST hour.
