@@ -15,6 +15,11 @@ import { useAuth } from '../../context/AuthContext';
 import SavedAddressPicker from '../../components/common/SavedAddressPicker';
 import toast from 'react-hot-toast';
 
+// ── DEV-ONLY: Test payment buttons ────────────────────────────────
+// Set VITE_ENABLE_TEST_PAYMENT_BUTTONS=true in .env.local to enable.
+// These buttons are NEVER visible in production builds.
+const DEV_TEST_PAYMENTS = import.meta.env.VITE_ENABLE_TEST_PAYMENT_BUTTONS === 'true';
+
 const KOYAMBEDU_LAT = 13.0748;
 const KOYAMBEDU_LNG = 80.2136;
 const DEFAULT_CENTER = { lat: 13.0389, lng: 80.1730 }; // Valasaravakkam, Chennai
@@ -424,6 +429,7 @@ export default function KoyambeduCheckout() {
   });
 
   // Auto-select default saved address on first load (logged-in users)
+  // If a valid saved address is found, skip the address form and jump to map (step 1).
   useEffect(() => {
     const saved = user?.addresses || [];
     if (!saved.length) return;
@@ -438,6 +444,10 @@ export default function KoyambeduCheckout() {
       pincode:      def.pincode      || '',
       landmark:     '',
     });
+    // Skip address form — go straight to map if address is complete
+    if (def.fullName && def.addressLine1 && def.pincode && def.phone) {
+      setStep(1);
+    }
   }, [user]);
 
   // ── Location (set after map step) ─────────
@@ -507,6 +517,9 @@ export default function KoyambeduCheckout() {
   const [couponCode,    setCouponCode]    = useState('');
   const [couponApplied, setCouponApplied] = useState(null);
   const [couponLoading, setCouponLoading] = useState(false);
+
+  // ── DEV-ONLY test payment state ────────────────────────────────
+  const [testPayFailed, setTestPayFailed] = useState(false);
 
   const deliveryCharge = locationData?.deliveryCharge ?? 249;
   const distanceKm     = locationData?.distanceKm ?? null;
@@ -605,6 +618,70 @@ export default function KoyambeduCheckout() {
       toast.error(err?.response?.data?.message || 'Failed to place order');
     } finally { setLoading(false); }
   };
+
+  // ─────────────────────────────────────────────────────────────────
+  // DEV-ONLY: Test payment handlers
+  // Removed before production. Controlled by VITE_ENABLE_TEST_PAYMENT_BUTTONS.
+  // ─────────────────────────────────────────────────────────────────
+  const handleTestPaySuccess = async () => {
+    if (!addr.fullName || !addr.addressLine1 || !addr.pincode || !addr.phone) {
+      toast.error('Please fill all address fields'); return;
+    }
+    if (!locationData?.lat) { toast.error('Please confirm your delivery location on the map'); return; }
+    setLoading(true);
+    try {
+      const slotObj = ALL_SLOTS.find(s => s.key === selectedSlot);
+      const { data } = await api.post('/koyambedu/orders', {
+        shippingAddress: addr,
+        paymentMethod:   'razorpay',
+        deliverySlot:    slotObj?.label || '',
+        deliverySlotKey: selectedSlot,
+        deliveryDate:    selectedDate,
+        buyerLocation: {
+          lat:      locationData.lat,
+          lng:      locationData.lng,
+          areaName: locationData.areaName || '',
+          city:     addr.city,
+          pincode:  addr.pincode,
+        },
+        couponCode: couponApplied?.code || undefined,
+      });
+      // Bypass Razorpay — call dev test endpoint (mirrors verifyPayment without signature)
+      await api.post('/koyambedu/orders/test-payment', { orderId: data.order._id });
+      await clearCart();
+      setPlaced(data.order);
+      toast.success('[TEST] Payment simulated as successful!');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Test payment failed');
+    } finally { setLoading(false); }
+  };
+
+  const handleTestPayFailure = () => {
+    // Mirror the Razorpay dismiss flow: no order created, cart preserved, show failure state.
+    setTestPayFailed(true);
+    toast.error('[TEST] Payment simulated as rejected.', { duration: 4000 });
+  };
+
+  // ── Test-payment failure screen ─────────────
+  if (testPayFailed) return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center" style={{ background: '#fef2f2' }}>
+      <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4 text-4xl" style={{ background: '#fee2e2' }}>❌</div>
+      <h2 className="font-black text-2xl text-red-700 mb-1">Payment Failed</h2>
+      <p className="text-gray-600 text-sm mb-1 font-semibold">[DEV] Simulated payment rejection</p>
+      <p className="text-gray-500 text-xs mb-6 max-w-xs">
+        This is a test-mode failure. Your cart is intact. Try again or use the real payment flow.
+      </p>
+      <button
+        onClick={() => setTestPayFailed(false)}
+        className="w-full max-w-xs py-3 rounded-2xl font-extrabold text-white mb-3"
+        style={{ background: 'linear-gradient(135deg, #16a34a, #059669)' }}>
+        Retry Payment
+      </button>
+      <button onClick={() => navigate('/koyambedu/cart')} className="text-gray-500 text-sm font-semibold">
+        Back to Cart
+      </button>
+    </div>
+  );
 
   // ── Success screen ─────────────────────────
   if (placedOrder) return (
@@ -1146,6 +1223,42 @@ export default function KoyambeduCheckout() {
                 )}
               </div>
             </div>
+
+            {/* ── DEV-ONLY: Test Payment Controls ─────────────────────────
+                 Visible only when VITE_ENABLE_TEST_PAYMENT_BUTTONS=true.
+                 Remove this entire block before production deployment.
+            ────────────────────────────────────────────────────────── */}
+            {DEV_TEST_PAYMENTS && (
+              <div className="rounded-2xl p-4 space-y-3"
+                style={{ background: '#1e1b4b', border: '2px dashed #6366f1' }}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-yellow-300 text-sm">⚠️</span>
+                  <p className="text-indigo-200 text-[11px] font-black uppercase tracking-wider">
+                    Development Testing — Remove Before Production
+                  </p>
+                </div>
+                <p className="text-indigo-300 text-[10px] leading-relaxed">
+                  These buttons bypass the Razorpay gateway and simulate the exact success/failure
+                  flows. Only visible when <code className="bg-indigo-900 px-1 rounded">VITE_ENABLE_TEST_PAYMENT_BUTTONS=true</code>.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleTestPaySuccess}
+                    disabled={loading}
+                    className="flex-1 py-3 rounded-xl font-bold text-sm transition active:scale-[0.97] disabled:opacity-50"
+                    style={{ background: '#16a34a', color: '#fff' }}>
+                    {loading ? 'Processing…' : '✅ Complete Payment (Test)'}
+                  </button>
+                  <button
+                    onClick={handleTestPayFailure}
+                    disabled={loading}
+                    className="flex-1 py-3 rounded-xl font-bold text-sm transition active:scale-[0.97] disabled:opacity-50"
+                    style={{ background: '#dc2626', color: '#fff' }}>
+                    ❌ Reject Payment (Test)
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-3">
               <button onClick={() => setStep(2)}
