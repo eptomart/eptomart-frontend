@@ -64,6 +64,7 @@ const STATUS_OPTIONS = [
   { value: 'packing,packed',   label: 'Packing' },
   { value: 'out_for_delivery', label: 'Out for Delivery' },
   { value: 'delivered',        label: 'Delivered' },
+  { value: 'reported',         label: 'Reported' },
   { value: 'cancelled',        label: 'Cancelled' },
   { value: 'closed',           label: 'Closed' },
   { value: 'refund_processing,refunded', label: 'Refunds' },

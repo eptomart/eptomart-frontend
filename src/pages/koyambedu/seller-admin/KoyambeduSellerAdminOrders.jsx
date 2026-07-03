@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 const STATUS_COLOR = {
   placed:                 'bg-blue-100 text-blue-700',
   pending_confirmation:   'bg-yellow-100 text-yellow-700',
+  reported:               'bg-rose-100 text-rose-700',
   sa_review_submitted:    'bg-purple-100 text-purple-700',
   price_revision_pending: 'bg-orange-100 text-orange-700',
   confirmed:              'bg-green-100 text-green-700',
@@ -30,7 +31,7 @@ const STATUS_LABEL = {
   sa_review_submitted: 'Submitted for Approval',
   price_revision_pending: 'Price Revision', confirmed: 'Confirmed',
   packing: 'Procurement in Progress', dispatched: 'On the Way',
-  delivered: 'Delivered', cancelled: 'Cancelled', refund_initiated: 'Refund',
+  delivered: 'Delivered', reported: 'Reported by Customer', cancelled: 'Cancelled', refund_initiated: 'Refund',
 };
 
 const ITEM_STATUS_CONFIG = {
@@ -254,6 +255,7 @@ export default function KoyambeduSellerAdminOrders() {
                 <option value="packing">Procurement in Progress</option>
                 <option value="dispatched">Dispatched</option>
                 <option value="delivered">Delivered</option>
+                <option value="reported">Reported by Customer</option>
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
@@ -289,7 +291,7 @@ export default function KoyambeduSellerAdminOrders() {
           const reviewable = hasAnyReview(order) || myItems.some(it => !it.itemStatus || it.itemStatus === 'pending');
           const pendingRefund = calc.declinedRefundAmount || order.saReview?.pendingRefundAmount || 0;
           const isPostApproval = ['confirmed','packing','dispatched'].includes(order.orderStatus);
-          const isFinalised    = ['delivered','closed','cancelled'].includes(order.orderStatus);
+          const isFinalised    = ['delivered','reported','closed','cancelled'].includes(order.orderStatus);
 
           return (
             <div key={order._id} className="bg-white rounded-2xl overflow-hidden"

@@ -115,13 +115,13 @@ function DangerZone() {
 
 const STATUS_OPTIONS = [
   'placed','pending_confirmation','price_revision_pending','confirmed',
-  'packing','dispatched','delivered','cancelled','closed',
+  'packing','dispatched','delivered','reported','cancelled','closed',
 ];
 const STATUS_COLOR = {
   placed:'bg-gray-100 text-gray-700', pending_confirmation:'bg-yellow-100 text-yellow-700',
   price_revision_pending:'bg-orange-100 text-orange-700', confirmed:'bg-green-100 text-green-700',
   packing:'bg-purple-100 text-purple-700', dispatched:'bg-blue-100 text-blue-700',
-  delivered:'bg-green-200 text-green-800', cancelled:'bg-red-100 text-red-700',
+  delivered:'bg-green-200 text-green-800', reported:'bg-rose-100 text-rose-700', cancelled:'bg-red-100 text-red-700',
 };
 const SELLER_STATUS_COLOR = {
   pending_review: 'bg-yellow-100 text-yellow-700',
