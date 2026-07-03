@@ -207,12 +207,13 @@ export default function KoyambeduAdmin() {
   const [editProdForm,   setEditProdForm]   = useState({});
   const [editProdSaving, setEditProdSaving] = useState(false);
 
-  // Daily price tab (admin)
-  const [dpProducts,   setDpProducts]   = useState([]);
-  const [dpSaFilter,   setDpSaFilter]   = useState('');
-  const [dpEdits,      setDpEdits]      = useState({});
-  const [dpSaving,     setDpSaving]     = useState({});
-  const [dpBulkSaving, setDpBulkSaving] = useState(false);
+  // Daily price tab (admin) — v2 variant-aware
+  const [dpProducts,    setDpProducts]    = useState([]);
+  const [dpSaFilter,    setDpSaFilter]    = useState('');
+  const [dpCatFilter,   setDpCatFilter]   = useState('');
+  const [dpEdits,       setDpEdits]       = useState({});  // { [productId]: { highestBasePrice, variantDiffPercent } }
+  const [dpPreviews,    setDpPreviews]    = useState({});  // { [productId]: boolean }
+  const [dpBulkSaving,  setDpBulkSaving]  = useState(false);
 
   // Extended order filters
   const [orderDeliveryDate,  setOrderDeliveryDate]  = useState('');
@@ -323,10 +324,13 @@ export default function KoyambeduAdmin() {
         const { data } = await api.get(`/koyambedu/admin/products?${params}`);
         setProducts(data.products || []);
       } else if (t === 'daily-price') {
-        const params = dpSaFilter ? `?sellerAdmin=${dpSaFilter}` : '';
-        const { data } = await api.get(`/koyambedu/admin/daily-price${params}`);
+        const params = new URLSearchParams();
+        if (dpSaFilter)  params.set('sellerAdmin', dpSaFilter);
+        if (dpCatFilter) params.set('category', dpCatFilter);
+        const { data } = await api.get(`/koyambedu/admin/daily-price?${params}`);
         setDpProducts(data.products || []);
         setDpEdits({});
+        setDpPreviews({});
       }
     } catch { toast.error('Failed to load'); }
     finally { setLoading(false); }
@@ -452,35 +456,50 @@ export default function KoyambeduAdmin() {
   };
 
   // Daily price helpers
-  const dpCalc = (base, pf = 10, lf = 10, sm = 15) => {
-    const p = Math.round(base * pf / 100 * 100) / 100;
-    const l = Math.round(base * lf / 100 * 100) / 100;
-    const s = Math.round(base * sm / 100 * 100) / 100;
-    return { finalPrice: Math.round((base + p + l + s) * 100) / 100 };
+  // ── Daily price helpers (v2 — variant-aware) ──
+  const dpPreviewVariants = (product, highestBasePrice, variantDiffPercent) => {
+    const variants = product.variants || [];
+    if (!variants.length) return [];
+    const totalCharge = (product.procurementChargePercent || 15) + (product.platformChargePercent || 10) + (product.logisticsChargePercent || 10);
+    const diff = 1 - (Number(variantDiffPercent) || 0) / 100;
+    const sorted = [...variants].sort((a, b) => Number(b.fromQty) - Number(a.fromQty));
+    let running = Number(highestBasePrice) || 0;
+    const result = sorted.map(v => {
+      const basePrice  = Math.round(running * 100) / 100;
+      const finalPrice = Math.round(running * (1 + totalCharge / 100) * 100) / 100;
+      running = running * diff;
+      return { ...v, basePrice, finalPrice };
+    });
+    return result.sort((a, b) => Number(a.fromQty) - Number(b.fromQty));
   };
+
+  const dpFmtQty = (qty, unit) => {
+    const n = Number(qty);
+    if (unit === 'kg' && n < 1) return `${Math.round(n * 1000)} g`;
+    return `${n} ${unit}`;
+  };
+
   const getDpEdit = (p) => dpEdits[p._id] || {
-    basePrice: p.basePrice || p.currentPrice || 0,
-    sellerMarginPercent: p.sellerMarginPercent || 15,
-    platformFeePercent: p.platformFeePercent || 10,
-    logisticsPercent: p.logisticsPercent || 10,
+    highestBasePrice:   p.highestVariant?.basePrice || p.basePrice || 0,
+    variantDiffPercent: p.variantDiffPercent || 2,
   };
-  const setDpEdit = (id, field, val) => {
+
+  const setDpEditField = (id, field, val) => {
     const prod = dpProducts.find(p => p._id === id) || {};
-    setDpEdits(prev => ({ ...prev, [id]: { ...getDpEdit(prod), [field]: Number(val) } }));
+    setDpEdits(prev => ({
+      ...prev,
+      [id]: { ...getDpEdit(prod), [field]: Number(val) },
+    }));
+    if (!dpPreviews[id]) setDpPreviews(prev => ({ ...prev, [id]: true }));
   };
-  const saveDpOne = async (p) => {
-    setDpSaving(prev => ({ ...prev, [p._id]: true }));
-    try {
-      const e = getDpEdit(p);
-      await api.patch(`/koyambedu/admin/daily-price/${p._id}`, e);
-      toast.success(`${p.name} updated`);
-      loadTab('daily-price');
-    } catch { toast.error('Failed'); }
-    finally { setDpSaving(prev => ({ ...prev, [p._id]: false })); }
-  };
+
   const saveDpBulk = async () => {
-    const updates = Object.entries(dpEdits).map(([productId, e]) => ({ productId, ...e }));
-    if (!updates.length) { toast('No changes to save'); return; }
+    const updates = Object.entries(dpEdits).map(([productId, e]) => ({
+      productId,
+      highestBasePrice:   e.highestBasePrice,
+      variantDiffPercent: e.variantDiffPercent,
+    })).filter(u => u.highestBasePrice > 0);
+    if (!updates.length) { toast('No valid changes to save'); return; }
     setDpBulkSaving(true);
     try {
       await api.post('/koyambedu/admin/daily-price/bulk', { updates });
@@ -489,17 +508,20 @@ export default function KoyambeduAdmin() {
     } catch { toast.error('Bulk save failed'); }
     finally { setDpBulkSaving(false); }
   };
+
   const exportDpCsv = () => {
-    const rows = [['Name','Seller','Base Price','Final Price','Last Updated']];
+    const rows = [['Name','SA','Highest Variant Base ₹','Variant Diff %','Last Updated']];
     dpProducts.forEach(p => {
       const e = getDpEdit(p);
-      const { finalPrice } = dpCalc(e.basePrice, e.platformFeePercent, e.logisticsPercent, e.sellerMarginPercent);
-      rows.push([p.name, p.seller?.businessName || p.seller?.name || '-', e.basePrice, finalPrice, p.priceUpdatedAt ? new Date(p.priceUpdatedAt).toLocaleDateString('en-IN') : '-']);
+      const saName = p.seller?.businessName || p.seller?.name || '-';
+      rows.push([p.name, saName, e.highestBasePrice, e.variantDiffPercent,
+        p.priceUpdatedAt ? new Date(p.priceUpdatedAt).toLocaleDateString('en-IN') : '-']);
     });
     const csv = rows.map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `price-report-${Date.now()}.csv`; a.click();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `price-report-${Date.now()}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -1266,67 +1288,130 @@ export default function KoyambeduAdmin() {
           </div>
         )}
 
-        {/* ── DAILY PRICE (Admin) ── */}
+        {/* ── DAILY PRICE (Admin v2 — variant-aware) ── */}
         {tab === 'daily-price' && !loading && (
           <div>
+            {/* Filters + actions */}
             <div className="bg-white rounded-2xl p-3 mb-4 space-y-2">
               <div className="flex gap-2 flex-wrap items-center">
                 <select value={dpSaFilter} onChange={e => setDpSaFilter(e.target.value)}
-                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm flex-1 focus:outline-none">
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm flex-1 min-w-[140px] focus:outline-none">
                   <option value="">All Seller Admins</option>
                   {saAdminList.map(sa => <option key={sa._id} value={sa._id}>{sa.businessName || sa.name}</option>)}
                 </select>
-                <button onClick={() => loadTab('daily-price')} className="bg-green-600 text-white font-bold px-4 py-2 rounded-xl text-sm">Load</button>
+                <select value={dpCatFilter} onChange={e => setDpCatFilter(e.target.value)}
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm flex-1 min-w-[120px] focus:outline-none">
+                  <option value="">All Categories</option>
+                  {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                </select>
+                <button onClick={() => loadTab('daily-price')} className="bg-green-600 text-white font-bold px-4 py-2 rounded-xl text-sm shrink-0">Load</button>
               </div>
               <div className="flex gap-2">
                 <button onClick={saveDpBulk} disabled={dpBulkSaving || !Object.keys(dpEdits).length}
                   className="flex-1 bg-green-600 text-white font-bold py-2 rounded-xl text-sm disabled:opacity-40">
-                  {dpBulkSaving ? 'Saving…' : `Save All (${Object.keys(dpEdits).length})`}
+                  {dpBulkSaving ? 'Saving…' : `Update Prices (${Object.keys(dpEdits).length})`}
                 </button>
                 <button onClick={exportDpCsv}
                   className="flex-1 border border-green-600 text-green-700 font-bold py-2 rounded-xl text-sm">
                   📥 Export CSV
                 </button>
               </div>
+              <p className="text-xs text-gray-400">Enter the base price for the <strong>highest quantity variant</strong> only — all smaller variants are auto-calculated.</p>
             </div>
+
+            {/* Product cards */}
             <div className="space-y-3">
               {dpProducts.map(p => {
-                const e = getDpEdit(p);
-                const { finalPrice } = dpCalc(e.basePrice, e.platformFeePercent, e.logisticsPercent, e.sellerMarginPercent);
-                const isDirty = !!dpEdits[p._id];
+                const e        = getDpEdit(p);
+                const isDirty  = !!dpEdits[p._id];
+                const preview  = dpPreviewVariants(p, e.highestBasePrice, e.variantDiffPercent);
+                const highestV = preview.length ? preview[preview.length - 1] : null;
+                const lowestU  = preview.length ? Math.min(...preview.map(v => v.finalPrice)) : 0;
+                const showPrev = !!dpPreviews[p._id];
+
                 return (
-                  <div key={p._id} className={`bg-white rounded-2xl border p-4 ${isDirty ? 'border-green-400' : 'border-gray-200'}`}>
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="font-bold text-gray-800 text-sm">{p.name}</p>
-                        <p className="text-xs text-gray-400">{p.seller?.businessName || p.seller?.name}</p>
+                  <div key={p._id} className={`bg-white rounded-2xl border overflow-hidden ${isDirty ? 'border-green-400 shadow-md' : 'border-gray-200'}`}>
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div>
+                          <p className="font-bold text-gray-800 text-sm">{p.name}</p>
+                          <p className="text-xs text-gray-400">{p.seller?.businessName || p.seller?.name} · {p.category?.name}</p>
+                          {p.priceUpdatedAt && (
+                            <p className="text-[10px] text-gray-400 mt-0.5">
+                              Updated {new Date(p.priceUpdatedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          {highestV && <p className="text-[10px] text-gray-400">Highest: {dpFmtQty(highestV.fromQty, p.unit)}</p>}
+                          {lowestU > 0 && <p className="text-xs font-bold text-green-700">From ₹{lowestU}/{p.unit}</p>}
+                        </div>
                       </div>
-                      <p className="text-xs font-bold text-green-700">Final: ₹{finalPrice}</p>
+
+                      <div className="grid grid-cols-2 gap-2 mb-3">
+                        <div>
+                          <label className="text-[10px] text-gray-500 font-medium block mb-0.5">
+                            Base Price ₹ {highestV ? `(${dpFmtQty(highestV.fromQty, p.unit)})` : ''}
+                          </label>
+                          <input type="number" min="0.01" step="0.01" value={e.highestBasePrice || ''}
+                            placeholder="e.g. 20"
+                            onChange={ev => setDpEditField(p._id, 'highestBasePrice', ev.target.value)}
+                            className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-green-400" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-500 font-medium block mb-0.5">Variant Diff %</label>
+                          <input type="number" min="0" max="50" step="0.5" value={e.variantDiffPercent}
+                            onChange={ev => setDpEditField(p._id, 'variantDiffPercent', ev.target.value)}
+                            className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-green-400" />
+                        </div>
+                      </div>
+
+                      {p.variants?.length > 0 && (
+                        <button onClick={() => setDpPreviews(prev => ({ ...prev, [p._id]: !prev[p._id] }))}
+                          className="text-xs text-green-700 font-semibold flex items-center gap-1">
+                          {showPrev ? '▲ Hide' : '▼ Preview'} {preview.length} variant prices
+                        </button>
+                      )}
                     </div>
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                      <div>
-                        <label className="text-[10px] text-gray-500">Base Price (₹)</label>
-                        <input type="number" min="0" step="0.5" value={e.basePrice}
-                          onChange={ev => setDpEdit(p._id, 'basePrice', ev.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-green-400 mt-0.5" />
+
+                    {/* Variant preview */}
+                    {showPrev && preview.length > 0 && (
+                      <div className="border-t border-gray-100 bg-gray-50 px-4 py-3">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-gray-400 text-[10px]">
+                              <th className="text-left pb-1.5">Variant</th>
+                              <th className="text-right pb-1.5">Base ₹</th>
+                              <th className="text-right pb-1.5">Sell ₹</th>
+                              <th className="text-right pb-1.5">Pkg total</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {[...preview].reverse().map((v, i) => {
+                              const isTop = i === 0;
+                              const pkg   = Math.round(Number(v.fromQty) * Number(v.finalPrice) * 100) / 100;
+                              return (
+                                <tr key={i} className={isTop ? 'bg-green-50' : ''}>
+                                  <td className="py-1 font-medium text-gray-700">
+                                    {dpFmtQty(v.fromQty, p.unit)}
+                                    {isTop && <span className="ml-1 text-[9px] text-green-600">(entered)</span>}
+                                  </td>
+                                  <td className="py-1 text-right text-gray-500">₹{v.basePrice}</td>
+                                  <td className="py-1 text-right font-bold text-green-700">₹{v.finalPrice}</td>
+                                  <td className="py-1 text-right text-gray-600">₹{pkg}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
-                      <div>
-                        <label className="text-[10px] text-gray-500">Seller Margin %</label>
-                        <input type="number" min="0" max="100" value={e.sellerMarginPercent}
-                          onChange={ev => setDpEdit(p._id, 'sellerMarginPercent', ev.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-green-400 mt-0.5" />
-                      </div>
-                    </div>
-                    {isDirty && (
-                      <button onClick={() => saveDpOne(p)} disabled={dpSaving[p._id]}
-                        className="w-full bg-green-600 text-white text-xs font-bold py-2 rounded-xl disabled:opacity-50">
-                        {dpSaving[p._id] ? 'Saving…' : 'Save this product'}
-                      </button>
                     )}
                   </div>
                 );
               })}
-              {dpProducts.length === 0 && <p className="text-center text-gray-500 py-8">Select a seller admin and click Load</p>}
+              {dpProducts.length === 0 && (
+                <p className="text-center text-gray-500 py-8">Select filters and click Load to view products</p>
+              )}
             </div>
           </div>
         )}

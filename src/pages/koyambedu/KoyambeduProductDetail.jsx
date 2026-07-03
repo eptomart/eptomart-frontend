@@ -104,10 +104,17 @@ export default function KoyambeduProductDetail() {
   const isOpenEndedActive = !!(activeVariant && !activeVariant.toQty);
   const total   = (qty * activeFinalPrice).toFixed(2);
 
-  // Best variant = lowest finalPrice
+  // Best Value variant = lowest per-unit finalPrice (price/unit is already finalPrice for per-unit products)
   const bestVariant = hasVariants
-    ? product.variants.reduce((b, v) => (!b || v.finalPrice < b.finalPrice) ? v : b, null)
+    ? product.variants.reduce((b, v) => (!b || Number(v.finalPrice) < Number(b.finalPrice)) ? v : b, null)
     : null;
+
+  // Format qty for display: 0.25 kg → "250 g", 0.5 kg → "500 g", 1 kg → "1 kg"
+  const fmtQty = (qty, unit) => {
+    const n = Number(qty);
+    if (unit === 'kg' && n < 1) return `${Math.round(n * 1000)} g`;
+    return `${n} ${unit}`;
+  };
 
   // ── Handlers ─────────────────────────────────────────────────
   const handleAddToCart = () => {
@@ -248,51 +255,80 @@ export default function KoyambeduProductDetail() {
           {/* Price row */}
           {hasVariants ? (
             <div className="mt-3">
+              {/* Current active price */}
               <div className="flex items-center gap-2 mb-2">
-                <span className="bg-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full tracking-wide">BEST RATE</span>
                 <div className="flex items-baseline gap-1">
                   <span className="text-green-700 font-black text-2xl">₹{activeFinalPrice}</span>
                   <span className="text-gray-400 text-sm">/ {product.unit}</span>
                 </div>
+                {activeVariant && activeVariant === bestVariant && (
+                  <span className="bg-green-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full">
+                    ✦ BEST VALUE
+                  </span>
+                )}
               </div>
-              {/* Variant pricing table */}
+
+              {/* Variant pricing table — all variants with per-unit + package total */}
               <div className="rounded-xl overflow-hidden border border-gray-100 mt-2">
-                <div className="grid grid-cols-3 gap-0 text-[10px] font-bold text-gray-500 uppercase bg-gray-50 px-3 py-1.5">
-                  <span>Qty ({product.unit})</span>
-                  <span className="text-center">Final / {product.unit}</span>
-                  <span className="text-right">Savings</span>
+                {/* Header */}
+                <div className="grid grid-cols-4 gap-0 text-[10px] font-bold text-gray-400 uppercase bg-gray-50 px-3 py-1.5">
+                  <span>Variant</span>
+                  <span className="text-center">₹/{product.unit}</span>
+                  <span className="text-center">Pkg total</span>
+                  <span className="text-right">Value</span>
                 </div>
-                {product.variants.map((v, i) => {
-                  const isActive = activeVariant === v || (!v.toQty ? qty >= v.fromQty : (qty >= v.fromQty && qty <= v.toQty));
-                  const baseLowest = product.variants[0].finalPrice;
-                  const saving = i > 0 ? ((baseLowest - v.finalPrice) / baseLowest * 100).toFixed(0) : null;
-                  return (
-                    <button key={i} onClick={() => selectVariant(v)}
-                      className={`w-full grid grid-cols-3 gap-0 px-3 py-2 text-sm border-t border-gray-50 transition text-left ${
-                        isActive ? 'bg-green-50' : 'hover:bg-gray-50'
-                      }`}>
-                      <span className={`font-semibold ${isActive ? 'text-green-700' : 'text-gray-700'}`}>
-                        {v.toQty ? `${v.fromQty}–${v.toQty}` : `Above ${v.fromQty}`}
-                      </span>
-                      <span className={`text-center font-bold ${isActive ? 'text-green-700' : 'text-gray-800'}`}>
-                        ₹{v.finalPrice}
-                        {isActive && <span className="ml-1 text-[9px] font-bold bg-green-600 text-white px-1 rounded">Selected</span>}
-                      </span>
-                      <span className="text-right text-[11px]">
-                        {saving ? (
-                          <span className="text-orange-600 font-bold">Save {saving}%</span>
-                        ) : (
-                          <span className="text-gray-400">Base</span>
-                        )}
-                      </span>
-                    </button>
-                  );
-                })}
+                {/* Rows — sorted highest qty first (bulk options most prominent) */}
+                {[...product.variants]
+                  .sort((a, b) => Number(b.fromQty) - Number(a.fromQty))
+                  .map((v, i) => {
+                    const isActive    = activeVariant === v || (!v.toQty ? qty >= v.fromQty : (qty >= v.fromQty && qty <= v.toQty));
+                    const isBestValue = bestVariant && String(v.fromQty) === String(bestVariant.fromQty);
+                    const pkgTotal    = (Number(v.fromQty) * Number(v.finalPrice)).toFixed(2);
+                    const qtyLabel    = fmtQty(v.fromQty, product.unit);
+                    return (
+                      <button key={i} onClick={() => selectVariant(v)}
+                        className={`w-full grid grid-cols-4 gap-0 px-3 py-2.5 text-sm border-t border-gray-50 transition text-left active:scale-[0.99] ${
+                          isActive ? 'bg-green-50' : 'hover:bg-gray-50'
+                        }`}>
+                        {/* Variant name */}
+                        <span className={`font-semibold flex items-center gap-1 ${isActive ? 'text-green-700' : 'text-gray-700'}`}>
+                          {qtyLabel}
+                          {isBestValue && (
+                            <span className="text-[8px] bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold leading-none">
+                              BEST
+                            </span>
+                          )}
+                        </span>
+                        {/* Per-unit price */}
+                        <span className={`text-center font-bold ${isActive ? 'text-green-700' : 'text-gray-800'}`}>
+                          ₹{v.finalPrice}
+                        </span>
+                        {/* Package total */}
+                        <span className="text-center text-gray-500 text-xs">
+                          ₹{pkgTotal}
+                        </span>
+                        {/* Selected chip */}
+                        <span className="text-right text-[10px]">
+                          {isActive ? (
+                            <span className="font-bold bg-green-600 text-white px-1.5 py-0.5 rounded text-[9px]">✓ Active</span>
+                          ) : (
+                            <span className="text-gray-300">→</span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
               </div>
+
+              {/* Best value tip */}
               {bestVariant && (
-                <p className="text-[10px] text-green-600 font-semibold mt-1.5">
-                  💡 Best deal: order {bestVariant.fromQty}+ {product.unit} at ₹{bestVariant.finalPrice}/{product.unit}
-                </p>
+                <div className="mt-2 flex items-center gap-1.5 text-[11px] text-green-700 bg-green-50 rounded-lg px-3 py-1.5">
+                  <span>✦</span>
+                  <span>
+                    <strong>Best value:</strong> {fmtQty(bestVariant.fromQty, product.unit)} at ₹{bestVariant.finalPrice}/{product.unit}
+                    {' — '}total ₹{(Number(bestVariant.fromQty) * Number(bestVariant.finalPrice)).toFixed(2)}
+                  </span>
+                </div>
               )}
             </div>
           ) : (
