@@ -35,11 +35,17 @@ export default function KoyambeduProductDetail() {
   const [priceHistory, setPriceHistory] = useState([]);
 
   useEffect(() => {
+    // Read cart qty synchronously at mount — before the async product fetch
+    // so we can initialise the stepper to the existing cart quantity.
+    const existingCartQty = getQty(productId);
+
     api.get(`/koyambedu/products/${productId}`)
       .then(r => {
         const p = r.data.product;
         setProduct(p);
-        const initQty = Math.max(1, p.minQty || p.qtyStep || 1);
+        // If product is already in cart, start stepper at that qty (not minQty)
+        const minQ    = Math.max(1, p.minQty || p.qtyStep || 1);
+        const initQty = existingCartQty > 0 ? existingCartQty : minQ;
         setQty(initQty);
         setQtyInput(String(initQty));
       })

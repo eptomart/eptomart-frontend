@@ -196,9 +196,20 @@ export const KoyambeduCartProvider = ({ children }) => {
   // ── Derived values (merge optimistic for logged-in) ─
   const effectiveItems = isLoggedIn()
     ? (cart.items?.map(item => {
-        const pid = String(item.product?._id || item.product);
-        const qty = pid in optimisticQtys ? optimisticQtys[pid] : item.quantity;
-        return { ...item, quantity: qty };
+        const pid    = String(item.product?._id || item.product);
+        const newQty = pid in optimisticQtys ? optimisticQtys[pid] : item.quantity;
+
+        // Recompute unitPrice from product variants when qty changes optimistically,
+        // so line totals stay correct during the debounce window.
+        let unitPrice = item.unitPrice;
+        if (pid in optimisticQtys && item.product?.variants?.length > 0) {
+          const match = item.product.variants.find(v =>
+            !v.toQty ? newQty >= v.fromQty : (newQty >= v.fromQty && newQty <= v.toQty)
+          );
+          if (match?.finalPrice != null) unitPrice = match.finalPrice;
+        }
+
+        return { ...item, quantity: newQty, unitPrice };
       }).filter(i => i.quantity > 0) || [])
     : (cart.items || []);
 
