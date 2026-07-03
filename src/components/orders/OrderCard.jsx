@@ -6,6 +6,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { FiChevronRight, FiCalendar, FiPackage } from 'react-icons/fi';
 import { formatINR, formatDate } from '../../utils/currency';
+import ReorderButton from './ReorderButton';
 
 // Canonical status → badge colors
 const STATUS_COLORS = {
@@ -68,7 +69,8 @@ export default function OrderCard({ order }) {
               </span>
             )}
           </div>
-          <div className="flex flex-wrap gap-1.5 mt-1.5">
+          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+            <ReorderButton order={order} compact />
             {order.hasDeclinedItems && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
                 Some items updated — refund applies

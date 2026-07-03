@@ -17,6 +17,7 @@ import {
   ItemsList, DeclinedItems, RefundSection, WalletHistory,
   DocumentsSection, SupportSection, DeliveryAckSection,
 } from '../../components/orders/OrderSections';
+import ReorderButton from '../../components/orders/ReorderButton';
 import { formatINR, formatDate } from '../../utils/currency';
 import api from '../../utils/api';
 
@@ -173,6 +174,9 @@ export default function UnifiedOrderDetail() {
 
         {/* ── Wallet ── */}
         <WalletHistory transactions={order.walletHistory} />
+
+        {/* ── Reorder — every order, any status ── */}
+        <ReorderButton order={order} />
 
         {/* ── Documents ── */}
         <DocumentsSection documents={order.documents} orderId={order.orderId} />
