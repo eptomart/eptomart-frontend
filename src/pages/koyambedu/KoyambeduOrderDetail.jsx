@@ -489,6 +489,75 @@ export default function KoyambeduOrderDetail() {
           </div>
         </Card>
 
+        {/* ── MARKET PRICE ADJUSTMENT (Feature 9) ── */}
+        {order.procurementPricing?.walletAdjustmentApplied && (() => {
+          const pp = order.procurementPricing;
+          return (
+            <Card title="Market Price Adjustment" titleColor="#4f46e5">
+              {/* Per-item breakdown */}
+              <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #e0e7ff', marginBottom: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1.2fr', gap: 4, padding: '8px 12px', background: '#f5f3ff', fontSize: 10, fontWeight: 700, color: '#6d28d9', textTransform: 'uppercase' }}>
+                  <span>Product</span><span style={{ textAlign: 'center' }}>Qty</span><span style={{ textAlign: 'center' }}>Est ₹</span><span style={{ textAlign: 'center' }}>Actual ₹</span><span style={{ textAlign: 'right' }}>Adjustment</span>
+                </div>
+                {(pp.items || []).map((it, i) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1.2fr', gap: 4, padding: '8px 12px', borderTop: '1px solid #ede9fe', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: '#374151', margin: 0 }}>{it.name}</p>
+                      <p style={{ fontSize: 10, color: '#9ca3af', margin: 0 }}>{it.confirmedQty} {it.unit}</p>
+                    </div>
+                    <p style={{ fontSize: 12, textAlign: 'center', color: '#6b7280' }}>{it.confirmedQty}</p>
+                    <p style={{ fontSize: 12, textAlign: 'center', color: '#6b7280' }}>₹{it.estimatedUnitPrice?.toFixed(2)}</p>
+                    <p style={{ fontSize: 12, textAlign: 'center', fontWeight: 600, color: '#374151' }}>₹{it.actualUnitPrice?.toFixed(2)}</p>
+                    <div style={{ textAlign: 'right' }}>
+                      {it.walletAction === 'credit' && (
+                        <div>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 6px', borderRadius: 8 }}>+₹{it.walletAmount?.toFixed(2)}</span>
+                          <p style={{ fontSize: 9, color: '#16a34a', margin: '2px 0 0', fontStyle: 'italic' }}>Credited to Wallet</p>
+                        </div>
+                      )}
+                      {it.walletAction === 'due' && (
+                        <div>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#d97706', background: '#fffbeb', padding: '2px 6px', borderRadius: 8 }}>-₹{it.walletAmount?.toFixed(2)}</span>
+                          <p style={{ fontSize: 9, color: '#d97706', margin: '2px 0 0', fontStyle: 'italic' }}>Next order</p>
+                        </div>
+                      )}
+                      {it.walletAction === 'none' && <span style={{ fontSize: 10, color: '#9ca3af' }}>—</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Net totals */}
+              <div style={{ background: '#f8fafc', borderRadius: 12, padding: '12px 14px', border: '1.5px solid #e0e7ff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12 }}>
+                  <span style={{ color: '#6b7280' }}>Estimated Total</span>
+                  <span style={{ fontWeight: 700 }}>₹{pp.totalEstimated?.toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12 }}>
+                  <span style={{ color: '#6b7280' }}>Final Procurement Total</span>
+                  <span style={{ fontWeight: 700 }}>₹{pp.totalActual?.toFixed(2)}</span>
+                </div>
+                {pp.totalWalletCredit > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12, color: '#16a34a' }}>
+                    <span>✅ Wallet Credited</span>
+                    <span style={{ fontWeight: 700 }}>+₹{pp.totalWalletCredit?.toFixed(2)}</span>
+                  </div>
+                )}
+                {pp.totalWalletDue > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12, color: '#d97706' }}>
+                    <span>⚠️ Recovered in Next Order</span>
+                    <span style={{ fontWeight: 700 }}>-₹{pp.totalWalletDue?.toFixed(2)}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 800, borderTop: '1px solid #e2e8f0', paddingTop: 8, marginTop: 6, color: pp.netWalletAdjustment >= 0 ? '#16a34a' : '#d97706' }}>
+                  <span>Net Adjustment</span>
+                  <span>{pp.netWalletAdjustment >= 0 ? `+₹${pp.netWalletAdjustment?.toFixed(2)} Wallet Credit` : `-₹${Math.abs(pp.netWalletAdjustment)?.toFixed(2)} Pending Recovery`}</span>
+                </div>
+              </div>
+            </Card>
+          );
+        })()}
+
         {/* ── ORDER TIMELINE ── */}
         <Card title="Order Timeline" titleColor="#374151">
           <button

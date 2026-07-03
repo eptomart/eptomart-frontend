@@ -259,6 +259,11 @@ export default function KoyambeduAdmin() {
   const [refundReason,  setRefundReason]  = useState('');
   const [refunding,     setRefunding]     = useState(false);
 
+  // Procurement invoice modal
+  const [procModal,     setProcModal]     = useState(null); // order object
+  const [procPrices,    setProcPrices]    = useState({});   // { productId: actualPrice }
+  const [procSaving,    setProcSaving]    = useState(false);
+
   // Reports tab
   const [rptType,       setRptType]       = useState('order-report');   // 'order-report' | 'product-consolidation' | 'cashflow'
   const [rptDate,       setRptDate]       = useState('');
@@ -846,6 +851,64 @@ export default function KoyambeduAdmin() {
     }
   };
 
+  // ── Procurement invoice helpers ───────────────────────────────
+  const openProcModal = (order) => {
+    // Pre-fill actual prices with estimated prices
+    const prices = {};
+    const confirmedItems = (order.items || []).filter(it => it.itemStatus !== 'declined' && it.confirmedQty > 0);
+    confirmedItems.forEach(it => {
+      prices[String(it.product?._id || it.product)] = String(it.orderedPrice || it.finalPrice || '');
+    });
+    setProcPrices(prices);
+    setProcModal(order);
+  };
+
+  // Compute client-side preview totals
+  const procPreview = (order) => {
+    if (!order) return { items: [], totalCredit: 0, totalDue: 0, net: 0 };
+    const confirmedItems = (order.items || []).filter(it => it.itemStatus !== 'declined' && it.confirmedQty > 0);
+    let totalCredit = 0, totalDue = 0;
+    const items = confirmedItems.map(it => {
+      const pid    = String(it.product?._id || it.product);
+      const est    = Number(it.orderedPrice || it.finalPrice || 0);
+      const actual = Number(procPrices[pid] || est);
+      const qty    = Number(it.confirmedQty);
+      const diff   = Math.round((est - actual) * qty * 100) / 100;
+      if (diff > 0)       totalCredit += diff;
+      else if (diff < 0)  totalDue    += Math.abs(diff);
+      return { name: it.name, unit: it.unit, qty, est, actual, diff };
+    });
+    totalCredit = Math.round(totalCredit * 100) / 100;
+    totalDue    = Math.round(totalDue    * 100) / 100;
+    return { items, totalCredit, totalDue, net: Math.round((totalCredit - totalDue) * 100) / 100 };
+  };
+
+  const saveProcInvoice = async () => {
+    if (!procModal) return;
+    const confirmedItems = (procModal.items || []).filter(it => it.itemStatus !== 'declined' && it.confirmedQty > 0);
+    const actualItems = confirmedItems.map(it => ({
+      productId:       String(it.product?._id || it.product),
+      actualUnitPrice: Number(procPrices[String(it.product?._id || it.product)] || it.orderedPrice || 0),
+    }));
+    if (actualItems.some(a => !a.actualUnitPrice || a.actualUnitPrice <= 0)) {
+      return toast.error('All actual prices must be greater than 0');
+    }
+    if (!window.confirm('Confirm procurement invoice? This will apply wallet adjustments and cannot be undone.')) return;
+    setProcSaving(true);
+    try {
+      const { data } = await api.post(`/koyambedu/admin/orders/${procModal._id}/procurement-invoice`, { actualItems });
+      toast.success(data.message);
+      setOrders(prev => prev.map(o =>
+        o._id === procModal._id ? { ...o, procurementPricing: data.procurementPricing } : o
+      ));
+      setProcModal(null);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to generate invoice');
+    } finally {
+      setProcSaving(false);
+    }
+  };
+
   // ── Report fetch ─────────────────────────────────────────────
   const fetchReport = async () => {
     if (!rptDate) { toast.error('Select a delivery date'); return; }
@@ -1071,6 +1134,15 @@ export default function KoyambeduAdmin() {
                               className="text-xs text-purple-700 font-bold border border-purple-200 px-2 py-1 rounded-lg">
                               💳 Refund
                             </button>
+                          )}
+                          {/* Procurement Invoice — available for confirmed/dispatched/delivered orders */}
+                          {isSuperAdmin && ['confirmed','packing','dispatched','delivered'].includes(order.orderStatus) && (
+                            order.procurementPricing?.walletAdjustmentApplied
+                              ? <span className="text-xs text-green-700 font-bold border border-green-200 px-2 py-1 rounded-lg bg-green-50">✓ Invoice Done</span>
+                              : <button onClick={() => openProcModal(order)}
+                                  className="text-xs text-indigo-700 font-bold border border-indigo-200 px-2 py-1 rounded-lg">
+                                  🧾 Gen Invoice
+                                </button>
                           )}
                           {isSuperAdmin && !['cancelled','delivered'].includes(order.orderStatus) && (
                             <button onClick={() => { setCancelOrderModal(order); setCancelReason(''); }}
@@ -2585,6 +2657,111 @@ export default function KoyambeduAdmin() {
           </div>
         </div>
       )}
+
+      {/* ── Procurement Invoice Modal ── */}
+      {procModal && (() => {
+        const preview = procPreview(procModal);
+        const confirmedItems = (procModal.items || []).filter(it => it.itemStatus !== 'declined' && it.confirmedQty > 0);
+        return (
+          <div className="fixed inset-0 bg-black/60 z-[9998] flex items-end justify-center">
+            <div className="bg-white rounded-t-3xl w-full max-w-2xl overflow-y-auto"
+              style={{ maxHeight: '90vh', paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
+              <div className="sticky top-0 bg-white px-5 pt-5 pb-3 border-b border-gray-100">
+                <div className="flex items-center justify-between mb-0.5">
+                  <h3 className="font-black text-gray-800">🧾 Procurement Invoice</h3>
+                  <button onClick={() => setProcModal(null)} className="text-gray-400 text-xl font-bold leading-none">✕</button>
+                </div>
+                <p className="text-xs text-gray-400">{procModal.orderId} · Enter actual procurement price per product</p>
+              </div>
+
+              <div className="px-5 py-4 space-y-4">
+                {/* Per-item actual price inputs */}
+                <div className="rounded-2xl overflow-hidden border border-gray-100">
+                  {/* Header */}
+                  <div className="grid grid-cols-12 gap-1 bg-gray-50 px-3 py-2 text-[10px] font-bold text-gray-400 uppercase">
+                    <span className="col-span-4">Product</span>
+                    <span className="col-span-2 text-center">Qty</span>
+                    <span className="col-span-2 text-center">Est ₹</span>
+                    <span className="col-span-2 text-center">Actual ₹</span>
+                    <span className="col-span-2 text-right">Action</span>
+                  </div>
+                  {confirmedItems.map((it, i) => {
+                    const pid    = String(it.product?._id || it.product);
+                    const est    = Number(it.orderedPrice || it.finalPrice || 0);
+                    const actual = Number(procPrices[pid] || 0);
+                    const diff   = actual > 0 ? Math.round((est - actual) * it.confirmedQty * 100) / 100 : null;
+                    return (
+                      <div key={i} className="grid grid-cols-12 gap-1 items-center px-3 py-2 border-t border-gray-50">
+                        <div className="col-span-4">
+                          <p className="text-xs font-semibold text-gray-800 leading-tight truncate">{it.name}</p>
+                          <p className="text-[10px] text-gray-400">{it.unit}</p>
+                        </div>
+                        <p className="col-span-2 text-center text-xs font-bold text-gray-700">{it.confirmedQty}</p>
+                        <p className="col-span-2 text-center text-xs text-gray-500">₹{est.toFixed(2)}</p>
+                        <div className="col-span-2">
+                          <input
+                            type="number" min="0.01" step="0.01"
+                            value={procPrices[pid] || ''}
+                            onChange={e => setProcPrices(p => ({ ...p, [pid]: e.target.value }))}
+                            placeholder={est.toFixed(2)}
+                            className="w-full border border-gray-200 rounded-lg px-1.5 py-1 text-xs text-center font-bold focus:outline-none focus:border-indigo-400"
+                          />
+                        </div>
+                        <div className="col-span-2 text-right">
+                          {diff !== null && diff !== 0 && (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${diff > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                              {diff > 0 ? `+₹${diff.toFixed(0)}` : `-₹${Math.abs(diff).toFixed(0)}`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Totals summary */}
+                {preview.items.length > 0 && (
+                  <div className="rounded-2xl p-4 space-y-2" style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0' }}>
+                    <p className="text-xs font-black text-gray-700 mb-2">Invoice Summary</p>
+                    <div className="flex justify-between text-xs"><span className="text-gray-500">Estimated Total</span><span className="font-bold">₹{preview.items.reduce((s, i) => s + i.est * i.qty, 0).toFixed(2)}</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-gray-500">Actual Total</span><span className="font-bold">₹{preview.items.reduce((s, i) => s + i.actual * i.qty, 0).toFixed(2)}</span></div>
+                    {preview.totalCredit > 0 && (
+                      <div className="flex justify-between text-xs text-green-700">
+                        <span>✅ Wallet Credits (price decreased)</span><span className="font-bold">+₹{preview.totalCredit.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {preview.totalDue > 0 && (
+                      <div className="flex justify-between text-xs text-amber-700">
+                        <span>⚠️ Wallet Due (price increased)</span><span className="font-bold">-₹{preview.totalDue.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className={`flex justify-between text-sm font-black border-t border-gray-200 pt-2 mt-1 ${preview.net >= 0 ? 'text-green-700' : 'text-amber-700'}`}>
+                      <span>Net Wallet Adjustment</span>
+                      <span>{preview.net >= 0 ? `+₹${preview.net.toFixed(2)} (customer credited)` : `-₹${Math.abs(preview.net).toFixed(2)} (recovered next order)`}</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 text-xs text-blue-700">
+                  ℹ️ Wallet adjustments are applied instantly and cannot be undone. Customer will be notified via WhatsApp.
+                </div>
+
+                <div className="flex gap-3">
+                  <button onClick={() => setProcModal(null)}
+                    className="flex-1 border-2 border-gray-200 text-gray-600 font-bold py-3 rounded-xl">
+                    Cancel
+                  </button>
+                  <button onClick={saveProcInvoice} disabled={procSaving}
+                    className="flex-1 text-white font-bold py-3 rounded-xl disabled:opacity-50 transition active:scale-95"
+                    style={{ background: 'linear-gradient(135deg,#4f46e5,#7c3aed)' }}>
+                    {procSaving ? 'Saving…' : 'Confirm & Apply'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Approve / Reject Review Modal ── */}
       {approveModal && (
