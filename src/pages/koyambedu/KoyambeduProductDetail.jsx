@@ -284,7 +284,9 @@ export default function KoyambeduProductDetail() {
                     const isActive    = activeVariant === v || (!v.toQty ? qty >= v.fromQty : (qty >= v.fromQty && qty <= v.toQty));
                     const isBestValue = bestVariant && String(v.fromQty) === String(bestVariant.fromQty);
                     const pkgTotal    = (Number(v.fromQty) * Number(v.finalPrice)).toFixed(2);
-                    const qtyLabel    = fmtQty(v.fromQty, product.unit);
+                    const qtyLabel    = v.toQty
+                      ? `${fmtQty(v.fromQty, product.unit)} – ${fmtQty(v.toQty, product.unit)}`
+                      : `${fmtQty(v.fromQty, product.unit)}+`;
                     return (
                       <button key={i} onClick={() => selectVariant(v)}
                         className={`w-full grid grid-cols-4 gap-0 px-3 py-2.5 text-sm border-t border-gray-50 transition text-left active:scale-[0.99] ${
