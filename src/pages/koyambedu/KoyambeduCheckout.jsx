@@ -954,6 +954,38 @@ export default function KoyambeduCheckout() {
         {step === 2 && (
           <div className="space-y-4">
 
+            {/* Delivery address summary */}
+            <div className="bg-white rounded-2xl p-4"
+              style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)', border: '1.5px solid #d1fae5' }}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                    style={{ background: '#dcfce7' }}>
+                    <FiMapPin size={15} className="text-green-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold text-green-700 uppercase tracking-wider mb-0.5">Delivering to</p>
+                    <p className="text-sm font-bold text-gray-800">
+                      {addr.fullName}{addr.phone ? ` · ${addr.phone}` : ''}
+                    </p>
+                    <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
+                      {[addr.addressLine1, addr.addressLine2, addr.city, addr.pincode].filter(Boolean).join(', ')}
+                    </p>
+                    {locationData?.areaName && (
+                      <p className="text-[11px] text-green-600 font-semibold mt-1">
+                        📌 {locationData.areaName}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setStep(0)}
+                  className="shrink-0 text-xs font-bold text-green-700 border border-green-200 px-3 py-1.5 rounded-xl bg-green-50 active:scale-95 transition">
+                  Change
+                </button>
+              </div>
+            </div>
+
             {/* Market hours notice */}
             <div className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2">
               <span className="text-amber-500 text-sm shrink-0">🕘</span>
