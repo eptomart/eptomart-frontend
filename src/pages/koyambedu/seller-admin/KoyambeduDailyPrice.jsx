@@ -162,13 +162,11 @@ function ProductRow({ product, edit, onEdit, showPreview, onTogglePreview }) {
                   <th className="text-left pb-1.5 font-medium">Variant</th>
                   <th className="text-right pb-1.5 font-medium">Base ₹/unit</th>
                   <th className="text-right pb-1.5 font-medium">Sell ₹/unit</th>
-                  <th className="text-right pb-1.5 font-medium">Pkg total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {[...preview].reverse().map((v, i) => {
                   const isHighest = i === 0;
-                  const pkgTotal  = Math.round(Number(v.fromQty) * Number(v.finalPrice) * 100) / 100;
                   return (
                     <tr key={i} className={isHighest ? 'bg-green-50' : ''}>
                       <td className="py-1.5 font-medium text-gray-700 flex items-center gap-1.5">
@@ -181,7 +179,6 @@ function ProductRow({ product, edit, onEdit, showPreview, onTogglePreview }) {
                       </td>
                       <td className="py-1.5 text-right text-gray-500">{fmt(v.basePrice)}</td>
                       <td className="py-1.5 text-right text-green-700 font-bold">{fmt(v.finalPrice)}</td>
-                      <td className="py-1.5 text-right text-gray-600">₹{pkgTotal.toFixed(2)}</td>
                     </tr>
                   );
                 })}
