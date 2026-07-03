@@ -291,7 +291,7 @@ function AppRoutes() {
 
       <GlobalBottomNav />
       <CompareBar />
-      <AIAssistant />
+      {!useLocation().pathname.startsWith('/koyambedu') && <AIAssistant />}
       <WhatsAppFloat />
     </>
   );
