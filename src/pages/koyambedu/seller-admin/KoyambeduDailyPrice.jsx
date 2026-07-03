@@ -186,8 +186,8 @@ function ProductRow({ product, edit, onEdit, showPreview, onTogglePreview }) {
             </table>
           </div>
           <p className="text-[10px] text-gray-400 mt-2">
-            Charge %: {(product.procurementChargePercent ?? 0) + (product.platformChargePercent ?? 10) + (product.logisticsChargePercent ?? 10)}% total
-            (Procurement {product.procurementChargePercent ?? 0}% + Platform {product.platformChargePercent ?? 10}% + Logistics {product.logisticsChargePercent ?? 10}%)
+            Charge %: {(product.procurementChargePercent || 15) + (product.platformChargePercent || 10) + (product.logisticsChargePercent || 10)}% total
+            (Procurement {product.procurementChargePercent || 15}% + Platform {product.platformChargePercent || 10}% + Logistics {product.logisticsChargePercent || 10}%)
           </p>
         </div>
       )}

@@ -474,7 +474,7 @@ export default function KoyambeduAdmin() {
   const dpPreviewVariants = (product, highestBasePrice, variantDiffPercent) => {
     const variants = product.variants || [];
     if (!variants.length) return [];
-    const totalCharge = (product.procurementChargePercent ?? 0) + (product.platformChargePercent ?? 10) + (product.logisticsChargePercent ?? 10);
+    const totalCharge = (product.procurementChargePercent || 15) + (product.platformChargePercent || 10) + (product.logisticsChargePercent || 10);
     // Each smaller variant is MORE expensive — multiply up by (1 + diff%)
     const diff = 1 + (Number(variantDiffPercent) || 0) / 100;
     const sorted = [...variants].sort((a, b) => Number(b.fromQty) - Number(a.fromQty));
@@ -746,9 +746,9 @@ export default function KoyambeduAdmin() {
       isNextDay:                p.isNextDay,
       badges:                   p.badges || [],
       images:                   p.images || [],
-      procurementChargePercent: p.procurementChargePercent ?? 0,
-      platformChargePercent:    p.platformChargePercent    ?? 10,
-      logisticsChargePercent:   p.logisticsChargePercent   ?? 10,
+      procurementChargePercent: p.procurementChargePercent || 15,
+      platformChargePercent:    p.platformChargePercent    || 10,
+      logisticsChargePercent:   p.logisticsChargePercent   || 10,
       variants: p.variants?.length
         ? p.variants.map(v => ({ basePrice: v.basePrice, fromQty: v.fromQty, toQty: v.toQty, finalPrice: String(v.finalPrice) }))
         : [{ basePrice: p.currentPrice || '', fromQty: p.minQty || 1, toQty: p.maxQty || 50, finalPrice: String(p.currentPrice || '') }],

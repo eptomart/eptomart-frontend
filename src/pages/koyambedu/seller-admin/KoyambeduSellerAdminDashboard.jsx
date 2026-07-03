@@ -265,7 +265,7 @@ export default function KoyambeduSellerAdminDashboard() {
       nameTamil:                p.nameTamil || '',
       description:              p.description || '',
       unit:                     p.unit || 'kg',
-      procurementChargePercent: p.procurementChargePercent ?? 0,
+      procurementChargePercent: p.procurementChargePercent || 15,
       platformChargePercent:    p.platformChargePercent    || 10,
       logisticsChargePercent:   p.logisticsChargePercent   || 10,
       variants: p.variants?.length
