@@ -562,7 +562,7 @@ export default function KoyambeduCheckout() {
       const pendingOrderId = data.order._id;
       const launch = () => {
         const rzpModal = new window.Razorpay({
-          key:      import.meta.env.VITE_RAZORPAY_KEY_ID,
+          key:      rzp.keyId,
           amount:   rzp.amount * 100,
           currency: 'INR',
           name:     'Koyambedu Daily',
