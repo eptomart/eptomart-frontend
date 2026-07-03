@@ -25,7 +25,7 @@ const fmtTime = (d) => d ? new Date(d).toLocaleTimeString('en-IN', { hour: '2-di
 function previewVariants(variants, highestBasePrice, variantDiffPercent, chargePercents) {
   if (!variants || !variants.length) return [];
   const totalCharge = (chargePercents.procurement || 15) + (chargePercents.platform || 10) + (chargePercents.logistics || 10);
-  const diff = 1 - (Number(variantDiffPercent) || 0) / 100;
+  const diff = 1 + (Number(variantDiffPercent) || 0) / 100;
 
   const sorted = [...variants].sort((a, b) => Number(b.fromQty) - Number(a.fromQty));
   let running = Number(highestBasePrice) || 0;
@@ -133,7 +133,7 @@ function ProductRow({ product, edit, onEdit, showPreview, onTogglePreview }) {
                 !validDiff ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-green-300'
               }`}
             />
-            <p className="text-[10px] text-gray-400 mt-0.5">% reduction per smaller variant</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">% increase per smaller variant</p>
           </div>
         </div>
 
