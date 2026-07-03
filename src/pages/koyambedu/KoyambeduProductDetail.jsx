@@ -271,10 +271,9 @@ export default function KoyambeduProductDetail() {
               {/* Variant pricing table — all variants with per-unit + package total */}
               <div className="rounded-xl overflow-hidden border border-gray-100 mt-2">
                 {/* Header */}
-                <div className="grid grid-cols-4 gap-0 text-[10px] font-bold text-gray-400 uppercase bg-gray-50 px-3 py-1.5">
+                <div className="grid grid-cols-3 gap-0 text-[10px] font-bold text-gray-400 uppercase bg-gray-50 px-3 py-1.5">
                   <span>Variant</span>
                   <span className="text-center">₹/{product.unit}</span>
-                  <span className="text-center">Pkg total</span>
                   <span className="text-right">Value</span>
                 </div>
                 {/* Rows — sorted smallest qty first */}
@@ -283,13 +282,12 @@ export default function KoyambeduProductDetail() {
                   .map((v, i) => {
                     const isActive    = activeVariant === v || (!v.toQty ? qty >= v.fromQty : (qty >= v.fromQty && qty <= v.toQty));
                     const isBestValue = bestVariant && String(v.fromQty) === String(bestVariant.fromQty);
-                    const pkgTotal    = (Number(v.fromQty) * Number(v.finalPrice)).toFixed(2);
                     const qtyLabel    = v.toQty
                       ? `${fmtQty(v.fromQty, product.unit)} – ${fmtQty(v.toQty, product.unit)}`
                       : `${fmtQty(v.fromQty, product.unit)}+`;
                     return (
                       <button key={i} onClick={() => selectVariant(v)}
-                        className={`w-full grid grid-cols-4 gap-0 px-3 py-2.5 text-sm border-t border-gray-50 transition text-left active:scale-[0.99] ${
+                        className={`w-full grid grid-cols-3 gap-0 px-3 py-2.5 text-sm border-t border-gray-50 transition text-left active:scale-[0.99] ${
                           isActive ? 'bg-green-50' : 'hover:bg-gray-50'
                         }`}>
                         {/* Variant name */}
@@ -304,10 +302,6 @@ export default function KoyambeduProductDetail() {
                         {/* Per-unit price */}
                         <span className={`text-center font-bold ${isActive ? 'text-green-700' : 'text-gray-800'}`}>
                           ₹{v.finalPrice}
-                        </span>
-                        {/* Package total */}
-                        <span className="text-center text-gray-500 text-xs">
-                          ₹{pkgTotal}
                         </span>
                         {/* Selected chip */}
                         <span className="text-right text-[10px]">
