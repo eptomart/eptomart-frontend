@@ -6,7 +6,7 @@ import KoyambeduImageUploader from '../../components/koyambedu/KoyambeduImageUpl
 import KoyambeduVariantProductForm, { EMPTY_VARIANT_PRODUCT, getVariantOverlapError } from '../../components/koyambedu/KoyambeduVariantProductForm';
 import toast from 'react-hot-toast';
 
-const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'daily-price', 'refund-requests', 'reports'];
+const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'daily-price', 'refund-requests', 'reports'];
 
 const DELIVERY_SLOTS = [
   '06:00 AM – 08:59 AM',
@@ -239,6 +239,7 @@ export default function KoyambeduAdmin() {
 
   // Cancelled orders tab
   const [cancelledOrders,  setCancelledOrders]  = useState([]);
+  const [deliveryAlerts,   setDeliveryAlerts]   = useState([]);
   const [cancelledExpanded, setCancelledExpanded] = useState({});
 
   // Refund requests tab
@@ -290,6 +291,9 @@ export default function KoyambeduAdmin() {
       } else if (t === 'pending-approval') {
         const { data } = await api.get('/koyambedu/admin/orders/pending-approval');
         setPendingApprovalOrders(data.orders || []);
+      } else if (t === 'alerts') {
+        const { data } = await api.get('/koyambedu/admin/alerts');
+        setDeliveryAlerts(data.alerts || []);
       } else if (t === 'cancelled-orders') {
         const { data } = await api.get('/koyambedu/admin/orders?status=cancelled&limit=200');
         const partial  = await api.get('/koyambedu/admin/orders?itemStatus=declined&limit=200');
@@ -392,6 +396,19 @@ export default function KoyambeduAdmin() {
   };
 
   // ── Cancel order (Super Admin only) ─────────────────────────────
+  const resolveAlert = async (a) => {
+    const resolution = window.prompt(`Resolve alert for order ${a.orderId}?\n\nEnter resolution note (required):`);
+    if (resolution == null) return;
+    if (!resolution.trim()) { toast.error('Resolution note is required'); return; }
+    try {
+      const { data } = await api.patch(`/koyambedu/admin/orders/${a._id}/alerts/resolve`, { resolution: resolution.trim() });
+      toast.success(data.message || 'Alert resolved');
+      setDeliveryAlerts(prev => prev.filter(x => x._id !== a._id));
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not resolve alert');
+    }
+  };
+
   const closeOrder = async (order) => {
     const comments = window.prompt(
       `Close order ${order.orderId}?\n\nEnter closing comments (required — e.g. compensated customer with offer for missing items):`
@@ -911,7 +928,7 @@ export default function KoyambeduAdmin() {
           {TAB_LIST.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white hover:bg-white/30'}`}>
-              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'reports' ? '📊 Reports' : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'reports' ? '📊 Reports' : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -2549,6 +2566,44 @@ export default function KoyambeduAdmin() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Delivery Alerts tab ── */}
+      {tab === 'alerts' && (
+        <div className="space-y-3">
+          {deliveryAlerts.length === 0 ? (
+            <div className="text-center py-16 text-gray-400 text-sm">✅ No active delivery alerts</div>
+          ) : deliveryAlerts.map(a => (
+            <div key={a._id} className="bg-white rounded-2xl border-2 border-red-200 p-4">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <p className="font-mono font-bold text-gray-800 text-sm">#{a.orderId}</p>
+                  <p className="text-xs font-bold text-red-600 mt-0.5">
+                    {a.deliveryAck?.alert?.type === 'not_received' ? '🚨 ORDER NOT RECEIVED' : '⚠️ Partial / damaged delivery'}
+                  </p>
+                  {a.buyer && <p className="text-[11px] text-gray-500 mt-0.5">{a.buyer.name} · {a.buyer.phone}</p>}
+                  {a.deliveryAck?.issues?.length > 0 && (
+                    <div className="mt-1.5 space-y-0.5">
+                      {a.deliveryAck.issues.map((i, k) => (
+                        <p key={k} className="text-[11px] text-red-700">• {i.name}: {i.missingQty}{i.unit ? ` ${i.unit}` : ''} missing{i.note ? ` — ${i.note}` : ''}</p>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    Raised {a.deliveryAck?.alert?.raisedAt ? new Date(a.deliveryAck.alert.raisedAt).toLocaleString('en-IN') : ''} · Order total ₹{(a.pricing?.total || 0).toFixed(0)}
+                  </p>
+                </div>
+                {isSuperAdmin && (
+                  <button onClick={() => resolveAlert(a)}
+                    className="text-xs font-bold text-white px-3 py-2 rounded-xl active:scale-95 transition shrink-0"
+                    style={{ background: 'linear-gradient(135deg,#b91c1c,#dc2626)' }}>
+                    Resolve
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

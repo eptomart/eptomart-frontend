@@ -197,6 +197,144 @@ export function DocumentsSection({ documents = [], orderId }) {
   );
 }
 
+// ── Delivery acknowledgement (Koyambedu Daily) ─
+// After delivery the customer confirms receipt:
+//  1. Received all items      → order closes
+//  2. Received partial/damaged → per-item missing qty → alert raised
+//  3. Not received             → immediate alert to Seller Admin + Super Admin
+export function DeliveryAckSection({ order, onDone }) {
+  const [choice,     setChoice]     = useState('');
+  const [missing,    setMissing]    = useState({}); // itemName → qty
+  const [submitting, setSubmitting] = useState(false);
+
+  if (order.vertical !== 'koyambedu') return null;
+
+  // Already acknowledged — show the summary
+  if (order.deliveryAck) {
+    const ack = order.deliveryAck;
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        <h3 className="text-sm font-bold text-gray-800 mb-2">Delivery Confirmation</h3>
+        {ack.status === 'all_received' && (
+          <p className="text-xs text-green-700 bg-green-50 rounded-xl px-3 py-2">
+            ✅ You confirmed all items were received. Order closed — thank you!
+          </p>
+        )}
+        {ack.status === 'partial_issue' && (
+          <div className="text-xs text-amber-800 bg-amber-50 rounded-xl px-3 py-2 space-y-1">
+            <p className="font-bold">⚠️ You reported missing/damaged items — our team has been alerted.</p>
+            {(ack.issues || []).map((i, k) => (
+              <p key={k}>• {i.name}: {i.missingQty}{i.unit ? ` ${i.unit}` : ''} missing{i.note ? ` — ${i.note}` : ''}</p>
+            ))}
+          </div>
+        )}
+        {ack.status === 'not_received' && (
+          <p className="text-xs text-red-700 bg-red-50 rounded-xl px-3 py-2">
+            🚨 You reported the order was not received. Our team has been alerted and will contact you shortly.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (!order.canAcknowledgeDelivery) return null;
+
+  const items = order.itemsConfirmed?.length ? order.itemsConfirmed : order.itemsOrdered || [];
+
+  const submit = async (status, extra = {}) => {
+    setSubmitting(true);
+    try {
+      const { data } = await api.post(`/koyambedu/orders/${order.id}/delivery-ack`, { status, ...extra });
+      toast.success(data.message || 'Thank you!');
+      onDone?.();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not submit — please try again');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitPartial = () => {
+    const issues = items
+      .filter(it => Number(missing[it.name]) > 0)
+      .map(it => ({ name: it.name, unit: it.unit, missingQty: Number(missing[it.name]) }));
+    if (!issues.length) { toast.error('Enter the missing quantity for at least one item'); return; }
+    submit('partial_issue', { issues });
+  };
+
+  const OPTIONS = [
+    { value: 'all_received',  label: 'Received all items',            emoji: '✅' },
+    { value: 'partial_issue', label: 'Received partial / damaged',    emoji: '⚠️' },
+    { value: 'not_received',  label: 'Not received',                  emoji: '🚨' },
+  ];
+
+  return (
+    <div className="bg-white rounded-2xl border-2 border-green-200 p-4">
+      <h3 className="text-sm font-bold text-gray-800 mb-1">Confirm Your Delivery</h3>
+      <p className="text-[11px] text-gray-400 mb-3">Your order is marked delivered — please confirm what you received.</p>
+
+      <div className="space-y-2">
+        {OPTIONS.map(opt => (
+          <label key={opt.value}
+            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border cursor-pointer transition-colors ${
+              choice === opt.value ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'
+            }`}>
+            <input type="radio" name="deliveryAck" value={opt.value}
+              checked={choice === opt.value}
+              onChange={() => setChoice(opt.value)}
+              className="accent-green-600 w-4 h-4" />
+            <span className="text-sm font-semibold text-gray-800">{opt.emoji} {opt.label}</span>
+          </label>
+        ))}
+      </div>
+
+      {/* Option 1 — close order */}
+      {choice === 'all_received' && (
+        <button onClick={() => submit('all_received')} disabled={submitting}
+          className="mt-3 w-full py-3 rounded-2xl font-bold text-white text-sm active:scale-[0.98] transition disabled:opacity-50"
+          style={{ background: 'linear-gradient(135deg,#065f46,#16a34a)' }}>
+          {submitting ? 'Closing…' : '✅ Close Order'}
+        </button>
+      )}
+
+      {/* Option 2 — per-item missing quantity */}
+      {choice === 'partial_issue' && (
+        <div className="mt-3 space-y-2">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Enter missing / damaged quantity</p>
+          {items.map((it, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-800 truncate">{it.name}</p>
+                <p className="text-[10px] text-gray-400">Delivered qty: {it.quantity}{it.unit ? ` ${it.unit}` : ''}</p>
+              </div>
+              <input
+                type="number" min="0" max={it.quantity} step="any" placeholder="0"
+                value={missing[it.name] ?? ''}
+                onChange={e => setMissing(m => ({ ...m, [it.name]: e.target.value }))}
+                className="w-24 border border-gray-200 rounded-xl px-2.5 py-2 text-sm text-right"
+              />
+            </div>
+          ))}
+          <button onClick={submitPartial} disabled={submitting}
+            className="w-full py-3 rounded-2xl font-bold text-white text-sm active:scale-[0.98] transition disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg,#b45309,#d97706)' }}>
+            {submitting ? 'Submitting…' : 'Submit'}
+          </button>
+        </div>
+      )}
+
+      {/* Option 3 — immediate alert */}
+      {choice === 'not_received' && (
+        <button onClick={() => submit('not_received')} disabled={submitting}
+          className="mt-3 w-full py-3 rounded-2xl font-bold text-white text-sm active:scale-[0.98] transition disabled:opacity-50"
+          style={{ background: 'linear-gradient(135deg,#b91c1c,#dc2626)' }}>
+          {submitting ? 'Sending…' : '🚨 Send Alert'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Support ──────────────────────────────────
 export function SupportSection({ support = {}, sellerName }) {
   return (

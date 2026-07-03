@@ -15,7 +15,7 @@ import OrderTimeline from '../../components/orders/OrderTimeline';
 import PaymentSummary from '../../components/orders/PaymentSummary';
 import {
   ItemsList, DeclinedItems, RefundSection, WalletHistory,
-  DocumentsSection, SupportSection,
+  DocumentsSection, SupportSection, DeliveryAckSection,
 } from '../../components/orders/OrderSections';
 import { formatINR, formatDate } from '../../utils/currency';
 import api from '../../utils/api';
@@ -53,12 +53,16 @@ export default function UnifiedOrderDetail() {
   const [error,   setError]   = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
+  const loadOrder = () => {
     api.get(`/v2/orders/${vertical}/${id}`)
       .then(r => setOrder(r.data.order))
       .catch(err => setError(err?.response?.data?.message || 'Failed to load order'))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    loadOrder();
   }, [vertical, id]);
 
   if (loading) return (<><Navbar /><Loader /><Footer /></>);
@@ -142,6 +146,9 @@ export default function UnifiedOrderDetail() {
             )}
           </div>
         </div>
+
+        {/* ── Delivery acknowledgement (post-delivery) ── */}
+        <DeliveryAckSection order={order} onDone={loadOrder} />
 
         {/* ── Timeline ── */}
         <OrderTimeline timeline={order.timeline} />

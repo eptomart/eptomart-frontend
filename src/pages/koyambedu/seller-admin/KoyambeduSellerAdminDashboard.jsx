@@ -58,6 +58,7 @@ const EMPTY_SELLER = {
 export default function KoyambeduSellerAdminDashboard() {
   const navigate = useNavigate();
   const [profile,  setProfile]  = useState(null);
+  const [alerts,   setAlerts]   = useState([]);
   const [tab,      setTab]      = useState('sellers');
   const [sellers,  setSellers]  = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -94,6 +95,12 @@ export default function KoyambeduSellerAdminDashboard() {
   const { translate, describe, translating, describing } = useAI();
 
   useEffect(() => { loadProfile(); }, []);
+  // Delivery alerts (customer reported not-received / partial-damaged)
+  useEffect(() => {
+    api.get('/koyambedu/seller-admin/alerts')
+      .then(r => setAlerts(r.data.alerts || []))
+      .catch(() => {});
+  }, []);
   useEffect(() => {
     if (tab === 'sellers')    loadSellers();
     if (tab === 'products' && sellerFilter) loadProducts(sellerFilter);
@@ -325,6 +332,33 @@ export default function KoyambeduSellerAdminDashboard() {
 
   return (
     <div className="min-h-screen bg-green-50 pb-10">
+      {/* ── Delivery alerts (customer-reported issues) ── */}
+      {alerts.length > 0 && (
+        <div className="px-4 pt-3">
+          <div className="rounded-2xl p-3 border-2 border-red-300" style={{ background: '#fef2f2' }}>
+            <p className="text-sm font-black text-red-700 mb-2">🚨 Delivery Alerts ({alerts.length})</p>
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              {alerts.map(a => (
+                <button key={a._id} onClick={() => navigate('/koyambedu/seller-admin/orders')}
+                  className="w-full text-left bg-white rounded-xl px-3 py-2 border border-red-100">
+                  <p className="text-xs font-bold text-gray-800">
+                    #{a.orderId} — {a.deliveryAck?.alert?.type === 'not_received' ? 'NOT RECEIVED' : 'Partial / damaged delivery'}
+                  </p>
+                  {a.deliveryAck?.issues?.length > 0 && (
+                    <p className="text-[10px] text-red-600 mt-0.5">
+                      {a.deliveryAck.issues.map(i => `${i.name}: ${i.missingQty}${i.unit ? ' ' + i.unit : ''} missing`).join(' · ')}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    Raised {a.deliveryAck?.alert?.raisedAt ? new Date(a.deliveryAck.alert.raisedAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : ''}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg,#14532d,#16a34a)' }} className="px-4 pt-10 pb-4">
         <div className="flex items-center gap-3 mb-1">
