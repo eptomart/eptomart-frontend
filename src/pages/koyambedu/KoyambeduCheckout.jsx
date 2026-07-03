@@ -557,13 +557,6 @@ export default function KoyambeduCheckout() {
         couponCode: couponApplied?.code || undefined,
       });
 
-      if (paymentMethod === 'cod') {
-        await clearCart();
-        setPlaced(data.order);
-        toast.success('Order placed!');
-        return;
-      }
-
       // Razorpay
       const { data: rzp } = await api.post('/koyambedu/orders/create-razorpay', { orderId: data.order._id });
       const launch = () => {
@@ -1066,7 +1059,6 @@ export default function KoyambeduCheckout() {
               <h2 className="font-bold text-gray-800 text-sm">Payment Method</h2>
               {[
                 { val: 'razorpay', label: 'Online Payment',   sub: 'Card / UPI / NetBanking', icon: '💳' },
-                { val: 'cod',      label: 'Cash on Delivery', sub: 'Pay when order arrives',  icon: '💵' },
               ].map(opt => (
                 <button key={opt.val} onClick={() => setPaymentMethod(opt.val)}
                   className="w-full p-3.5 rounded-xl text-left flex items-center gap-3 transition"
