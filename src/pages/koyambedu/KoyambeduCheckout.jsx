@@ -559,8 +559,9 @@ export default function KoyambeduCheckout() {
 
       // Razorpay
       const { data: rzp } = await api.post('/koyambedu/orders/create-razorpay', { orderId: data.order._id });
+      const pendingOrderId = data.order._id;
       const launch = () => {
-        new window.Razorpay({
+        const rzpModal = new window.Razorpay({
           key:      import.meta.env.VITE_RAZORPAY_KEY_ID,
           amount:   rzp.amount * 100,
           currency: 'INR',
@@ -570,7 +571,7 @@ export default function KoyambeduCheckout() {
           handler: async (resp) => {
             try {
               await api.post('/koyambedu/orders/verify-payment', {
-                orderId:           data.order._id,
+                orderId:           pendingOrderId,
                 razorpayOrderId:   resp.razorpay_order_id,
                 razorpayPaymentId: resp.razorpay_payment_id,
                 razorpaySignature: resp.razorpay_signature,
@@ -580,9 +581,19 @@ export default function KoyambeduCheckout() {
               toast.success('Payment confirmed!');
             } catch { toast.error('Payment verification failed'); }
           },
+          modal: {
+            ondismiss: async () => {
+              // User closed Razorpay without paying — delete the pending order so it
+              // doesn't show up in My Orders. Cart items remain intact.
+              try { await api.delete(`/koyambedu/orders/${pendingOrderId}/pending`); } catch (_) {}
+              toast('Payment cancelled — your cart is saved', { icon: '🛒' });
+              setLoading(false);
+            },
+          },
           prefill: { name: addr.fullName, contact: addr.phone, email: user?.email || '' },
           theme:   { color: '#16a34a' },
-        }).open();
+        });
+        rzpModal.open();
       };
       if (!window.Razorpay) {
         const s = document.createElement('script');
