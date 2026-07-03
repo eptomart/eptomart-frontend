@@ -31,6 +31,7 @@ const STATUS_COLORS = {
   out_for_delivery: 'bg-indigo-100 text-indigo-700',
   delivered: 'bg-green-200 text-green-800',
   cancelled: 'bg-red-100 text-red-700',
+  closed: 'bg-gray-200 text-gray-700',
   returned: 'bg-red-100 text-red-700',
   refund_processing: 'bg-cyan-100 text-cyan-700',
   refunded: 'bg-cyan-100 text-cyan-800',

@@ -29,7 +29,7 @@ const STATUS_LABEL = {
   placed: 'Placed', pending_confirmation: 'Awaiting Review',
   sa_review_submitted: 'Submitted for Approval',
   price_revision_pending: 'Price Revision', confirmed: 'Confirmed',
-  packing: 'Packing', dispatched: 'On the Way',
+  packing: 'Procurement in Progress', dispatched: 'On the Way',
   delivered: 'Delivered', cancelled: 'Cancelled', refund_initiated: 'Refund',
 };
 
@@ -44,7 +44,7 @@ const SLOTS = ['Morning (6AM-9AM)', 'Afternoon (12PM-3PM)', 'Evening (4PM-7PM)']
 
 const SA_STATUS_OPTIONS = [
   { value: 'confirmed',  label: '✅ Confirmed',    desc: 'Order confirmed, ready to pack' },
-  { value: 'packing',    label: '📦 Packing',      desc: 'Packing in progress' },
+  { value: 'packing',    label: '📦 Procurement',  desc: 'Procurement is in progress' },
   { value: 'dispatched', label: '🚚 Dispatched',   desc: 'Out for delivery' },
   { value: 'delivered',  label: '🏠 Delivered',    desc: 'Delivered to customer' },
 ];
@@ -59,6 +59,10 @@ const canReviewItems = (order) =>
 // Has SA made any item changes?
 const hasAnyReview = (order) =>
   (order.items || []).some(it => it.itemStatus && it.itemStatus !== 'pending');
+
+// Approval is only needed when something was declined or reduced
+const hasDeclines = (order) =>
+  (order.items || []).some(it => ['declined', 'partial'].includes(it.itemStatus));
 
 export default function KoyambeduSellerAdminOrders() {
   const navigate = useNavigate();
@@ -103,6 +107,17 @@ export default function KoyambeduSellerAdminOrders() {
   const toggle = (id) => setExpanded(p => ({ ...p, [id]: !p[id] }));
 
   // ── Per-item actions ──────────────────────────
+  const confirmAll = async (orderId) => {
+    if (!confirm('Confirm ALL pending items at their ordered quantities?')) return;
+    try {
+      const { data } = await api.post(`/koyambedu/seller-admin/orders/${orderId}/confirm-all`);
+      toast.success(data.message || 'All items confirmed');
+      fetchOrders();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not confirm items');
+    }
+  };
+
   const markAvailable = async (orderId, itemId, itemName) => {
     if (!confirm(`Mark "${itemName}" as available? The decline/reduction and its refund will be withdrawn and the original quantity confirmed.`)) return;
     try {
@@ -236,7 +251,7 @@ export default function KoyambeduSellerAdminOrders() {
                 <option value="placed,pending_confirmation">Awaiting Review</option>
                 <option value="sa_review_submitted">Submitted for Approval</option>
                 <option value="confirmed">Confirmed</option>
-                <option value="packing">Packing</option>
+                <option value="packing">Procurement in Progress</option>
                 <option value="dispatched">Dispatched</option>
                 <option value="delivered">Delivered</option>
                 <option value="cancelled">Cancelled</option>
@@ -273,7 +288,8 @@ export default function KoyambeduSellerAdminOrders() {
           const alreadySubmitted = order.saReview?.status === 'submitted';
           const reviewable = hasAnyReview(order) || myItems.some(it => !it.itemStatus || it.itemStatus === 'pending');
           const pendingRefund = calc.declinedRefundAmount || order.saReview?.pendingRefundAmount || 0;
-          const isPostApproval = ['confirmed','packing','dispatched','delivered'].includes(order.orderStatus);
+          const isPostApproval = ['confirmed','packing','dispatched'].includes(order.orderStatus);
+          const isFinalised    = ['delivered','closed','cancelled'].includes(order.orderStatus);
 
           return (
             <div key={order._id} className="bg-white rounded-2xl overflow-hidden"
@@ -309,14 +325,11 @@ export default function KoyambeduSellerAdminOrders() {
                   </div>
                 )}
 
-                {/* Pending refund display — VIEW ONLY, SA cannot initiate */}
-                {pendingRefund > 0 && (
+                {/* Declined value display — refund handling is between Super Admin & customer */}
+                {pendingRefund > 0 && !['confirmed','packing','dispatched','delivered','closed','cancelled'].includes(order.orderStatus) && (
                   <div className="mb-2 px-3 py-2 rounded-xl flex items-center gap-2" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
                     <FiAlertTriangle size={13} style={{ color: '#dc2626', flexShrink: 0 }} />
-                    <div>
-                      <p className="text-xs font-bold text-red-700">Pending Refund: ₹{pendingRefund.toFixed(2)}</p>
-                      <p className="text-[10px] text-red-500">Awaiting Super Admin approval to process</p>
-                    </div>
+                    <p className="text-xs font-bold text-red-700">Declined value: ₹{pendingRefund.toFixed(2)}</p>
                   </div>
                 )}
 
@@ -338,8 +351,18 @@ export default function KoyambeduSellerAdminOrders() {
                     {isExpanded ? 'Hide items' : 'View items'}
                   </button>
 
+                  {/* Confirm All — fastest path when everything is available */}
+                  {canReview && myItems.some(it => !it.itemStatus || it.itemStatus === 'pending') && (
+                    <button
+                      onClick={() => confirmAll(order._id)}
+                      className="flex items-center gap-1.5 text-xs font-bold text-white px-3 py-1.5 rounded-xl active:scale-95 transition"
+                      style={{ background: 'linear-gradient(135deg,#065f46,#16a34a)' }}>
+                      <FiCheckCircle size={12} /> Confirm All
+                    </button>
+                  )}
+
                   {/* Submit for approval — only when review done and not yet submitted */}
-                  {canReview && hasAnyReview(order) && !alreadySubmitted && (
+                  {canReview && hasDeclines(order) && !alreadySubmitted && (
                     <button
                       onClick={() => submitForApproval(order._id)}
                       disabled={submitting === order._id}
@@ -348,6 +371,13 @@ export default function KoyambeduSellerAdminOrders() {
                       <FiSend size={12} />
                       {submitting === order._id ? 'Submitting…' : 'Submit for Approval'}
                     </button>
+                  )}
+
+                  {/* Finalised — SA has no further control */}
+                  {isFinalised && (
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-gray-100 text-gray-500">
+                      🔒 Order finalised — contact Super Admin for changes
+                    </span>
                   )}
 
                   {/* Status update for post-confirmation stages */}
@@ -463,7 +493,7 @@ export default function KoyambeduSellerAdminOrders() {
                       )}
                       {calc.declinedRefundAmount > 0 && (
                         <div className="flex justify-between text-xs">
-                          <span className="text-red-500">Declined Refund</span>
+                          <span className="text-red-500">Declined Value</span>
                           <span className="font-semibold text-red-600">−₹{calc.declinedRefundAmount?.toFixed(2)}</span>
                         </div>
                       )}
@@ -540,7 +570,7 @@ export default function KoyambeduSellerAdminOrders() {
 
             {/* SA restriction notice */}
             <div className="px-3 py-2 rounded-xl text-xs text-gray-500" style={{ background: '#f3f4f6', border: '1px solid #e5e7eb' }}>
-              ℹ️ Refunds require Super Admin approval. Submit the order for approval after reviewing all items.
+              ℹ️ Declines and quantity reductions require Super Admin approval — submit the order for approval after reviewing all items. Orders confirmed in full are confirmed immediately.
             </div>
 
             <div className="flex gap-3">

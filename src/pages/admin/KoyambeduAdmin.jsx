@@ -115,7 +115,7 @@ function DangerZone() {
 
 const STATUS_OPTIONS = [
   'placed','pending_confirmation','price_revision_pending','confirmed',
-  'packing','dispatched','delivered','cancelled',
+  'packing','dispatched','delivered','cancelled','closed',
 ];
 const STATUS_COLOR = {
   placed:'bg-gray-100 text-gray-700', pending_confirmation:'bg-yellow-100 text-yellow-700',
@@ -392,6 +392,21 @@ export default function KoyambeduAdmin() {
   };
 
   // ── Cancel order (Super Admin only) ─────────────────────────────
+  const closeOrder = async (order) => {
+    const comments = window.prompt(
+      `Close order ${order.orderId}?\n\nEnter closing comments (required — e.g. compensated customer with offer for missing items):`
+    );
+    if (comments == null) return;
+    if (!comments.trim() || comments.trim().length < 5) { toast.error('Closing comments are required (min 5 characters)'); return; }
+    try {
+      const { data } = await api.patch(`/koyambedu/admin/orders/${order._id}/close`, { comments: comments.trim() });
+      toast.success(data.message || 'Order closed');
+      loadTab('orders');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not close order');
+    }
+  };
+
   const handleCancelOrder = async () => {
     if (!cancelOrderModal) return;
     if (!cancelReason.trim()) { toast.error('Cancel reason is required'); return; }
@@ -991,6 +1006,16 @@ export default function KoyambeduAdmin() {
                           </p>
                           {(order.calculatedPricing?.declinedRefundAmount || 0) > 0 && (
                             <p className="text-[10px] text-red-500">Refund: ₹{order.calculatedPricing.declinedRefundAmount.toFixed(2)}</p>
+                          )}
+                          {order.reviewSummary?.declinedItems?.length > 0 && (
+                            <div className="mt-1 space-y-0.5">
+                              {order.reviewSummary.declinedItems.map((di, i) => (
+                                <p key={i} className="text-[10px] text-red-600">
+                                  ⛔ {di.name}: {di.declinedQty} {di.unit || ''} declined
+                                  {di.reason ? ` (${di.reason})` : ''} · ₹{(di.refundAmount || 0).toFixed(0)}
+                                </p>
+                              ))}
+                            </div>
                           )}
                         </div>
                         <div className="flex gap-2 flex-wrap justify-end">
