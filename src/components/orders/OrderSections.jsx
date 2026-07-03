@@ -209,28 +209,77 @@ export function DeliveryAckSection({ order, onDone }) {
 
   if (order.vertical !== 'koyambedu') return null;
 
-  // Already acknowledged — show the summary
+  // Already acknowledged — show the summary / resolution flow
   if (order.deliveryAck) {
     const ack = order.deliveryAck;
+    const confirmClose = async () => {
+      setSubmitting(true);
+      try {
+        const { data } = await api.post(`/koyambedu/orders/${order.id}/delivery-ack/close`);
+        toast.success(data.message || 'Order closed — thank you!');
+        onDone?.();
+      } catch (err) {
+        toast.error(err?.response?.data?.message || 'Could not close the order');
+      } finally {
+        setSubmitting(false);
+      }
+    };
+
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 p-4">
-        <h3 className="text-sm font-bold text-gray-800 mb-2">Delivery Confirmation</h3>
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+        <h3 className="text-sm font-bold text-gray-800">Delivery Confirmation</h3>
+
         {ack.status === 'all_received' && (
           <p className="text-xs text-green-700 bg-green-50 rounded-xl px-3 py-2">
             ✅ You confirmed all items were received. Order closed — thank you!
           </p>
         )}
+
+        {/* What was reported */}
         {ack.status === 'partial_issue' && (
           <div className="text-xs text-amber-800 bg-amber-50 rounded-xl px-3 py-2 space-y-1">
-            <p className="font-bold">⚠️ You reported missing/damaged items — our team has been alerted.</p>
+            <p className="font-bold">⚠️ You reported missing/damaged items{ack.alertActive ? ' — our team has been alerted.' : ':'}</p>
             {(ack.issues || []).map((i, k) => (
               <p key={k}>• {i.name}: {i.missingQty}{i.unit ? ` ${i.unit}` : ''} missing{i.note ? ` — ${i.note}` : ''}</p>
             ))}
           </div>
         )}
-        {ack.status === 'not_received' && (
+        {ack.status === 'not_received' && ack.alertActive && (
           <p className="text-xs text-red-700 bg-red-50 rounded-xl px-3 py-2">
             🚨 You reported the order was not received. Our team has been alerted and will contact you shortly.
+          </p>
+        )}
+        {ack.status === 'not_received' && !ack.alertActive && !ack.resolution && (
+          <p className="text-xs text-red-700 bg-red-50 rounded-xl px-3 py-2">
+            🚨 You reported the order was not received.
+          </p>
+        )}
+
+        {/* Resolution from our team */}
+        {ack.resolution && (
+          <div className="text-xs text-green-800 bg-green-50 border border-green-200 rounded-xl px-3 py-2 space-y-1">
+            <p className="font-bold">✅ Resolved by our team{ack.resolution.resolvedAt ? ` · ${formatDate(ack.resolution.resolvedAt)}` : ''}</p>
+            {ack.resolution.note && <p>{ack.resolution.note}</p>}
+          </div>
+        )}
+
+        {/* Ask the customer to acknowledge & close */}
+        {ack.canConfirmClose && (
+          <div className="pt-1">
+            <p className="text-[11px] text-gray-500 mb-2">
+              If you are satisfied with the resolution, please confirm to close this order.
+            </p>
+            <button onClick={confirmClose} disabled={submitting}
+              className="w-full py-3 rounded-2xl font-bold text-white text-sm active:scale-[0.98] transition disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg,#065f46,#16a34a)' }}>
+              {submitting ? 'Closing…' : '✅ Confirm & Close Order'}
+            </button>
+          </div>
+        )}
+
+        {(ack.resolutionAccepted || (order.status === 'closed' && ack.status !== 'all_received')) && (
+          <p className="text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
+            🔒 You accepted the resolution — this order is closed. Thank you!
           </p>
         )}
       </div>
