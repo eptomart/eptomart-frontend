@@ -38,7 +38,7 @@ export const EMPTY_VARIANT_PRODUCT = {
   nameTamil: '',
   description: '',
   unit: 'kg',
-  procurementChargePercent: 15,
+  procurementChargePercent: 0,
   platformChargePercent: 10,
   logisticsChargePercent: 10,
   variants: [
