@@ -277,9 +277,9 @@ export default function KoyambeduProductDetail() {
                   <span className="text-center">Pkg total</span>
                   <span className="text-right">Value</span>
                 </div>
-                {/* Rows — sorted highest qty first (bulk options most prominent) */}
+                {/* Rows — sorted smallest qty first */}
                 {[...product.variants]
-                  .sort((a, b) => Number(b.fromQty) - Number(a.fromQty))
+                  .sort((a, b) => Number(a.fromQty) - Number(b.fromQty))
                   .map((v, i) => {
                     const isActive    = activeVariant === v || (!v.toQty ? qty >= v.fromQty : (qty >= v.fromQty && qty <= v.toQty));
                     const isBestValue = bestVariant && String(v.fromQty) === String(bestVariant.fromQty);
