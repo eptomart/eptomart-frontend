@@ -6,7 +6,7 @@ import KoyambeduImageUploader from '../../components/koyambedu/KoyambeduImageUpl
 import KoyambeduVariantProductForm, { EMPTY_VARIANT_PRODUCT, getVariantOverlapError } from '../../components/koyambedu/KoyambeduVariantProductForm';
 import toast from 'react-hot-toast';
 
-const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'daily-price', 'refund-requests', 'reports'];
+const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'product-approvals', 'daily-price', 'refund-requests', 'reports'];
 
 const DELIVERY_SLOTS = [
   '06:00 AM – 08:59 AM',
@@ -207,6 +207,11 @@ export default function KoyambeduAdmin() {
   const [editProdForm,   setEditProdForm]   = useState({});
   const [editProdSaving, setEditProdSaving] = useState(false);
 
+  // Product approvals tab
+  const [pendingNewProducts,  setPendingNewProducts]  = useState([]);
+  const [pendingEditProducts, setPendingEditProducts] = useState([]);
+  const [prodApprovalSaving,  setProdApprovalSaving]  = useState(null); // productId being actioned
+
   // Daily price tab (admin) — v2 variant-aware
   const [dpProducts,    setDpProducts]    = useState([]);
   const [dpSaFilter,    setDpSaFilter]    = useState('');
@@ -336,6 +341,10 @@ export default function KoyambeduAdmin() {
         setDpProducts(data.products || []);
         setDpEdits({});
         setDpPreviews({});
+      } else if (t === 'product-approvals') {
+        const { data } = await api.get('/koyambedu/admin/products/pending');
+        setPendingNewProducts(data.pendingNew || []);
+        setPendingEditProducts(data.pendingEdits || []);
       }
     } catch { toast.error('Failed to load'); }
     finally { setLoading(false); }
@@ -466,7 +475,8 @@ export default function KoyambeduAdmin() {
     const variants = product.variants || [];
     if (!variants.length) return [];
     const totalCharge = (product.procurementChargePercent || 15) + (product.platformChargePercent || 10) + (product.logisticsChargePercent || 10);
-    const diff = 1 - (Number(variantDiffPercent) || 0) / 100;
+    // Each smaller variant is MORE expensive — multiply up by (1 + diff%)
+    const diff = 1 + (Number(variantDiffPercent) || 0) / 100;
     const sorted = [...variants].sort((a, b) => Number(b.fromQty) - Number(a.fromQty));
     let running = Number(highestBasePrice) || 0;
     const result = sorted.map(v => {
@@ -1013,7 +1023,7 @@ export default function KoyambeduAdmin() {
           {TAB_LIST.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white hover:bg-white/30'}`}>
-              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'reports' ? '📊 Reports' : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -2323,6 +2333,155 @@ export default function KoyambeduAdmin() {
                 {reviewEditSaving ? '...' : '✓ Approve'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════
+          ✅ PRODUCT APPROVALS TAB
+      ══════════════════════════════════════════════ */}
+      {tab === 'product-approvals' && !loading && (
+        <div className="space-y-6 pb-6">
+          {/* ── New products pending approval ── */}
+          <div>
+            <h2 className="font-bold text-gray-800 mb-3">New Products Awaiting Approval ({pendingNewProducts.length})</h2>
+            {pendingNewProducts.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center text-gray-400 text-sm">No new products pending</div>
+            ) : (
+              <div className="space-y-3">
+                {pendingNewProducts.map(p => (
+                  <div key={p._id} className="bg-white rounded-2xl border border-yellow-200 p-4 shadow-sm">
+                    <div className="flex gap-3 items-start">
+                      {p.images?.[0] && <img src={p.images[0].url} alt="" className="w-14 h-14 rounded-xl object-cover border border-gray-100 shrink-0" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-800">{p.name}</p>
+                        {p.nameTamil && <p className="text-xs text-gray-400">{p.nameTamil}</p>}
+                        <p className="text-xs text-gray-500 mt-0.5">{p.seller?.businessName} · {p.category?.icon} {p.category?.name}</p>
+                        {p.variants?.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {p.variants.map((v, i) => (
+                              <span key={i} className="text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                                {v.fromQty}{v.toQty ? `–${v.toQty}` : '+'} {p.unit} → ₹{v.finalPrice}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-green-700 font-bold text-sm mt-1">₹{p.currentPrice}/{p.unit}</p>
+                        )}
+                        <p className="text-[10px] text-gray-400 mt-1">Submitted {new Date(p.createdAt).toLocaleDateString('en-IN')}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        disabled={prodApprovalSaving === p._id}
+                        onClick={async () => {
+                          setProdApprovalSaving(p._id);
+                          try {
+                            await api.post(`/koyambedu/admin/products/${p._id}/reject`, { note: 'Rejected by admin' });
+                            toast.success('Product rejected');
+                            loadTab('product-approvals');
+                          } catch { toast.error('Failed'); }
+                          finally { setProdApprovalSaving(null); }
+                        }}
+                        className="flex-1 border-2 border-red-200 text-red-600 font-bold py-2 rounded-xl text-sm hover:bg-red-50 disabled:opacity-50">
+                        ✕ Reject
+                      </button>
+                      <button
+                        disabled={prodApprovalSaving === p._id}
+                        onClick={async () => {
+                          setProdApprovalSaving(p._id);
+                          try {
+                            await api.post(`/koyambedu/admin/products/${p._id}/approve`);
+                            toast.success('Product approved — now visible to customers');
+                            loadTab('product-approvals');
+                          } catch { toast.error('Failed'); }
+                          finally { setProdApprovalSaving(null); }
+                        }}
+                        className="flex-1 bg-green-600 text-white font-bold py-2 rounded-xl text-sm hover:bg-green-700 disabled:opacity-50">
+                        ✓ Approve
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Product edits pending approval ── */}
+          <div>
+            <h2 className="font-bold text-gray-800 mb-3">Pending Product Edits ({pendingEditProducts.length})</h2>
+            {pendingEditProducts.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center text-gray-400 text-sm">No pending edits</div>
+            ) : (
+              <div className="space-y-3">
+                {pendingEditProducts.map(p => {
+                  const edit = p.pendingEdit || {};
+                  const changedKeys = Object.keys(edit).filter(k => k !== 'variants');
+                  return (
+                    <div key={p._id} className="bg-white rounded-2xl border border-orange-200 p-4 shadow-sm">
+                      <div className="flex gap-3 items-start mb-3">
+                        {p.images?.[0] && <img src={p.images[0].url} alt="" className="w-12 h-12 rounded-xl object-cover border border-gray-100 shrink-0" />}
+                        <div className="flex-1">
+                          <p className="font-bold text-gray-800">{p.name}</p>
+                          <p className="text-xs text-gray-500">{p.seller?.businessName} · {p.category?.icon} {p.category?.name}</p>
+                          <p className="text-[10px] text-orange-600 font-semibold mt-0.5">
+                            Edit by {p.pendingEditBy?.name || 'SA'} · {p.pendingEditAt ? new Date(p.pendingEditAt).toLocaleDateString('en-IN') : ''}
+                          </p>
+                        </div>
+                      </div>
+                      {/* Show what changed */}
+                      <div className="bg-orange-50 rounded-xl p-3 text-xs space-y-1 mb-3">
+                        <p className="font-bold text-orange-800 mb-1">Proposed changes:</p>
+                        {changedKeys.map(k => (
+                          <p key={k} className="text-gray-700">
+                            <span className="font-semibold text-orange-700">{k}:</span>{' '}
+                            <span className="line-through text-gray-400">{JSON.stringify(p[k])?.slice(0,40)}</span>
+                            {' → '}
+                            <span className="text-green-700">{JSON.stringify(edit[k])?.slice(0,40)}</span>
+                          </p>
+                        ))}
+                        {edit.variants && (
+                          <p className="text-gray-700">
+                            <span className="font-semibold text-orange-700">variants:</span>{' '}
+                            {edit.variants.map((v,i) => `${v.fromQty}${v.toQty?`–${v.toQty}`:'+'} ${p.unit} @ ₹${v.basePrice} base`).join(', ')}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          disabled={prodApprovalSaving === p._id}
+                          onClick={async () => {
+                            setProdApprovalSaving(p._id);
+                            try {
+                              await api.post(`/koyambedu/admin/products/${p._id}/reject-edit`);
+                              toast.success('Edit rejected — original product unchanged');
+                              loadTab('product-approvals');
+                            } catch { toast.error('Failed'); }
+                            finally { setProdApprovalSaving(null); }
+                          }}
+                          className="flex-1 border-2 border-red-200 text-red-600 font-bold py-2 rounded-xl text-sm hover:bg-red-50 disabled:opacity-50">
+                          ✕ Discard Edit
+                        </button>
+                        <button
+                          disabled={prodApprovalSaving === p._id}
+                          onClick={async () => {
+                            setProdApprovalSaving(p._id);
+                            try {
+                              await api.post(`/koyambedu/admin/products/${p._id}/approve-edit`);
+                              toast.success('Edit approved — product updated');
+                              loadTab('product-approvals');
+                            } catch { toast.error('Failed'); }
+                            finally { setProdApprovalSaving(null); }
+                          }}
+                          className="flex-1 bg-green-600 text-white font-bold py-2 rounded-xl text-sm hover:bg-green-700 disabled:opacity-50">
+                          ✓ Apply Edit
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

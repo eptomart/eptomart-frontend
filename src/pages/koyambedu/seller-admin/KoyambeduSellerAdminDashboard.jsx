@@ -248,7 +248,7 @@ export default function KoyambeduSellerAdminDashboard() {
         ...prodCreateForm,
         variants: validVariants,
       });
-      toast.success('Product added!');
+      toast.success('Product submitted for superadmin approval');
       setShowAddProduct(false);
       if (sellerFilter === addProdSellerId) loadProducts(addProdSellerId);
     } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
@@ -297,11 +297,15 @@ export default function KoyambeduSellerAdminDashboard() {
     if (overlapErr) { toast.error(overlapErr); return; }
     setSaving(true);
     try {
-      await api.put(`/koyambedu/seller-admin/sellers/${sellerFilter}/products/${editProduct._id}`, {
+      const { data } = await api.put(`/koyambedu/seller-admin/sellers/${sellerFilter}/products/${editProduct._id}`, {
         ...prodForm,
         variants: validVariants.length > 0 ? validVariants : undefined,
       });
-      toast.success('Product updated');
+      if (data.pendingApproval) {
+        toast.success('Product changes submitted for superadmin approval');
+      } else {
+        toast.success('Product updated');
+      }
       setEditProduct(null);
       loadProducts(sellerFilter);
     } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
@@ -511,6 +515,15 @@ export default function KoyambeduSellerAdminDashboard() {
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${p.isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                           {p.isAvailable ? 'Active' : 'Inactive'}
                         </span>
+                        {p.approvalStatus === 'pending' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">⏳ Pending Approval</span>
+                        )}
+                        {p.approvalStatus === 'rejected' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600">✗ Rejected</span>
+                        )}
+                        {p.pendingEdit && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">🔄 Edit Pending Review</span>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-col gap-1 shrink-0 self-start">
