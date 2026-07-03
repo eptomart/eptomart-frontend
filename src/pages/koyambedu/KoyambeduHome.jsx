@@ -8,7 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import EptoSEO from '../../components/common/EptoSEO';
 import {
   FiSearch, FiChevronRight, FiMapPin, FiShoppingBag,
-  FiArrowLeft, FiChevronDown, FiChevronUp, FiInfo,
+  FiArrowLeft, FiChevronDown,
 } from 'react-icons/fi';
 import { FaLeaf } from 'react-icons/fa';
 import BottomNav from '../../components/common/BottomNav';
@@ -60,17 +60,6 @@ export default function KoyambeduHome() {
 
   const [categories,     setCategories]     = useState([]);
   const [lastUpdate,     setLastUpdate]     = useState(null);
-  // Market notice collapsed state — persist in localStorage
-  const [noticeCollapsed, setNoticeCollapsed] = useState(
-    () => localStorage.getItem('kbd_notice_collapsed') === '1'
-  );
-
-  const toggleNotice = () => {
-    const next = !noticeCollapsed;
-    setNoticeCollapsed(next);
-    localStorage.setItem('kbd_notice_collapsed', next ? '1' : '0');
-  };
-
   useEffect(() => {
     fetchCart();
     api.get('/koyambedu/categories')
@@ -191,47 +180,6 @@ export default function KoyambeduHome() {
             </div>
           </div>
         )}
-
-        {/* ── Feature 2: Market Price Notice (collapsible) ── */}
-        <div className="mb-4 rounded-2xl overflow-hidden"
-          style={{ background: '#fffbf0', border: '1.5px solid #fed7aa', boxShadow: '0 2px 8px rgba(249,115,22,0.07)' }}>
-          <button onClick={toggleNotice}
-            className="w-full px-4 py-3 flex items-center gap-3 text-left active:bg-orange-50 transition-colors">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: 'linear-gradient(135deg,#ea580c,#f97316)' }}>
-              <FiInfo size={14} className="text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-orange-900 font-bold text-xs">Daily Market Price Notice</p>
-              {noticeCollapsed && (
-                <p className="text-orange-600 text-[10px] mt-0.5">Tap to read about price adjustments</p>
-              )}
-            </div>
-            {noticeCollapsed
-              ? <FiChevronDown size={14} className="text-orange-500 shrink-0" />
-              : <FiChevronUp   size={14} className="text-orange-500 shrink-0" />
-            }
-          </button>
-          {!noticeCollapsed && (
-            <div className="px-4 pb-4">
-              <div className="border-t border-orange-100 pt-3 space-y-2">
-                <p className="text-orange-800 text-xs leading-relaxed">
-                  Vegetable and fruit prices are <strong>estimated</strong> based on today's Koyambedu wholesale market. Since delivery is scheduled for tomorrow, market prices may increase or decrease before procurement.
-                </p>
-                <div className="rounded-xl p-2.5 space-y-1.5" style={{ background: 'rgba(249,115,22,0.06)' }}>
-                  <p className="text-xs text-green-700 font-semibold flex items-center gap-1.5">
-                    <span className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center text-[9px]">↓</span>
-                    If prices <strong>decrease</strong>, the savings will be credited to your Eptomart Wallet.
-                  </p>
-                  <p className="text-xs text-amber-700 font-semibold flex items-center gap-1.5">
-                    <span className="w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center text-[9px]">↑</span>
-                    If prices <strong>increase</strong>, the difference will be adjusted in your next order.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* ── Market Closed Banner ── */}
         {isMarketClosed && (

@@ -973,6 +973,37 @@ export default function KoyambeduCheckout() {
               )}
             </div>
 
+            {/* ── Tomorrow-only: Market Price Notice ── */}
+            {deliveryTab === 'tomorrow' && (
+              <div className="rounded-2xl overflow-hidden"
+                style={{ background: '#fffbf0', border: '1.5px solid #fed7aa', boxShadow: '0 2px 8px rgba(249,115,22,0.07)' }}>
+                <div className="px-4 py-3 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: 'linear-gradient(135deg,#ea580c,#f97316)' }}>
+                    <span className="text-white text-sm">ℹ</span>
+                  </div>
+                  <p className="text-orange-900 font-bold text-xs">Daily Market Price Notice</p>
+                </div>
+                <div className="px-4 pb-4">
+                  <div className="border-t border-orange-100 pt-3 space-y-2">
+                    <p className="text-orange-800 text-xs leading-relaxed">
+                      Prices are <strong>estimated</strong> based on today's Koyambedu wholesale market rates. Since your delivery is tomorrow, prices may change before procurement.
+                    </p>
+                    <div className="rounded-xl p-2.5 space-y-1.5" style={{ background: 'rgba(249,115,22,0.06)' }}>
+                      <p className="text-xs text-green-700 font-semibold flex items-center gap-1.5">
+                        <span className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center text-[9px]">↓</span>
+                        If prices <strong>decrease</strong>, the savings will be credited to your Eptomart Wallet.
+                      </p>
+                      <p className="text-xs text-amber-700 font-semibold flex items-center gap-1.5">
+                        <span className="w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center text-[9px]">↑</span>
+                        If prices <strong>increase</strong>, the difference will be adjusted in your next order.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Validation hint */}
             {!selectedSlot && visibleSlots.length > 0 && (
               <p className="text-xs text-center text-amber-600 font-semibold">
