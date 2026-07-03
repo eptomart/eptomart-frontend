@@ -65,7 +65,7 @@ export default function KoyambeduSellerAdminOrders() {
   const [orders,    setOrders]    = useState([]);
   const [loading,   setLoading]   = useState(false);
   const [expanded,  setExpanded]  = useState({});
-  const [filters,   setFilters]   = useState({ orderDate: '', deliveryDate: '', deliverySlot: '' });
+  const [filters,   setFilters]   = useState({ orderDate: '', deliveryDate: '', deliverySlot: '', status: '' });
   const [showFilters, setShowFilters] = useState(false);
 
   // Status modal (for confirmed/packing/dispatched/delivered)
@@ -90,6 +90,7 @@ export default function KoyambeduSellerAdminOrders() {
       if (filters.orderDate)    params.orderDate    = filters.orderDate;
       if (filters.deliveryDate) params.deliveryDate = filters.deliveryDate;
       if (filters.deliverySlot) params.deliverySlot = filters.deliverySlot;
+      if (filters.status)       params.status       = filters.status;
       const { data } = await api.get('/koyambedu/seller-admin/orders', { params });
       setOrders(data.orders || []);
     } catch {
@@ -102,6 +103,17 @@ export default function KoyambeduSellerAdminOrders() {
   const toggle = (id) => setExpanded(p => ({ ...p, [id]: !p[id] }));
 
   // ── Per-item actions ──────────────────────────
+  const markAvailable = async (orderId, itemId, itemName) => {
+    if (!confirm(`Mark "${itemName}" as available? The decline/reduction and its refund will be withdrawn and the original quantity confirmed.`)) return;
+    try {
+      const { data } = await api.patch(`/koyambedu/seller-admin/orders/${orderId}/items/${itemId}/available`);
+      toast.success(data.message || 'Item restored');
+      fetchOrders();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not restore item');
+    }
+  };
+
   const openItemAction = (orderId, itemId, type, item) => {
     setItemAction({ orderId, itemId, type });
     setDeclineReason('unavailable');
@@ -188,7 +200,7 @@ export default function KoyambeduSellerAdminOrders() {
           <button onClick={() => setShowFilters(f => !f)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white active:scale-95 transition"
             style={{ background: 'rgba(255,255,255,0.2)' }}>
-            <FiFilter size={12} /> Filters {(filters.orderDate || filters.deliveryDate || filters.deliverySlot) ? '●' : ''}
+            <FiFilter size={12} /> Filters {(filters.orderDate || filters.deliveryDate || filters.deliverySlot || filters.status) ? '●' : ''}
           </button>
         </div>
 
@@ -213,6 +225,21 @@ export default function KoyambeduSellerAdminOrders() {
                 className="w-full rounded-xl px-3 py-2 text-xs bg-white/90 text-gray-800 outline-none">
                 <option value="">All Slots</option>
                 {SLOTS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <p className="text-[10px] text-emerald-200 mb-1">Order Status</p>
+              <select value={filters.status}
+                onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
+                className="w-full rounded-xl px-2.5 py-2 text-xs bg-white/90 text-gray-800 outline-none">
+                <option value="">All statuses</option>
+                <option value="placed,pending_confirmation">Awaiting Review</option>
+                <option value="sa_review_submitted">Submitted for Approval</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="packing">Packing</option>
+                <option value="dispatched">Dispatched</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
               </select>
             </div>
             <button onClick={() => setFilters({ orderDate: '', deliveryDate: '', deliverySlot: '' })}
@@ -381,6 +408,16 @@ export default function KoyambeduSellerAdminOrders() {
                               <p className="font-bold text-green-700 text-sm mt-1">
                                 ₹{(price * (item.itemStatus === 'declined' ? 0 : confirmedQty)).toFixed(0)}
                               </p>
+
+                              {/* Restore: item arranged → withdraw decline/refund, confirm original qty */}
+                              {canReview && ['declined', 'partial'].includes(item.itemStatus) && (
+                                <button
+                                  onClick={() => markAvailable(order._id, itemId, item.name)}
+                                  className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg active:scale-95 transition mt-2"
+                                  style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #93c5fd' }}>
+                                  <FiCheckCircle size={11} /> Available — restore full qty
+                                </button>
+                              )}
 
                               {/* Per-item action buttons — SA only, not available after submit */}
                               {canAction && (

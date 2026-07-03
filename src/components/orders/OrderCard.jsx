@@ -67,11 +67,28 @@ export default function OrderCard({ order }) {
               </span>
             )}
           </div>
-          {order.hasDeclinedItems && (
-            <span className="inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-              Some items updated — refund applies
-            </span>
-          )}
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {order.hasDeclinedItems && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                Some items updated — refund applies
+              </span>
+            )}
+            {['initiated', 'pending', 'processing'].includes(order.refundStatus) && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-700">
+                💰 Refund Initiated
+              </span>
+            )}
+            {order.refundStatus === 'completed' && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                💰 Refund Completed
+              </span>
+            )}
+            {['failed', 'manual_required'].includes(order.refundStatus) && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                🔄 Refund Processing
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0 ml-3">
           <span className="font-bold" style={{ color: vm.color }}>{formatINR(order.totalAmount)}</span>
