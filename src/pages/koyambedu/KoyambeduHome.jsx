@@ -51,7 +51,7 @@ const getISTHour = () => {
 };
 
 export default function KoyambeduHome() {
-  const { fetchCart, itemCount, subtotal, userLocation, locationLabel } = useKoyambeduCart();
+  const { fetchCart, itemCount, userLocation, locationLabel } = useKoyambeduCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const isMarketClosed = getISTHour() >= 9;
@@ -320,20 +320,6 @@ export default function KoyambeduHome() {
       </div>
 
       <BottomNav />
-
-      {itemCount > 0 && (
-        <div className="fixed left-4 right-4 max-w-lg mx-auto z-40" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 68px)' }}>
-          <div className="bg-green-600 text-white px-4 py-3 rounded-2xl flex items-center justify-between shadow-xl">
-            <div>
-              <p className="text-xs opacity-80">{itemCount} item{itemCount !== 1 ? 's' : ''}</p>
-              <p className="font-black text-sm">₹{subtotal.toLocaleString('en-IN')}</p>
-            </div>
-            <Link to="/koyambedu/cart" className="bg-white text-emerald-700 font-black text-sm px-5 py-2 rounded-xl">
-              View Cart →
-            </Link>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
