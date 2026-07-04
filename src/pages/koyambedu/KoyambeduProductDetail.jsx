@@ -33,6 +33,7 @@ export default function KoyambeduProductDetail() {
   const [qtyInput, setQtyInput] = useState('1'); // local string for editable input
   const [qtyInvalid, setQtyInvalid] = useState(false); // true when typed value is below minQty
   const [priceHistory, setPriceHistory] = useState([]);
+  const [showQtySheet, setShowQtySheet] = useState(false); // variant qty bottom sheet
   const autoCommitRef = useRef(null);
 
   useEffect(() => {
@@ -156,11 +157,11 @@ export default function KoyambeduProductDetail() {
     navigate('/koyambedu/cart');
   };
 
-  // Select a tier chip: keep current qty if it already falls in range, else set to fromQty
+  // Select a tier chip: snap qty to fromQty if out of range, then open the bottom sheet
   const selectVariant = (v) => {
     const inRange = !v.toQty ? qty >= v.fromQty : (qty >= v.fromQty && qty <= v.toQty);
-    if (inRange) return;
-    setQty(v.fromQty);
+    if (!inRange) setQty(v.fromQty);
+    setShowQtySheet(true);
   };
 
   // ── Render ───────────────────────────────────────────────────
@@ -430,8 +431,7 @@ export default function KoyambeduProductDetail() {
         {/* ══ Quantity ══ */}
         <div className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
 
-          {/* ── Variant chips (tap to pick a tier) ── */}
-          {hasVariants && (
+          {hasVariants ? (
             <>
               <p className="font-bold text-gray-800 text-sm mb-2">Select Quantity Range</p>
               <div className="flex gap-2 flex-wrap">
@@ -447,126 +447,31 @@ export default function KoyambeduProductDetail() {
                   </button>
                 ))}
               </div>
-            </>
-          )}
-
-          {/* ── Prominent qty editor — shown when variant selected OR no variants ── */}
-          {hasVariants && activeVariant ? (
-            /* Variant mode: prominent full-width qty input + stepper */
-            <div className="mt-3 rounded-2xl p-3"
-              style={{ background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '2px solid #16a34a' }}>
-              {/* Active tier label */}
-              <p className="text-[11px] text-green-700 font-bold mb-2 flex items-center gap-1">
-                ✓ Active tier:&nbsp;
-                <span className="bg-green-600 text-white px-2 py-0.5 rounded-full text-[10px]">
-                  {activeVariant.toQty
-                    ? `${activeVariant.fromQty}–${activeVariant.toQty} ${product.unit}`
-                    : `${activeVariant.fromQty}+ ${product.unit}`}
-                  &nbsp;·&nbsp;₹{activeFinalPrice}/{product.unit}
-                </span>
-              </p>
-
-              {/* Label */}
-              <p className="text-xs font-black text-green-800 mb-2 uppercase tracking-wide">
-                ✏️ Type exact quantity
-              </p>
-
-              {/* Large input row */}
-              <div className="flex items-center gap-3">
-                {/* − */}
-                <button
-                  onClick={() => {
-                    const newQty = qty - 1;
-                    if (activeVariant && newQty >= activeVariant.fromQty) {
-                      setQty(newQty);
-                    } else {
-                      const idx = product.variants.indexOf(activeVariant);
-                      const prev = product.variants[idx - 1];
-                      if (prev) setQty(prev.toQty);
-                    }
-                  }}
-                  disabled={qty <= minQty}
-                  className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xl active:scale-90 transition disabled:opacity-40 shrink-0"
-                  style={{ background: '#fff', color: '#15803d', border: '2px solid #16a34a' }}>
-                  −
-                </button>
-
-                {/* Input */}
-                <div className="flex-1 flex flex-col items-center">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={qtyInput}
-                    maxLength={5}
-                    onChange={e => {
-                      const raw = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
-                      setQtyInput(raw);
-                      setQtyInvalid(false);
-                      clearTimeout(autoCommitRef.current);
-                      autoCommitRef.current = setTimeout(() => {
-                        const val = parseInt(raw, 10);
-                        const withinMax = maxQty === null ? true : val <= maxQty;
-                        if (!isNaN(val) && val >= minQty && withinMax) {
-                          setQty(val); setQtyInvalid(false);
-                        } else if (!isNaN(val) && val < minQty) {
-                          setQtyInvalid(true);
-                        }
-                      }, 3000);
-                    }}
-                    onBlur={e => {
-                      clearTimeout(autoCommitRef.current);
-                      const val = parseInt(e.target.value, 10);
-                      const withinMax = maxQty === null ? true : val <= maxQty;
-                      if (!isNaN(val) && val >= minQty && withinMax) {
-                        setQty(val); setQtyInvalid(false);
-                      } else if (!isNaN(val) && val < minQty) {
-                        toast.error(`Minimum is ${minQty} ${product.unit}`);
-                        setQtyInvalid(true);
-                      } else {
-                        setQtyInput(String(qty)); setQtyInvalid(false);
-                      }
-                    }}
-                    className={`w-full text-center text-2xl font-black bg-white rounded-xl px-2 py-2.5 focus:outline-none transition ${
-                      qtyInvalid
-                        ? 'border-2 border-red-500 text-red-600'
-                        : 'border-2 border-green-500 text-gray-900 focus:border-green-700'
-                    }`}
-                    style={{ appearance: 'textfield', MozAppearance: 'textfield', WebkitAppearance: 'none' }}
-                  />
-                  <span className="text-[11px] font-bold text-green-700 mt-1">{product.unit}</span>
+              {/* Tap hint when no variant picked yet */}
+              {!activeVariant && (
+                <div className="mt-3 rounded-xl px-4 py-3 text-center"
+                  style={{ background: '#f0fdf4', border: '1.5px dashed #16a34a' }}>
+                  <p className="text-green-700 text-sm font-bold">👆 Tap a range above to set quantity</p>
                 </div>
-
-                {/* + */}
-                <button
-                  onClick={() => {
-                    const newQty = qty + 1;
-                    if (isOpenEndedActive) {
-                      setQty(newQty);
-                    } else if (activeVariant && newQty <= activeVariant.toQty) {
-                      setQty(newQty);
-                    } else {
-                      const idx = product.variants.indexOf(activeVariant);
-                      const next = product.variants[idx + 1];
-                      if (next) setQty(next.fromQty);
-                    }
-                  }}
-                  disabled={isOpenEndedActive ? false : qty >= (maxQty ?? Infinity)}
-                  className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-xl text-white active:scale-90 transition disabled:opacity-40 shrink-0"
-                  style={{ background: '#16a34a', boxShadow: '0 4px 12px rgba(22,163,74,0.4)' }}>
-                  +
-                </button>
-              </div>
-
-              {qtyInvalid && (
-                <p className="text-xs text-red-500 font-semibold mt-1.5 text-center">
-                  Min {minQty} {product.unit} for this tier
-                </p>
               )}
-            </div>
-          ) : !hasVariants ? (
-            /* No-variant mode: original compact stepper */
-            <div className="flex items-center justify-between mt-3">
+              {/* Compact summary when variant is chosen — tapping reopens sheet */}
+              {activeVariant && (
+                <button onClick={() => setShowQtySheet(true)}
+                  className="mt-3 w-full flex items-center justify-between rounded-xl px-4 py-3 active:scale-[0.98] transition"
+                  style={{ background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '2px solid #16a34a' }}>
+                  <div className="text-left">
+                    <p className="text-[10px] text-green-600 font-bold uppercase tracking-wide">Selected</p>
+                    <p className="text-green-800 font-black text-base">{qty} {product.unit}
+                      <span className="text-xs font-semibold ml-2 text-green-600">@ ₹{activeFinalPrice}/{product.unit}</span>
+                    </p>
+                  </div>
+                  <span className="text-green-700 text-sm font-black">✏ Edit →</span>
+                </button>
+              )}
+            </>
+          ) : (
+            /* No-variant mode: compact inline stepper */
+            <div className="flex items-center justify-between">
               <p className="font-bold text-gray-800 text-sm">Quantity</p>
               <div className="flex items-center gap-3">
                 <button
@@ -579,43 +484,29 @@ export default function KoyambeduProductDetail() {
                 <div className="flex flex-col items-center">
                   <p className="text-[9px] text-green-600 font-bold mb-0.5 uppercase tracking-wide">✏ Type qty</p>
                   <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={qtyInput}
-                    maxLength={5}
+                    type="text" inputMode="numeric" pattern="[0-9]*"
+                    value={qtyInput} maxLength={5}
                     onChange={e => {
                       const raw = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
-                      setQtyInput(raw);
-                      setQtyInvalid(false);
+                      setQtyInput(raw); setQtyInvalid(false);
                       clearTimeout(autoCommitRef.current);
                       autoCommitRef.current = setTimeout(() => {
                         const val = parseInt(raw, 10);
                         const withinMax = maxQty === null ? true : val <= maxQty;
-                        if (!isNaN(val) && val >= minQty && withinMax) {
-                          setQty(val); setQtyInvalid(false);
-                        } else if (!isNaN(val) && val < minQty) {
-                          setQtyInvalid(true);
-                        }
+                        if (!isNaN(val) && val >= minQty && withinMax) { setQty(val); setQtyInvalid(false); }
+                        else if (!isNaN(val) && val < minQty) setQtyInvalid(true);
                       }, 3000);
                     }}
                     onBlur={e => {
                       clearTimeout(autoCommitRef.current);
                       const val = parseInt(e.target.value, 10);
                       const withinMax = maxQty === null ? true : val <= maxQty;
-                      if (!isNaN(val) && val >= minQty && withinMax) {
-                        setQty(val); setQtyInvalid(false);
-                      } else if (!isNaN(val) && val < minQty) {
-                        toast.error(`Minimum quantity is ${minQty} ${product.unit}`);
-                        setQtyInvalid(true);
-                      } else {
-                        setQtyInput(String(qty)); setQtyInvalid(false);
-                      }
+                      if (!isNaN(val) && val >= minQty && withinMax) { setQty(val); setQtyInvalid(false); }
+                      else if (!isNaN(val) && val < minQty) { toast.error(`Minimum quantity is ${minQty} ${product.unit}`); setQtyInvalid(true); }
+                      else { setQtyInput(String(qty)); setQtyInvalid(false); }
                     }}
                     className={`font-black w-[64px] text-center text-lg bg-white border-2 rounded-xl px-1 py-1 focus:outline-none transition ${
-                      qtyInvalid
-                        ? 'border-red-500 text-red-600 focus:border-red-600'
-                        : 'border-green-400 text-gray-900 focus:border-green-600'
+                      qtyInvalid ? 'border-red-500 text-red-600' : 'border-green-400 text-gray-900 focus:border-green-600'
                     }`}
                     style={{ appearance: 'textfield', MozAppearance: 'textfield', WebkitAppearance: 'none' }}
                   />
@@ -629,12 +520,6 @@ export default function KoyambeduProductDetail() {
                   +
                 </button>
               </div>
-            </div>
-          ) : (
-            /* Variant product but no variant selected yet — prompt */
-            <div className="mt-3 rounded-xl px-4 py-3 text-center"
-              style={{ background: '#f0fdf4', border: '1.5px dashed #16a34a' }}>
-              <p className="text-green-700 text-sm font-bold">👆 Select a range above to set quantity</p>
             </div>
           )}
         </div>
@@ -700,6 +585,159 @@ export default function KoyambeduProductDetail() {
           </button>
         </div>
       </div>
+
+      {/* ══ Variant Qty Bottom Sheet ══ */}
+      {hasVariants && showQtySheet && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-[9980]"
+            style={{ background: 'rgba(0,0,0,0.55)' }}
+            onClick={() => setShowQtySheet(false)}
+          />
+
+          {/* Sheet panel */}
+          <div
+            className="fixed left-0 right-0 bottom-0 z-[9990] bg-white rounded-t-3xl px-4 pt-4"
+            style={{
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
+              boxShadow: '0 -8px 40px rgba(0,0,0,0.22)',
+            }}
+          >
+            {/* Drag handle + close */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-1 rounded-full mx-auto" style={{ background: '#d1d5db', position: 'absolute', left: '50%', transform: 'translateX(-50%) translateY(-8px)' }} />
+              <p className="text-gray-800 font-black text-sm">Set Quantity</p>
+              <button onClick={() => setShowQtySheet(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 text-lg active:bg-gray-100">
+                ✕
+              </button>
+            </div>
+
+            {/* Active tier badge */}
+            {activeVariant && (
+              <div className="mb-3 rounded-xl px-3 py-2 flex items-center gap-2"
+                style={{ background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '1.5px solid #16a34a' }}>
+                <span className="text-green-700 text-xs font-black">
+                  ✓ {activeVariant.toQty
+                    ? `${activeVariant.fromQty}–${activeVariant.toQty} ${product.unit}`
+                    : `${activeVariant.fromQty}+ ${product.unit}`}
+                </span>
+                <span className="ml-auto text-green-800 font-bold text-xs">₹{activeFinalPrice}/{product.unit}</span>
+              </div>
+            )}
+
+            {/* Label */}
+            <p className="text-[11px] font-black text-gray-500 uppercase tracking-wide mb-2">✏ Type exact quantity</p>
+
+            {/* Large input + − + */}
+            <div className="flex items-center gap-4 mb-4">
+              {/* − */}
+              <button
+                onClick={() => {
+                  const newQty = qty - 1;
+                  if (activeVariant && newQty >= activeVariant.fromQty) {
+                    setQty(newQty); setQtyInput(String(newQty));
+                  } else {
+                    const idx = product.variants.indexOf(activeVariant);
+                    const prev = product.variants[idx - 1];
+                    if (prev) { setQty(prev.toQty); setQtyInput(String(prev.toQty)); }
+                  }
+                }}
+                disabled={qty <= minQty}
+                className="w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-2xl active:scale-90 transition disabled:opacity-40 shrink-0"
+                style={{ background: '#f0fdf4', color: '#15803d', border: '2px solid #bbf7d0' }}>
+                −
+              </button>
+
+              {/* Input */}
+              <div className="flex-1 flex flex-col items-center">
+                <input
+                  type="text" inputMode="numeric" pattern="[0-9]*"
+                  value={qtyInput} maxLength={5}
+                  autoFocus
+                  onChange={e => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
+                    setQtyInput(raw); setQtyInvalid(false);
+                    clearTimeout(autoCommitRef.current);
+                    autoCommitRef.current = setTimeout(() => {
+                      const val = parseInt(raw, 10);
+                      const withinMax = maxQty === null ? true : val <= maxQty;
+                      if (!isNaN(val) && val >= minQty && withinMax) { setQty(val); setQtyInvalid(false); }
+                      else if (!isNaN(val) && val < minQty) setQtyInvalid(true);
+                    }, 3000);
+                  }}
+                  onBlur={e => {
+                    clearTimeout(autoCommitRef.current);
+                    const val = parseInt(e.target.value, 10);
+                    const withinMax = maxQty === null ? true : val <= maxQty;
+                    if (!isNaN(val) && val >= minQty && withinMax) { setQty(val); setQtyInvalid(false); }
+                    else if (!isNaN(val) && val < minQty) { toast.error(`Minimum is ${minQty} ${product.unit}`); setQtyInvalid(true); }
+                    else { setQtyInput(String(qty)); setQtyInvalid(false); }
+                  }}
+                  className={`w-full text-center text-3xl font-black bg-white rounded-2xl px-2 py-3 focus:outline-none transition ${
+                    qtyInvalid ? 'border-2 border-red-500 text-red-600' : 'border-2 border-green-400 text-gray-900 focus:border-green-600'
+                  }`}
+                  style={{ appearance: 'textfield', MozAppearance: 'textfield', WebkitAppearance: 'none' }}
+                />
+                <span className="text-xs font-bold text-green-600 mt-1">{product.unit}</span>
+              </div>
+
+              {/* + */}
+              <button
+                onClick={() => {
+                  const newQty = qty + 1;
+                  if (isOpenEndedActive) {
+                    setQty(newQty); setQtyInput(String(newQty));
+                  } else if (activeVariant && newQty <= (activeVariant.toQty || Infinity)) {
+                    setQty(newQty); setQtyInput(String(newQty));
+                  } else {
+                    const idx = product.variants.indexOf(activeVariant);
+                    const next = product.variants[idx + 1];
+                    if (next) { setQty(next.fromQty); setQtyInput(String(next.fromQty)); }
+                  }
+                }}
+                disabled={!isOpenEndedActive && qty >= (maxQty ?? Infinity)}
+                className="w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-2xl text-white active:scale-90 transition disabled:opacity-40 shrink-0"
+                style={{ background: 'linear-gradient(135deg,#16a34a,#059669)', boxShadow: '0 4px 16px rgba(22,163,74,0.4)' }}>
+                +
+              </button>
+            </div>
+
+            {qtyInvalid && (
+              <p className="text-xs text-red-500 font-semibold mb-3 text-center">Min {minQty} {product.unit} for this tier</p>
+            )}
+
+            {/* Running total */}
+            <div className="text-center mb-4">
+              <p className="text-gray-400 text-xs">{displayQty} {product.unit} × ₹{activeFinalPrice}</p>
+              <p className="text-green-700 font-black text-xl">₹{total}</p>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-3">
+              <button
+                onPointerDown={e => e.preventDefault()}
+                onClick={() => { handleAddToCart(); setShowQtySheet(false); }}
+                disabled={cartLoading || qtyInvalid}
+                className="flex-1 flex items-center justify-center gap-2 font-bold py-3.5 rounded-2xl text-sm transition active:scale-95 disabled:opacity-60"
+                style={{ background: '#f0fdf4', color: '#16a34a', border: '2px solid #16a34a' }}>
+                <FiShoppingCart size={15} />
+                {cartLoading ? '…' : cartQty > 0 ? 'Update Cart' : 'Add to Cart'}
+              </button>
+              <button
+                onPointerDown={e => e.preventDefault()}
+                onClick={() => { handleBuyNow(); setShowQtySheet(false); }}
+                disabled={cartLoading || qtyInvalid}
+                className="flex-1 flex items-center justify-center gap-2 font-bold py-3.5 rounded-2xl text-sm text-white transition active:scale-95 disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg,#064e3b,#059669)', boxShadow: '0 4px 12px rgba(22,163,74,0.4)' }}>
+                <FiZap size={15} />
+                Buy Now
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
     </div>
   );

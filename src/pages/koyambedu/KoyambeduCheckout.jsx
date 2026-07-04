@@ -1080,30 +1080,29 @@ export default function KoyambeduCheckout() {
 
             {/* ── Tomorrow-only: Market Price Notice ── */}
             {deliveryTab === 'tomorrow' && (
-              <div className="rounded-2xl overflow-hidden"
-                style={{ background: '#fffbf0', border: '1.5px solid #fed7aa', boxShadow: '0 2px 8px rgba(249,115,22,0.07)' }}>
-                <div className="px-4 py-3 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: 'linear-gradient(135deg,#ea580c,#f97316)' }}>
-                    <span className="text-white text-sm">ℹ</span>
-                  </div>
-                  <p className="text-orange-900 font-bold text-xs">Daily Market Price Notice</p>
+              <div className="rounded-2xl px-4 py-3.5 space-y-2.5"
+                style={{ background: '#fffbf0', border: '1.5px solid #fed7aa' }}>
+                {/* Header */}
+                <div className="flex items-center gap-2">
+                  <span className="text-base">📋</span>
+                  <p className="text-orange-900 font-black text-sm">Prices are today's estimates</p>
                 </div>
-                <div className="px-4 pb-4">
-                  <div className="border-t border-orange-100 pt-3 space-y-2">
-                    <p className="text-orange-800 text-xs leading-relaxed">
-                      Prices are <strong>estimated</strong> based on today's Koyambedu wholesale market rates. Since your delivery is tomorrow, prices may change before procurement.
+                <p className="text-orange-700 text-xs leading-relaxed">
+                  We source fresh from Koyambedu market tomorrow morning. The final price may be slightly different from what you see now.
+                </p>
+                {/* Two outcome pills */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'rgba(22,163,74,0.08)' }}>
+                    <span className="text-base shrink-0">💚</span>
+                    <p className="text-green-800 text-xs font-semibold leading-snug">
+                      Price drops? — Savings go straight to your Wallet
                     </p>
-                    <div className="rounded-xl p-2.5 space-y-1.5" style={{ background: 'rgba(249,115,22,0.06)' }}>
-                      <p className="text-xs text-green-700 font-semibold flex items-center gap-1.5">
-                        <span className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center text-[9px]">↓</span>
-                        If prices <strong>decrease</strong>, the savings will be credited to your Eptomart Wallet.
-                      </p>
-                      <p className="text-xs text-amber-700 font-semibold flex items-center gap-1.5">
-                        <span className="w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center text-[9px]">↑</span>
-                        If prices <strong>increase</strong>, the difference will be adjusted in your next order.
-                      </p>
-                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'rgba(217,119,6,0.08)' }}>
+                    <span className="text-base shrink-0">⚡</span>
+                    <p className="text-amber-800 text-xs font-semibold leading-snug">
+                      Price rises? — Small difference adjusted in your next order
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1192,7 +1191,7 @@ export default function KoyambeduCheckout() {
 
         {/* ═════ STEP 3 — PAYMENT ═════ */}
         {step === 3 && (
-          <div className="space-y-4">
+          <div className="space-y-4 pb-24">
             {/* Summary pills */}
             <div className="bg-white rounded-2xl p-4 space-y-2.5"
               style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
@@ -1394,21 +1393,34 @@ export default function KoyambeduCheckout() {
               </div>
             )}
 
+          </div>
+        )}
+
+        {/* ── Floating Place Order bar (Step 3) ── */}
+        {step === 3 && (
+          <div className="fixed bottom-0 left-0 right-0 z-[9970] bg-white"
+            style={{
+              boxShadow: '0 -4px 24px rgba(0,0,0,0.12)',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
+              paddingTop: 12,
+              paddingLeft: 16,
+              paddingRight: 16,
+            }}>
             <div className="flex gap-3">
               <button onClick={() => setStep(2)}
-                className="flex-1 border-2 border-green-200 text-green-700 font-bold py-3 rounded-xl text-sm bg-white">
+                className="border-2 border-green-200 text-green-700 font-bold py-3 px-5 rounded-xl text-sm bg-white active:scale-95 transition shrink-0">
                 ← Back
               </button>
               {user ? (
                 <button onClick={handlePlaceOrder} disabled={loading}
-                  className="flex-1 text-white font-bold py-3 rounded-xl disabled:opacity-60 transition text-sm"
-                  style={{ background: 'linear-gradient(135deg, #16a34a, #059669)' }}>
-                  {loading ? 'Placing…' : `Place Order ₹${total.toFixed(2)}`}
+                  className="flex-1 text-white font-black py-3 rounded-xl disabled:opacity-60 transition text-sm active:scale-95"
+                  style={{ background: 'linear-gradient(135deg,#064e3b,#059669)', boxShadow: '0 4px 16px rgba(22,163,74,0.4)' }}>
+                  {loading ? 'Placing Order…' : `Place Order · ₹${total.toFixed(2)}`}
                 </button>
               ) : (
                 <button onClick={() => navigate('/login', { state: { from: '/koyambedu/checkout' } })}
-                  className="flex-1 text-white font-bold py-3 rounded-xl transition text-sm"
-                  style={{ background: 'linear-gradient(135deg, #16a34a, #059669)' }}>
+                  className="flex-1 text-white font-black py-3 rounded-xl transition text-sm active:scale-95"
+                  style={{ background: 'linear-gradient(135deg,#064e3b,#059669)', boxShadow: '0 4px 16px rgba(22,163,74,0.4)' }}>
                   Login to Place Order
                 </button>
               )}
