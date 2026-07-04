@@ -10,10 +10,11 @@ import {
   FiSearch, FiChevronRight, FiMapPin, FiShoppingBag,
   FiArrowLeft, FiChevronDown,
 } from 'react-icons/fi';
-import { FaLeaf } from 'react-icons/fa';
+import { FaLeaf, FaWallet } from 'react-icons/fa';
 import BottomNav from '../../components/common/BottomNav';
 import api from '../../utils/api';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
+import { useAuth } from '../../context/AuthContext';
 
 /** Format a Date as "04 July 2026 · 6:45 PM" in IST */
 const fmtIST = (d) => {
@@ -51,6 +52,7 @@ const getISTHour = () => {
 
 export default function KoyambeduHome() {
   const { fetchCart, itemCount, subtotal, userLocation, locationLabel } = useKoyambeduCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const isMarketClosed = getISTHour() >= 9;
 
@@ -60,6 +62,7 @@ export default function KoyambeduHome() {
 
   const [categories,     setCategories]     = useState([]);
   const [lastUpdate,     setLastUpdate]     = useState(null);
+  const [walletBalance,  setWalletBalance]  = useState(null); // null = not fetched yet
   useEffect(() => {
     fetchCart();
     api.get('/koyambedu/categories')
@@ -68,7 +71,12 @@ export default function KoyambeduHome() {
     api.get('/koyambedu/settings/last-update')
       .then(res => setLastUpdate(res.data.lastUpdate))
       .catch(() => {});
-  }, []);
+    if (user) {
+      api.get('/koyambedu/wallet')
+        .then(res => setWalletBalance(res.data.wallet?.balance ?? 0))
+        .catch(() => {});
+    }
+  }, [user]);
 
   return (
     <div className="min-h-screen pb-28 w-full overflow-x-hidden" style={{ background: '#F5F4F2' }}>
@@ -179,6 +187,40 @@ export default function KoyambeduHome() {
               <p className="text-green-600 text-[10px] mt-0.5">{fmtIST(lastUpdate)}</p>
             </div>
           </div>
+        )}
+
+        {/* ── Wallet balance chip (shown only when user has a non-zero balance) ── */}
+        {user && walletBalance !== null && walletBalance !== 0 && (
+          <Link to="/koyambedu/wallet" className="block mb-3">
+            <div className="rounded-2xl px-4 py-3 flex items-center gap-3"
+              style={{
+                background: walletBalance > 0 ? 'linear-gradient(135deg,#f0fdf4,#dcfce7)' : '#fffbeb',
+                border: `1.5px solid ${walletBalance > 0 ? '#16a34a' : '#fbbf24'}`,
+                boxShadow: walletBalance > 0
+                  ? '0 2px 12px rgba(22,163,74,0.15)'
+                  : '0 2px 12px rgba(251,191,36,0.15)',
+              }}>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: walletBalance > 0 ? '#16a34a' : '#f59e0b' }}>
+                <FaWallet size={15} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-black"
+                  style={{ color: walletBalance > 0 ? '#15803d' : '#92400e' }}>
+                  {walletBalance > 0 ? '💚 Koyambedu Wallet Credits' : '⚠️ Wallet Adjustment Pending'}
+                </p>
+                <p className="text-[11px] mt-0.5"
+                  style={{ color: walletBalance > 0 ? '#16a34a' : '#d97706' }}>
+                  {walletBalance > 0
+                    ? `₹${walletBalance.toFixed(2)} will be applied on your next order`
+                    : `₹${Math.abs(walletBalance).toFixed(2)} will be recovered on your next order`}
+                </p>
+              </div>
+              <span className="text-xs font-bold" style={{ color: walletBalance > 0 ? '#16a34a' : '#d97706' }}>
+                History →
+              </span>
+            </div>
+          </Link>
         )}
 
         {/* ── Market Closed Banner ── */}

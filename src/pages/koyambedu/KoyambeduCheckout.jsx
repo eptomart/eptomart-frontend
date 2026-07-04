@@ -783,7 +783,7 @@ export default function KoyambeduCheckout() {
 
         {/* ═════ STEP 0 — ADDRESS FORM ═════ */}
         {step === 0 && (
-          <div className="space-y-4">
+          <div className="space-y-4 pb-24">
             <SavedAddressPicker
               addresses={user?.addresses || []}
               selectedId={selectedSavedAddrId}
@@ -907,48 +907,12 @@ export default function KoyambeduCheckout() {
               </label>
             )}
 
-            <button
-              onClick={async () => {
-                if (!addr.fullName || !addr.addressLine1 || !addr.pincode || !addr.phone) {
-                  toast.error('Please fill all required fields'); return;
-                }
-                if (!/^[6-9]\d{9}$/.test(addr.phone)) {
-                  toast.error('Enter a valid 10-digit Indian mobile number'); return;
-                }
-                // Always cache address in localStorage (works for guests too)
-                try {
-                  localStorage.setItem('kbd_last_addr', JSON.stringify({
-                    fullName: addr.fullName, phone: addr.phone,
-                    addressLine1: addr.addressLine1, addressLine2: addr.addressLine2,
-                    city: addr.city, pincode: addr.pincode,
-                  }));
-                } catch { /* non-blocking */ }
-                // Save to account if logged-in and opted in
-                if (user && !selectedSavedAddrId && saveAddrChecked) {
-                  try {
-                    await api.post('/auth/add-address', {
-                      fullName:     addr.fullName,
-                      phone:        addr.phone,
-                      addressLine1: addr.addressLine1,
-                      addressLine2: addr.addressLine2,
-                      city:         addr.city,
-                      pincode:      addr.pincode,
-                    });
-                    await loadUser();
-                  } catch { /* non-blocking */ }
-                }
-                goToMapStep();
-              }}
-              className="w-full py-4 rounded-2xl font-extrabold text-white text-sm transition active:scale-[0.98]"
-              style={{ background: 'linear-gradient(135deg, #16a34a, #059669)', boxShadow: '0 4px 16px rgba(22,163,74,0.4)' }}>
-              Next: Pin Location on Map →
-            </button>
           </div>
         )}
 
         {/* ═════ STEP 1 — MAP ═════ */}
         {step === 1 && (
-          <div className="space-y-4">
+          <div className="space-y-4 pb-24">
             <div className="bg-white rounded-2xl p-4 space-y-1"
               style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
               <h2 className="font-bold text-gray-800 text-sm">Pin Your Location</h2>
@@ -962,10 +926,6 @@ export default function KoyambeduCheckout() {
               onLocationConfirmed={handleLocationConfirmed}
             />
 
-            <button onClick={() => setStep(0)}
-              className="w-full py-3 rounded-2xl font-bold text-green-700 text-sm border-2 border-green-200 bg-white transition active:scale-[0.98]">
-              ← Back to Address
-            </button>
           </div>
         )}
 
@@ -1155,6 +1115,55 @@ export default function KoyambeduCheckout() {
                 Select a delivery slot to continue.
               </p>
             )}
+          </div>
+        )}
+
+        {/* Floating bottom bar — Step 0 */}
+        {step === 0 && (
+          <div className="fixed bottom-0 left-0 right-0 above-bottom-nav bg-white border-t border-gray-100 px-4 pt-3 z-[9970]"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}>
+            <button
+              onClick={async () => {
+                if (!addr.fullName || !addr.addressLine1 || !addr.pincode || !addr.phone) {
+                  toast.error('Please fill all required fields'); return;
+                }
+                if (!/^[6-9]\d{9}$/.test(addr.phone)) {
+                  toast.error('Enter a valid 10-digit Indian mobile number'); return;
+                }
+                try {
+                  localStorage.setItem('kbd_last_addr', JSON.stringify({
+                    fullName: addr.fullName, phone: addr.phone,
+                    addressLine1: addr.addressLine1, addressLine2: addr.addressLine2,
+                    city: addr.city, pincode: addr.pincode,
+                  }));
+                } catch { /* non-blocking */ }
+                if (user && !selectedSavedAddrId && saveAddrChecked) {
+                  try {
+                    await api.post('/auth/add-address', {
+                      fullName: addr.fullName, phone: addr.phone,
+                      addressLine1: addr.addressLine1, addressLine2: addr.addressLine2,
+                      city: addr.city, pincode: addr.pincode,
+                    });
+                    await loadUser();
+                  } catch { /* non-blocking */ }
+                }
+                goToMapStep();
+              }}
+              className="w-full py-3.5 rounded-2xl font-extrabold text-white text-sm transition active:scale-[0.98]"
+              style={{ background: 'linear-gradient(135deg, #16a34a, #059669)', boxShadow: '0 4px 16px rgba(22,163,74,0.4)' }}>
+              Next: Pin Location on Map →
+            </button>
+          </div>
+        )}
+
+        {/* Floating bottom bar — Step 1 */}
+        {step === 1 && (
+          <div className="fixed bottom-0 left-0 right-0 above-bottom-nav bg-white border-t border-gray-100 px-4 pt-3 z-[9970]"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}>
+            <button onClick={() => setStep(0)}
+              className="w-full py-3.5 rounded-2xl font-bold text-green-700 text-sm border-2 border-green-200 bg-white transition active:scale-[0.98]">
+              ← Back to Address
+            </button>
           </div>
         )}
 

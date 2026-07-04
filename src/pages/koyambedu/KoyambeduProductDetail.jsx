@@ -109,7 +109,13 @@ export default function KoyambeduProductDetail() {
     ? (isLastVariantOpen ? null : (lastVariant?.toQty || 9999))
     : (product.maxQty || 500);
   const isOpenEndedActive = !!(activeVariant && !activeVariant.toQty);
-  const total   = (qty * activeFinalPrice).toFixed(2);
+  // Use live qtyInput for total so price updates as user types (not just after blur/commit)
+  const displayQty = (() => {
+    const parsed = parseInt(qtyInput, 10);
+    const withinMax = maxQty === null ? true : parsed <= maxQty;
+    return (!isNaN(parsed) && parsed >= minQty && withinMax) ? parsed : qty;
+  })();
+  const total   = (displayQty * activeFinalPrice).toFixed(2);
 
   // Best Value variant = lowest per-unit finalPrice (price/unit is already finalPrice for per-unit products)
   const bestVariant = hasVariants
@@ -123,13 +129,30 @@ export default function KoyambeduProductDetail() {
     return `${n} ${unit}`;
   };
 
+  // ── Resolve current qty from input (clears pending auto-commit) ──────────
+  // If the user clicks Add to Cart / Buy Now before the 3-second timer fires,
+  // we parse qtyInput immediately so the typed value — not the stale qty — is used.
+  const resolveQty = () => {
+    clearTimeout(autoCommitRef.current);
+    const parsed = parseInt(qtyInput, 10);
+    const withinMax = maxQty === null ? true : parsed <= maxQty;
+    if (!isNaN(parsed) && parsed >= minQty && withinMax) {
+      setQty(parsed);
+      setQtyInvalid(false);
+      return parsed;
+    }
+    return qty; // fallback to last committed qty
+  };
+
   // ── Handlers ─────────────────────────────────────────────────
   const handleAddToCart = () => {
-    updateItem(productId, qty, 'tomorrow', { productData: product });
+    const effectiveQty = resolveQty();
+    updateItem(productId, effectiveQty, 'tomorrow', { productData: product });
   };
 
   const handleBuyNow = () => {
-    updateItem(productId, qty, 'tomorrow', { productData: product });
+    const effectiveQty = resolveQty();
+    updateItem(productId, effectiveQty, 'tomorrow', { productData: product });
     navigate('/koyambedu/cart');
   };
 
@@ -640,7 +663,7 @@ export default function KoyambeduProductDetail() {
           {/* Price summary */}
           <div className="flex-1 min-w-0">
             <p className="text-[10px] text-gray-400 leading-none">
-              {qty} {product.unit} × ₹{activeFinalPrice}
+              {displayQty} {product.unit} × ₹{activeFinalPrice}
             </p>
             <p className="font-black text-green-700 text-base leading-tight">₹{total}</p>
           </div>

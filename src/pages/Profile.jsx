@@ -457,12 +457,124 @@ function DeleteAccountSection() {
   );
 }
 
+// ── Koyambedu Wallet tab component ───────────────────────────
+const WALLET_CATEGORY_LABELS = {
+  order_cancelled:         { label: 'Order Cancelled Refund',     color: '#16a34a', icon: '↩️' },
+  item_declined:           { label: 'Item Declined — Refund',     color: '#16a34a', icon: '↩️' },
+  price_adjustment_credit: { label: 'Price Adjustment — Credit',  color: '#16a34a', icon: '📉' },
+  price_adjustment_due:    { label: 'Price Adjustment — Due',     color: '#dc2626', icon: '📈' },
+  debt_recovery:           { label: 'Debt Recovery',              color: '#16a34a', icon: '🔄' },
+  wallet_applied:          { label: 'Applied at Checkout',        color: '#dc2626', icon: '🛒' },
+  cashback:                { label: 'Cashback',                   color: '#16a34a', icon: '🎁' },
+  manual_credit:           { label: 'Manual Credit',              color: '#16a34a', icon: '👤' },
+  manual_debit:            { label: 'Manual Debit',               color: '#dc2626', icon: '👤' },
+  refund_paid:             { label: 'Bank Refund',                color: '#dc2626', icon: '🏦' },
+  manual:                  { label: 'Transaction',                color: '#6b7280', icon: '💳' },
+};
+
+function KbdWalletTab() {
+  const navigate = useNavigate();
+  const [wallet,  setWallet]  = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/koyambedu/wallet')
+      .then(r => setWallet(r.data.wallet))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-8">
+      <div className="w-6 h-6 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  if (!wallet) return (
+    <p className="text-sm text-gray-500 text-center py-6">Could not load wallet. Try again later.</p>
+  );
+
+  const balance = wallet.balance ?? 0;
+  const isPositive = balance >= 0;
+  const transactions = [...(wallet.transactions || [])].reverse().slice(0, 10);
+
+  return (
+    <div className="space-y-4">
+      {/* Balance card */}
+      <div className="rounded-2xl p-5 text-center"
+        style={{
+          background: isPositive ? 'linear-gradient(135deg,#064e3b,#059669)' : 'linear-gradient(135deg,#7c2d12,#ea580c)',
+          boxShadow: isPositive ? '0 8px 24px rgba(22,163,74,0.35)' : '0 8px 24px rgba(234,88,12,0.35)',
+        }}>
+        <p className="text-emerald-100 text-xs font-bold uppercase tracking-wider mb-1">
+          Koyambedu Wallet Balance
+        </p>
+        <p className="text-white font-black text-4xl mb-1">
+          {isPositive ? '' : '−'}₹{Math.abs(balance).toFixed(2)}
+        </p>
+        <p className="text-white/70 text-xs">
+          {isPositive
+            ? balance > 0 ? 'Will be applied as discount on next order' : 'No balance — all settled'
+            : 'Will be recovered on next order'}
+        </p>
+      </div>
+
+      {/* Recent transactions */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="font-bold text-gray-800 text-sm">Recent Transactions</p>
+          <button
+            onClick={() => navigate('/koyambedu/wallet')}
+            className="text-xs font-bold text-green-600 flex items-center gap-1">
+            View All →
+          </button>
+        </div>
+
+        {transactions.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">No transactions yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {transactions.map((tx, i) => {
+              const cfg = WALLET_CATEGORY_LABELS[tx.category] || WALLET_CATEGORY_LABELS.manual;
+              return (
+                <div key={i} className="flex items-center gap-3 bg-white rounded-xl px-3 py-2.5"
+                  style={{ border: '1px solid #f3f4f6' }}>
+                  <span className="text-lg shrink-0">{cfg.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-gray-700 truncate">{cfg.label}</p>
+                    {tx.orderId && (
+                      <p className="text-[10px] text-gray-400">#{tx.orderId}</p>
+                    )}
+                    <p className="text-[10px] text-gray-400">
+                      {new Date(tx.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <span className="text-sm font-black shrink-0" style={{ color: cfg.color }}>
+                    {tx.type === 'credit' ? '+' : '−'}₹{tx.amount.toFixed(2)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <button
+        onClick={() => navigate('/koyambedu/wallet')}
+        className="w-full py-3 rounded-2xl font-bold text-sm text-white transition active:scale-[0.98]"
+        style={{ background: 'linear-gradient(135deg,#064e3b,#16a34a)', boxShadow: '0 4px 14px rgba(22,163,74,0.35)' }}>
+        Open Full Wallet →
+      </button>
+    </div>
+  );
+}
+
 const BLANK_ADDR = { label: 'Home', fullName: '', phone: '', addressLine1: '', addressLine2: '', city: '', state: '', pincode: '', isDefault: false };
 const INDIAN_MOBILE = /^[6-9]\d{9}$/;
 
 export default function Profile() {
   const { user, updateProfile, loadUser } = useAuth();
-  const [tab,         setTab]         = useState('profile'); // 'profile' | 'farmer' | 'messages'
+  const [tab,         setTab]         = useState('profile'); // 'profile' | 'farmer' | 'messages' | 'kbdwallet'
   const [name,        setName]        = useState(user?.name || '');
   const [saving,      setSaving]      = useState(false);
   const [showAddAddr, setShowAddAddr] = useState(false);
@@ -530,14 +642,15 @@ export default function Profile() {
         <h1 className="text-2xl font-bold text-gray-800 mb-4">👤 My Profile</h1>
 
         {/* Tab bar */}
-        <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6">
+        <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 overflow-x-auto scrollbar-hide">
           {[
-            ['profile',  FiUser,          'Profile'],
-            ['farmer',   null,            '🌾 Farmer'],
-            ['messages', FiMessageSquare, 'Messages'],
+            ['profile',   FiUser,          'Profile'],
+            ['farmer',    null,            '🌾 Farmer'],
+            ['messages',  FiMessageSquare, 'Messages'],
+            ['kbdwallet', null,            '💚 KBD Wallet'],
           ].map(([key, Icon, label]) => (
             <button key={key} onClick={() => setTab(key)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${tab === key ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+              className={`flex-shrink-0 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${tab === key ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
               {Icon ? <Icon size={14} /> : null} {label}
             </button>
           ))}
@@ -552,6 +665,12 @@ export default function Profile() {
         {tab === 'messages' && (
           <div className="card p-6 mb-6">
             <MessagesTab />
+          </div>
+        )}
+
+        {tab === 'kbdwallet' && (
+          <div className="card p-6 mb-6">
+            <KbdWalletTab />
           </div>
         )}
 
