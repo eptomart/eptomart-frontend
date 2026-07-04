@@ -6,7 +6,7 @@
 // • 8 AM TODAY cutoff for Tomorrow delivery
 // • Enriched layout: category, vendor, market info, badges
 // ============================================
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import EptoSEO, { buildProductSchema } from '../../components/common/EptoSEO';
 import {
@@ -33,6 +33,7 @@ export default function KoyambeduProductDetail() {
   const [qtyInput, setQtyInput] = useState('1'); // local string for editable input
   const [qtyInvalid, setQtyInvalid] = useState(false); // true when typed value is below minQty
   const [priceHistory, setPriceHistory] = useState([]);
+  const autoCommitRef = useRef(null);
 
   useEffect(() => {
     // Read cart qty synchronously at mount — before the async product fetch
@@ -129,7 +130,7 @@ export default function KoyambeduProductDetail() {
 
   const handleBuyNow = () => {
     updateItem(productId, qty, 'tomorrow', { productData: product });
-    navigate('/koyambedu/checkout');
+    navigate('/koyambedu/cart');
   };
 
   // Select a tier chip: keep current qty if it already falls in range, else set to fromQty
@@ -438,20 +439,34 @@ export default function KoyambeduProductDetail() {
                 −
               </button>
 
-              {/* Editable qty input */}
+              {/* Editable qty input — tap box to type exact qty */}
               <div className="flex flex-col items-center">
+                <p className="text-[9px] text-green-600 font-bold mb-0.5 uppercase tracking-wide">✏ Type qty</p>
                 <input
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={qtyInput}
+                  maxLength={5}
                   onChange={e => {
-                    // Only allow digits
-                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                    const raw = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
                     setQtyInput(raw);
                     setQtyInvalid(false);
+                    // Auto-commit to qty after 3 s of no further typing
+                    clearTimeout(autoCommitRef.current);
+                    autoCommitRef.current = setTimeout(() => {
+                      const val = parseInt(raw, 10);
+                      const withinMax = maxQty === null ? true : val <= maxQty;
+                      if (!isNaN(val) && val >= minQty && withinMax) {
+                        setQty(val);
+                        setQtyInvalid(false);
+                      } else if (!isNaN(val) && val < minQty) {
+                        setQtyInvalid(true);
+                      }
+                    }, 3000);
                   }}
                   onBlur={e => {
+                    clearTimeout(autoCommitRef.current);
                     const val = parseInt(e.target.value, 10);
                     const withinMax = maxQty === null ? true : val <= maxQty;
                     if (!isNaN(val) && val >= minQty && withinMax) {

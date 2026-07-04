@@ -952,7 +952,7 @@ export default function KoyambeduCheckout() {
 
         {/* ═════ STEP 2 — DELIVERY SLOT ═════ */}
         {step === 2 && (
-          <div className="space-y-4">
+          <div className="space-y-4 pb-24">
 
             {/* Delivery address summary */}
             <div className="bg-white rounded-2xl p-4"
@@ -1060,7 +1060,7 @@ export default function KoyambeduCheckout() {
             <div className="bg-white rounded-2xl p-4 space-y-2"
               style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
-                Available Slots — {deliveryTab === 'today' ? fmtDisplayDate(todayIST) : fmtDisplayDate(tomorrowIST)}
+                Available Delivery Slots — {deliveryTab === 'today' ? fmtDisplayDate(todayIST) : fmtDisplayDate(tomorrowIST)}
               </p>
 
               {visibleSlots.length === 0 ? (
@@ -1133,10 +1133,16 @@ export default function KoyambeduCheckout() {
             {/* Validation hint */}
             {!selectedSlot && visibleSlots.length > 0 && (
               <p className="text-xs text-center text-amber-600 font-semibold">
-                Please select a delivery slot to continue.
+                Select a delivery slot to continue.
               </p>
             )}
+          </div>
+        )}
 
+        {/* Floating bottom bar — Step 2 */}
+        {step === 2 && (
+          <div className="fixed bottom-0 left-0 right-0 above-bottom-nav bg-white border-t border-gray-100 px-4 pt-3 z-[9970]"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}>
             <div className="flex gap-3">
               <button onClick={() => setStep(1)}
                 className="flex-1 border-2 border-green-200 text-green-700 font-bold py-3 rounded-xl text-sm bg-white">
@@ -1148,9 +1154,9 @@ export default function KoyambeduCheckout() {
                   setStep(3);
                 }}
                 disabled={!selectedSlot}
-                className="flex-1 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-50 transition"
-                style={{ background: 'linear-gradient(135deg, #16a34a, #059669)' }}>
-                Continue →
+                className="flex-1 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-40 transition"
+                style={{ background: selectedSlot ? 'linear-gradient(135deg, #16a34a, #059669)' : '#9ca3af' }}>
+                {selectedSlot ? 'Continue to Payment →' : 'Select a Slot First'}
               </button>
             </div>
           </div>
@@ -1302,6 +1308,17 @@ export default function KoyambeduCheckout() {
                     ❌ Reject Payment (Test)
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* ⚠ Processing warning — shown while payment is in progress */}
+            {loading && (
+              <div className="rounded-2xl px-4 py-3 flex items-center gap-3"
+                style={{ background: '#fffbeb', border: '1.5px solid #fde68a' }}>
+                <span className="text-amber-500 text-lg shrink-0">⚠️</span>
+                <p className="text-amber-800 text-xs font-semibold leading-snug">
+                  Payment is processing — <strong>do not refresh, go back, or close this page</strong> until you see the confirmation screen.
+                </p>
               </div>
             )}
 

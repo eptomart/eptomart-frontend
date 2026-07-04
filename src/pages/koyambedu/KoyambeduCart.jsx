@@ -1,7 +1,7 @@
 // ============================================
 // KOYAMBEDU CART — Unified Design System
 // ============================================
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FiArrowLeft, FiShoppingBag, FiMinus, FiPlus, FiTrash2,
@@ -14,6 +14,90 @@ import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import { useAuth } from '../../context/AuthContext';
 
 const IMG_PH = 'https://placehold.co/80x80/dcfce7/166534?text=🌿';
+
+// ── Cart item with inline qty edit ─────────────────────────────
+function CartItem({ item, prod, img, pid, line, loading, updateItem }) {
+  const [qtyInput, setQtyInput] = useState(String(item.quantity));
+  const autoRef = useRef(null);
+
+  // Keep input in sync when server updates arrive
+  useEffect(() => { setQtyInput(String(item.quantity)); }, [item.quantity]);
+
+  const commit = (raw) => {
+    const val = parseInt(raw, 10);
+    if (!isNaN(val) && val > 0) {
+      updateItem(pid, val, item.deliveryType || 'tomorrow', { silent: true });
+    } else {
+      setQtyInput(String(item.quantity)); // revert
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl p-3 flex gap-3"
+      style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)' }}>
+
+      <Link to={`/koyambedu/product/${prod?._id}`} className="shrink-0">
+        <img src={img} alt={item.name} className="w-16 h-16 rounded-xl object-cover" />
+      </Link>
+
+      <div className="flex-1 min-w-0">
+        <Link to={`/koyambedu/product/${prod?._id}`}>
+          <p className="font-semibold text-gray-800 text-sm line-clamp-1">{item.name}</p>
+        </Link>
+        <p className="text-xs text-gray-400 mt-0.5">₹{item.unitPrice} / {item.unit}</p>
+
+        {/* Stepper + inline qty edit */}
+        <div className="flex items-center gap-1.5 mt-2">
+          <button
+            onClick={() => updateItem(pid, Math.max(0, item.quantity - 1), item.deliveryType || 'tomorrow', { silent: true })}
+            className="w-7 h-7 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center active:scale-90 transition-transform">
+            <FiMinus size={12} />
+          </button>
+
+          {/* Editable qty input */}
+          <div className="flex flex-col items-center">
+            <p className="text-[8px] text-green-600 font-bold uppercase tracking-wide leading-none mb-0.5">✏ qty</p>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={5}
+              value={qtyInput}
+              onChange={e => {
+                const raw = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
+                setQtyInput(raw);
+                clearTimeout(autoRef.current);
+                autoRef.current = setTimeout(() => commit(raw), 3000);
+              }}
+              onBlur={e => { clearTimeout(autoRef.current); commit(e.target.value); }}
+              className="w-12 text-center text-sm font-black text-gray-900 bg-white border-2 border-green-400 rounded-lg px-1 py-0.5 focus:outline-none focus:border-green-600"
+              style={{ appearance: 'textfield', MozAppearance: 'textfield' }}
+            />
+            <span className="text-[9px] text-gray-400 mt-0.5">{item.unit}</span>
+          </div>
+
+          <button
+            onClick={() => updateItem(pid, item.quantity + 1, item.deliveryType || 'tomorrow', { silent: true })}
+            className="w-7 h-7 rounded-full bg-green-600 text-white font-bold flex items-center justify-center active:scale-90 transition-transform">
+            <FiPlus size={12} />
+          </button>
+        </div>
+      </div>
+
+      {/* Price + delete */}
+      <div className="flex flex-col justify-between items-end shrink-0">
+        <p className="font-bold text-green-700 text-sm">₹{line.toFixed(0)}</p>
+        <button
+          onClick={() => updateItem(pid, 0)}
+          disabled={loading}
+          className="w-8 h-8 flex items-center justify-center rounded-full active:scale-90 transition disabled:opacity-50"
+          style={{ background: '#fef2f2', border: '1px solid #fee2e2' }}>
+          <FiTrash2 size={13} className="text-red-500" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function KoyambeduCart() {
   const { cart, fetchCart, updateItem, loading, subtotal, itemCount } = useKoyambeduCart();
@@ -77,63 +161,20 @@ export default function KoyambeduCart() {
           {cart.items.map((item, i) => {
             const prod = item.product;
             const img  = prod?.images?.find(im => im.isPrimary)?.url || prod?.images?.[0]?.url || IMG_PH;
-            const step = 1;
             const line = (item.unitPrice || 0) * (item.quantity || 0);
+            const pid  = String(prod?._id || item.product);
 
             return (
-              <div key={item._id || i} className="bg-white rounded-2xl p-3 flex gap-3"
-                style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)' }}>
-
-                <Link to={`/koyambedu/product/${prod?._id}`} className="shrink-0">
-                  <img src={img} alt={item.name} className="w-16 h-16 rounded-xl object-cover" />
-                </Link>
-
-                <div className="flex-1 min-w-0">
-                  <Link to={`/koyambedu/product/${prod?._id}`}>
-                    <p className="font-semibold text-gray-800 text-sm line-clamp-1">{item.name}</p>
-                  </Link>
-                  <p className="text-xs text-gray-400 mt-0.5">₹{item.unitPrice} / {item.unit}</p>
-
-                  {/* Stepper */}
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <button
-                      onClick={() => {
-                        const pid = String(prod?._id || item.product);
-                        const newQty = item.quantity - step;
-                        // If dropping below 1 (or below first variant min), remove item
-                        updateItem(pid, Math.max(0, newQty), item.deliveryType || 'tomorrow', { silent: true });
-                      }}
-                      className="w-7 h-7 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center active:scale-90 transition-transform">
-                      <FiMinus size={12} />
-                    </button>
-                    <span className="text-sm font-bold text-gray-800 min-w-[40px] text-center">
-                      {item.quantity} {item.unit}
-                    </span>
-                    <button
-                      onClick={() => updateItem(
-                        String(prod?._id || item.product),
-                        item.quantity + step,
-                        item.deliveryType || 'tomorrow',
-                        { silent: true }
-                      )}
-                      className="w-7 h-7 rounded-full bg-green-600 text-white font-bold flex items-center justify-center active:scale-90 transition-transform">
-                      <FiPlus size={12} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Price + delete */}
-                <div className="flex flex-col justify-between items-end shrink-0">
-                  <p className="font-bold text-green-700 text-sm">₹{line.toFixed(0)}</p>
-                  <button
-                    onClick={() => updateItem(String(prod?._id || item.product), 0)}
-                    disabled={loading}
-                    className="w-8 h-8 flex items-center justify-center rounded-full active:scale-90 transition disabled:opacity-50"
-                    style={{ background: '#fef2f2', border: '1px solid #fee2e2' }}>
-                    <FiTrash2 size={13} className="text-red-500" />
-                  </button>
-                </div>
-              </div>
+              <CartItem
+                key={item._id || i}
+                item={item}
+                prod={prod}
+                img={img}
+                pid={pid}
+                line={line}
+                loading={loading}
+                updateItem={updateItem}
+              />
             );
           })}
         </div>

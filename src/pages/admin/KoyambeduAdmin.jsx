@@ -2337,6 +2337,19 @@ export default function KoyambeduAdmin() {
                         ) : (
                           <p className="text-green-700 font-bold text-sm mt-1">₹{p.currentPrice}/{p.unit}</p>
                         )}
+                        {/* Commission % breakdown */}
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {[
+                            ['Procurement', p.procurementPct],
+                            ['SA Comm', p.sellerCommissionPct],
+                            ['Eptomart', p.eptomartCommissionPct],
+                          ].map(([label, val]) => (
+                            <span key={label} className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                              style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }}>
+                              {label}: {val != null ? `${val}%` : '0%'}
+                            </span>
+                          ))}
+                        </div>
                         <p className="text-[10px] text-gray-400 mt-1">Submitted {new Date(p.createdAt).toLocaleDateString('en-IN')}</p>
                       </div>
                     </div>
@@ -2354,6 +2367,11 @@ export default function KoyambeduAdmin() {
                         }}
                         className="flex-1 border-2 border-red-200 text-red-600 font-bold py-2 rounded-xl text-sm hover:bg-red-50 disabled:opacity-50">
                         ✕ Reject
+                      </button>
+                      <button
+                        onClick={() => setEditProduct(p)}
+                        className="flex-1 border-2 border-blue-200 text-blue-700 font-bold py-2 rounded-xl text-sm hover:bg-blue-50">
+                        ✏ Edit
                       </button>
                       <button
                         disabled={prodApprovalSaving === p._id}
