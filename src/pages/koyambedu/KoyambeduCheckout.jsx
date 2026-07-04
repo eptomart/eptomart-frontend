@@ -463,6 +463,15 @@ export default function KoyambeduCheckout() {
     }
   }, [user, userLocation, locationLabel]);
 
+  // ── Fetch wallet balance when user reaches Step 3 ─────────────
+  useEffect(() => {
+    if (step === 3 && user) {
+      api.get('/koyambedu/wallet')
+        .then(({ data }) => setWalletData(data.wallet))
+        .catch(() => {});
+    }
+  }, [step, user]);
+
   // ── Location (set after map step) ─────────
   const [locationData, setLocationData] = useState(
     userLocation
@@ -531,6 +540,9 @@ export default function KoyambeduCheckout() {
   const [couponApplied, setCouponApplied] = useState(null);
   const [couponLoading, setCouponLoading] = useState(false);
 
+  // ── Wallet ─────────────────────────────────
+  const [walletData, setWalletData] = useState(null);
+
   // ── DEV-ONLY test payment state ────────────────────────────────
   const [testPayFailed, setTestPayFailed] = useState(false);
 
@@ -538,7 +550,14 @@ export default function KoyambeduCheckout() {
   const distanceKm     = locationData?.distanceKm ?? null;
   const platformFee    = 15;
   const couponDiscount = couponApplied?.discount || 0;
-  const total          = parseFloat((subtotal + deliveryCharge + platformFee - couponDiscount).toFixed(2));
+  const baseTotal      = parseFloat((subtotal + deliveryCharge + platformFee - couponDiscount).toFixed(2));
+
+  // Mirror backend wallet logic: positive = discount, negative = extra charge
+  const walletBalance    = walletData?.balance ?? 0;
+  const walletAdjustment = walletBalance > 0
+    ? Math.min(parseFloat(walletBalance.toFixed(2)), baseTotal)
+    : parseFloat(walletBalance.toFixed(2));
+  const total = parseFloat((baseTotal - walletAdjustment).toFixed(2));
 
   // ── Coupon ─────────────────────────────────
   const handleValidateCoupon = async () => {
@@ -1215,6 +1234,38 @@ export default function KoyambeduCheckout() {
               ))}
             </div>
 
+            {/* ── Wallet balance card ── */}
+            {walletData !== null && walletBalance !== 0 && (
+              <div className="rounded-2xl px-4 py-3 flex items-start gap-3"
+                style={{
+                  background: walletBalance > 0 ? '#f0fdf4' : '#fffbeb',
+                  border: `1.5px solid ${walletBalance > 0 ? '#bbf7d0' : '#fde68a'}`,
+                }}>
+                <span className="text-xl shrink-0 mt-0.5">{walletBalance > 0 ? '💚' : '⚠️'}</span>
+                <div className="flex-1">
+                  {walletBalance > 0 ? (
+                    <>
+                      <p className="text-green-800 text-sm font-bold leading-snug">
+                        You have ₹{walletBalance.toFixed(2)} in Wallet Credits
+                      </p>
+                      <p className="text-green-600 text-xs mt-0.5">
+                        This will be automatically applied as a discount on your order.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-amber-800 text-sm font-bold leading-snug">
+                        Wallet Adjustment: ₹{Math.abs(walletBalance).toFixed(2)} due
+                      </p>
+                      <p className="text-amber-600 text-xs mt-0.5">
+                        A previous price difference will be recovered in this order.
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Price breakdown */}
             <div className="bg-white rounded-2xl p-4"
               style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
@@ -1242,6 +1293,18 @@ export default function KoyambeduCheckout() {
                 {couponDiscount > 0 && (
                   <div className="flex justify-between font-semibold text-green-600">
                     <span>Promo ({couponApplied?.code})</span><span>−₹{couponDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+                {walletAdjustment > 0 && (
+                  <div className="flex justify-between font-semibold text-green-600">
+                    <span className="flex items-center gap-1">💚 Wallet Credit <span className="text-[10px] font-normal text-green-500">(auto-applied)</span></span>
+                    <span>−₹{walletAdjustment.toFixed(2)}</span>
+                  </div>
+                )}
+                {walletAdjustment < 0 && (
+                  <div className="flex justify-between font-semibold text-amber-600">
+                    <span className="flex items-center gap-1">⚠️ Wallet Recovery <span className="text-[10px] font-normal text-amber-500">(price adjustment)</span></span>
+                    <span>+₹{Math.abs(walletAdjustment).toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-gray-800 border-t border-gray-100 pt-2">
