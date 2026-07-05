@@ -15,10 +15,9 @@ import { useAuth } from '../../context/AuthContext';
 import SavedAddressPicker from '../../components/common/SavedAddressPicker';
 import toast from 'react-hot-toast';
 
-// ── DEV-ONLY: Test payment buttons ────────────────────────────────
-// Set VITE_ENABLE_TEST_PAYMENT_BUTTONS=true in .env.local to enable.
-// These buttons are NEVER visible in production builds.
-const DEV_TEST_PAYMENTS = import.meta.env.VITE_ENABLE_TEST_PAYMENT_BUTTONS === 'true';
+// ── Test payment mode is now controlled by Super Admin via DB, not env vars.
+// The checkout fetches /koyambedu/dev-settings/payment-test-mode on mount.
+// The env var fallback is intentionally removed.
 
 const KOYAMBEDU_LAT = 13.0748;
 const KOYAMBEDU_LNG = 80.2136;
@@ -569,8 +568,16 @@ export default function KoyambeduCheckout() {
   // ── Wallet ─────────────────────────────────
   const [walletData, setWalletData] = useState(null);
 
-  // ── DEV-ONLY test payment state ────────────────────────────────
-  const [testPayFailed, setTestPayFailed] = useState(false);
+  // ── Test payment mode — fetched from Super Admin DB setting ──────
+  const [testPayEnabled, setTestPayEnabled]  = useState(false);
+  const [testPayFailed,  setTestPayFailed]   = useState(false);
+
+  useEffect(() => {
+    // Fire-and-forget — if it fails, default is false (buttons hidden)
+    api.get('/koyambedu/dev-settings/payment-test-mode')
+      .then(r => setTestPayEnabled(r.data?.enabled === true))
+      .catch(() => {});
+  }, []);
 
   const deliveryCharge = locationData?.deliveryCharge ?? 249;
   const distanceKm     = locationData?.distanceKm ?? null;
@@ -1399,22 +1406,22 @@ export default function KoyambeduCheckout() {
               </div>
             </div>
 
-            {/* ── DEV-ONLY: Test Payment Controls ─────────────────────────
-                 Visible only when VITE_ENABLE_TEST_PAYMENT_BUTTONS=true.
-                 Remove this entire block before production deployment.
-            ────────────────────────────────────────────────────────── */}
-            {DEV_TEST_PAYMENTS && (
+            {/* ── Development Payment Testing ───────────────────────────────
+                 Shown only when Super Admin has enabled Payment Test Mode in
+                 the Admin Panel → Dev Settings tab. Hidden in normal operation.
+            ──────────────────────────────────────────────────────────── */}
+            {testPayEnabled && (
               <div className="rounded-2xl p-4 space-y-3"
                 style={{ background: '#1e1b4b', border: '2px dashed #6366f1' }}>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-yellow-300 text-sm">⚠️</span>
                   <p className="text-indigo-200 text-[11px] font-black uppercase tracking-wider">
-                    Development Testing — Remove Before Production
+                    Development Payment Testing
                   </p>
                 </div>
                 <p className="text-indigo-300 text-[10px] leading-relaxed">
-                  These buttons bypass the Razorpay gateway and simulate the exact success/failure
-                  flows. Only visible when <code className="bg-indigo-900 px-1 rounded">VITE_ENABLE_TEST_PAYMENT_BUTTONS=true</code>.
+                  These buttons bypass the Razorpay gateway and simulate payment responses.
+                  This feature is temporarily enabled by the Super Admin for testing purposes.
                 </p>
                 <div className="flex gap-3">
                   <button

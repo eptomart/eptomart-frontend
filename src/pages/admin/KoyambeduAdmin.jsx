@@ -7,7 +7,15 @@ import KoyambeduVariantProductForm, { EMPTY_VARIANT_PRODUCT, getVariantOverlapEr
 import KoyambeduScheduleAdmin from './KoyambeduScheduleAdmin';
 import toast from 'react-hot-toast';
 
-const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'product-approvals', 'daily-price', 'schedule', 'refund-requests', 'reports'];
+const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'product-approvals', 'daily-price', 'schedule', 'refund-requests', 'reports', 'dev-settings'];
+
+const EXPIRY_OPTIONS = [
+  { value: 'never', label: 'Never (Manual Disable Only)' },
+  { value: '30m',   label: '30 Minutes' },
+  { value: '1h',    label: '1 Hour' },
+  { value: '2h',    label: '2 Hours' },
+  { value: 'eod',   label: 'End of Day' },
+];
 
 const DELIVERY_SLOTS = [
   '06:00 AM – 08:59 AM',
@@ -274,6 +282,14 @@ export default function KoyambeduAdmin() {
   const [rptData,       setRptData]       = useState(null);
   const [rptLoading,    setRptLoading]    = useState(false);
 
+  // Dev Settings tab — Payment Test Mode
+  const [devSettings,    setDevSettings]    = useState(null);   // { enabled, expiresAt, enabledBy, enabledAt, auditLog }
+  const [devLoading,     setDevLoading]     = useState(false);
+  const [devExpiresIn,   setDevExpiresIn]   = useState('never');
+  const [devSaving,      setDevSaving]      = useState(false);
+  // Lightweight poll: fetch current test-mode status for dashboard banner
+  const [testModeActive, setTestModeActive] = useState(false);
+
   useEffect(() => { loadTab(tab); }, [tab]);
 
   // Load seller admin list for order filter on first visit
@@ -342,10 +358,22 @@ export default function KoyambeduAdmin() {
         const { data } = await api.get('/koyambedu/admin/products/pending');
         setPendingNewProducts(data.pendingNew || []);
         setPendingEditProducts(data.pendingEdits || []);
+      } else if (t === 'dev-settings') {
+        setDevLoading(true);
+        const { data } = await api.get('/koyambedu/admin/dev-settings/payment-test-mode');
+        setDevSettings(data);
+        setTestModeActive(data.enabled);
       }
     } catch { toast.error('Failed to load'); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setDevLoading(false); }
   };
+
+  // Fetch test-mode banner status on dashboard load
+  useEffect(() => {
+    api.get('/koyambedu/dev-settings/payment-test-mode')
+      .then(r => setTestModeActive(r.data.enabled))
+      .catch(() => {});
+  }, []);
 
   const updateOrderStatus = async () => {
     if (!newStatus) { toast.error('Select a status'); return; }
@@ -993,7 +1021,7 @@ export default function KoyambeduAdmin() {
           {TAB_LIST.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white hover:bg-white/30'}`}>
-              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -1001,6 +1029,33 @@ export default function KoyambeduAdmin() {
 
       <div className="p-4">
         {loading && <div className="flex justify-center py-8"><div className="w-7 h-7 border-4 border-green-500 border-t-transparent rounded-full animate-spin" /></div>}
+
+        {/* ── PAYMENT TEST MODE WARNING BANNER ── */}
+        {testModeActive && (
+          <div className="mb-4 rounded-2xl p-4 flex items-start gap-3"
+            style={{ background: '#fff7ed', border: '2px solid #f97316' }}>
+            <span className="text-2xl shrink-0">⚠️</span>
+            <div className="flex-1 min-w-0">
+              <p className="font-black text-orange-800 text-sm">Development Payment Mode is ENABLED</p>
+              <p className="text-orange-700 text-xs mt-0.5 leading-snug">
+                Customers can bypass the payment gateway using test buttons on the checkout page.
+                Disable this immediately after testing.
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  await api.put('/koyambedu/admin/dev-settings/payment-test-mode/disable');
+                  setTestModeActive(false);
+                  toast.success('Payment test mode disabled');
+                  if (tab === 'dev-settings') loadTab('dev-settings');
+                } catch { toast.error('Failed to disable'); }
+              }}
+              className="shrink-0 bg-orange-600 text-white font-bold text-xs px-3 py-2 rounded-xl hover:bg-orange-700 transition active:scale-95">
+              Disable Now
+            </button>
+          </div>
+        )}
 
         {/* ── DASHBOARD ── */}
         {tab === 'dashboard' && stats && !loading && (
@@ -2965,6 +3020,156 @@ export default function KoyambeduAdmin() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── DEV SETTINGS TAB ── */}
+      {tab === 'dev-settings' && (
+        <div className="space-y-5 pb-10">
+
+          {/* Header */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-4">
+            <h2 className="font-black text-gray-800 text-base mb-1">🔧 Development Settings</h2>
+            <p className="text-xs text-gray-400 leading-snug">
+              Control development and testing features for Koyambedu Daily.
+              These settings affect live customer behaviour — use with caution.
+            </p>
+          </div>
+
+          {/* Payment Test Mode card */}
+          <div className="bg-white rounded-2xl border-2 border-orange-200 p-4 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-orange-50">
+                <span className="text-xl">💳</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-black text-gray-800 text-sm">Payment Testing Mode</h3>
+                <p className="text-xs text-gray-400 mt-0.5 leading-snug">
+                  When enabled, customers see Development Payment buttons on the checkout page
+                  to simulate successful or failed payments. Disable immediately after testing.
+                </p>
+              </div>
+              {/* Status badge */}
+              <span className={`shrink-0 text-[10px] font-black px-2 py-1 rounded-full ${
+                devSettings?.enabled ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+              }`}>
+                {devSettings?.enabled ? '🔴 ACTIVE' : '🟢 OFF'}
+              </span>
+            </div>
+
+            {/* Current status details */}
+            {devSettings?.enabled && (
+              <div className="rounded-xl p-3 text-xs space-y-1" style={{ background: '#fff7ed', border: '1px solid #fed7aa' }}>
+                <p className="font-bold text-orange-800">⚠️ Test mode is currently active</p>
+                {devSettings.enabledBy && (
+                  <p className="text-orange-700">Enabled by: <span className="font-semibold">{devSettings.enabledBy}</span></p>
+                )}
+                {devSettings.enabledAt && (
+                  <p className="text-orange-700">Enabled at: <span className="font-semibold">{new Date(devSettings.enabledAt).toLocaleString('en-IN')}</span></p>
+                )}
+                {devSettings.expiresAt && (
+                  <p className="text-orange-700">Auto-expires: <span className="font-semibold">{new Date(devSettings.expiresAt).toLocaleString('en-IN')}</span></p>
+                )}
+                {!devSettings.expiresAt && (
+                  <p className="text-orange-700">No automatic expiry — must be disabled manually.</p>
+                )}
+              </div>
+            )}
+
+            {/* Enable controls — only show when disabled */}
+            {!devSettings?.enabled && (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-gray-600 mb-1 block">Auto-Expire After</label>
+                  <select value={devExpiresIn} onChange={e => setDevExpiresIn(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500">
+                    {EXPIRY_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  disabled={devSaving}
+                  onClick={async () => {
+                    setDevSaving(true);
+                    try {
+                      await api.put('/koyambedu/admin/dev-settings/payment-test-mode/enable', { expiresIn: devExpiresIn });
+                      toast.success('Payment test mode enabled');
+                      setTestModeActive(true);
+                      loadTab('dev-settings');
+                    } catch (e) {
+                      toast.error(e?.response?.data?.message || 'Failed to enable');
+                    } finally { setDevSaving(false); }
+                  }}
+                  className="w-full py-3 rounded-xl font-black text-sm text-white transition active:scale-95 disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg,#ea580c,#f97316)' }}>
+                  {devSaving ? 'Enabling…' : '▶ Enable Payment Test Mode'}
+                </button>
+              </div>
+            )}
+
+            {/* Disable button — only show when active */}
+            {devSettings?.enabled && (
+              <button
+                disabled={devSaving}
+                onClick={async () => {
+                  setDevSaving(true);
+                  try {
+                    await api.put('/koyambedu/admin/dev-settings/payment-test-mode/disable');
+                    toast.success('Payment test mode disabled');
+                    setTestModeActive(false);
+                    loadTab('dev-settings');
+                  } catch (e) {
+                    toast.error(e?.response?.data?.message || 'Failed to disable');
+                  } finally { setDevSaving(false); }
+                }}
+                className="w-full py-3 rounded-xl font-black text-sm text-white bg-red-600 hover:bg-red-700 transition active:scale-95 disabled:opacity-50">
+                {devSaving ? 'Disabling…' : '⏹ Disable Payment Test Mode'}
+              </button>
+            )}
+          </div>
+
+          {/* Audit Log */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-4">
+            <h3 className="font-bold text-gray-700 text-sm mb-3">📋 Audit Log</h3>
+            {devLoading && <div className="flex justify-center py-4"><div className="w-6 h-6 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" /></div>}
+            {!devLoading && (!devSettings?.auditLog || devSettings.auditLog.length === 0) && (
+              <p className="text-xs text-gray-400 text-center py-4">No activity yet. Changes to Payment Test Mode will appear here.</p>
+            )}
+            {!devLoading && devSettings?.auditLog?.length > 0 && (
+              <div className="space-y-2">
+                {devSettings.auditLog.map((entry, idx) => (
+                  <div key={idx} className={`flex items-center gap-3 p-3 rounded-xl text-xs border ${
+                    entry.action === 'enabled'  ? 'bg-orange-50 border-orange-100' :
+                    entry.action === 'disabled' ? 'bg-green-50 border-green-100' :
+                                                  'bg-gray-50 border-gray-100'
+                  }`}>
+                    <span className="text-base shrink-0">
+                      {entry.action === 'enabled' ? '🟠' : entry.action === 'disabled' ? '🟢' : '⏰'}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-gray-800 capitalize">{entry.action}</p>
+                      <p className="text-gray-500">by {entry.byName || 'Unknown'}</p>
+                      {entry.expiresAt && (
+                        <p className="text-gray-400">expires {new Date(entry.expiresAt).toLocaleString('en-IN')}</p>
+                      )}
+                    </div>
+                    <p className="text-gray-400 shrink-0 text-right">{new Date(entry.at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Security note */}
+          <div className="rounded-2xl p-4 text-xs text-gray-500 leading-snug"
+            style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+            <p className="font-bold text-gray-600 mb-1">🔒 Security Notes</p>
+            <p>• The backend validates this setting on every test payment request — hiding buttons on the frontend alone is not sufficient.</p>
+            <p className="mt-1">• Test payment APIs return 403 when this mode is disabled, even if someone discovers the endpoint.</p>
+            <p className="mt-1">• Only Super Admins can enable or disable this feature. Seller Admins have no access.</p>
+          </div>
+
         </div>
       )}
 
