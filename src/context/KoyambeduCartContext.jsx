@@ -116,7 +116,7 @@ export const KoyambeduCartProvider = ({ children }) => {
   // ── updateItem ─────────────────────────────────
   // options.silent      — suppress toast (stepper taps)
   // options.productData — product object for guest cart display
-  const updateItem = useCallback((productId, quantity, deliveryType = 'tomorrow', { silent = false, productData } = {}) => {
+  const updateItem = useCallback((productId, quantity, deliveryType = 'tomorrow', { silent = false, productData, gradeKey = null } = {}) => {
     const pid    = String(productId);
     const qty    = Math.max(0, quantity);
 
@@ -167,7 +167,7 @@ export const KoyambeduCartProvider = ({ children }) => {
       timer: setTimeout(async () => {
         try {
           setLoading(true);
-          const { data } = await api.post('/koyambedu/cart', { productId, quantity: qty, deliveryType });
+          const { data } = await api.post('/koyambedu/cart', { productId, quantity: qty, deliveryType, ...(gradeKey ? { gradeKey } : {}) });
           setCart(data.cart || { items: [] });
           setOptimisticQtys(prev => { const n = { ...prev }; delete n[pid]; return n; });
         } catch (err) {

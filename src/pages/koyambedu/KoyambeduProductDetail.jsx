@@ -34,6 +34,7 @@ export default function KoyambeduProductDetail() {
   const [qtyInvalid, setQtyInvalid] = useState(false); // true when typed value is below minQty
   const [priceHistory, setPriceHistory] = useState([]);
   const [showQtySheet, setShowQtySheet] = useState(false); // variant qty bottom sheet
+  const [activeGradeKey, setActiveGradeKey] = useState(null); // grade system
   const autoCommitRef = useRef(null);
 
   useEffect(() => {
@@ -45,6 +46,19 @@ export default function KoyambeduProductDetail() {
       .then(r => {
         const p = r.data.product;
         setProduct(p);
+        // Auto-select cheapest active grade if gradesEnabled
+        if (p.gradesEnabled && p.grades?.length > 0) {
+          const activeGrades = p.grades.filter(g => g.isActive);
+          if (activeGrades.length > 0) {
+            // Pick the grade with the lowest per-unit price
+            const cheapest = activeGrades.reduce((best, g) => {
+              const lup = Math.min(...(g.variants || []).map(v => v.finalPrice || Infinity).filter(Boolean));
+              const bestLup = Math.min(...(best.variants || []).map(v => v.finalPrice || Infinity).filter(Boolean));
+              return lup < bestLup ? g : best;
+            }, activeGrades[0]);
+            setActiveGradeKey(cheapest.gradeKey);
+          }
+        }
         // If product is already in cart, start stepper at that qty (not minQty)
         const minQ    = Math.max(1, p.minQty || p.qtyStep || 1);
         const initQty = existingCartQty > 0 ? existingCartQty : minQ;
@@ -84,16 +98,27 @@ export default function KoyambeduProductDetail() {
   // ── Derived values ───────────────────────────────────────────
   const cartQty    = getQty(productId);
   const images     = product.images?.filter(i => i.url)?.length ? product.images : [{ url: IMG_PLACEHOLDER }];
-  const hasVariants = product.variants?.length > 0;
+
+  // ── Grade system: resolve active grade and its variants ──────
+  const hasGrades   = !!(product.gradesEnabled && product.grades?.length > 0);
+  const activeGrades = hasGrades ? product.grades.filter(g => g.isActive) : [];
+  const activeGrade  = hasGrades
+    ? (activeGrades.find(g => g.gradeKey === activeGradeKey) || activeGrades[0] || null)
+    : null;
+  // When grades are enabled, use the active grade's variants; otherwise use product.variants
+  const activeVariants = hasGrades
+    ? (activeGrade?.variants || [])
+    : (product.variants || []);
+  const hasVariants = activeVariants.length > 0;
 
   // Find which variant the current qty falls into
   // Open-ended last tier: toQty is empty/0 → matches any qty >= fromQty
   const activeVariant = hasVariants
-    ? product.variants.find(v => {
+    ? activeVariants.find(v => {
         if (!v.toQty) return qty >= v.fromQty; // open-ended last tier
         return qty >= v.fromQty && qty <= v.toQty;
       }) ||
-      product.variants.reduce((best, v) => {
+      activeVariants.reduce((best, v) => {
         if (!best || v.finalPrice < best.finalPrice) return v;
         return best;
       }, null)
@@ -102,9 +127,9 @@ export default function KoyambeduProductDetail() {
   const activeFinalPrice = activeVariant ? activeVariant.finalPrice : product.currentPrice;
   // For variant products, always step by 1 — fromQty is the *minimum*, not the increment
   const step   = hasVariants ? 1 : Math.max(1, product.qtyStep || 1);
-  const minQty = hasVariants ? (product.variants[0]?.fromQty || 1) : Math.max(1, product.minQty || 1);
+  const minQty = hasVariants ? (activeVariants[0]?.fromQty || 1) : Math.max(1, product.minQty || 1);
   // Open-ended last tier: no upper cap (toQty is null)
-  const lastVariant = hasVariants ? product.variants[product.variants.length - 1] : null;
+  const lastVariant = hasVariants ? activeVariants[activeVariants.length - 1] : null;
   const isLastVariantOpen = hasVariants && !lastVariant?.toQty;
   const maxQty = hasVariants
     ? (isLastVariantOpen ? null : (lastVariant?.toQty || 9999))
@@ -118,9 +143,9 @@ export default function KoyambeduProductDetail() {
   })();
   const total   = (displayQty * activeFinalPrice).toFixed(2);
 
-  // Best Value variant = lowest per-unit finalPrice (price/unit is already finalPrice for per-unit products)
+  // Best Value variant = lowest per-unit finalPrice
   const bestVariant = hasVariants
-    ? product.variants.reduce((b, v) => (!b || Number(v.finalPrice) < Number(b.finalPrice)) ? v : b, null)
+    ? activeVariants.reduce((b, v) => (!b || Number(v.finalPrice) < Number(b.finalPrice)) ? v : b, null)
     : null;
 
   // Format qty for display: 0.25 kg → "250 g", 0.5 kg → "500 g", 1 kg → "1 kg"
@@ -148,12 +173,12 @@ export default function KoyambeduProductDetail() {
   // ── Handlers ─────────────────────────────────────────────────
   const handleAddToCart = () => {
     const effectiveQty = resolveQty();
-    updateItem(productId, effectiveQty, 'tomorrow', { productData: product });
+    updateItem(productId, effectiveQty, 'tomorrow', { productData: product, gradeKey: activeGrade?.gradeKey || null });
   };
 
   const handleBuyNow = () => {
     const effectiveQty = resolveQty();
-    updateItem(productId, effectiveQty, 'tomorrow', { productData: product });
+    updateItem(productId, effectiveQty, 'tomorrow', { productData: product, gradeKey: activeGrade?.gradeKey || null });
     navigate('/koyambedu/cart');
   };
 
@@ -286,6 +311,41 @@ export default function KoyambeduProductDetail() {
           {/* Price row */}
           {hasVariants ? (
             <div className="mt-3">
+
+              {/* ── Grade tabs (only when gradesEnabled) ── */}
+              {hasGrades && activeGrades.length > 1 && (
+                <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
+                  {activeGrades.map(g => {
+                    const isActive = g.gradeKey === (activeGrade?.gradeKey);
+                    const gradeColors = {
+                      premium: { active: 'bg-purple-600 text-white border-purple-600', inactive: 'text-purple-700 border-purple-200 bg-purple-50' },
+                      mixed:   { active: 'bg-blue-600 text-white border-blue-600',   inactive: 'text-blue-700 border-blue-200 bg-blue-50'   },
+                      economy: { active: 'bg-gray-600 text-white border-gray-500',   inactive: 'text-gray-600 border-gray-200 bg-gray-50'   },
+                    };
+                    const colors = gradeColors[g.gradeKey] || gradeColors.economy;
+                    const minPrice = Math.min(...(g.variants || []).map(v => v.finalPrice || Infinity).filter(f => f !== Infinity));
+                    return (
+                      <button key={g.gradeKey}
+                        onClick={() => { setActiveGradeKey(g.gradeKey); setShowQtySheet(false); }}
+                        className={`flex-shrink-0 px-3 py-2 rounded-xl border text-xs font-bold transition active:scale-95 ${isActive ? colors.active : colors.inactive}`}>
+                        <div>{g.gradeName || g.gradeKey}</div>
+                        {minPrice !== Infinity && (
+                          <div className={`text-[10px] font-semibold mt-0.5 ${isActive ? 'opacity-80' : 'opacity-60'}`}>
+                            from ₹{minPrice}/{product.unit}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {/* Grade label when only one active grade */}
+              {hasGrades && activeGrades.length === 1 && activeGrade && (
+                <div className="mb-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                  <span>⭐</span> {activeGrade.gradeName || activeGrade.gradeKey}
+                </div>
+              )}
+
               {/* Current active price */}
               <div className="flex items-center gap-2 mb-2">
                 <div className="flex items-baseline gap-1">
@@ -308,7 +368,7 @@ export default function KoyambeduProductDetail() {
                   <span className="text-right">Value</span>
                 </div>
                 {/* Rows — sorted smallest qty first */}
-                {[...product.variants]
+                {[...activeVariants]
                   .sort((a, b) => Number(a.fromQty) - Number(b.fromQty))
                   .map((v, i) => {
                     const isActive    = activeVariant === v || (!v.toQty ? qty >= v.fromQty : (qty >= v.fromQty && qty <= v.toQty));
@@ -435,7 +495,7 @@ export default function KoyambeduProductDetail() {
             <>
               <p className="font-bold text-gray-800 text-sm mb-2">Select Quantity Range</p>
               <div className="flex gap-2 flex-wrap">
-                {product.variants.map((v, i) => (
+                {activeVariants.map((v, i) => (
                   <button key={i} onClick={() => selectVariant(v)}
                     className={`text-xs font-bold px-3 py-2 rounded-xl border transition active:scale-95 ${
                       activeVariant === v
@@ -639,8 +699,8 @@ export default function KoyambeduProductDetail() {
                   if (activeVariant && newQty >= activeVariant.fromQty) {
                     setQty(newQty); setQtyInput(String(newQty));
                   } else {
-                    const idx = product.variants.indexOf(activeVariant);
-                    const prev = product.variants[idx - 1];
+                    const idx = activeVariants.indexOf(activeVariant);
+                    const prev = activeVariants[idx - 1];
                     if (prev) { setQty(prev.toQty); setQtyInput(String(prev.toQty)); }
                   }
                 }}
@@ -692,8 +752,8 @@ export default function KoyambeduProductDetail() {
                   } else if (activeVariant && newQty <= (activeVariant.toQty || Infinity)) {
                     setQty(newQty); setQtyInput(String(newQty));
                   } else {
-                    const idx = product.variants.indexOf(activeVariant);
-                    const next = product.variants[idx + 1];
+                    const idx = activeVariants.indexOf(activeVariant);
+                    const next = activeVariants[idx + 1];
                     if (next) { setQty(next.fromQty); setQtyInput(String(next.fromQty)); }
                   }
                 }}
