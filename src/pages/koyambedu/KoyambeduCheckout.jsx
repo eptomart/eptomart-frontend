@@ -504,10 +504,10 @@ export default function KoyambeduCheckout() {
   // Pre-load Google Maps in background when checkout opens
   useEffect(() => { loadGoogleMaps().catch(() => {}); }, []);
 
-  // ── Delivery slot state (IST-aware) ────────
+  // ── Delivery slot state (API-driven) ─────────
   const istNow        = getISTDate();
   const istHour       = getISTHour();
-  const todayDisabled = istHour >= 9; // 9 AM IST cutoff
+  const todayDisabled = istHour >= 9; // 9 AM IST — no same-day if all slots started
 
   // Date values
   const todayIST    = new Date(istNow); todayIST.setHours(0,0,0,0);
@@ -516,22 +516,48 @@ export default function KoyambeduCheckout() {
   const tomorrowValue = fmtDate(tomorrowIST);
 
   const [deliveryTab,  setDeliveryTab]  = useState(todayDisabled ? 'tomorrow' : 'today');
-  const [selectedSlot, setSelectedSlot] = useState(null); // null = no selection yet
+  const [selectedSlot, setSelectedSlot] = useState(null);
+
+  // API-fetched available slots per date
+  const [availableSlots,    setAvailableSlots]    = useState(null); // null = loading
+  const [scheduleStatus,    setScheduleStatus]    = useState('open');
+  const [slotsLoading,      setSlotsLoading]      = useState(false);
 
   // Derive the delivery date from the active tab
   const selectedDate = deliveryTab === 'today' ? todayValue : tomorrowValue;
 
-  // Slots to show based on active tab
-  const todaySlotKeys    = getTodayAvailableSlots(istHour);
-  const visibleSlotKeys  = deliveryTab === 'tomorrow'
-    ? ['slot1','slot2','slot3','slot4']
-    : todaySlotKeys;
-  const visibleSlots     = ALL_SLOTS.filter(s => visibleSlotKeys.includes(s.key));
+  // Fetch available slots from backend whenever date tab changes
+  useEffect(() => {
+    const fetchSlots = async () => {
+      setSlotsLoading(true);
+      try {
+        const { data } = await api.get(`/koyambedu/schedule/available?date=${selectedDate}`);
+        setAvailableSlots(data.available || []);
+        setScheduleStatus(data.scheduleStatus || 'open');
+        // If currently selected slot is no longer available, clear it
+        if (selectedSlot && !data.available?.find(s => s.key === selectedSlot)) {
+          setSelectedSlot(null);
+        }
+      } catch {
+        // Fallback: show all slots (don't block checkout on network error)
+        setAvailableSlots(ALL_SLOTS.map(s => ({ ...s, remaining: 100 })));
+        setScheduleStatus('open');
+      } finally {
+        setSlotsLoading(false);
+      }
+    };
+    fetchSlots();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]);
 
-  // Reset slot selection when tab changes (if current slot not available in new tab)
+  // Slots to render — from API response (which already filters by enabled + capacity + time)
+  const visibleSlots = availableSlots || [];
+
+  // Reset slot selection when tab changes
   const handleTabChange = (tab) => {
     setDeliveryTab(tab);
     setSelectedSlot(null);
+    setAvailableSlots(null);
   };
 
   // ── Payment ────────────────────────────────
@@ -585,7 +611,7 @@ export default function KoyambeduCheckout() {
     if (!locationData?.lat) { toast.error('Please confirm your delivery location on the map'); return; }
     setLoading(true);
     try {
-      const slotObj = ALL_SLOTS.find(s => s.key === selectedSlot);
+      const slotObj = [...(availableSlots || []), ...ALL_SLOTS].find(s => s.key === selectedSlot);
       const { data } = await api.post('/koyambedu/orders', {
         shippingAddress: addr,
         paymentMethod,
@@ -662,7 +688,7 @@ export default function KoyambeduCheckout() {
     if (!locationData?.lat) { toast.error('Please confirm your delivery location on the map'); return; }
     setLoading(true);
     try {
-      const slotObj = ALL_SLOTS.find(s => s.key === selectedSlot);
+      const slotObj = [...(availableSlots || []), ...ALL_SLOTS].find(s => s.key === selectedSlot);
       const { data } = await api.post('/koyambedu/orders', {
         shippingAddress: addr,
         paymentMethod:   'razorpay',
@@ -1042,39 +1068,66 @@ export default function KoyambeduCheckout() {
                 Available Delivery Slots — {deliveryTab === 'today' ? fmtDisplayDate(todayIST) : fmtDisplayDate(tomorrowIST)}
               </p>
 
-              {visibleSlots.length === 0 ? (
+              {/* Loading state */}
+              {slotsLoading ? (
+                <div className="flex justify-center py-6">
+                  <div className="w-6 h-6 border-3 border-green-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : scheduleStatus === 'closed' ? (
+                /* Date closed by admin */
                 <div className="text-center py-6">
-                  <span className="text-3xl">⏰</span>
-                  <p className="text-sm font-bold text-gray-700 mt-2">No same-day slots available</p>
-                  <p className="text-xs text-gray-400 mt-1">Please select Tomorrow to book your delivery.</p>
-                  <button onClick={() => handleTabChange('tomorrow')}
+                  <span className="text-3xl">🚫</span>
+                  <p className="text-sm font-bold text-gray-700 mt-2">No deliveries on this date</p>
+                  <p className="text-xs text-gray-400 mt-1">This delivery date is currently unavailable. Please choose another date.</p>
+                  <button onClick={() => handleTabChange(deliveryTab === 'today' ? 'tomorrow' : 'today')}
                     className="mt-3 text-green-600 text-sm font-bold underline">
-                    Switch to Tomorrow →
+                    Switch to {deliveryTab === 'today' ? 'Tomorrow' : 'Today'} →
                   </button>
                 </div>
+              ) : visibleSlots.length === 0 ? (
+                /* No slots available (time cutoff or all full/disabled) */
+                <div className="text-center py-6">
+                  <span className="text-3xl">⏰</span>
+                  <p className="text-sm font-bold text-gray-700 mt-2">
+                    {deliveryTab === 'today' ? 'No same-day slots available' : 'No slots available for this date'}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {deliveryTab === 'today' ? 'Please select Tomorrow to book your delivery.' : 'All slots are either full or disabled.'}
+                  </p>
+                  {deliveryTab === 'today' && (
+                    <button onClick={() => handleTabChange('tomorrow')}
+                      className="mt-3 text-green-600 text-sm font-bold underline">
+                      Switch to Tomorrow →
+                    </button>
+                  )}
+                </div>
               ) : (
-                visibleSlots.map(sl => (
-                  <button key={sl.key} onClick={() => setSelectedSlot(sl.key)}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
-                    style={{
-                      background: selectedSlot === sl.key ? '#f0fdf4' : '#f9fafb',
-                      border: `2px solid ${selectedSlot === sl.key ? '#16a34a' : '#e5e7eb'}`,
-                      color: selectedSlot === sl.key ? '#166534' : '#374151',
-                    }}>
-                    {/* Radio circle */}
-                    <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition"
+                visibleSlots.map(sl => {
+                  const isFull = sl.remaining !== undefined && sl.remaining <= 0;
+                  const isAlmostFull = sl.remaining !== undefined && sl.remaining > 0 && sl.remaining <= 10;
+                  return (
+                    <button key={sl.key} onClick={() => !isFull && setSelectedSlot(sl.key)}
+                      disabled={isFull}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
-                        borderColor: selectedSlot === sl.key ? '#16a34a' : '#d1d5db',
-                        background: selectedSlot === sl.key ? '#16a34a' : 'white',
+                        background: selectedSlot === sl.key ? '#f0fdf4' : '#f9fafb',
+                        border: `2px solid ${selectedSlot === sl.key ? '#16a34a' : '#e5e7eb'}`,
+                        color: selectedSlot === sl.key ? '#166534' : '#374151',
                       }}>
-                      {selectedSlot === sl.key && (
-                        <div className="w-2 h-2 rounded-full bg-white" />
-                      )}
-                    </div>
-                    <span className="flex-1 text-left">{sl.display}</span>
-                    {selectedSlot === sl.key && <FiCheck size={16} className="text-green-600 shrink-0" />}
-                  </button>
-                ))
+                      <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition"
+                        style={{
+                          borderColor: selectedSlot === sl.key ? '#16a34a' : '#d1d5db',
+                          background: selectedSlot === sl.key ? '#16a34a' : 'white',
+                        }}>
+                        {selectedSlot === sl.key && <div className="w-2 h-2 rounded-full bg-white" />}
+                      </div>
+                      <span className="flex-1 text-left">{sl.display}</span>
+                      {isFull && <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">Full</span>}
+                      {isAlmostFull && !isFull && <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">{sl.remaining} left</span>}
+                      {selectedSlot === sl.key && <FiCheck size={16} className="text-green-600 shrink-0" />}
+                    </button>
+                  );
+                })
               )}
             </div>
 
