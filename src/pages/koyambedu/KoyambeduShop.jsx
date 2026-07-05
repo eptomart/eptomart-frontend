@@ -39,12 +39,21 @@ const getLowestUnitPrice = (variants) => {
 
 const ProductCard = ({ product }) => {
   const img = product.images?.find(i => i.isPrimary)?.url || product.images?.[0]?.url || null;
-  const hasVariants = product.variants?.length > 0;
+  const hasGrades   = !!(product.gradesEnabled && product.grades?.length > 0);
+  const hasVariants = !hasGrades && product.variants?.length > 0;
 
-  // For variant products: show "From ₹X/unit" (lowest per-unit price)
-  // For non-variant products: show standard price
-  const lowestUnitPrice = hasVariants ? getLowestUnitPrice(product.variants) : null;
-  const displayPrice    = lowestUnitPrice ?? product.currentPrice;
+  // Lowest per-unit price: grades → min across all active grade variants; else min variant
+  const lowestUnitPrice = hasGrades
+    ? (() => {
+        const prices = (product.grades || [])
+          .filter(g => g.isActive)
+          .flatMap(g => (g.variants || []).map(v => Number(v.finalPrice) || 0))
+          .filter(p => p > 0);
+        return prices.length ? Math.min(...prices) : null;
+      })()
+    : (hasVariants ? getLowestUnitPrice(product.variants) : null);
+
+  const displayPrice = lowestUnitPrice ?? product.currentPrice;
 
   return (
     <div className="bg-white rounded-2xl border border-green-100 shadow-sm overflow-hidden">
@@ -58,7 +67,10 @@ const ProductCard = ({ product }) => {
           {product.badges?.includes('fresh_arrival') && (
             <span className="absolute top-1.5 left-1.5 bg-green-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">Fresh</span>
           )}
-          {hasVariants && (
+          {hasGrades && (
+            <span className="absolute top-1.5 right-1.5 bg-purple-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full tracking-wide">GRADES</span>
+          )}
+          {hasVariants && !hasGrades && (
             <span className="absolute top-1.5 right-1.5 bg-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full tracking-wide">BULK RATES</span>
           )}
         </div>
@@ -69,7 +81,7 @@ const ProductCard = ({ product }) => {
           {product.nameTamil && <p className="text-[10px] text-gray-400 leading-tight">{product.nameTamil}</p>}
         </Link>
         <div className="mt-1.5">
-          {hasVariants && lowestUnitPrice ? (
+          {lowestUnitPrice ? (
             <div>
               <span className="text-[9px] text-gray-400 font-medium">From </span>
               <span className="text-green-700 font-bold text-xs">₹{lowestUnitPrice}</span>

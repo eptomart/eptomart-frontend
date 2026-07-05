@@ -46,17 +46,12 @@ export default function KoyambeduProductDetail() {
       .then(r => {
         const p = r.data.product;
         setProduct(p);
-        // Auto-select cheapest active grade if gradesEnabled
+        // Auto-select Premium first; fallback to first active grade
         if (p.gradesEnabled && p.grades?.length > 0) {
           const activeGrades = p.grades.filter(g => g.isActive);
           if (activeGrades.length > 0) {
-            // Pick the grade with the lowest per-unit price
-            const cheapest = activeGrades.reduce((best, g) => {
-              const lup = Math.min(...(g.variants || []).map(v => v.finalPrice || Infinity).filter(Boolean));
-              const bestLup = Math.min(...(best.variants || []).map(v => v.finalPrice || Infinity).filter(Boolean));
-              return lup < bestLup ? g : best;
-            }, activeGrades[0]);
-            setActiveGradeKey(cheapest.gradeKey);
+            const premium = activeGrades.find(g => g.gradeKey === 'premium');
+            setActiveGradeKey((premium || activeGrades[0]).gradeKey);
           }
         }
         // If product is already in cart, start stepper at that qty (not minQty)
@@ -96,7 +91,11 @@ export default function KoyambeduProductDetail() {
   );
 
   // ── Derived values ───────────────────────────────────────────
-  const cartQty    = getQty(productId);
+  // For graded products, track qty per grade independently
+  const hasGradesQuick = !!(product.gradesEnabled && product.grades?.length > 0);
+  const cartQty = hasGradesQuick && activeGradeKey
+    ? getQty(productId, activeGradeKey)
+    : getQty(productId);
   const images     = product.images?.filter(i => i.url)?.length ? product.images : [{ url: IMG_PLACEHOLDER }];
 
   // ── Grade system: resolve active grade and its variants ──────
@@ -173,12 +172,20 @@ export default function KoyambeduProductDetail() {
   // ── Handlers ─────────────────────────────────────────────────
   const handleAddToCart = () => {
     const effectiveQty = resolveQty();
-    updateItem(productId, effectiveQty, 'tomorrow', { productData: product, gradeKey: activeGrade?.gradeKey || null });
+    updateItem(productId, effectiveQty, 'tomorrow', {
+      productData: product,
+      gradeKey:  activeGrade?.gradeKey  || null,
+      gradeName: activeGrade?.gradeName || null,
+    });
   };
 
   const handleBuyNow = () => {
     const effectiveQty = resolveQty();
-    updateItem(productId, effectiveQty, 'tomorrow', { productData: product, gradeKey: activeGrade?.gradeKey || null });
+    updateItem(productId, effectiveQty, 'tomorrow', {
+      productData: product,
+      gradeKey:  activeGrade?.gradeKey  || null,
+      gradeName: activeGrade?.gradeName || null,
+    });
     navigate('/koyambedu/cart');
   };
 
@@ -357,6 +364,21 @@ export default function KoyambeduProductDetail() {
                     ✦ BEST VALUE
                   </span>
                 )}
+                {/* Show lowest available price across all grades when viewing a higher grade */}
+                {hasGrades && activeGrades.length > 1 && (() => {
+                  const lowestAcross = Math.min(
+                    ...activeGrades.flatMap(g => (g.variants || []).map(v => v.finalPrice || Infinity))
+                    .filter(f => f !== Infinity && f > 0)
+                  );
+                  if (lowestAcross < Infinity && lowestAcross < activeFinalPrice) {
+                    return (
+                      <span className="text-[10px] text-gray-400 font-medium">
+                        (from ₹{lowestAcross}/{product.unit})
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Variant pricing table — all variants with per-unit + package total */}

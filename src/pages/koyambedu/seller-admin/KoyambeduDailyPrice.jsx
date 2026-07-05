@@ -24,7 +24,7 @@ const fmtTime = (d) => d ? new Date(d).toLocaleTimeString('en-IN', { hour: '2-di
  */
 function previewVariants(variants, highestBasePrice, variantDiffPercent, chargePercents) {
   if (!variants || !variants.length) return [];
-  const totalCharge = (chargePercents.procurement || 15) + (chargePercents.platform || 10) + (chargePercents.logistics || 10);
+  const totalCharge = (chargePercents.procurement ?? 0) + (chargePercents.platform || 10) + (chargePercents.logistics || 10);
   const diff = 1 + (Number(variantDiffPercent) || 0) / 100;
 
   const sorted = [...variants].sort((a, b) => Number(b.fromQty) - Number(a.fromQty));
