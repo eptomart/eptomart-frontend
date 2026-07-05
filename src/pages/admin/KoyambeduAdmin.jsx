@@ -746,27 +746,58 @@ export default function KoyambeduAdmin() {
       procurementChargePercent: p.procurementChargePercent ?? 0,
       platformChargePercent:    p.platformChargePercent    ?? 10,
       logisticsChargePercent:   p.logisticsChargePercent   ?? 10,
-      variants: p.variants?.length
+      // Grade system
+      gradesEnabled: !!p.gradesEnabled,
+      grades: p.grades?.length
+        ? p.grades.map(g => ({
+            gradeKey:           g.gradeKey,
+            gradeName:          g.gradeName || '',
+            isActive:           g.isActive !== false,
+            variantDiffPercent: g.variantDiffPercent ?? 2,
+            variants: g.variants?.length
+              ? g.variants.map(v => ({ basePrice: v.basePrice, fromQty: v.fromQty, toQty: v.toQty, finalPrice: String(v.finalPrice ?? '') }))
+              : [{ basePrice: '', fromQty: 1, toQty: '', finalPrice: '' }, { basePrice: '', fromQty: 26, toQty: '', finalPrice: '' }],
+          }))
+        : [],
+      // Standard variants (non-graded)
+      variants: p.gradesEnabled ? [] : (p.variants?.length
         ? p.variants.map(v => ({ basePrice: v.basePrice, fromQty: v.fromQty, toQty: v.toQty, finalPrice: String(v.finalPrice) }))
-        : [{ basePrice: p.currentPrice || '', fromQty: p.minQty || 1, toQty: p.maxQty || 50, finalPrice: String(p.currentPrice || '') }],
+        : [{ basePrice: p.currentPrice || '', fromQty: p.minQty || 1, toQty: p.maxQty || 50, finalPrice: String(p.currentPrice || '') }]),
     });
   };
 
   const saveEditProduct = async () => {
-    const validVariants = (editProdForm.variants || []).filter((v, i, arr) => v.basePrice && v.fromQty && (v.toQty || i === arr.length - 1));
-    const overlapErr = getVariantOverlapError(validVariants);
-    if (overlapErr) { toast.error(overlapErr); return; }
-    setEditProdSaving(true);
-    try {
-      await api.put(`/koyambedu/admin/products/${editProduct._id}`, {
-        ...editProdForm,
-        variants: validVariants.length > 0 ? validVariants : undefined,
-      });
-      toast.success('Product updated');
-      setEditProduct(null);
-      loadTab('products');
-    } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
-    finally { setEditProdSaving(false); }
+    if (editProdForm.gradesEnabled) {
+      // Grade mode: pass grades array, omit variants
+      setEditProdSaving(true);
+      try {
+        await api.put(`/koyambedu/admin/products/${editProduct._id}`, {
+          ...editProdForm,
+          variants: undefined,
+        });
+        toast.success('Product updated');
+        setEditProduct(null);
+        loadTab('products');
+      } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
+      finally { setEditProdSaving(false); }
+    } else {
+      // Standard variant mode
+      const validVariants = (editProdForm.variants || []).filter((v, i, arr) => v.basePrice && v.fromQty && (v.toQty || i === arr.length - 1));
+      const overlapErr = getVariantOverlapError(validVariants);
+      if (overlapErr) { toast.error(overlapErr); return; }
+      setEditProdSaving(true);
+      try {
+        await api.put(`/koyambedu/admin/products/${editProduct._id}`, {
+          ...editProdForm,
+          grades: undefined,
+          variants: validVariants.length > 0 ? validVariants : undefined,
+        });
+        toast.success('Product updated');
+        setEditProduct(null);
+        loadTab('products');
+      } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
+      finally { setEditProdSaving(false); }
+    }
   };
 
   const toggleProduct = async (productId) => {
@@ -1794,6 +1825,10 @@ export default function KoyambeduAdmin() {
                       className="flex-1 border border-blue-200 text-blue-600 text-xs font-bold py-1.5 rounded-xl hover:bg-blue-50">
                       ✏️ Edit
                     </button>
+                    <a href={`/koyambedu/product/${p._id}`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-center border border-purple-200 text-purple-600 text-xs font-bold px-2.5 py-1.5 rounded-xl hover:bg-purple-50">
+                      👁
+                    </a>
                     <button onClick={() => toggleProduct(p._id)}
                       className={`flex-1 text-xs font-bold py-1.5 rounded-xl border ${p.isAvailable ? 'border-orange-200 text-orange-600 hover:bg-orange-50' : 'border-green-200 text-green-600 hover:bg-green-50'}`}>
                       {p.isAvailable ? 'Disable' : 'Enable'}
@@ -2375,7 +2410,7 @@ export default function KoyambeduAdmin() {
                         ✕ Reject
                       </button>
                       <button
-                        onClick={() => setEditProduct(p)}
+                        onClick={() => openEditProduct(p)}
                         className="flex-1 border-2 border-blue-200 text-blue-700 font-bold py-2 rounded-xl text-sm hover:bg-blue-50">
                         ✏ Edit
                       </button>
@@ -2425,7 +2460,7 @@ export default function KoyambeduAdmin() {
                       {/* Show what changed */}
                       <div className="bg-orange-50 rounded-xl p-3 text-xs space-y-1 mb-3">
                         <p className="font-bold text-orange-800 mb-1">Proposed changes:</p>
-                        {changedKeys.map(k => (
+                        {changedKeys.filter(k => k !== 'grades' && k !== 'gradesEnabled').map(k => (
                           <p key={k} className="text-gray-700">
                             <span className="font-semibold text-orange-700">{k}:</span>{' '}
                             <span className="line-through text-gray-400">{JSON.stringify(p[k])?.slice(0,40)}</span>
@@ -2436,7 +2471,19 @@ export default function KoyambeduAdmin() {
                         {edit.variants && (
                           <p className="text-gray-700">
                             <span className="font-semibold text-orange-700">variants:</span>{' '}
-                            {edit.variants.map((v,i) => `${v.fromQty}${v.toQty?`–${v.toQty}`:'+'} ${p.unit} @ ₹${v.basePrice} base`).join(', ')}
+                            {edit.variants.map((v,i) => `${v.fromQty}${v.toQty?`–${v.toQty}`:'+'} ${p.unit} @ ₹${v.basePrice}`).join(', ')}
+                          </p>
+                        )}
+                        {edit.gradesEnabled !== undefined && (
+                          <p className="text-gray-700">
+                            <span className="font-semibold text-orange-700">gradesEnabled:</span>{' '}
+                            {String(p.gradesEnabled)} → <span className="text-green-700">{String(edit.gradesEnabled)}</span>
+                          </p>
+                        )}
+                        {edit.grades && (
+                          <p className="text-gray-700">
+                            <span className="font-semibold text-orange-700">grades:</span>{' '}
+                            <span className="text-green-700">{edit.grades.filter(g=>g.isActive).map(g => g.gradeName || g.gradeKey).join(', ')} updated</span>
                           </p>
                         )}
                       </div>
@@ -2455,6 +2502,10 @@ export default function KoyambeduAdmin() {
                           className="flex-1 border-2 border-red-200 text-red-600 font-bold py-2 rounded-xl text-sm hover:bg-red-50 disabled:opacity-50">
                           ✕ Discard Edit
                         </button>
+                        <a href={`/koyambedu/product/${p._id}`} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center justify-center border-2 border-purple-200 text-purple-600 font-bold px-3 rounded-xl text-sm hover:bg-purple-50">
+                          👁
+                        </a>
                         <button
                           disabled={prodApprovalSaving === p._id}
                           onClick={async () => {
