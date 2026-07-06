@@ -223,6 +223,7 @@ export default function KoyambeduAdmin() {
 
   // Daily price tab (admin) — v2 variant-aware
   const [dpProducts,    setDpProducts]    = useState([]);
+  const [dpCategories,  setDpCategories]  = useState([]);
   const [dpSaFilter,    setDpSaFilter]    = useState('');
   const [dpCatFilter,   setDpCatFilter]   = useState('');
   const [dpEdits,       setDpEdits]       = useState({});  // { [productId]: { highestBasePrice, variantDiffPercent } }
@@ -350,8 +351,12 @@ export default function KoyambeduAdmin() {
         const params = new URLSearchParams();
         if (dpSaFilter)  params.set('sellerAdmin', dpSaFilter);
         if (dpCatFilter) params.set('category', dpCatFilter);
-        const { data } = await api.get(`/koyambedu/admin/daily-price?${params}`);
-        setDpProducts(data.products || []);
+        const [dpRes, catRes] = await Promise.all([
+          api.get(`/koyambedu/admin/daily-price?${params}`),
+          api.get('/koyambedu/admin/categories'),
+        ]);
+        setDpProducts(dpRes.data.products || []);
+        setDpCategories(catRes.data.categories || []);
         setDpEdits({});
         setDpPreviews({});
       } else if (t === 'product-approvals') {
@@ -993,7 +998,7 @@ export default function KoyambeduAdmin() {
         content += `<div class="sa-header">📦 ${saName}</div>`;
         content += `<table><thead><tr><th>Order ID</th><th>Items</th><th>Total</th><th>Delivery Date</th><th>Slot</th><th>Address</th></tr></thead><tbody>`;
         group.orders?.forEach(o => {
-          const itemRows = o.items.map(it => `${it.name}${it.gradeKey ? ` (${it.gradeName || it.gradeKey})` : ''} × ${it.quantity}${it.unit || ''} @ ₹${it.orderedPrice} = ₹${it.lineTotal?.toFixed(0)}`).join('<br/>');
+          const itemRows = o.items.map(it => `${it.name}${it.gradeKey ? ` - ${it.gradeName || it.gradeKey}` : ''} × ${it.quantity}${it.unit || ''} @ ₹${it.orderedPrice} = ₹${it.lineTotal?.toFixed(0)}`).join('<br/>');
           const addr = o.shippingAddress;
           content += `<tr><td>${o.orderId}</td><td>${itemRows}</td><td>₹${o.saSubtotal?.toFixed(0)}</td><td>${o.deliveryDate ? new Date(o.deliveryDate).toLocaleDateString('en-IN') : '-'}</td><td>${o.deliverySlot || '-'}</td><td>${addr?.addressLine1 || ''}, ${addr?.city || ''} - ${addr?.pincode || ''}</td></tr>`;
         });
@@ -1291,7 +1296,7 @@ export default function KoyambeduAdmin() {
                             <div key={idx} className={`px-4 py-2.5 flex items-center gap-2 ${item.status === 'declined' ? 'opacity-50' : ''}`}>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold text-gray-800">
-                                  {item.name}{item.gradeKey ? <span className="text-green-700 font-medium text-xs"> ({item.gradeName || item.gradeKey})</span> : null}
+                                  {item.name}{item.gradeKey ? ` - ${item.gradeName || item.gradeKey}` : ''}
                                 </p>
                                 <p className="text-xs text-gray-400">{item.quantity}{item.unit} × ₹{price}</p>
                                 {item.status === 'declined' && <span className="text-[10px] text-red-500 font-bold">Declined</span>}
@@ -1366,7 +1371,7 @@ export default function KoyambeduAdmin() {
                             return (
                               <div key={i} className="flex justify-between text-xs">
                                 <span className="text-red-600">
-                                  {it.name} — {it.itemStatus === 'partial' ? `reduced to ${it.confirmedQty}${it.unit}` : `${decQty}${it.unit} declined`}
+                                  {it.name}{it.gradeKey ? ` - ${it.gradeName || it.gradeKey}` : ''} — {it.itemStatus === 'partial' ? `reduced to ${it.confirmedQty}${it.unit}` : `${decQty}${it.unit} declined`}
                                 </span>
                                 <span className="text-red-600 font-semibold">−₹{(price * decQty).toFixed(0)}</span>
                               </div>
@@ -1456,13 +1461,13 @@ export default function KoyambeduAdmin() {
                     {allCancelled
                       ? order.items?.map((it, i) => (
                           <div key={i} className="flex justify-between">
-                            <span>{it.name} × {it.quantity}{it.unit}</span>
+                            <span>{it.name}{it.gradeKey ? ` - ${it.gradeName || it.gradeKey}` : ''} × {it.quantity}{it.unit}</span>
                             <span>₹{((it.finalPrice || it.orderedPrice || 0) * it.quantity).toFixed(0)}</span>
                           </div>
                         ))
                       : declinedItems.map((it, i) => (
                           <div key={i} className="flex justify-between text-red-600">
-                            <span>✕ {it.name} × {it.quantity}{it.unit}</span>
+                            <span>✕ {it.name}{it.gradeKey ? ` - ${it.gradeName || it.gradeKey}` : ''} × {it.quantity}{it.unit}</span>
                             <span>₹{((it.finalPrice || it.orderedPrice || 0) * it.quantity).toFixed(0)} (refunded)</span>
                           </div>
                         ))
@@ -1490,7 +1495,7 @@ export default function KoyambeduAdmin() {
                 <select value={dpCatFilter} onChange={e => setDpCatFilter(e.target.value)}
                   className="border border-gray-200 rounded-xl px-3 py-2 text-sm flex-1 min-w-[120px] focus:outline-none">
                   <option value="">All Categories</option>
-                  {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                  {dpCategories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
                 </select>
                 <button onClick={() => loadTab('daily-price')} className="bg-green-600 text-white font-bold px-4 py-2 rounded-xl text-sm shrink-0">Load</button>
               </div>
@@ -2758,7 +2763,7 @@ export default function KoyambeduAdmin() {
                             </div>
                             {(o.items || []).map((it, ii) => (
                               <div key={ii} className="px-3 py-1.5 flex justify-between border-t border-gray-50 text-xs">
-                                <span className="text-gray-700">{it.name} × {it.quantity}{it.unit}</span>
+                                <span className="text-gray-700">{it.name}{it.gradeKey ? ` - ${it.gradeName || it.gradeKey}` : ''} × {it.quantity}{it.unit}</span>
                                 <span className="text-gray-500">₹{it.orderedPrice} → ₹{it.lineTotal?.toFixed(0)}</span>
                               </div>
                             ))}
