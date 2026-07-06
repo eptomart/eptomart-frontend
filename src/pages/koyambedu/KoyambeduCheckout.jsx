@@ -586,10 +586,15 @@ export default function KoyambeduCheckout() {
   const baseTotal      = parseFloat((subtotal + deliveryCharge + platformFee - couponDiscount).toFixed(2));
 
   // Mirror backend wallet logic: positive = discount, negative = extra charge
+  // Only AVAILABLE balance (total − reserved) can be applied at checkout.
   const walletBalance    = walletData?.balance ?? 0;
-  const walletAdjustment = walletBalance > 0
-    ? Math.min(parseFloat(walletBalance.toFixed(2)), baseTotal)
-    : parseFloat(walletBalance.toFixed(2));
+  const walletReserved   = walletData?.reservedBalance ?? 0;
+  const availableBalance = parseFloat(Math.max(0, walletBalance - walletReserved).toFixed(2));
+  const walletAdjustment = availableBalance > 0
+    ? Math.min(availableBalance, baseTotal)        // positive → discount
+    : walletBalance < 0
+      ? parseFloat(walletBalance.toFixed(2))       // negative → debt recovery
+      : 0;
   const total = parseFloat((baseTotal - walletAdjustment).toFixed(2));
 
   // ── Coupon ─────────────────────────────────
@@ -1303,30 +1308,48 @@ export default function KoyambeduCheckout() {
             </div>
 
             {/* ── Wallet balance card ── */}
-            {walletData !== null && walletBalance !== 0 && (
+            {walletData !== null && (walletBalance !== 0 || walletReserved > 0) && (
               <div className="rounded-2xl px-4 py-3 flex items-start gap-3"
                 style={{
-                  background: walletBalance > 0 ? '#f0fdf4' : '#fffbeb',
-                  border: `1.5px solid ${walletBalance > 0 ? '#bbf7d0' : '#fde68a'}`,
+                  background: availableBalance > 0 ? '#f0fdf4' : walletBalance < 0 ? '#fffbeb' : '#f9fafb',
+                  border: `1.5px solid ${availableBalance > 0 ? '#bbf7d0' : walletBalance < 0 ? '#fde68a' : '#e5e7eb'}`,
                 }}>
-                <span className="text-xl shrink-0 mt-0.5">{walletBalance > 0 ? '💚' : '⚠️'}</span>
+                <span className="text-xl shrink-0 mt-0.5">
+                  {availableBalance > 0 ? '💚' : walletBalance < 0 ? '⚠️' : '🔒'}
+                </span>
                 <div className="flex-1">
-                  {walletBalance > 0 ? (
+                  {availableBalance > 0 ? (
                     <>
                       <p className="text-green-800 text-sm font-bold leading-snug">
-                        You have ₹{walletBalance.toFixed(2)} in Wallet Credits
+                        ₹{availableBalance.toFixed(2)} Wallet Credit will be applied
                       </p>
-                      <p className="text-green-600 text-xs mt-0.5">
-                        This will be automatically applied as a discount on your order.
-                      </p>
+                      {walletReserved > 0 && (
+                        <p className="text-amber-600 text-xs mt-0.5">
+                          ₹{walletReserved.toFixed(2)} reserved for pending refund (not usable here)
+                        </p>
+                      )}
+                      {walletReserved === 0 && (
+                        <p className="text-green-600 text-xs mt-0.5">
+                          Auto-applied as a discount on your order.
+                        </p>
+                      )}
                     </>
-                  ) : (
+                  ) : walletBalance < 0 ? (
                     <>
                       <p className="text-amber-800 text-sm font-bold leading-snug">
                         Wallet Adjustment: ₹{Math.abs(walletBalance).toFixed(2)} due
                       </p>
                       <p className="text-amber-600 text-xs mt-0.5">
                         A previous price difference will be recovered in this order.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-gray-700 text-sm font-bold leading-snug">
+                        Wallet Balance Reserved
+                      </p>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        ₹{walletBalance.toFixed(2)} is reserved for your pending refund request — not available for purchases.
                       </p>
                     </>
                   )}
