@@ -52,6 +52,17 @@ const getISTHour = () => {
 
 export default function KoyambeduHome() {
   const { fetchCart, itemCount, userLocation, locationLabel } = useKoyambeduCart();
+  const [heroVideo, setHeroVideo] = useState(null);
+
+  // Admin-configurable hero video (Business Settings)
+  useEffect(() => {
+    api.get('/settings')
+      .then(r => {
+        const v = r.data?.settings?.koyambeduHeroVideo;
+        if (v?.enabled && v?.url) setHeroVideo(v);
+      })
+      .catch(() => {});
+  }, []);
   const { user } = useAuth();
   const navigate = useNavigate();
   const isMarketClosed = getISTHour() >= 9;
@@ -176,6 +187,35 @@ export default function KoyambeduHome() {
 
       {/* ── Content ── */}
       <div className="px-4 pt-4" style={{ background: '#F5F4F2' }}>
+
+        {/* ── Hero video (admin-configurable, autoplay · muted · loop) ── */}
+        {heroVideo && (
+          <div className="anim-fade-up relative rounded-3xl overflow-hidden mb-4"
+            style={{ boxShadow: '0 12px 32px rgba(6,95,70,0.22)' }}>
+            <video
+              src={heroVideo.url}
+              poster={heroVideo.poster || undefined}
+              autoPlay muted loop playsInline
+              preload="metadata"
+              className="w-full block object-cover"
+              style={{ aspectRatio: '16 / 9', background: '#064e3b' }}
+              onError={() => setHeroVideo(null)}
+            />
+            {/* Cinematic bottom gradient + caption */}
+            <div className="absolute inset-x-0 bottom-0 pointer-events-none"
+              style={{ background: 'linear-gradient(180deg, transparent, rgba(4,47,34,0.82))', height: '55%' }} />
+            {heroVideo.caption && (
+              <div className="absolute bottom-0 inset-x-0 px-4 pb-3.5">
+                <p className="text-white font-extrabold text-sm leading-snug" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
+                  {heroVideo.caption}
+                </p>
+                <p className="text-emerald-200 text-[10px] font-semibold mt-0.5 opacity-90">
+                  🥬 Koyambedu Daily · Live from the market
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Feature 1: Last Product Update Time ── */}
         {lastUpdate && (

@@ -256,6 +256,30 @@ export default function KoyambeduAdmin() {
   // Cancelled orders tab
   const [cancelledOrders,  setCancelledOrders]  = useState([]);
   const [deliveryAlerts,   setDeliveryAlerts]   = useState([]);
+
+  // Hero video settings (Koyambedu home)
+  const [heroVideoCfg, setHeroVideoCfg] = useState({ enabled: false, url: '', poster: '', caption: '' });
+  const [heroSaving,   setHeroSaving]   = useState(false);
+  useEffect(() => {
+    api.get('/settings')
+      .then(r => {
+        const v = r.data?.settings?.koyambeduHeroVideo;
+        if (v) setHeroVideoCfg({ enabled: !!v.enabled, url: v.url || '', poster: v.poster || '', caption: v.caption || '' });
+      })
+      .catch(() => {});
+  }, []);
+  const saveHeroVideo = async () => {
+    if (heroVideoCfg.enabled && !heroVideoCfg.url.trim()) { toast.error('Enter a video URL to enable the hero video'); return; }
+    setHeroSaving(true);
+    try {
+      await api.put('/settings', { koyambeduHeroVideo: { ...heroVideoCfg, url: heroVideoCfg.url.trim(), poster: heroVideoCfg.poster.trim() } });
+      toast.success('Hero video settings saved');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Only Super Admin can change this');
+    } finally {
+      setHeroSaving(false);
+    }
+  };
   const [cancelledExpanded, setCancelledExpanded] = useState({});
 
   // Refund requests tab
@@ -1117,6 +1141,41 @@ export default function KoyambeduAdmin() {
         )}
 
         {/* ── DASHBOARD ── */}
+        {tab === 'dashboard' && isSuperAdmin && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+            <div className="flex items-center justify-between mb-1">
+              <p className="font-bold text-gray-800 text-sm">🎬 Home Hero Video</p>
+              <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                <input type="checkbox" checked={heroVideoCfg.enabled}
+                  onChange={e => setHeroVideoCfg(c => ({ ...c, enabled: e.target.checked }))}
+                  className="w-4 h-4 accent-green-600" />
+                Enabled
+              </label>
+            </div>
+            <p className="text-[11px] text-gray-400 mb-3">Autoplay video banner on the Koyambedu Daily home page. Use an MP4/WebM URL (e.g. Cloudinary).</p>
+            <div className="space-y-2">
+              <input value={heroVideoCfg.url} onChange={e => setHeroVideoCfg(c => ({ ...c, url: e.target.value }))}
+                placeholder="Video URL (https://…/market.mp4)"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-mono" />
+              <input value={heroVideoCfg.poster} onChange={e => setHeroVideoCfg(c => ({ ...c, poster: e.target.value }))}
+                placeholder="Poster image URL (optional — shows while video loads)"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-mono" />
+              <input value={heroVideoCfg.caption} onChange={e => setHeroVideoCfg(c => ({ ...c, caption: e.target.value }))}
+                placeholder="Caption shown over the video"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs" />
+              <button onClick={saveHeroVideo} disabled={heroSaving}
+                className="text-xs font-bold text-white px-4 py-2 rounded-xl active:scale-95 transition disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg,#065f46,#16a34a)' }}>
+                {heroSaving ? 'Saving…' : 'Save Video Settings'}
+              </button>
+            </div>
+            {heroVideoCfg.enabled && heroVideoCfg.url && (
+              <video src={heroVideoCfg.url} poster={heroVideoCfg.poster || undefined} muted loop autoPlay playsInline
+                className="mt-3 w-full rounded-xl" style={{ maxHeight: 180, objectFit: 'cover' }} />
+            )}
+          </div>
+        )}
+
         {tab === 'dashboard' && stats && !loading && (
           <div>
             <h2 className="font-bold text-gray-800 mb-3">Today's Overview</h2>
