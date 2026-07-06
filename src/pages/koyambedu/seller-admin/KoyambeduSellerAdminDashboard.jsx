@@ -236,6 +236,33 @@ export default function KoyambeduSellerAdminDashboard() {
     if (!prodCreateForm.categoryId || !prodCreateForm.name) {
       toast.error('Category and name are required'); return;
     }
+
+    // ── Grade-enabled product path ──────────────────────────
+    if (prodCreateForm.gradesEnabled) {
+      const activeGrades = (prodCreateForm.grades || [])
+        .filter(g => g.isActive !== false)
+        .map(g => ({ ...g, variants: (g.variants || []).filter(v => v.basePrice && v.fromQty) }))
+        .filter(g => g.variants.length > 0);
+      if (activeGrades.length === 0) {
+        toast.error('Enter prices for at least one grade'); return;
+      }
+      setSaving(true);
+      try {
+        await api.post(`/koyambedu/seller-admin/sellers/${addProdSellerId}/products`, {
+          ...prodCreateForm,
+          grades: activeGrades,
+          variants: undefined,
+          sharedTiers: undefined,
+        });
+        toast.success('Product submitted for superadmin approval');
+        setShowAddProduct(false);
+        if (sellerFilter === addProdSellerId) loadProducts(addProdSellerId);
+      } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
+      finally { setSaving(false); }
+      return;
+    }
+
+    // ── Standard variant path ───────────────────────────────
     const validVariants = (prodCreateForm.variants || []).filter((v, i, arr) => v.basePrice && v.fromQty && (v.toQty || i === arr.length - 1));
     if (validVariants.length === 0) {
       toast.error('At least one complete variant (base price + qty range) is required'); return;
@@ -247,6 +274,7 @@ export default function KoyambeduSellerAdminDashboard() {
       await api.post(`/koyambedu/seller-admin/sellers/${addProdSellerId}/products`, {
         ...prodCreateForm,
         variants: validVariants,
+        sharedTiers: undefined,
       });
       toast.success('Product submitted for superadmin approval');
       setShowAddProduct(false);
@@ -265,9 +293,27 @@ export default function KoyambeduSellerAdminDashboard() {
       nameTamil:                p.nameTamil || '',
       description:              p.description || '',
       unit:                     p.unit || 'kg',
-      procurementChargePercent: p.procurementChargePercent || 15,
+      procurementChargePercent: p.procurementChargePercent ?? 0,
       platformChargePercent:    p.platformChargePercent    || 10,
       logisticsChargePercent:   p.logisticsChargePercent   || 10,
+      gradesEnabled:            p.gradesEnabled            || false,
+      variantDiffPercent:       p.variantDiffPercent       || 2,
+      grades: p.gradesEnabled && p.grades?.length
+        ? p.grades
+            .filter(g => g.gradeKey !== 'base')
+            .map(g => ({
+              gradeKey:           g.gradeKey,
+              gradeName:          g.gradeName || '',
+              isActive:           g.isActive !== false,
+              variantDiffPercent: g.variantDiffPercent || 2,
+              variants: (g.variants || []).map(v => ({
+                basePrice:  String(v.basePrice),
+                fromQty:    v.fromQty,
+                toQty:      v.toQty,
+                finalPrice: String(v.finalPrice),
+              })),
+            }))
+        : [],
       variants: p.variants?.length
         ? p.variants.map(v => ({ basePrice: v.basePrice, fromQty: v.fromQty, toQty: v.toQty, finalPrice: String(v.finalPrice) }))
         : [{ basePrice: p.currentPrice || '', fromQty: p.minQty || 1, toQty: p.maxQty || 50, finalPrice: String(p.currentPrice || '') }],
@@ -292,6 +338,31 @@ export default function KoyambeduSellerAdminDashboard() {
   };
 
   const saveProduct = async () => {
+    // ── Grade-enabled product path ──────────────────────────
+    if (prodForm.gradesEnabled) {
+      const activeGrades = (prodForm.grades || [])
+        .filter(g => g.isActive !== false)
+        .map(g => ({ ...g, variants: (g.variants || []).filter(v => v.basePrice && v.fromQty) }))
+        .filter(g => g.variants.length > 0);
+      if (activeGrades.length === 0) {
+        toast.error('Enter prices for at least one grade'); return;
+      }
+      setSaving(true);
+      try {
+        const { data } = await api.put(`/koyambedu/seller-admin/sellers/${sellerFilter}/products/${editProduct._id}`, {
+          ...prodForm,
+          grades: activeGrades,
+          variants: undefined,
+        });
+        toast.success(data.pendingApproval ? 'Product changes submitted for superadmin approval' : 'Product updated');
+        setEditProduct(null);
+        loadProducts(sellerFilter);
+      } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
+      finally { setSaving(false); }
+      return;
+    }
+
+    // ── Standard variant path ───────────────────────────────
     const validVariants = (prodForm.variants || []).filter((v, i, arr) => v.basePrice && v.fromQty && (v.toQty || i === arr.length - 1));
     const overlapErr = getVariantOverlapError(validVariants);
     if (overlapErr) { toast.error(overlapErr); return; }
@@ -768,6 +839,7 @@ export default function KoyambeduSellerAdminDashboard() {
               )}
 
               <KoyambeduVariantProductForm
+                isCreateMode={true}
                 form={prodCreateForm}
                 onChange={setProdCreateForm}
                 categories={categories}
