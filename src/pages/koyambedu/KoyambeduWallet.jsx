@@ -31,6 +31,8 @@ const CATEGORY_LABELS = {
   manual_credit:           { label: 'Manual Credit',                color: 'green', icon: '👤' },
   manual_debit:            { label: 'Manual Debit',                 color: 'red',   icon: '👤' },
   refund_paid:             { label: 'Bank Refund Paid',             color: 'red',   icon: '🏦' },
+  refund_requested:        { label: 'Refund Requested (Reserved)',  color: 'amber', icon: '🔒' },
+  refund_released:         { label: 'Refund Cancelled (Released)',  color: 'green', icon: '🔓' },
   manual:                  { label: 'Transaction',                  color: 'gray',  icon: '💳' },
 };
 
@@ -90,13 +92,16 @@ export default function KoyambeduWallet() {
   };
 
   const balance         = wallet?.balance ?? 0;
+  const reservedBalance = wallet?.reservedBalance ?? 0;
+  const availableBalance = Math.max(0, balance - reservedBalance);
   const isNegative      = balance < 0;
-  const hasPendingRequest = wallet?.refundRequests?.some(r => r.status === 'pending');
+  // Block re-request if a pending OR confirmed request is active (funds already reserved)
+  const hasActiveRequest = wallet?.refundRequests?.some(r => r.status === 'pending' || r.status === 'confirmed');
 
   const handleRefundSubmit = async (e) => {
     e.preventDefault();
     if (Number(form.amount) <= 0) return toast.error('Enter a valid amount');
-    if (Number(form.amount) > balance) return toast.error('Amount exceeds wallet balance');
+    if (Number(form.amount) > availableBalance) return toast.error(`Amount exceeds available balance of ₹${availableBalance.toFixed(2)}`);
     if (form.bankAccountNumber !== form.confirmAccountNumber) return toast.error('Account numbers do not match');
     setSubmitting(true);
     try {
@@ -154,7 +159,7 @@ export default function KoyambeduWallet() {
             boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
           }}>
           <p className="text-white/70 text-xs font-semibold mb-1">
-            {isNegative ? 'Pending Recovery' : 'Available Credit'}
+            {isNegative ? 'Pending Recovery' : 'Total Wallet Balance'}
           </p>
           <p className="text-4xl font-black text-white mb-1">
             {isNegative ? '-' : ''}₹{Math.abs(balance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -177,16 +182,30 @@ export default function KoyambeduWallet() {
             </div>
           )}
 
-          {/* Refund button (only for positive balance) */}
-          {!isNegative && !showRefundForm && !hasPendingRequest && balance > 0 && (
+          {/* Reservation breakdown */}
+          {!isNegative && reservedBalance > 0 && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="bg-white/10 rounded-xl px-3 py-2 text-center">
+                <p className="text-white/60 text-[10px] font-semibold">Refund Reserved</p>
+                <p className="text-amber-300 font-black text-sm">₹{reservedBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+              </div>
+              <div className="bg-white/10 rounded-xl px-3 py-2 text-center">
+                <p className="text-white/60 text-[10px] font-semibold">Available to Spend</p>
+                <p className="text-white font-black text-sm">₹{availableBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Refund button (only for positive available balance) */}
+          {!isNegative && !showRefundForm && !hasActiveRequest && availableBalance > 0 && (
             <button onClick={() => setShowRefundForm(true)}
               className="mt-4 flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-4 py-2.5 rounded-xl active:scale-95 transition">
               <FiCreditCard size={13} /> Request Bank Refund
             </button>
           )}
-          {hasPendingRequest && !isNegative && (
+          {hasActiveRequest && !isNegative && (
             <div className="mt-4 text-xs bg-white/15 rounded-xl px-3 py-2 text-white/80">
-              ⏳ Pending refund request — we'll process it soon
+              ⏳ Refund in progress — ₹{reservedBalance.toFixed(2)} reserved until processed
             </div>
           )}
         </div>
@@ -195,15 +214,23 @@ export default function KoyambeduWallet() {
         {!isNegative && balance > 0 && (
           <div className="flex gap-2">
             <div className="flex-1 bg-green-50 rounded-xl p-3 text-center border border-green-100">
-              <p className="text-green-700 text-xs font-bold">Savings</p>
-              <p className="text-green-800 font-black text-sm mt-0.5">₹{Math.abs(balance).toFixed(2)}</p>
+              <p className="text-green-700 text-xs font-bold">Available</p>
+              <p className="text-green-800 font-black text-sm mt-0.5">₹{availableBalance.toFixed(2)}</p>
               <p className="text-green-600 text-[10px] mt-0.5">Auto-applied next order</p>
             </div>
-            <div className="flex-1 bg-blue-50 rounded-xl p-3 text-center border border-blue-100">
-              <p className="text-blue-700 text-xs font-bold">Transactions</p>
-              <p className="text-blue-800 font-black text-sm mt-0.5">{allTxns.length}</p>
-              <p className="text-blue-600 text-[10px] mt-0.5">Total history</p>
-            </div>
+            {reservedBalance > 0 ? (
+              <div className="flex-1 bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
+                <p className="text-amber-700 text-xs font-bold">Reserved</p>
+                <p className="text-amber-800 font-black text-sm mt-0.5">₹{reservedBalance.toFixed(2)}</p>
+                <p className="text-amber-600 text-[10px] mt-0.5">Refund in progress</p>
+              </div>
+            ) : (
+              <div className="flex-1 bg-blue-50 rounded-xl p-3 text-center border border-blue-100">
+                <p className="text-blue-700 text-xs font-bold">Transactions</p>
+                <p className="text-blue-800 font-black text-sm mt-0.5">{allTxns.length}</p>
+                <p className="text-blue-600 text-[10px] mt-0.5">Total history</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -216,7 +243,7 @@ export default function KoyambeduWallet() {
             </p>
             <form onSubmit={handleRefundSubmit} className="space-y-3">
               {[
-                { key: 'amount',            label: 'Refund Amount (₹)',    type: 'number', placeholder: `Max ₹${balance.toFixed(2)}` },
+                { key: 'amount',            label: 'Refund Amount (₹)',    type: 'number', placeholder: `Max ₹${availableBalance.toFixed(2)}` },
                 { key: 'bankAccountName',   label: 'Account Holder Name',  type: 'text',   placeholder: 'As per bank records' },
                 { key: 'bankAccountNumber', label: 'Account Number',       type: 'text',   placeholder: 'Enter account number' },
                 { key: 'confirmAccountNumber', label: 'Confirm Account Number', type: 'text', placeholder: 'Re-enter account number' },

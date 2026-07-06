@@ -488,8 +488,19 @@ export default function KoyambeduAdmin() {
     setRefundUpdating(requestId);
     try {
       await api.patch(`/koyambedu/admin/refund-requests/${walletId}/${requestId}`, { action });
-      toast.success('Updated');
-      loadTab('refund-requests');
+      toast.success(
+        action === 'confirm'       ? 'Refund confirmed' :
+        action === 'cancel'        ? 'Refund cancelled — balance restored' :
+        action === 'mark_refunded' ? 'Refund completed — amount deducted from wallet' :
+        'Updated'
+      );
+      // After mark_refunded switch to the 'refunded' tab automatically
+      if (action === 'mark_refunded') {
+        setRefundStatusFilter('refunded');
+        setTimeout(() => loadTab('refund-requests'), 50);
+      } else {
+        loadTab('refund-requests');
+      }
     } catch (e) { toast.error(e?.response?.data?.message || 'Failed'); }
     finally { setRefundUpdating(null); }
   };
@@ -1614,21 +1625,40 @@ export default function KoyambeduAdmin() {
                 <div key={i} className="bg-white rounded-2xl border border-gray-200 p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <p className="font-bold text-gray-800 text-sm">₹{rr.amount.toLocaleString('en-IN')}</p>
+                      <p className="font-bold text-gray-800 text-sm">₹{rr.amount.toLocaleString('en-IN')} refund request</p>
                       <p className="text-xs text-gray-500">{rr.userId?.name} · {rr.userId?.email}</p>
                       <p className="text-xs text-gray-400">Requested {new Date(rr.requestedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</p>
                     </div>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
-                      rr.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                      rr.status === 'pending'   ? 'bg-yellow-100 text-yellow-700' :
                       rr.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
-                      rr.status === 'refunded' ? 'bg-green-100 text-green-700' :
+                      rr.status === 'refunded'  ? 'bg-green-100 text-green-700' :
                       'bg-red-100 text-red-700'
                     }`}>{rr.status}</span>
                   </div>
+
+                  {/* Wallet balance breakdown */}
+                  <div className="grid grid-cols-3 gap-1.5 mb-3 bg-gray-50 rounded-xl p-2.5">
+                    <div className="text-center">
+                      <p className="text-[9px] text-gray-400 font-semibold uppercase">Total</p>
+                      <p className="text-xs font-bold text-gray-700">₹{(rr.walletBalance || 0).toLocaleString('en-IN')}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[9px] text-amber-500 font-semibold uppercase">Reserved</p>
+                      <p className="text-xs font-bold text-amber-600">₹{(rr.reservedBalance || 0).toLocaleString('en-IN')}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[9px] text-green-500 font-semibold uppercase">Available</p>
+                      <p className="text-xs font-bold text-green-600">₹{(rr.availableBalance || 0).toLocaleString('en-IN')}</p>
+                    </div>
+                  </div>
+
                   <div className="text-xs text-gray-600 mb-3 space-y-0.5">
                     <p>Account: {rr.bankAccountName} — {rr.bankAccountNumber}</p>
                     <p>IFSC: {rr.bankIfsc}{rr.bankName ? ` · ${rr.bankName}` : ''}</p>
+                    {rr.adminNote && <p className="text-gray-500 italic">Note: {rr.adminNote}</p>}
                   </div>
+
                   {rr.status === 'pending' && (
                     <div className="flex gap-2">
                       <button onClick={() => handleRefundAction(rr.walletId, rr._id, 'confirm')}
@@ -1639,16 +1669,23 @@ export default function KoyambeduAdmin() {
                       <button onClick={() => handleRefundAction(rr.walletId, rr._id, 'cancel')}
                         disabled={refundUpdating === rr._id}
                         className="flex-1 bg-red-500 text-white text-xs font-bold py-2 rounded-xl disabled:opacity-50">
-                        Cancel
+                        Reject
                       </button>
                     </div>
                   )}
                   {rr.status === 'confirmed' && (
-                    <button onClick={() => handleRefundAction(rr.walletId, rr._id, 'mark_refunded')}
-                      disabled={refundUpdating === rr._id}
-                      className="w-full bg-green-600 text-white text-xs font-bold py-2 rounded-xl disabled:opacity-50">
-                      Mark as Refunded
-                    </button>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleRefundAction(rr.walletId, rr._id, 'mark_refunded')}
+                        disabled={refundUpdating === rr._id}
+                        className="flex-1 bg-green-600 text-white text-xs font-bold py-2 rounded-xl disabled:opacity-50">
+                        ✓ Mark as Refunded
+                      </button>
+                      <button onClick={() => handleRefundAction(rr.walletId, rr._id, 'cancel')}
+                        disabled={refundUpdating === rr._id}
+                        className="flex-1 bg-red-500 text-white text-xs font-bold py-2 rounded-xl disabled:opacity-50">
+                        Cancel
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}
