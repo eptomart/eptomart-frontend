@@ -36,6 +36,28 @@ export default function KoyambeduProductDetail() {
   const [showQtySheet, setShowQtySheet] = useState(false); // variant qty bottom sheet
   const [activeGradeKey, setActiveGradeKey] = useState(null); // grade system
   const autoCommitRef = useRef(null);
+  const scrollYRef    = useRef(0);
+
+  // Lock body scroll when bottom sheet is open (prevents iOS from scrolling the page
+  // underneath the sheet and making it impossible to scroll back up)
+  useEffect(() => {
+    if (showQtySheet) {
+      scrollYRef.current = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top      = `-${scrollYRef.current}px`;
+      document.body.style.width    = '100%';
+    } else {
+      document.body.style.position = '';
+      document.body.style.top      = '';
+      document.body.style.width    = '';
+      window.scrollTo(0, scrollYRef.current);
+    }
+    return () => {
+      document.body.style.position = '';
+      document.body.style.top      = '';
+      document.body.style.width    = '';
+    };
+  }, [showQtySheet]);
 
   useEffect(() => {
     // Read cart qty synchronously at mount — before the async product fetch
@@ -201,11 +223,11 @@ export default function KoyambeduProductDetail() {
   const primaryImage = images.find(i => i.isPrimary)?.url || images[0]?.url;
   return (
     <div
+      className="overflow-x-hidden"
       style={{
         minHeight: '100vh',
         background: '#F5F4F2',
         paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 120px)',
-        overflowX: 'hidden',
       }}
     >
       <EptoSEO
@@ -569,6 +591,7 @@ export default function KoyambeduProductDetail() {
                   <input
                     type="text" inputMode="numeric" pattern="[0-9]*"
                     value={qtyInput} maxLength={5}
+                    enterKeyHint="done"
                     onChange={e => {
                       const raw = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
                       setQtyInput(raw); setQtyInvalid(false);
@@ -579,6 +602,9 @@ export default function KoyambeduProductDetail() {
                         if (!isNaN(val) && val >= minQty && withinMax) { setQty(val); setQtyInvalid(false); }
                         else if (!isNaN(val) && val < minQty) setQtyInvalid(true);
                       }, 3000);
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { e.target.blur(); }
                     }}
                     onBlur={e => {
                       clearTimeout(autoCommitRef.current);
@@ -738,7 +764,7 @@ export default function KoyambeduProductDetail() {
                 <input
                   type="text" inputMode="numeric" pattern="[0-9]*"
                   value={qtyInput} maxLength={5}
-                  autoFocus
+                  enterKeyHint="done"
                   onChange={e => {
                     const raw = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
                     setQtyInput(raw); setQtyInvalid(false);
@@ -749,6 +775,9 @@ export default function KoyambeduProductDetail() {
                       if (!isNaN(val) && val >= minQty && withinMax) { setQty(val); setQtyInvalid(false); }
                       else if (!isNaN(val) && val < minQty) setQtyInvalid(true);
                     }, 3000);
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { e.target.blur(); }
                   }}
                   onBlur={e => {
                     clearTimeout(autoCommitRef.current);
