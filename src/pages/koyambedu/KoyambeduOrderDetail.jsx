@@ -149,7 +149,7 @@ const buildInvoiceHtml = (order, type = 'proforma') => {
       ${(calc.deliveryCharge||pricing.deliveryCharge||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Delivery Charge</span><span>${fmt(calc.deliveryCharge||pricing.deliveryCharge)}</span></div>`:''}
       <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>GST</span><span>0% (Exempt)</span></div>
       ${(calc.couponDiscount||pricing.discount||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px;color:#16a34a"><span>Coupon Discount</span><span>−${fmt(calc.couponDiscount||pricing.discount)}</span></div>`:''}
-      ${(calc.walletAdjustment||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px;color:#16a34a"><span>Wallet Adjustment</span><span>−${fmt(calc.walletAdjustment)}</span></div>`:''}
+      ${((calc.walletAdjustment||pricing.walletAdjustment)||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px;color:#16a34a"><span>Wallet Credit Applied</span><span>−${fmt(calc.walletAdjustment||pricing.walletAdjustment)}</span></div>`:''}
       <hr style="border:1px solid #e5e7eb;margin:8px 0">
       <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:15px;color:#065f46">
         <span>Final Payable Amount</span><span>${fmt(finalAmt)}</span>
@@ -437,8 +437,8 @@ export default function KoyambeduOrderDetail() {
           {(effective.couponDiscount || pricing.discount || 0) > 0 && (
             <PayRow label="Coupon Discount" value={`−${fmt(effective.couponDiscount || pricing.discount)}`} color="#16a34a" />
           )}
-          {(effective.walletAdjustment || 0) > 0 && (
-            <PayRow label="Wallet Adjustment (−)" value={`−${fmt(effective.walletAdjustment)}`} color="#16a34a" />
+          {((effective.walletAdjustment || pricing.walletAdjustment) || 0) > 0 && (
+            <PayRow label="Wallet Credit Applied (−)" value={`−${fmt(effective.walletAdjustment || pricing.walletAdjustment)}`} color="#16a34a" />
           )}
           <PayRow
             label="Final Payable Amount"
