@@ -62,6 +62,11 @@ export const EMPTY_VARIANT_PRODUCT = {
   ],
   gradesEnabled: false,
   grades: GRADE_DEFS.map(g => makeDefaultGrade(g.gradeKey, g.gradeName)),
+  // sharedTiers: qty structure shared across all grades (create mode only)
+  sharedTiers: [
+    { fromQty: '', toQty: '' },
+    { fromQty: '', toQty: '' },
+  ],
   isSameDay: true,
   isNextDay: true,
   isAvailable: true,
@@ -196,6 +201,172 @@ function VariantTable({ variants, onChange, proc, plat, log, unit }) {
   );
 }
 
+// ── Shared tier table (create mode) ─────────────────────────────────────────
+function SharedTierTable({ tiers, onChange, unit }) {
+  const setTier = (idx, key, val) => {
+    const updated = [...tiers];
+    updated[idx] = { ...updated[idx], [key]: val };
+    onChange(updated);
+  };
+
+  const addTier = () => {
+    if (tiers.length >= 4) return;
+    const last = tiers[tiers.length - 1];
+    if (last && !last.toQty) return; // last tier must have toQty before adding another
+    onChange([...tiers, { fromQty: '', toQty: '' }]);
+  };
+
+  const removeTier = (idx) => {
+    if (tiers.length <= 1) return;
+    onChange(tiers.filter((_, i) => i !== idx));
+  };
+
+  const addBlocked = !!(tiers[tiers.length - 1] && !tiers[tiers.length - 1].toQty);
+
+  return (
+    <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <p className="text-xs font-bold text-gray-700">Quantity Tiers</p>
+          <p className="text-[10px] text-gray-500">Shared across all grades — define qty ranges once</p>
+        </div>
+        {tiers.length < 4 && (
+          <div className="relative group">
+            <button type="button" onClick={addTier} disabled={addBlocked}
+              className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition ${
+                addBlocked
+                  ? 'text-gray-400 border-gray-200 cursor-not-allowed opacity-50'
+                  : 'text-green-700 border-green-300 hover:bg-green-50'
+              }`}>
+              + Add Tier
+            </button>
+            {addBlocked && (
+              <span className="absolute right-0 top-full mt-1.5 text-[10px] bg-gray-800 text-white px-2 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
+                Fill "To Qty" in last tier first
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-[1fr_1fr_auto] gap-1 text-[10px] font-bold text-gray-500 uppercase tracking-wide px-1 mb-1">
+        <span>From ({unit || 'unit'})</span>
+        <span>To ({unit || 'unit'})</span>
+        <span />
+      </div>
+
+      <div className="space-y-1.5">
+        {tiers.map((tier, idx) => (
+          <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-1 items-center">
+            <input type="number" min="0" step="1" value={tier.fromQty}
+              onChange={e => setTier(idx, 'fromQty', e.target.value)}
+              placeholder="Min qty"
+              className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-400" />
+            <input type="number" min="0" step="1" value={tier.toQty}
+              onChange={e => setTier(idx, 'toQty', e.target.value)}
+              placeholder={idx === tiers.length - 1 ? 'Max (or open)' : 'Max qty'}
+              className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-400" />
+            <button type="button" onClick={() => removeTier(idx)}
+              disabled={tiers.length <= 1}
+              className="w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 disabled:opacity-30 transition text-sm">
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+      <p className="text-[10px] text-gray-400 mt-2">💡 Leave the last tier's "To" empty for open-ended (50 kg+)</p>
+    </div>
+  );
+}
+
+// ── Per-grade pricing card (create mode) ─────────────────────────────────────
+function GradePricingCard({ grade, gradeDef, tiers, proc, plat, log, onChange }) {
+  const colorMap = {
+    purple: { bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-600', text: 'text-purple-800' },
+    blue:   { bg: 'bg-blue-50',   border: 'border-blue-200',   badge: 'bg-blue-600',   text: 'text-blue-800'   },
+    gray:   { bg: 'bg-gray-100',  border: 'border-gray-200',   badge: 'bg-gray-500',   text: 'text-gray-700'   },
+  };
+  const c = colorMap[gradeDef.color] || colorMap.gray;
+
+  const setPrice = (tierIdx, val) => {
+    // Rebuild variants array aligned with current tiers
+    const variants = (tiers || []).map((tier, idx) => {
+      const existing = grade.variants?.[idx] || {};
+      const bp = idx === tierIdx ? val : (existing.basePrice ?? '');
+      return {
+        fromQty:    tier.fromQty,
+        toQty:      tier.toQty,
+        basePrice:  bp,
+        finalPrice: bp ? calcFinal(bp, proc, plat, log) : '',
+      };
+    });
+    onChange({ ...grade, variants });
+  };
+
+  return (
+    <div className={`rounded-2xl border ${c.border} ${c.bg} p-3`}>
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-2">
+        <span>{gradeDef.icon}</span>
+        <span className={`text-sm font-black ${c.text}`}>{grade.gradeName || gradeDef.gradeName}</span>
+        <span className={`text-[10px] font-bold text-white px-2 py-0.5 rounded-full ${c.badge}`}>
+          {grade.gradeKey.toUpperCase()}
+        </span>
+      </div>
+
+      {/* Tier price rows */}
+      <div className="grid grid-cols-[auto_1fr_1fr] gap-1 text-[10px] font-bold text-gray-500 uppercase tracking-wide px-1 mb-1">
+        <span className="w-16">Tier</span>
+        <span>Base Price</span>
+        <span className="text-green-700">Final Price</span>
+      </div>
+
+      {(tiers || []).length === 0 ? (
+        <p className="text-xs text-gray-400 italic py-2">Add quantity tiers above first</p>
+      ) : (
+        <div className="space-y-1.5">
+          {(tiers || []).map((tier, idx) => {
+            const v = grade.variants?.[idx] || {};
+            const tierLabel = tier.fromQty
+              ? `${tier.fromQty}${tier.toQty ? `–${tier.toQty}` : '+'}`
+              : `Tier ${idx + 1}`;
+            return (
+              <div key={idx} className="grid grid-cols-[auto_1fr_1fr] gap-1 items-center rounded-xl px-2 py-1.5 bg-white border border-gray-100">
+                <span className="text-[10px] font-bold text-gray-500 w-16">{tierLabel}</span>
+                <div className="relative">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                  <input type="number" min="0" step="0.5" value={v.basePrice ?? ''}
+                    onChange={e => setPrice(idx, e.target.value)}
+                    placeholder="0"
+                    className="w-full border border-gray-200 rounded-lg pl-5 pr-1 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-green-400" />
+                </div>
+                <div className={`rounded-lg px-2 py-1.5 text-sm font-bold text-center border ${
+                  v.finalPrice ? 'text-green-700 border-green-200 bg-green-50' : 'text-gray-300 border-gray-100'
+                }`}>
+                  {v.finalPrice ? `₹${v.finalPrice}` : '—'}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Variant diff % */}
+      <div className="flex items-center gap-2 mt-2">
+        <label className="text-[10px] font-semibold text-gray-600">Variant Step %</label>
+        <div className="relative w-20">
+          <input type="number" min="0" max="20" step="0.5"
+            value={grade.variantDiffPercent ?? 2}
+            onChange={e => onChange({ ...grade, variantDiffPercent: e.target.value === '' ? '' : Number(e.target.value) })}
+            className="w-full border border-gray-200 rounded-xl px-2 py-1 text-sm pr-6 focus:outline-none focus:ring-1 focus:ring-green-400" />
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">%</span>
+        </div>
+        <p className="text-[10px] text-gray-400">per tier step</p>
+      </div>
+    </div>
+  );
+}
+
 // ── Grade section ─────────────────────────────────────────────────────────────
 function GradeSection({ grade, gradeDef, proc, plat, log, unit, onChange, onToggle }) {
   const recomputeVariants = (variants) =>
@@ -268,7 +439,7 @@ function GradeSection({ grade, gradeDef, proc, plat, log, unit, onChange, onTogg
   );
 }
 
-export default function KoyambeduVariantProductForm({ form, onChange, categories }) {
+export default function KoyambeduVariantProductForm({ form, onChange, categories, isCreateMode = false }) {
   const { procurementChargePercent: proc, platformChargePercent: plat, logisticsChargePercent: log } = form;
 
   // Recompute all variant final prices whenever charge percentages change
@@ -351,6 +522,25 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
       g.gradeKey === gradeKey ? { ...g, isActive: !g.isActive } : g
     );
     onChange({ ...form, grades });
+  };
+
+  // ── Create-mode: shared tier handlers ───────────────────────────────────────
+  // When a shared tier changes, sync fromQty/toQty into ALL grades' variants
+  const handleSharedTiersChange = (newTiers) => {
+    const updatedGrades = (form.grades || []).map(g => {
+      const variants = newTiers.map((tier, idx) => {
+        const existing = g.variants?.[idx] || {};
+        const basePrice = existing.basePrice ?? '';
+        return {
+          fromQty:    tier.fromQty,
+          toQty:      tier.toQty,
+          basePrice,
+          finalPrice: basePrice ? calcFinal(basePrice, proc, plat, log) : '',
+        };
+      });
+      return { ...g, variants };
+    });
+    onChange({ ...form, sharedTiers: newTiers, grades: updatedGrades });
   };
 
   // Standard variant overlap errors
@@ -453,22 +643,75 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
 
       {/* ── Grade pricing sections (shown when gradesEnabled) ── */}
       {form.gradesEnabled ? (
-        <div className="space-y-3">
-          {GRADE_DEFS.map(def => {
-            const grade = (form.grades || []).find(g => g.gradeKey === def.gradeKey) || makeDefaultGrade(def.gradeKey, def.gradeName);
-            return (
-              <GradeSection
-                key={def.gradeKey}
-                grade={grade}
-                gradeDef={def}
-                proc={proc} plat={plat} log={log}
-                unit={form.unit}
-                onChange={(updated) => updateGrade(def.gradeKey, updated)}
-                onToggle={() => toggleGradeActive(def.gradeKey)}
-              />
-            );
-          })}
-        </div>
+        isCreateMode ? (
+          /* ── CREATE MODE: grade checkboxes + shared tiers + per-grade pricing ── */
+          <div className="space-y-3">
+            {/* Grade selection */}
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3">
+              <p className="text-xs font-bold text-amber-900 mb-2">Select Grades to Offer</p>
+              <div className="flex flex-wrap gap-4">
+                {GRADE_DEFS.map(def => {
+                  const grade = (form.grades || []).find(g => g.gradeKey === def.gradeKey);
+                  const isActive = grade?.isActive !== false;
+                  return (
+                    <label key={def.gradeKey} className="flex items-center gap-2 cursor-pointer select-none">
+                      <input type="checkbox" checked={isActive}
+                        onChange={() => toggleGradeActive(def.gradeKey)}
+                        className="w-4 h-4 accent-amber-600 rounded" />
+                      <span className="text-sm font-semibold text-amber-900">{def.icon} {def.gradeName}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-amber-700 mt-2">
+                A hidden "Base Grade" is auto-created as a pricing reference — it never appears to customers or sellers.
+              </p>
+            </div>
+
+            {/* Shared quantity tiers */}
+            <SharedTierTable
+              tiers={form.sharedTiers || [{ fromQty: '', toQty: '' }]}
+              onChange={handleSharedTiersChange}
+              unit={form.unit}
+            />
+
+            {/* Per-grade pricing cards (only active grades) */}
+            {GRADE_DEFS
+              .filter(def => (form.grades || []).find(g => g.gradeKey === def.gradeKey)?.isActive !== false)
+              .map(def => {
+                const grade = (form.grades || []).find(g => g.gradeKey === def.gradeKey) || makeDefaultGrade(def.gradeKey, def.gradeName);
+                return (
+                  <GradePricingCard
+                    key={def.gradeKey}
+                    grade={grade}
+                    gradeDef={def}
+                    tiers={form.sharedTiers || []}
+                    proc={proc} plat={plat} log={log}
+                    onChange={(updated) => updateGrade(def.gradeKey, updated)}
+                  />
+                );
+              })
+            }
+          </div>
+        ) : (
+          /* ── EDIT MODE: independent grade sections (unchanged) ── */
+          <div className="space-y-3">
+            {GRADE_DEFS.map(def => {
+              const grade = (form.grades || []).find(g => g.gradeKey === def.gradeKey) || makeDefaultGrade(def.gradeKey, def.gradeName);
+              return (
+                <GradeSection
+                  key={def.gradeKey}
+                  grade={grade}
+                  gradeDef={def}
+                  proc={proc} plat={plat} log={log}
+                  unit={form.unit}
+                  onChange={(updated) => updateGrade(def.gradeKey, updated)}
+                  onToggle={() => toggleGradeActive(def.gradeKey)}
+                />
+              );
+            })}
+          </div>
+        )
       ) : (
         /* ── Standard variant table (no grades) ── */
         <div>

@@ -688,6 +688,39 @@ export default function KoyambeduAdmin() {
     if (!kbdProdForm.categoryId || !kbdProdForm.name) {
       toast.error('Category and name are required'); return;
     }
+
+    if (kbdProdForm.gradesEnabled) {
+      // ── Grade mode validation ──────────────────────────────────────────────
+      const activeGrades = (kbdProdForm.grades || [])
+        .filter(g => g.isActive !== false)
+        .map(g => ({
+          ...g,
+          // Only keep variants that have real basePrice + fromQty
+          variants: (g.variants || []).filter(v => v.basePrice && v.fromQty),
+        }))
+        .filter(g => g.variants.length > 0); // skip grades with no prices
+
+      if (activeGrades.length === 0) {
+        toast.error('Enter prices for at least one grade (Premium, Mixed, or Economy)'); return;
+      }
+
+      setAddProdSaving(true);
+      try {
+        await api.post(`/koyambedu/admin/sellers/${addProdSeller._id}/products`, {
+          ...kbdProdForm,
+          grades:     activeGrades,
+          variants:   undefined,
+          sharedTiers: undefined, // frontend-only field — don't send to backend
+        });
+        toast.success('Product added!');
+        setShowAddProduct(false);
+        loadTab('products');
+      } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
+      finally { setAddProdSaving(false); }
+      return;
+    }
+
+    // ── Standard variant mode ─────────────────────────────────────────────────
     const validVariants = (kbdProdForm.variants || []).filter((v, i, arr) => v.basePrice && v.fromQty && (v.toQty || i === arr.length - 1));
     if (validVariants.length === 0) {
       toast.error('At least one complete variant (base price + qty range) is required'); return;
@@ -698,10 +731,12 @@ export default function KoyambeduAdmin() {
     try {
       await api.post(`/koyambedu/admin/sellers/${addProdSeller._id}/products`, {
         ...kbdProdForm,
-        variants: validVariants,
+        variants:    validVariants,
+        sharedTiers: undefined, // frontend-only field
       });
       toast.success('Product added!');
       setShowAddProduct(false);
+      loadTab('products');
     } catch (err) { toast.error(err?.response?.data?.message || 'Failed'); }
     finally { setAddProdSaving(false); }
   };
@@ -774,18 +809,20 @@ export default function KoyambeduAdmin() {
       procurementChargePercent: p.procurementChargePercent ?? 0,
       platformChargePercent:    p.platformChargePercent    ?? 10,
       logisticsChargePercent:   p.logisticsChargePercent   ?? 10,
-      // Grade system
+      // Grade system — filter out hidden 'base' grade (auto-managed by backend, never shown in UI)
       gradesEnabled: !!p.gradesEnabled,
       grades: p.grades?.length
-        ? p.grades.map(g => ({
-            gradeKey:           g.gradeKey,
-            gradeName:          g.gradeName || '',
-            isActive:           g.isActive !== false,
-            variantDiffPercent: g.variantDiffPercent ?? 2,
-            variants: g.variants?.length
-              ? g.variants.map(v => ({ basePrice: v.basePrice, fromQty: v.fromQty, toQty: v.toQty, finalPrice: String(v.finalPrice ?? '') }))
-              : [{ basePrice: '', fromQty: 1, toQty: '', finalPrice: '' }, { basePrice: '', fromQty: 26, toQty: '', finalPrice: '' }],
-          }))
+        ? p.grades
+            .filter(g => g.gradeKey !== 'base')
+            .map(g => ({
+              gradeKey:           g.gradeKey,
+              gradeName:          g.gradeName || '',
+              isActive:           g.isActive !== false,
+              variantDiffPercent: g.variantDiffPercent ?? 2,
+              variants: g.variants?.length
+                ? g.variants.map(v => ({ basePrice: v.basePrice, fromQty: v.fromQty, toQty: v.toQty, finalPrice: String(v.finalPrice ?? '') }))
+                : [{ basePrice: '', fromQty: 1, toQty: '', finalPrice: '' }, { basePrice: '', fromQty: 26, toQty: '', finalPrice: '' }],
+            }))
         : [],
       // Standard variants (non-graded)
       variants: p.gradesEnabled ? [] : (p.variants?.length
@@ -2289,6 +2326,7 @@ export default function KoyambeduAdmin() {
                 form={kbdProdForm}
                 onChange={setKbdProdForm}
                 categories={kbdCategories}
+                isCreateMode={true}
               />
 
               <div className="flex gap-3 pt-4 mt-2 border-t border-gray-100">

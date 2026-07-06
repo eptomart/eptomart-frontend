@@ -46,12 +46,12 @@ export default function KoyambeduProductDetail() {
       .then(r => {
         const p = r.data.product;
         setProduct(p);
-        // Auto-select Premium first; fallback to first active grade
+        // Auto-select Premium first; fallback to first active visible grade (never 'base')
         if (p.gradesEnabled && p.grades?.length > 0) {
-          const activeGrades = p.grades.filter(g => g.isActive);
-          if (activeGrades.length > 0) {
-            const premium = activeGrades.find(g => g.gradeKey === 'premium');
-            setActiveGradeKey((premium || activeGrades[0]).gradeKey);
+          const visibleGrades = p.grades.filter(g => g.isActive && g.gradeKey !== 'base');
+          if (visibleGrades.length > 0) {
+            const premium = visibleGrades.find(g => g.gradeKey === 'premium');
+            setActiveGradeKey((premium || visibleGrades[0]).gradeKey);
           }
         }
         // If product is already in cart, start stepper at that qty (not minQty)
@@ -100,7 +100,8 @@ export default function KoyambeduProductDetail() {
 
   // ── Grade system: resolve active grade and its variants ──────
   const hasGrades   = !!(product.gradesEnabled && product.grades?.length > 0);
-  const activeGrades = hasGrades ? product.grades.filter(g => g.isActive) : [];
+  // Filter out the hidden 'base' grade — it's a backend-only reference, never shown to customers
+  const activeGrades = hasGrades ? product.grades.filter(g => g.isActive && g.gradeKey !== 'base') : [];
   const activeGrade  = hasGrades
     ? (activeGrades.find(g => g.gradeKey === activeGradeKey) || activeGrades[0] || null)
     : null;
