@@ -441,11 +441,19 @@ export default function KoyambeduOrderDetail() {
             <PayRow label="Wallet Credit Applied (−)" value={`−${fmt(effective.walletAdjustment || pricing.walletAdjustment)}`} color="#16a34a" />
           )}
           <PayRow
-            label="Final Payable Amount"
+            label="Final Amount"
             value={fmt(effective.finalPayableAmount || pricing.total)}
             bold divider
           />
-          <PayRow label="Payment Method" value={(order.paymentMethod || '').toUpperCase()} />
+          {/* Paid via payment method — shows the net amount charged to Razorpay/COD */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, padding: '8px 12px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8 }}>
+            <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
+              ✓ Paid via {(order.paymentMethod || '').toUpperCase()}
+            </span>
+            <span style={{ fontSize: 14, color: '#16a34a', fontWeight: 700 }}>
+              {fmt(effective.finalPayableAmount || pricing.total)}
+            </span>
+          </div>
         </Card>
 
         {/* ── DOCUMENTS ── */}
