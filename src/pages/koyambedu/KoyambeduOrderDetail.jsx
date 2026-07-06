@@ -67,8 +67,9 @@ const buildInvoiceHtml = (order, type = 'proforma') => {
   const rows = sourceItems.map(it => {
     const qty   = it.orderedQty || it.confirmedQty || it.quantity || 0;
     const price = it.unitPrice || it.orderedPrice || it.finalPrice || 0;
+    const nameWithGrade = it.gradeKey ? `${it.name} (${it.gradeName || it.gradeKey})` : it.name;
     return `<tr>
-      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6">${it.name}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6">${nameWithGrade}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:center">${qty} ${it.unit || ''}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right">${fmt(price)}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right">${fmt(price * qty)}</td>
@@ -79,8 +80,9 @@ const buildInvoiceHtml = (order, type = 'proforma') => {
   const declinedRows = type !== 'tax' ? declinedItems.map(it => {
     const decQty = it.declinedQty || (it.orderedQty || it.quantity || 0);
     const price  = it.orderedPrice || it.finalPrice || 0;
+    const decNameWithGrade = it.gradeKey ? `${it.name} (${it.gradeName || it.gradeKey})` : it.name;
     return `<tr style="color:#dc2626">
-      <td style="padding:6px 8px">${it.name}</td>
+      <td style="padding:6px 8px">${decNameWithGrade}</td>
       <td style="padding:6px 8px;text-align:center">${decQty} ${it.unit || ''}</td>
       <td style="padding:6px 8px;text-align:right">${fmt(price)}</td>
       <td style="padding:6px 8px;text-align:right">${fmt(price * decQty)}</td>
@@ -332,7 +334,9 @@ export default function KoyambeduOrderDetail() {
             return (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < itemsOrdered.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#111', margin: 0 }}>{it.name}</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#111', margin: 0 }}>
+                    {it.name}{it.gradeKey ? <span style={{ color: '#065f46', fontWeight: 500, fontSize: 12 }}> ({it.gradeName || it.gradeKey})</span> : null}
+                  </p>
                   <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>{qty} {it.unit} × {fmt(price)}</p>
                 </div>
                 <p style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8', margin: 0 }}>{fmt(price * qty)}</p>
@@ -356,7 +360,9 @@ export default function KoyambeduOrderDetail() {
                 <div key={i} style={{ padding: '8px 0', borderBottom: i < itemsDeclined.length - 1 ? '1px solid #fef2f2' : 'none' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <div>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: '#dc2626', margin: 0 }}>{it.name}</p>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#dc2626', margin: 0 }}>
+                        {it.name}{it.gradeKey ? <span style={{ color: '#b91c1c', fontWeight: 500, fontSize: 12 }}> ({it.gradeName || it.gradeKey})</span> : null}
+                      </p>
                       <p style={{ fontSize: 12, color: '#9ca3af', margin: '2px 0 0' }}>Declined: {decQty} {it.unit} × {fmt(price)}</p>
                       <p style={{ fontSize: 11, color: '#9ca3af', margin: '1px 0 0' }}>Reason: {it.declinedReason || 'Unavailable'}</p>
                     </div>
@@ -395,7 +401,7 @@ export default function KoyambeduOrderDetail() {
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < arr.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: '#111', margin: 0 }}>
-                    {it.name}
+                    {it.name}{it.gradeKey ? <span style={{ color: '#065f46', fontWeight: 500, fontSize: 12 }}> ({it.gradeName || it.gradeKey})</span> : null}
                     {isPartial && <span style={{ marginLeft: 6, fontSize: 10, background: '#fff7ed', color: '#d97706', padding: '1px 6px', borderRadius: 99 }}>Partial</span>}
                   </p>
                   <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>

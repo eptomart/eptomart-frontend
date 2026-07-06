@@ -414,7 +414,9 @@ export default function KoyambeduSellerAdminOrders() {
                             }
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-semibold text-gray-800 text-sm">{item.name}</p>
+                                <p className="font-semibold text-gray-800 text-sm">
+                                  {item.name}{item.gradeKey ? <span className="text-green-700 font-medium text-xs"> ({item.gradeName || item.gradeKey})</span> : null}
+                                </p>
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                                   style={{ background: itemCfg.bg, color: itemCfg.color }}>
                                   {itemCfg.label}

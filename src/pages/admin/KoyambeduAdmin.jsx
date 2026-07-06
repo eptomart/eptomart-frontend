@@ -982,7 +982,7 @@ export default function KoyambeduAdmin() {
         content += `<div class="sa-header">📦 ${saName}</div>`;
         content += `<table><thead><tr><th>Order ID</th><th>Items</th><th>Total</th><th>Delivery Date</th><th>Slot</th><th>Address</th></tr></thead><tbody>`;
         group.orders?.forEach(o => {
-          const itemRows = o.items.map(it => `${it.name} × ${it.quantity}${it.unit || ''} @ ₹${it.orderedPrice} = ₹${it.lineTotal?.toFixed(0)}`).join('<br/>');
+          const itemRows = o.items.map(it => `${it.name}${it.gradeKey ? ` (${it.gradeName || it.gradeKey})` : ''} × ${it.quantity}${it.unit || ''} @ ₹${it.orderedPrice} = ₹${it.lineTotal?.toFixed(0)}`).join('<br/>');
           const addr = o.shippingAddress;
           content += `<tr><td>${o.orderId}</td><td>${itemRows}</td><td>₹${o.saSubtotal?.toFixed(0)}</td><td>${o.deliveryDate ? new Date(o.deliveryDate).toLocaleDateString('en-IN') : '-'}</td><td>${o.deliverySlot || '-'}</td><td>${addr?.addressLine1 || ''}, ${addr?.city || ''} - ${addr?.pincode || ''}</td></tr>`;
         });
@@ -1279,7 +1279,9 @@ export default function KoyambeduAdmin() {
                           return (
                             <div key={idx} className={`px-4 py-2.5 flex items-center gap-2 ${item.status === 'declined' ? 'opacity-50' : ''}`}>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-gray-800">{item.name}</p>
+                                <p className="text-sm font-semibold text-gray-800">
+                                  {item.name}{item.gradeKey ? <span className="text-green-700 font-medium text-xs"> ({item.gradeName || item.gradeKey})</span> : null}
+                                </p>
                                 <p className="text-xs text-gray-400">{item.quantity}{item.unit} × ₹{price}</p>
                                 {item.status === 'declined' && <span className="text-[10px] text-red-500 font-bold">Declined</span>}
                               </div>

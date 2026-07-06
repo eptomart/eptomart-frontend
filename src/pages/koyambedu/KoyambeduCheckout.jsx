@@ -1340,7 +1340,7 @@ export default function KoyambeduCheckout() {
               <h2 className="font-bold text-gray-800 text-sm mb-3">Bill Details</h2>
               {cart.items?.map((it, idx) => (
                 <div key={idx} className="flex justify-between text-xs text-gray-700 mb-1.5">
-                  <span>{it.name} × {it.quantity} {it.unit}</span>
+                  <span>{it.name}{it.gradeKey ? ` (${it.gradeName || it.gradeKey})` : ''} × {it.quantity} {it.unit}</span>
                   <span>₹{((it.unitPrice || 0) * it.quantity).toFixed(0)}</span>
                 </div>
               ))}

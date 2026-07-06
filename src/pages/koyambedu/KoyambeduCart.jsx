@@ -42,7 +42,9 @@ function CartItem({ item, prod, img, pid, line, loading, updateItem }) {
 
       <div className="flex-1 min-w-0">
         <Link to={`/koyambedu/product/${prod?._id}`}>
-          <p className="font-semibold text-gray-800 text-sm line-clamp-1">{item.name}</p>
+          <p className="font-semibold text-gray-800 text-sm line-clamp-1">
+            {item.name}{item.gradeKey ? <span className="text-green-700 font-medium"> ({item.gradeName || item.gradeKey})</span> : null}
+          </p>
         </Link>
         <p className="text-xs text-gray-400 mt-0.5">₹{item.unitPrice} / {item.unit}</p>
 

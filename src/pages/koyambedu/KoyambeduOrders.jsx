@@ -136,7 +136,7 @@ export default function KoyambeduOrders() {
                     return (
                       <div key={i} className="flex justify-between text-sm">
                         <span className={isDeclined ? 'text-red-400 line-through' : 'text-gray-700'}>
-                          {it.name} × {confirmedQty}{it.unit}
+                          {it.name}{it.gradeKey ? ` (${it.gradeName || it.gradeKey})` : ''} × {confirmedQty}{it.unit}
                           {isDeclined && ' (declined)'}
                         </span>
                         <span className="text-gray-500 shrink-0 ml-2">
