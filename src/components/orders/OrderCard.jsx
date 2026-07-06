@@ -94,9 +94,16 @@ export default function OrderCard({ order }) {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0 ml-3">
-          <span className="font-bold" style={{ color: vm.color }}>{formatINR(order.totalAmount)}</span>
-          <FiChevronRight size={16} className="text-gray-300" />
+        <div className="flex flex-col items-end gap-0.5 shrink-0 ml-3">
+          <div className="flex items-center gap-2">
+            <span className="font-bold" style={{ color: vm.color }}>{formatINR(order.totalAmount)}</span>
+            <FiChevronRight size={16} className="text-gray-300" />
+          </div>
+          {order.walletAdjustment > 0 && (
+            <span className="text-[10px] font-semibold text-green-600">
+              💚 ₹{order.walletAdjustment} wallet
+            </span>
+          )}
         </div>
       </div>
     </Link>
