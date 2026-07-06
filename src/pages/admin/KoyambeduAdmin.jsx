@@ -499,9 +499,15 @@ export default function KoyambeduAdmin() {
         action === 'mark_refunded' ? 'Refund completed — amount deducted from wallet' :
         'Updated'
       );
-      // After mark_refunded switch to the 'refunded' tab automatically
+      // Auto-switch to the matching status tab after each action
       if (action === 'mark_refunded') {
         setRefundStatusFilter('refunded');
+        setTimeout(() => loadTab('refund-requests'), 50);
+      } else if (action === 'confirm') {
+        setRefundStatusFilter('confirmed');
+        setTimeout(() => loadTab('refund-requests'), 50);
+      } else if (action === 'cancel') {
+        setRefundStatusFilter('cancelled');
         setTimeout(() => loadTab('refund-requests'), 50);
       } else {
         loadTab('refund-requests');
