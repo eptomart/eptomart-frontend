@@ -14,7 +14,7 @@ export default function OrderTimeline({ timeline = [] }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-4">
       <h3 className="text-sm font-bold text-gray-800 mb-3">Order Timeline</h3>
-      <ol className="relative">
+      <ol className="relative stagger">
         {timeline.map((ev, i) => {
           const negative = NEGATIVE_EVENTS.includes(ev.event);
           const last = i === timeline.length - 1;

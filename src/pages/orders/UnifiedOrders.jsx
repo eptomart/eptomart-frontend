@@ -218,7 +218,7 @@ export default function UnifiedOrders() {
           </div>
         ) : (
           <>
-            <div className="space-y-3">
+            <div className="space-y-3 stagger">
               {orders.map(order => (
                 <OrderCard key={`${order.vertical}-${order.id}`} order={order} />
               ))}

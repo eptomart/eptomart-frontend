@@ -92,7 +92,7 @@ export default function UnifiedOrderDetail() {
       <Helmet><title>Order #{order.orderId} — Eptomart</title></Helmet>
       <Navbar />
 
-      <main className="max-w-3xl mx-auto px-4 py-6 min-h-screen space-y-4">
+      <main className="max-w-3xl mx-auto px-4 py-6 min-h-screen space-y-4 stagger">
         {/* ── Header ── */}
         <div>
           <Link to="/orders" className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-800 mb-3">

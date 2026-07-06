@@ -38,7 +38,7 @@ export default function OrderCard({ order }) {
 
   return (
     <Link to={order.detailUrl}
-      className="block bg-white rounded-2xl border border-gray-100 hover:border-gray-300 transition-all overflow-hidden"
+      className="sr block bg-white rounded-2xl border border-gray-100 hover:border-gray-300 hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
       style={{ boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
       <div className="flex items-center justify-between px-4 pt-3 pb-2"
         style={{ background: `${vm.color}12` }}>

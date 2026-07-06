@@ -164,9 +164,12 @@ function GlobalBottomNav() {
 }
 
 function AppRoutes() {
+  // Keying by pathname re-runs the entrance animation on every navigation
+  const { pathname } = useLocation();
   return (
     <>
       <Suspense fallback={<Loader />}>
+        <div key={pathname} className="route-anim">
         <Routes>
           {/* Public */}
           <Route path="/"              element={<Home />} />
@@ -287,6 +290,7 @@ function AppRoutes() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </div>
       </Suspense>
 
       <GlobalBottomNav />
