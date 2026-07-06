@@ -260,6 +260,26 @@ export default function KoyambeduAdmin() {
   // Hero video settings (Koyambedu home)
   const [heroVideoCfg, setHeroVideoCfg] = useState({ enabled: false, url: '', poster: '', caption: '' });
   const [heroSaving,   setHeroSaving]   = useState(false);
+  const [heroUploading, setHeroUploading] = useState(false);
+  const uploadHeroVideoFile = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('video/')) { toast.error('Please choose a video file (MP4/WebM)'); return; }
+    if (file.size > 50 * 1024 * 1024) { toast.error('Video too large — keep it under 50MB (10–15s at 720p is ideal)'); return; }
+    setHeroUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('video', file);
+      const { data } = await api.post('/koyambedu/admin/hero-video/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setHeroVideoCfg(c => ({ ...c, url: data.url, poster: data.poster || c.poster, enabled: true }));
+      toast.success('Video uploaded! Review the preview, then press Save.');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Upload failed — try a smaller MP4');
+    } finally {
+      setHeroUploading(false);
+    }
+  };
   useEffect(() => {
     api.get('/settings')
       .then(r => {
@@ -1154,6 +1174,16 @@ export default function KoyambeduAdmin() {
             </div>
             <p className="text-[11px] text-gray-400 mb-3">Autoplay video banner on the Koyambedu Daily home page. Use an MP4/WebM URL (e.g. Cloudinary).</p>
             <div className="space-y-2">
+              {/* Upload from device → Cloudinary */}
+              <label className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl border-2 border-dashed cursor-pointer text-xs font-bold transition-colors ${
+                heroUploading ? 'border-gray-300 text-gray-400' : 'border-green-300 text-green-700 hover:bg-green-50'
+              }`}>
+                {heroUploading ? '⏳ Uploading video…' : '📤 Upload video from this device (MP4/WebM, max 50MB)'}
+                <input type="file" accept="video/mp4,video/webm,video/*" className="hidden"
+                  disabled={heroUploading}
+                  onChange={e => { uploadHeroVideoFile(e.target.files?.[0]); e.target.value = ''; }} />
+              </label>
+              <p className="text-center text-[10px] text-gray-400">— or paste a URL —</p>
               <input value={heroVideoCfg.url} onChange={e => setHeroVideoCfg(c => ({ ...c, url: e.target.value }))}
                 placeholder="Video URL (https://…/market.mp4)"
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-mono" />
