@@ -38,24 +38,21 @@ export default function KoyambeduProductDetail() {
   const autoCommitRef = useRef(null);
   const scrollYRef    = useRef(0);
 
-  // Lock body scroll when bottom sheet is open (prevents iOS from scrolling the page
-  // underneath the sheet and making it impossible to scroll back up)
+  // Lock body scroll when bottom sheet is open.
+  // Uses overflow:hidden on <html> + <body> — more reliable than position:fixed on iOS,
+  // which can permanently freeze the page if cleanup is missed (fast taps, keyboard, etc.)
   useEffect(() => {
     if (showQtySheet) {
       scrollYRef.current = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top      = `-${scrollYRef.current}px`;
-      document.body.style.width    = '100%';
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.position = '';
-      document.body.style.top      = '';
-      document.body.style.width    = '';
-      window.scrollTo(0, scrollYRef.current);
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
     }
     return () => {
-      document.body.style.position = '';
-      document.body.style.top      = '';
-      document.body.style.width    = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
     };
   }, [showQtySheet]);
 
@@ -227,7 +224,7 @@ export default function KoyambeduProductDetail() {
       style={{
         minHeight: '100vh',
         background: '#F5F4F2',
-        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 120px)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 160px)',
       }}
     >
       <EptoSEO
@@ -701,7 +698,7 @@ export default function KoyambeduProductDetail() {
           {/* Backdrop */}
           <div
             className="fixed inset-0 z-[9980]"
-            style={{ background: 'rgba(0,0,0,0.55)' }}
+            style={{ background: 'rgba(0,0,0,0.55)', touchAction: 'none' }}
             onClick={() => setShowQtySheet(false)}
           />
 
