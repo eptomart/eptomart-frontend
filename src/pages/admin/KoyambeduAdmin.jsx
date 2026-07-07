@@ -1172,7 +1172,7 @@ export default function KoyambeduAdmin() {
                 Enabled
               </label>
             </div>
-            <p className="text-[11px] text-gray-400 mb-3">Autoplay video banner on the Koyambedu Daily home page. Use an MP4/WebM URL (e.g. Cloudinary).</p>
+            <p className="text-[11px] text-gray-400 mb-3">Plays as the live background of the Koyambedu tile on the EPTOMART HOME page. Upload an MP4/WebM or paste a URL.</p>
             <div className="space-y-2">
               {/* Upload from device → Cloudinary */}
               <label className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl border-2 border-dashed cursor-pointer text-xs font-bold transition-colors ${

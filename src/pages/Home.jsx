@@ -273,14 +273,36 @@ const SOURCE_TILES = [
 ];
 
 function ShopBySource() {
+  // Admin-configurable market video — plays as the live background of
+  // the Koyambedu hero tile (falls back to the photo when not set)
+  const [heroVideo, setHeroVideo] = useState(null);
+  useEffect(() => {
+    api.get('/settings')
+      .then(r => {
+        const v = r.data?.settings?.koyambeduHeroVideo;
+        if (v?.enabled && v?.url) setHeroVideo(v);
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="px-4 space-y-2">
-      {/* Koyambedu Daily — HERO tile */}
+      {/* Koyambedu Daily — HERO tile (live video when configured) */}
       <Link to="/koyambedu"
         className="relative overflow-hidden rounded-2xl active:scale-[0.98] transition-transform block"
         style={{ aspectRatio: '2.4/1', maxHeight: 165, boxShadow: '0 8px 28px rgba(6,78,59,0.50)' }}>
-        <img src="/categories/koyambedu.jpg" alt="Koyambedu Market"
-          className="absolute inset-0 w-full h-full object-cover" />
+        {heroVideo ? (
+          <video
+            src={heroVideo.url}
+            poster={heroVideo.poster || '/categories/koyambedu.jpg'}
+            autoPlay muted loop playsInline preload="metadata"
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={() => setHeroVideo(null)}
+          />
+        ) : (
+          <img src="/categories/koyambedu.jpg" alt="Koyambedu Market"
+            className="absolute inset-0 w-full h-full object-cover" />
+        )}
         <div className="absolute inset-0"
           style={{ background: 'linear-gradient(100deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.55) 50%, rgba(0,0,0,0.15) 100%)' }} />
         <div className="absolute inset-0 flex flex-col justify-between p-3">
