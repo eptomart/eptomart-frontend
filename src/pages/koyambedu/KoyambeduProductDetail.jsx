@@ -759,7 +759,7 @@ export default function KoyambeduProductDetail() {
               {/* Input */}
               <div className="flex-1 flex flex-col items-center">
                 <input
-                  type="text" inputMode="numeric" pattern="[0-9]*"
+                  type="text" inputMode="decimal" pattern="[0-9]*"
                   value={qtyInput} maxLength={5}
                   enterKeyHint="done"
                   onChange={e => {
