@@ -56,6 +56,7 @@ export const EMPTY_VARIANT_PRODUCT = {
   procurementChargePercent: 0,
   platformChargePercent: 10,
   logisticsChargePercent: 10,
+  variantDiffPercent: 2,
   variants: [
     { ...EMPTY_VARIANT },
     { ...EMPTY_VARIANT },
@@ -715,29 +716,40 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
       ) : (
         /* ── Standard variant table (no grades) ── */
         <div>
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 gap-3">
             <p className="text-xs font-bold text-gray-700">Pricing Variants (up to 4)</p>
-            {(form.variants || []).length < 4 && (() => {
-              const last = (form.variants || [])[(form.variants || []).length - 1];
-              const blocked = !!(last && !last.toQty);
-              return (
-                <div className="relative group">
-                  <button type="button" onClick={addVariant} disabled={blocked}
-                    className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition ${
-                      blocked
-                        ? 'text-gray-400 border-gray-200 cursor-not-allowed opacity-50'
-                        : 'text-green-700 border-green-300 hover:bg-green-50'
-                    }`}>
-                    + Add Tier
-                  </button>
-                  {blocked && (
-                    <span className="absolute right-0 top-full mt-1.5 text-[10px] bg-gray-800 text-white px-2 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
-                      Fill "To Qty" in last tier first
-                    </span>
-                  )}
-                </div>
-              );
-            })()}
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] font-semibold text-gray-600 whitespace-nowrap">Variant Step %</span>
+                <input type="number" min="0" max="50" step="0.5"
+                  value={form.variantDiffPercent ?? 2}
+                  onChange={e => setField('variantDiffPercent', e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-14 border border-gray-200 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-green-400"
+                  title="% by which lower-qty variants are cheaper (used in daily price updates)"
+                />
+              </label>
+              {(form.variants || []).length < 4 && (() => {
+                const last = (form.variants || [])[(form.variants || []).length - 1];
+                const blocked = !!(last && !last.toQty);
+                return (
+                  <div className="relative group">
+                    <button type="button" onClick={addVariant} disabled={blocked}
+                      className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition ${
+                        blocked
+                          ? 'text-gray-400 border-gray-200 cursor-not-allowed opacity-50'
+                          : 'text-green-700 border-green-300 hover:bg-green-50'
+                      }`}>
+                      + Add Tier
+                    </button>
+                    {blocked && (
+                      <span className="absolute right-0 top-full mt-1.5 text-[10px] bg-gray-800 text-white px-2 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
+                        Fill "To Qty" in last tier first
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
 
           <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-1 text-[10px] font-bold text-gray-500 uppercase tracking-wide px-1 mb-1">

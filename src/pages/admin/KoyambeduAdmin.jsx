@@ -891,6 +891,7 @@ export default function KoyambeduAdmin() {
             }))
         : [],
       // Standard variants (non-graded)
+      variantDiffPercent: p.variantDiffPercent ?? 2,
       variants: p.gradesEnabled ? [] : (p.variants?.length
         ? p.variants.map(v => ({ basePrice: v.basePrice, fromQty: v.fromQty, toQty: v.toQty, finalPrice: String(v.finalPrice) }))
         : [{ basePrice: p.currentPrice || '', fromQty: p.minQty || 1, toQty: p.maxQty || 50, finalPrice: String(p.currentPrice || '') }]),
