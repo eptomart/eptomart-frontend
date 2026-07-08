@@ -16,7 +16,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   FiTrash2, FiShoppingBag, FiTruck, FiEdit2, FiInfo, FiCheckCircle,
-  FiZap, FiPackage, FiLock, FiGrid, FiMinus, FiPlus,
+  FiZap, FiPackage, FiLock, FiGrid, FiMinus, FiPlus, FiChevronRight, FiSun,
 } from 'react-icons/fi';
 import { FaLeaf } from 'react-icons/fa';
 import Navbar from '../components/common/Navbar';
@@ -182,16 +182,73 @@ export default function Cart() {
       <>
         <Helmet><title>Cart — Eptomart</title></Helmet>
         <Navbar />
-        <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
+        <div className="min-h-screen flex flex-col items-center justify-center text-center px-4 py-10">
+          {/* Icon */}
           <div
-            className="w-28 h-28 rounded-full flex items-center justify-center mb-5 animate-fade-in-up"
+            className="w-24 h-24 rounded-full flex items-center justify-center mb-4"
             style={{ background: 'linear-gradient(135deg,#fff8ee,#ffecd0)' }}
           >
-            <FiShoppingBag size={52} style={{ color: '#f4941c' }} />
+            <FiShoppingBag size={44} style={{ color: '#f4941c' }} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Your cart is empty</h2>
-          <p className="text-gray-400 mb-6">Looks like you haven't added anything yet.</p>
-          <Link to="/shop" className="btn-primary">Start Shopping →</Link>
+          <h2 className="text-2xl font-bold text-gray-800 mb-1">Your cart is empty</h2>
+          <p className="text-gray-400 text-sm mb-8">Browse a store below to start adding items.</p>
+
+          {/* Store directory */}
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Shop from our stores</p>
+          <div className="w-full max-w-xs space-y-2 text-left">
+            {[
+              {
+                name: 'Eptomart',
+                desc: 'Premium products · Trusted quality',
+                path: '/',
+                color: '#f4941c',
+                bg:    '#fff8ee',
+                icon:  <FiShoppingBag size={16} />,
+              },
+              {
+                name: 'Koyambedu Daily',
+                desc: 'Fresh produce from Koyambedu market',
+                path: '/koyambedu',
+                color: '#065f46',
+                bg:    '#dcfce7',
+                icon:  <FaLeaf size={14} />,
+              },
+              {
+                name: 'Farmer Fresh',
+                desc: 'Direct from farms · Uzhavar Sandhai',
+                path: '/uzhavar',
+                color: '#92400e',
+                bg:    '#fef3c7',
+                icon:  <FiSun size={16} />,
+              },
+              {
+                name: 'Proteins',
+                desc: 'Premium proteins · Delivered fresh',
+                path: '/eptofresh',
+                color: '#1e40af',
+                bg:    '#dbeafe',
+                icon:  <FiZap size={16} />,
+              },
+            ].map(store => (
+              <Link
+                key={store.path}
+                to={store.path}
+                className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:border-gray-200 transition-all"
+              >
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: store.bg, color: store.color }}
+                >
+                  {store.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-gray-800 leading-tight">{store.name}</div>
+                  <div className="text-xs text-gray-400 truncate mt-0.5">{store.desc}</div>
+                </div>
+                <FiChevronRight size={16} className="text-gray-300 flex-shrink-0" />
+              </Link>
+            ))}
+          </div>
         </div>
         <Footer />
       </>
