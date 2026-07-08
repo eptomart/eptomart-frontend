@@ -49,116 +49,229 @@ const fmtTime = d => d ? new Date(d).toLocaleString('en-IN', { day: 'numeric', m
 
 // ── Invoice HTML generator ────────────────────
 const buildInvoiceHtml = (order, type = 'proforma') => {
+  const r2   = n => Math.round((Number(n) || 0) * 100) / 100;
+  const fmtC = n => `INR ${r2(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
   const calc    = order.calculatedPricing || {};
   const pricing = order.pricing || {};
   const addr    = order.shippingAddress || {};
+
   const invoiceNo = type === 'tax'
-    ? (order.invoices?.tax?.number    || `TAX-${order.orderId}`)
+    ? (order.invoices?.tax?.number          || `TAX-${order.orderId}`)
     : type === 'confirmation'
-    ? (order.invoices?.confirmation?.number || `CONF-${order.orderId}`)
-    : (order.invoices?.proforma?.number     || `PRO-${order.orderId}`);
+    ? (order.invoices?.confirmation?.number  || `CONF-${order.orderId}`)
+    : (order.invoices?.proforma?.number      || `PRO-${order.orderId}`);
 
-  const title = type === 'tax' ? 'FINAL TAX INVOICE' : type === 'confirmation' ? 'ORDER CONFIRMATION' : 'PROFORMA INVOICE';
+  const title = type === 'tax' ? 'FINAL TAX INVOICE'
+              : type === 'confirmation' ? 'ORDER CONFIRMATION'
+              : 'PROFORMA INVOICE';
 
+  // Source items: tax invoice uses confirmed-only; proforma/confirmation uses all ordered items
   const sourceItems = type === 'tax'
     ? (order.items || []).filter(it => it.itemStatus !== 'declined')
     : (order.itemsOrdered?.length ? order.itemsOrdered : order.items || []);
 
-  const rows = sourceItems.map(it => {
-    const qty   = it.orderedQty || it.confirmedQty || it.quantity || 0;
-    const price = it.unitPrice || it.orderedPrice || it.finalPrice || 0;
-    const nameWithGrade = it.gradeKey ? `${it.name} - ${it.gradeName || it.gradeKey}` : it.name;
-    return `<tr>
-      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6">${nameWithGrade}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:center">${qty} ${it.unit || ''}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right">${fmt(price)}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right">${fmt(price * qty)}</td>
+  // ── Build item rows ──────────────────────────────────────────
+  let subtotal = 0;
+  const rows = sourceItems.map((it, idx) => {
+    const qty  = r2(it.confirmedQty != null && type === 'tax' ? it.confirmedQty : (it.orderedQty || it.quantity || 0));
+    const price = r2(it.unitPrice || it.finalPrice || it.orderedPrice || 0);
+    const lineAmt = r2(price * qty);
+    subtotal += lineAmt;
+    const gradeHtml = it.gradeKey
+      ? `<br><small style="color:#6b7280;font-style:italic;font-size:10px">Grade: ${it.gradeName || it.gradeKey}</small>`
+      : '';
+    return `<tr style="background:${idx % 2 === 0 ? '#f9fafb' : '#ffffff'}">
+      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:center;color:#9ca3af;font-size:11px;width:4%">${idx + 1}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;width:38%"><strong style="font-size:12px">${it.name}</strong>${gradeHtml}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right;width:10%;font-size:12px">${qty}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:center;width:8%;font-size:11px;color:#6b7280">${it.unit || ''}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right;width:19%;font-size:12px;font-family:monospace">${fmtC(price)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right;width:21%;font-size:12px;font-weight:600;font-family:monospace">${fmtC(lineAmt)}</td>
     </tr>`;
   }).join('');
 
+  // ── Declined items ──────────────────────────────────────────
   const declinedItems = (order.items || []).filter(it => it.itemStatus === 'declined' || it.itemStatus === 'partial');
-  const declinedRows = type !== 'tax' ? declinedItems.map(it => {
-    const decQty = it.declinedQty || (it.orderedQty || it.quantity || 0);
-    const price  = it.orderedPrice || it.finalPrice || 0;
-    const decNameWithGrade = it.gradeKey ? `${it.name} - ${it.gradeName || it.gradeKey}` : it.name;
-    return `<tr style="color:#dc2626">
-      <td style="padding:6px 8px">${decNameWithGrade}</td>
-      <td style="padding:6px 8px;text-align:center">${decQty} ${it.unit || ''}</td>
-      <td style="padding:6px 8px;text-align:right">${fmt(price)}</td>
-      <td style="padding:6px 8px;text-align:right">${fmt(price * decQty)}</td>
-      <td style="padding:6px 8px;text-align:center">${it.declinedReason || 'Unavailable'}</td>
+  const declinedRows = type !== 'tax' ? declinedItems.map((it, idx) => {
+    const decQty = r2(it.declinedQty || it.orderedQty || it.quantity || 0);
+    const price  = r2(it.orderedPrice || it.finalPrice || 0);
+    const gradeHtml = it.gradeKey
+      ? `<br><small style="font-style:italic;font-size:10px">Grade: ${it.gradeName || it.gradeKey}</small>`
+      : '';
+    return `<tr style="background:${idx % 2 === 0 ? '#fff5f5' : '#ffffff'}">
+      <td style="padding:5px 8px;text-align:center;color:#dc2626;font-size:11px;width:4%">${idx + 1}</td>
+      <td style="padding:5px 8px;width:34%;color:#dc2626"><strong style="font-size:12px">${it.name}</strong>${gradeHtml}</td>
+      <td style="padding:5px 8px;text-align:right;width:10%;font-size:12px">${decQty}</td>
+      <td style="padding:5px 8px;text-align:center;width:8%;font-size:11px;color:#9ca3af">${it.unit || ''}</td>
+      <td style="padding:5px 8px;text-align:right;width:19%;font-size:12px;font-family:monospace">${fmtC(price)}</td>
+      <td style="padding:5px 8px;text-align:right;width:25%;font-size:12px;font-family:monospace;color:#dc2626">${fmtC(r2(price * decQty))}</td>
     </tr>`;
   }).join('') : '';
 
+  // ── Wallet adjustments ──────────────────────────────────────
+  const walletAdj     = r2(calc.walletAdjustment || pricing.walletAdjustment || 0);
+  const priceRevCredit = r2(order.dailyPriceRevision?.totalCreditToWallet || 0);
+  const priceRevDebit  = r2(order.dailyPriceRevision?.totalDebitFromWallet || 0);
+  const procCredit     = r2(order.procurementPricing?.totalWalletCredit || 0);
+  const procDebit      = r2(order.procurementPricing?.totalWalletDue || 0);
+  const couponDisc     = r2(calc.couponDiscount || pricing.discount || 0);
+  const delivFee       = r2(calc.deliveryCharge || pricing.deliveryCharge || pricing.deliveryFee || 0);
+  const platFee        = r2(calc.platformFee || pricing.platformFee || 0);
+  const packFee        = r2(calc.packingLogisticsFee || pricing.packingLogisticsFee || 0);
+  const declinedRefund = r2(calc.declinedRefundAmount || 0);
+  const finalAmt       = r2(calc.finalPayableAmount && calc.finalPayableAmount > 0 ? calc.finalPayableAmount : (pricing.total || subtotal));
+
+  // Helper: one summary row (right-aligned label + value)
+  const sumRow = (label, value, color = '#374151', bg = 'transparent') =>
+    `<tr style="background:${bg}">
+      <td style="padding:4px 8px;font-size:12px;color:${color}">${label}</td>
+      <td style="padding:4px 8px;text-align:right;font-size:12px;font-family:monospace;color:${color}">${value}</td>
+    </tr>`;
+
+  const summaryRows = [
+    sumRow('Items Subtotal', fmtC(subtotal)),
+    delivFee > 0  ? sumRow('Delivery Charge', fmtC(delivFee)) : '',
+    platFee  > 0  ? sumRow('Platform Fee', fmtC(platFee)) : '',
+    packFee  > 0  ? sumRow('Packing &amp; Logistics', fmtC(packFee)) : '',
+    couponDisc > 0 ? sumRow('Coupon Discount (−)', `&minus; ${fmtC(couponDisc)}`, '#16a34a', '#f0fdf4') : '',
+    walletAdj > 0  ? sumRow('Wallet Credit Applied (−)', `&minus; ${fmtC(walletAdj)}`, '#16a34a', '#f0fdf4') : '',
+    walletAdj < 0  ? sumRow('Wallet Debt Recovered (+)', `+ ${fmtC(Math.abs(walletAdj))}`, '#dc2626', '#fff7ed') : '',
+    priceRevCredit > 0 ? sumRow('Price Revision Credit (−)', `&minus; ${fmtC(priceRevCredit)}`, '#16a34a', '#f0fdf4') : '',
+    priceRevDebit  > 0 ? sumRow('Price Revision Debit (+)',  `+ ${fmtC(priceRevDebit)}`,  '#dc2626', '#fff7ed') : '',
+    procCredit > 0 ? sumRow('Procurement Credit (−)', `&minus; ${fmtC(procCredit)}`, '#16a34a', '#f0fdf4') : '',
+    procDebit  > 0 ? sumRow('Procurement Debit (+)',  `+ ${fmtC(procDebit)}`,  '#dc2626', '#fff7ed') : '',
+    sumRow('GST / Tax', 'NIL (Exempt)', '#9ca3af'),
+  ].join('');
+
+  // ── Disclaimer ──────────────────────────────────────────────
   const disclaimer = type === 'proforma'
-    ? '<p style="color:#6b7280;font-size:11px;margin-top:12px">⚠️ This is a Proforma Invoice. It is <b>not a tax invoice</b>. The Final Tax Invoice will be generated only after successful delivery.</p>'
+    ? '<p style="color:#6b7280;font-size:11px;margin-top:10px">⚠️ This is a Proforma Invoice — <b>not a tax invoice</b>. Final Tax Invoice will be generated after successful delivery.</p>'
     : type === 'confirmation'
-    ? '<p style="color:#6b7280;font-size:11px;margin-top:12px">This document confirms items for delivery after seller review. Final Tax Invoice issued upon delivery.</p>'
-    : '<p style="color:#6b7280;font-size:11px;margin-top:12px">GST: Fresh vegetables and fruits are exempt under Indian GST law (0% applicable).</p>';
+    ? '<p style="color:#6b7280;font-size:11px;margin-top:10px">This document confirms items for delivery after seller review. Final Tax Invoice issued upon delivery.</p>'
+    : '<p style="color:#6b7280;font-size:11px;margin-top:10px">Fresh vegetables and fruits are exempt from GST under Indian GST law, Chapter 7 &amp; 8, Notification 2/2017-CT(Rate).</p>';
 
-  const finalAmt  = calc.finalPayableAmount || pricing.total || 0;
+  const addrParts = [addr.addressLine1 || addr.address, addr.addressLine2, addr.city, addr.state, addr.pincode].filter(Boolean).join(', ');
 
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
-  <style>body{font-family:Arial,sans-serif;font-size:13px;color:#111;margin:0;padding:20px}@media print{.no-print{display:none!important}}</style></head><body>
-  <div class="no-print" style="margin-bottom:16px;display:flex;gap:8px">
-    <button onclick="window.print()" style="background:#065f46;color:#fff;padding:8px 16px;border:none;border-radius:8px;cursor:pointer;font-size:14px">🖨 Print / Save PDF</button>
-    <button onclick="window.close()" style="background:#f3f4f6;color:#374151;padding:8px 16px;border:none;border-radius:8px;cursor:pointer;font-size:14px">✕ Close</button>
-  </div>
-  <table width="100%" style="margin-bottom:16px"><tr>
-    <td><div style="color:#065f46;font-size:22px;font-weight:bold">EPTOMART</div><div style="color:#6b7280;font-size:12px">Koyambedu Daily — Fresh from the Market</div></td>
-    <td style="text-align:right">
-      <div style="font-size:16px;font-weight:bold">${title}</div>
-      <div style="color:#6b7280;font-size:12px"># ${invoiceNo}</div>
-      <div style="color:#6b7280;font-size:12px">Order: ${order.orderId}</div>
-      <div style="color:#6b7280;font-size:12px">Date: ${fmtDate(order.placedAt || order.createdAt)}</div>
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${title}</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #111; margin: 0; padding: 20px; max-width: 860px; margin: 0 auto; }
+  @media print { .no-print { display: none !important } body { padding: 0 } }
+  table { border-collapse: collapse; }
+  th { font-weight: 600; }
+</style>
+</head><body>
+
+<div class="no-print" style="margin-bottom:16px;display:flex;gap:8px">
+  <button onclick="window.print()" style="background:#065f46;color:#fff;padding:8px 16px;border:none;border-radius:8px;cursor:pointer;font-size:14px">🖨 Print / Save PDF</button>
+  <button onclick="window.close()" style="background:#f3f4f6;color:#374151;padding:8px 16px;border:none;border-radius:8px;cursor:pointer;font-size:14px">✕ Close</button>
+</div>
+
+<!-- HEADER -->
+<table width="100%" style="margin-bottom:14px">
+  <tr>
+    <td width="55%" valign="top">
+      <div style="color:#065f46;font-size:24px;font-weight:bold;line-height:1">EPTOMART</div>
+      <div style="color:#374151;font-size:12px;margin-top:3px">Koyambedu Daily — Fresh from the Market</div>
+      <div style="color:#9ca3af;font-size:11px;margin-top:2px">GSTIN: Exempt (Fresh Produce) &nbsp;|&nbsp; support@eptomart.com</div>
     </td>
-  </tr></table>
-  <hr style="border:1px solid #e5e7eb;margin-bottom:12px">
-  <table width="100%"><tr>
-    <td valign="top" width="55%">
-      <b>Delivered To:</b><br>${addr.fullName || ''}<br>
-      ${[addr.addressLine1, addr.addressLine2, addr.city, addr.pincode].filter(Boolean).join(', ')}<br>
-      ${addr.landmark ? `Landmark: ${addr.landmark}<br>` : ''}
+    <td width="45%" valign="top" style="text-align:right">
+      <div style="color:#065f46;font-size:18px;font-weight:bold">${title}</div>
+      <div style="color:#6b7280;font-size:11px;margin-top:4px">Invoice No.: <strong style="color:#111">${invoiceNo}</strong></div>
+      <div style="color:#6b7280;font-size:11px;margin-top:2px">Order Ref.: <strong style="color:#111">${order.orderId}</strong></div>
+      <div style="color:#6b7280;font-size:11px;margin-top:2px">Date: <strong style="color:#111">${fmtDate(order.placedAt || order.createdAt)}</strong></div>
     </td>
-    <td valign="top" width="45%" style="text-align:right">
-      <div><b>Delivery:</b> ${fmtDate(order.deliveryDate)} | ${order.deliverySlot || '—'}</div>
-      <div><b>Payment:</b> ${(order.paymentMethod || '').toUpperCase()}</div>
+  </tr>
+</table>
+
+<hr style="border:none;border-top:2px solid #065f46;margin:0 0 12px">
+
+<!-- PARTY & DELIVERY BLOCKS -->
+<table width="100%" style="margin-bottom:14px">
+  <tr>
+    <td width="50%" valign="top">
+      <div style="font-size:10px;font-weight:bold;color:#065f46;letter-spacing:.05em;margin-bottom:4px">BILLED TO</div>
+      <div style="font-size:13px;font-weight:bold">${addr.fullName || order.buyer?.name || '—'}</div>
+      <div style="font-size:12px;color:#374151;margin-top:2px">${addrParts}</div>
+      ${addr.landmark ? `<div style="font-size:12px;color:#6b7280">Landmark: ${addr.landmark}</div>` : ''}
+      <div style="font-size:12px;color:#374151;margin-top:2px">Phone: ${addr.phone || '—'}</div>
     </td>
-  </tr></table>
-  <div style="font-weight:bold;margin:14px 0 6px;font-size:14px">${type === 'tax' ? 'Items Delivered' : 'Items Ordered'}</div>
-  <table width="100%" style="border-collapse:collapse;border:1px solid #e5e7eb">
-    <thead><tr style="background:#065f46;color:#fff">
-      <th style="padding:8px;text-align:left">Product</th><th style="padding:8px;text-align:center">Qty</th>
-      <th style="padding:8px;text-align:right">Unit Price</th><th style="padding:8px;text-align:right">Amount</th>
-    </tr></thead><tbody>${rows}</tbody>
-  </table>
-  ${declinedRows ? `
-  <div style="font-weight:bold;margin:14px 0 6px;font-size:14px;color:#dc2626">Items Declined (Refund Applicable)</div>
-  <table width="100%" style="border-collapse:collapse;border:1px solid #fecaca"><thead><tr style="background:#fef2f2">
-    <th style="padding:8px;text-align:left">Product</th><th style="padding:8px;text-align:center">Declined Qty</th>
-    <th style="padding:8px;text-align:right">Unit Price</th><th style="padding:8px;text-align:right">Refund</th>
-    <th style="padding:8px;text-align:center">Reason</th>
-  </tr></thead><tbody>${declinedRows}</tbody></table>` : ''}
-  <table width="100%" style="margin-top:16px"><tr><td></td>
-    <td width="280" style="border:1px solid #e5e7eb;border-radius:8px;padding:12px;font-size:13px">
-      ${(calc.originalOrderValue||pricing.subtotal||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Original Order Value</span><span>${fmt(calc.originalOrderValue||pricing.subtotal)}</span></div>`:''}
-      ${(calc.declinedRefundAmount||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px;color:#dc2626"><span>Declined Refund (−)</span><span>${fmt(calc.declinedRefundAmount)}</span></div>`:''}
-      <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Confirmed Items Total</span><span>${fmt(calc.confirmedItemsTotal||pricing.subtotal)}</span></div>
-      ${(calc.platformFee||pricing.platformFee||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Platform Fee</span><span>${fmt(calc.platformFee||pricing.platformFee)}</span></div>`:''}
-      ${(calc.packingLogisticsFee||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Packing & Logistics</span><span>${fmt(calc.packingLogisticsFee)}</span></div>`:''}
-      ${(calc.deliveryCharge||pricing.deliveryCharge||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Delivery Charge</span><span>${fmt(calc.deliveryCharge||pricing.deliveryCharge)}</span></div>`:''}
-      <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>GST</span><span>0% (Exempt)</span></div>
-      ${(calc.couponDiscount||pricing.discount||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px;color:#16a34a"><span>Coupon Discount</span><span>−${fmt(calc.couponDiscount||pricing.discount)}</span></div>`:''}
-      ${((calc.walletAdjustment||pricing.walletAdjustment)||0)>0?`<div style="display:flex;justify-content:space-between;margin-bottom:5px;color:#16a34a"><span>Wallet Credit Applied</span><span>−${fmt(calc.walletAdjustment||pricing.walletAdjustment)}</span></div>`:''}
-      <hr style="border:1px solid #e5e7eb;margin:8px 0">
-      <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:15px;color:#065f46">
-        <span>Final Payable Amount</span><span>${fmt(finalAmt)}</span>
-      </div>
+    <td width="50%" valign="top" style="text-align:right">
+      <div style="font-size:10px;font-weight:bold;color:#065f46;letter-spacing:.05em;margin-bottom:4px">DELIVERY DETAILS</div>
+      ${order.deliveryDate ? `<div style="font-size:12px;color:#374151"><strong>Date:</strong> ${fmtDate(order.deliveryDate)}</div>` : ''}
+      ${order.deliverySlot ? `<div style="font-size:12px;color:#374151"><strong>Slot:</strong> ${order.deliverySlot}</div>` : ''}
+      <div style="font-size:12px;color:#374151"><strong>Payment:</strong> ${(order.paymentMethod || 'Online').toUpperCase()}</div>
+      <div style="font-size:12px;color:#374151"><strong>Status:</strong> ${(order.orderStatus || '').replace(/_/g,' ').toUpperCase()}</div>
     </td>
-  </tr></table>
-  ${disclaimer}
-  <div style="margin-top:24px;text-align:center;color:#9ca3af;font-size:11px">Eptomart — Koyambedu Daily | eptomart.com</div>
-  </body></html>`;
+  </tr>
+</table>
+
+<hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 10px">
+
+<!-- ITEMS TABLE -->
+<div style="font-size:11px;font-weight:bold;color:#374151;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em">${type === 'tax' ? 'Items Delivered' : 'Items Ordered'}</div>
+<table width="100%" style="border:1px solid #e5e7eb;margin-bottom:16px">
+  <thead>
+    <tr style="background:#065f46;color:#fff">
+      <th style="padding:7px 8px;text-align:center;width:4%;font-size:11px">S.No</th>
+      <th style="padding:7px 8px;text-align:left;width:38%;font-size:11px">Description / Grade</th>
+      <th style="padding:7px 8px;text-align:right;width:10%;font-size:11px">Qty</th>
+      <th style="padding:7px 8px;text-align:center;width:8%;font-size:11px">Unit</th>
+      <th style="padding:7px 8px;text-align:right;width:19%;font-size:11px">Rate</th>
+      <th style="padding:7px 8px;text-align:right;width:21%;font-size:11px">Amount</th>
+    </tr>
+  </thead>
+  <tbody>${rows}</tbody>
+</table>
+
+${declinedRows ? `
+<div style="font-size:11px;font-weight:bold;color:#dc2626;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em">Items Declined / Not Delivered</div>
+<table width="100%" style="border:1px solid #fecaca;margin-bottom:16px">
+  <thead>
+    <tr style="background:#fef2f2;color:#dc2626">
+      <th style="padding:6px 8px;text-align:center;width:4%;font-size:11px">S.No</th>
+      <th style="padding:6px 8px;text-align:left;width:34%;font-size:11px">Product / Grade</th>
+      <th style="padding:6px 8px;text-align:right;width:10%;font-size:11px">Ordered</th>
+      <th style="padding:6px 8px;text-align:center;width:8%;font-size:11px">Unit</th>
+      <th style="padding:6px 8px;text-align:right;width:19%;font-size:11px">Rate</th>
+      <th style="padding:6px 8px;text-align:right;width:25%;font-size:11px">Refund Amount</th>
+    </tr>
+  </thead>
+  <tbody>${declinedRows}</tbody>
+</table>` : ''}
+
+<!-- TOTALS -->
+<table width="100%">
+  <tr>
+    <td valign="top" width="52%">
+      ${declinedRefund > 0 ? `<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:10px;font-size:11px;color:#92400e;max-width:300px">
+        Note: ${fmtC(declinedRefund)} for declined/reduced items has been credited to your Eptomart Wallet and is not charged in this invoice.
+      </div>` : ''}
+    </td>
+    <td valign="top" width="48%">
+      <table width="100%" style="border:1px solid #e5e7eb;border-radius:6px">
+        <tbody>
+          ${summaryRows}
+          <tr><td colspan="2" style="padding:0"><hr style="border:none;border-top:1px solid #e5e7eb;margin:0"></td></tr>
+          <tr style="background:#065f46">
+            <td style="padding:8px 10px;font-size:13px;font-weight:bold;color:#fff">Total Amount Payable</td>
+            <td style="padding:8px 10px;text-align:right;font-size:14px;font-weight:bold;color:#fff;font-family:monospace">${fmtC(finalAmt)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </td>
+  </tr>
+</table>
+
+${disclaimer}
+
+<hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0 8px">
+<div style="text-align:center;color:#9ca3af;font-size:10px">
+  This is a computer-generated document and does not require a signature. &nbsp;|&nbsp; Eptomart — Koyambedu Daily &nbsp;|&nbsp; eptomart.com
+</div>
+
+</body></html>`;
 };
 
 const openInvoice = (order, type) => {
