@@ -8,6 +8,8 @@
  */
 import { useEffect, useState } from 'react';
 import KoyambeduImageUploader from './KoyambeduImageUploader';
+import api from '../../utils/api';
+import toast from 'react-hot-toast';
 
 const UNITS   = ['kg','g','piece','bunch','dozen','litre','pack','leaf','box','bag','crate'];
 const BADGES  = ['fresh_arrival','low_stock','best_seller','seasonal','organic','festival_special','bulk_deal'];
@@ -468,6 +470,35 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
 
   const setField = (k, v) => onChange({ ...form, [k]: v });
 
+  // ── AI helpers ────────────────────────────────────────────────────────────
+  const [translating, setTranslating] = useState(false);
+  const [describing,  setDescribing]  = useState(false);
+
+  const handleTranslate = async () => {
+    if (!form.name?.trim()) { toast.error('Enter a product name first'); return; }
+    setTranslating(true);
+    try {
+      const { data } = await api.post('/koyambedu/ai/translate', { text: form.name });
+      onChange({ ...form, nameTamil: data.tamil });
+      toast.success('Translated to Tamil!');
+    } catch { toast.error('Translation failed'); }
+    finally { setTranslating(false); }
+  };
+
+  const handleDescribe = async () => {
+    if (!form.name?.trim()) { toast.error('Enter a product name first'); return; }
+    setDescribing(true);
+    try {
+      const catName = (categories || []).find(c => c._id === form.categoryId)?.name || '';
+      const { data } = await api.post('/koyambedu/ai/describe', {
+        name: form.name, nameTamil: form.nameTamil, category: catName, unit: form.unit,
+      });
+      onChange({ ...form, description: data.description });
+      toast.success('Description generated!');
+    } catch { toast.error('AI description failed'); }
+    finally { setDescribing(false); }
+  };
+
   // ── Standard (non-graded) variant helpers ──
   const setVariant = (idx, key, val) => {
     const variants = [...(form.variants || [])];
@@ -584,7 +615,16 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
             className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Tamil Name</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-semibold text-gray-700">Tamil Name</label>
+            <button type="button" onClick={handleTranslate}
+              disabled={translating || !form.name?.trim()}
+              className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 disabled:opacity-50 transition">
+              {translating
+                ? <><span className="w-2.5 h-2.5 border-2 border-orange-400 border-t-transparent rounded-full animate-spin inline-block" /> Translating…</>
+                : <>🌐 Auto-Translate</>}
+            </button>
+          </div>
           <input value={form.nameTamil} onChange={e => setField('nameTamil', e.target.value)}
             placeholder="தமிழ் பெயர்"
             className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
@@ -819,9 +859,19 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
 
       {/* ── Description ── */}
       <div>
-        <label className="block text-xs font-semibold text-gray-700 mb-1">Description</label>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-xs font-semibold text-gray-700">Description</label>
+          <button type="button" onClick={handleDescribe}
+            disabled={describing || !form.name?.trim()}
+            className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 disabled:opacity-50 transition">
+            {describing
+              ? <><span className="w-2.5 h-2.5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin inline-block" /> Writing…</>
+              : <>✨ AI Write</>}
+          </button>
+        </div>
         <textarea value={form.description} rows={2}
           onChange={e => setField('description', e.target.value)}
+          placeholder="Describe this product — or click ✨ AI Write to generate one"
           className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none resize-none" />
       </div>
 
