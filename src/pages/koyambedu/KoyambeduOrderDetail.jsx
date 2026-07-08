@@ -572,6 +572,80 @@ export default function KoyambeduOrderDetail() {
           );
         })()}
 
+        {/* ── DAILY PRICE REVISIONS ── (admin only, when at least one revision applied) */}
+        {isAdmin && order.dailyPriceRevision?.revisions?.length > 0 && (() => {
+          const dpr = order.dailyPriceRevision;
+          const fmt = n => `₹${Number(n || 0).toFixed(2)}`;
+          return (
+            <Card title="Daily Price Revisions" titleColor="#0e7490">
+              <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 10 }}>
+                Automatic price adjustments applied when today&apos;s market prices differed from the ordered price.
+                {dpr.priceLocked && (
+                  <span style={{ marginLeft: 8, color: '#b45309', fontWeight: 700, background: '#fef3c7', padding: '1px 6px', borderRadius: 6, fontSize: 10 }}>
+                    PRICES LOCKED (Invoice Generated)
+                  </span>
+                )}
+              </p>
+
+              {/* Summary row */}
+              <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+                {dpr.totalCreditApplied > 0 && (
+                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '8px 14px', flex: 1 }}>
+                    <p style={{ fontSize: 10, color: '#16a34a', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Total Credited</p>
+                    <p style={{ fontSize: 18, fontWeight: 800, color: '#16a34a', margin: '2px 0 0' }}>+{fmt(dpr.totalCreditApplied)}</p>
+                  </div>
+                )}
+                {dpr.totalDebitApplied > 0 && (
+                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 14px', flex: 1 }}>
+                    <p style={{ fontSize: 10, color: '#b45309', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Total Debited</p>
+                    <p style={{ fontSize: 18, fontWeight: 800, color: '#b45309', margin: '2px 0 0' }}>-{fmt(dpr.totalDebitApplied)}</p>
+                  </div>
+                )}
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px 14px', flex: 1 }}>
+                  <p style={{ fontSize: 10, color: '#64748b', margin: 0, fontWeight: 700, textTransform: 'uppercase' }}>Revisions Count</p>
+                  <p style={{ fontSize: 18, fontWeight: 800, color: '#374151', margin: '2px 0 0' }}>{dpr.revisions.length}</p>
+                </div>
+              </div>
+
+              {/* Per-revision breakdown */}
+              {dpr.revisions.map((rev, ri) => (
+                <div key={ri} style={{ marginBottom: 12, border: '1px solid #cffafe', borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ background: '#ecfeff', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#0e7490' }}>
+                      Revision #{ri + 1}
+                      <span style={{ marginLeft: 8, fontWeight: 400, color: '#64748b', textTransform: 'capitalize' }}>({rev.triggeredBy?.replace(/_/g, ' ')})</span>
+                    </span>
+                    <span style={{ fontSize: 10, color: '#64748b' }}>{new Date(rev.appliedAt).toLocaleString('en-IN')}</span>
+                  </div>
+                  {(rev.items || []).map((it, ii) => (
+                    <div key={ii} style={{ display: 'grid', gridTemplateColumns: '2fr repeat(4, 1fr)', gap: 4, padding: '8px 12px', borderTop: '1px solid #cffafe', alignItems: 'center', fontSize: 12 }}>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 600, color: '#374151' }}>{it.name}{it.gradeKey ? ` (${it.gradeKey})` : ''}</p>
+                        <p style={{ margin: 0, fontSize: 10, color: '#9ca3af' }}>Qty: {it.qty}</p>
+                      </div>
+                      <p style={{ margin: 0, color: '#6b7280', textAlign: 'center' }}>₹{Number(it.previousFinalPrice).toFixed(2)}</p>
+                      <p style={{ margin: 0, fontWeight: 700, color: it.diff > 0 ? '#16a34a' : '#d97706', textAlign: 'center' }}>₹{Number(it.newFinalPrice).toFixed(2)}</p>
+                      <p style={{ margin: 0, fontSize: 10, color: '#6b7280', textAlign: 'center' }}>{it.diff > 0 ? '↓ Dropped' : '↑ Rose'}</p>
+                      <p style={{ margin: 0, fontWeight: 700, textAlign: 'right', color: it.walletAction === 'credit' ? '#16a34a' : '#d97706' }}>
+                        {it.walletAction === 'credit' ? '+' : '-'}{fmt(it.walletAmount)}
+                      </p>
+                    </div>
+                  ))}
+                  <div style={{ padding: '6px 12px', background: '#f8fafc', display: 'flex', gap: 12, fontSize: 11 }}>
+                    {rev.totalCredit > 0 && <span style={{ color: '#16a34a', fontWeight: 700 }}>Credited: +{fmt(rev.totalCredit)}</span>}
+                    {rev.totalDebit > 0 && <span style={{ color: '#d97706', fontWeight: 700 }}>Debited: -{fmt(rev.totalDebit)}</span>}
+                    <span style={{ color: '#64748b', marginLeft: 'auto' }}>
+                      Net: <strong style={{ color: (rev.netWalletChange ?? 0) >= 0 ? '#16a34a' : '#d97706' }}>
+                        {(rev.netWalletChange ?? 0) >= 0 ? '+' : ''}{fmt(rev.netWalletChange)}
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </Card>
+          );
+        })()}
+
         {/* ── ORDER TIMELINE ── */}
         <Card title="Order Timeline" titleColor="#374151">
           <button
