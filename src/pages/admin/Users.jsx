@@ -27,6 +27,7 @@ export default function AdminUsers() {
 
   // Delete
   const [deleting,     setDeleting]     = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null); // user pending confirmation
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -78,8 +79,10 @@ export default function AdminUsers() {
   };
 
   // ── Delete ──────────────────────────────────────────────
-  const confirmDelete = async (user) => {
-    if (!window.confirm(`Permanently delete user "${user.name || user.email}"? This cannot be undone.`)) return;
+  const executeDelete = async () => {
+    if (!deleteTarget) return;
+    const user = deleteTarget;
+    setDeleteTarget(null);
     setDeleting(user._id);
     try {
       await api.delete(`/admin/users/${user._id}`);
@@ -165,7 +168,7 @@ export default function AdminUsers() {
                             {user.isActive ? <FiToggleRight size={16} /> : <FiToggleLeft size={16} />}
                           </button>
                           {/* Delete */}
-                          <button onClick={() => confirmDelete(user)}
+                          <button onClick={() => setDeleteTarget(user)}
                             disabled={deleting === user._id}
                             className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 disabled:opacity-40" title="Delete User">
                             {deleting === user._id
@@ -235,6 +238,36 @@ export default function AdminUsers() {
               <button onClick={saveEdit} disabled={saving} className="btn-primary flex-1">
                 {saving ? 'Saving...' : '💾 Save Changes'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm">
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiTrash2 size={22} className="text-red-500" />
+              </div>
+              <h2 className="font-bold text-gray-800 text-lg mb-1">Delete User</h2>
+              <p className="text-gray-500 text-sm mb-1">
+                Permanently delete <span className="font-semibold text-gray-700">{deleteTarget.name || deleteTarget.email}</span>?
+              </p>
+              <p className="text-red-500 text-xs mb-6">This cannot be undone.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  className="btn-outline flex-1">
+                  Cancel
+                </button>
+                <button
+                  onClick={executeDelete}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-xl transition-colors">
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>
