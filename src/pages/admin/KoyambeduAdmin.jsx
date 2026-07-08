@@ -1162,6 +1162,33 @@ export default function KoyambeduAdmin() {
         )}
 
         {/* ── DASHBOARD ── */}
+        {tab === 'dashboard' && stats && !loading && (
+          <div>
+            <h2 className="font-bold text-gray-800 mb-3">Today's Overview</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+              {[
+                ['Today Orders',       stats.todayOrders,       'bg-blue-50 border-blue-200'],
+                ['Pending Dispatch',   stats.pendingDispatch,   'bg-yellow-50 border-yellow-200'],
+                ['Delivered Today',    stats.delivered,         'bg-green-50 border-green-200'],
+                ['Today Revenue',     `₹${(stats.todayRevenue||0).toLocaleString('en-IN')}`, 'bg-purple-50 border-purple-200'],
+                ['Price Revisions',    stats.pendingRevisions,  'bg-orange-50 border-orange-200'],
+                ['Active Sellers',     stats.activeSellers,     'bg-gray-50 border-gray-200'],
+                ['Pending Categories', stats.pendingCategories, 'bg-red-50 border-red-200'],
+              ].map(([label, val, cls]) => (
+                <div key={label} className={`rounded-2xl border p-4 ${cls}`}>
+                  <p className="text-2xl font-black text-gray-800">{val}</p>
+                  <p className="text-xs text-gray-500 mt-1 leading-tight">{label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => setTab('orders')} className="bg-green-600 text-white font-bold py-3 rounded-xl text-sm hover:bg-green-700 transition">View Orders →</button>
+              <button onClick={() => setTab('sellers')} className="border-2 border-green-600 text-green-700 font-bold py-3 rounded-xl text-sm hover:bg-green-50 transition">Manage Sellers →</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── ORDERS ── */}
         {tab === 'dashboard' && isSuperAdmin && (
           <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
             <div className="flex items-center justify-between mb-1">
@@ -1207,33 +1234,7 @@ export default function KoyambeduAdmin() {
           </div>
         )}
 
-        {tab === 'dashboard' && stats && !loading && (
-          <div>
-            <h2 className="font-bold text-gray-800 mb-3">Today's Overview</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-              {[
-                ['Today Orders',       stats.todayOrders,       'bg-blue-50 border-blue-200'],
-                ['Pending Dispatch',   stats.pendingDispatch,   'bg-yellow-50 border-yellow-200'],
-                ['Delivered Today',    stats.delivered,         'bg-green-50 border-green-200'],
-                ['Today Revenue',     `₹${(stats.todayRevenue||0).toLocaleString('en-IN')}`, 'bg-purple-50 border-purple-200'],
-                ['Price Revisions',    stats.pendingRevisions,  'bg-orange-50 border-orange-200'],
-                ['Active Sellers',     stats.activeSellers,     'bg-gray-50 border-gray-200'],
-                ['Pending Categories', stats.pendingCategories, 'bg-red-50 border-red-200'],
-              ].map(([label, val, cls]) => (
-                <div key={label} className={`rounded-2xl border p-4 ${cls}`}>
-                  <p className="text-2xl font-black text-gray-800">{val}</p>
-                  <p className="text-xs text-gray-500 mt-1 leading-tight">{label}</p>
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => setTab('orders')} className="bg-green-600 text-white font-bold py-3 rounded-xl text-sm hover:bg-green-700 transition">View Orders →</button>
-              <button onClick={() => setTab('sellers')} className="border-2 border-green-600 text-green-700 font-bold py-3 rounded-xl text-sm hover:bg-green-50 transition">Manage Sellers →</button>
-            </div>
-          </div>
-        )}
 
-        {/* ── ORDERS ── */}
         {tab === 'orders' && !loading && (
           <div>
             {/* Filters */}
