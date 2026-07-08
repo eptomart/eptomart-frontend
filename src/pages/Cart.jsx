@@ -289,6 +289,18 @@ export default function Cart() {
 function KoyambeduTab({
   kbdCart, kbdItemCount, kbdLoading, kbdSubtotal, kbdUpdateItem, navigate, vertical,
 }) {
+  // editQty maps itemKey → draft string while user is editing qty inline
+  const [editQty, setEditQty] = useState({});
+
+  const commitQty = (pid, itemKey, rawVal, item) => {
+    const val = parseInt(rawVal, 10);
+    if (!isNaN(val) && val >= 0) {
+      kbdUpdateItem(pid, val, item.deliveryType || 'tomorrow',
+        { gradeKey: item.gradeKey, gradeName: item.gradeName, silent: true });
+    }
+    setEditQty(p => { const n = { ...p }; delete n[itemKey]; return n; });
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
