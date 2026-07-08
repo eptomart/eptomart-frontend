@@ -213,8 +213,7 @@ export default function KoyambeduAdmin() {
   const [products,       setProducts]       = useState([]);
   const [prodSearch,     setProdSearch]     = useState('');
   const [prodAvail,      setProdAvail]      = useState('');
-  const [editProduct,    setEditProduct]    = useState(null); // product being edited
-  const [editProdForm,   setEditProdForm]   = useState({});
+  const [editProduct,    setEditProduct]    = useState(null); // product being edited (null = add mode)
   const [editProdSaving, setEditProdSaving] = useState(false);
 
   // Product approvals tab
@@ -787,17 +786,17 @@ export default function KoyambeduAdmin() {
     } catch { toast.error('Failed'); }
   };
 
-  const openEditProduct = (p) => {
+  const openEditProduct = async (p) => {
     setEditProduct(p);
-    setEditProdForm({
+    setKbdProdForm({
       categoryId:               p.category?._id || p.categoryId || '',
       name:                     p.name,
       nameTamil:                p.nameTamil || '',
       unit:                     p.unit || 'kg',
       description:              p.description || '',
-      isAvailable:              p.isAvailable,
-      isSameDay:                p.isSameDay,
-      isNextDay:                p.isNextDay,
+      isAvailable:              p.isAvailable ?? true,
+      isSameDay:                p.isSameDay   ?? true,
+      isNextDay:                p.isNextDay   ?? true,
       badges:                   p.badges || [],
       images:                   p.images || [],
       procurementChargePercent: p.procurementChargePercent ?? 0,
@@ -824,15 +823,22 @@ export default function KoyambeduAdmin() {
         ? p.variants.map(v => ({ basePrice: v.basePrice, fromQty: v.fromQty, toQty: v.toQty, finalPrice: String(v.finalPrice) }))
         : [{ basePrice: p.currentPrice || '', fromQty: p.minQty || 1, toQty: p.maxQty || 50, finalPrice: String(p.currentPrice || '') }]),
     });
+    // Ensure categories are loaded (same as openAddProduct)
+    if (!kbdCategories.length) {
+      try {
+        const { data } = await api.get('/koyambedu/admin/categories');
+        setKbdCategories(data.categories || []);
+      } catch { /* silent */ }
+    }
   };
 
   const saveEditProduct = async () => {
-    if (editProdForm.gradesEnabled) {
+    if (kbdProdForm.gradesEnabled) {
       // Grade mode: pass grades array, omit variants
       setEditProdSaving(true);
       try {
         await api.put(`/koyambedu/admin/products/${editProduct._id}`, {
-          ...editProdForm,
+          ...kbdProdForm,
           variants: undefined,
         });
         toast.success('Product updated');
@@ -842,13 +848,13 @@ export default function KoyambeduAdmin() {
       finally { setEditProdSaving(false); }
     } else {
       // Standard variant mode
-      const validVariants = (editProdForm.variants || []).filter((v, i, arr) => v.basePrice && v.fromQty && (v.toQty || i === arr.length - 1));
+      const validVariants = (kbdProdForm.variants || []).filter((v, i, arr) => v.basePrice && v.fromQty && (v.toQty || i === arr.length - 1));
       const overlapErr = getVariantOverlapError(validVariants);
       if (overlapErr) { toast.error(overlapErr); return; }
       setEditProdSaving(true);
       try {
         await api.put(`/koyambedu/admin/products/${editProduct._id}`, {
-          ...editProdForm,
+          ...kbdProdForm,
           grades: undefined,
           variants: validVariants.length > 0 ? validVariants : undefined,
         });
@@ -1930,36 +1936,7 @@ export default function KoyambeduAdmin() {
         )}
       </div>
 
-      {/* ── Edit Product modal ── */}
-      {editProduct && (
-        <div className="fixed inset-0 bg-black/50 z-[9995] overflow-y-auto">
-          <div className="min-h-screen flex items-end sm:items-center justify-center p-4">
-            <div className="bg-white rounded-2xl w-full max-w-lg p-5 max-h-[92vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-bold text-gray-800">Edit Product</h3>
-                  <p className="text-xs text-gray-500">{editProduct.seller?.businessName}</p>
-                </div>
-                <button onClick={() => setEditProduct(null)} className="text-gray-400 text-xl font-bold">✕</button>
-              </div>
-
-              <KoyambeduVariantProductForm
-                form={editProdForm}
-                onChange={setEditProdForm}
-                categories={kbdCategories.length ? kbdCategories : [editProduct.category].filter(Boolean)}
-              />
-
-              <div className="flex gap-3 pt-4 mt-2 border-t border-gray-100">
-                <button onClick={() => setEditProduct(null)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
-                <button onClick={saveEditProduct} disabled={editProdSaving}
-                  className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
-                  {editProdSaving ? 'Saving…' : 'Save Changes'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Edit Product modal — rendered by unified Add/Edit modal below ── */}
 
       {/* ── Order update modal ── */}
       {/* Edit Qty Modal */}
@@ -2301,36 +2278,54 @@ export default function KoyambeduAdmin() {
         </div>
       )}
 
-      {/* ── Add Product modal (admin) ── */}
-      {showAddProduct && addProdSeller && (
+      {/* ── Unified Add / Edit Product modal ── */}
+      {(showAddProduct && addProdSeller) || editProduct ? (
         <div className="fixed inset-0 bg-black/50 z-[9995] overflow-y-auto">
           <div className="min-h-screen flex items-end sm:items-center justify-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-lg p-5 max-h-[92vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="font-bold text-gray-800">Add Product</h3>
-                  <p className="text-xs text-gray-500">For: {addProdSeller.businessName} · {addProdSeller.ownerName}</p>
+                  <h3 className="font-bold text-gray-800">
+                    {editProduct ? 'Edit Product' : 'Add Product'}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {editProduct
+                      ? editProduct.seller?.businessName
+                      : `For: ${addProdSeller?.businessName} · ${addProdSeller?.ownerName}`}
+                  </p>
                 </div>
-                <button onClick={() => setShowAddProduct(false)} className="text-gray-400 text-xl">✕</button>
+                <button
+                  onClick={() => editProduct ? setEditProduct(null) : setShowAddProduct(false)}
+                  className="text-gray-400 text-xl font-bold">✕</button>
               </div>
 
               <KoyambeduVariantProductForm
                 form={kbdProdForm}
                 onChange={setKbdProdForm}
-                categories={kbdCategories}
+                categories={editProduct
+                  ? (kbdCategories.length ? kbdCategories : [editProduct.category].filter(Boolean))
+                  : kbdCategories}
               />
 
               <div className="flex gap-3 pt-4 mt-2 border-t border-gray-100">
-                <button onClick={() => setShowAddProduct(false)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
-                <button onClick={submitAddProduct} disabled={addProdSaving}
+                <button
+                  onClick={() => editProduct ? setEditProduct(null) : setShowAddProduct(false)}
+                  className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">
+                  Cancel
+                </button>
+                <button
+                  onClick={editProduct ? saveEditProduct : submitAddProduct}
+                  disabled={editProduct ? editProdSaving : addProdSaving}
                   className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
-                  {addProdSaving ? 'Adding…' : 'Add Product'}
+                  {editProduct
+                    ? (editProdSaving ? 'Saving…' : 'Save Changes')
+                    : (addProdSaving  ? 'Adding…'  : 'Add Product')}
                 </button>
               </div>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* ── Review SA Edit modal (SuperAdmin only) ── */}
       {reviewEditSeller && reviewEditSeller.pendingEdit && (
