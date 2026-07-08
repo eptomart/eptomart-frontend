@@ -695,16 +695,16 @@ export default function KoyambeduProductDetail() {
       {/* ══ Variant Qty Bottom Sheet ══ */}
       {hasVariants && showQtySheet && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop — z-[10001] sits above WhatsAppFloat (z-10000) */}
           <div
-            className="fixed inset-0 z-[9980]"
+            className="fixed inset-0 z-[10001]"
             style={{ background: 'rgba(0,0,0,0.55)', touchAction: 'none' }}
             onClick={() => setShowQtySheet(false)}
           />
 
-          {/* Sheet panel — flex column so action buttons always stay visible */}
+          {/* Sheet panel — z-[10002] above backdrop */}
           <div
-            className="fixed left-0 right-0 bottom-0 z-[9990] bg-white rounded-t-3xl flex flex-col"
+            className="fixed left-0 right-0 bottom-0 z-[10002] bg-white rounded-t-3xl flex flex-col"
             style={{
               maxHeight: '85dvh',
               boxShadow: '0 -8px 40px rgba(0,0,0,0.22)',
