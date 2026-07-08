@@ -223,13 +223,15 @@ export default function KoyambeduAdmin() {
   const [prodApprovalSaving,  setProdApprovalSaving]  = useState(null); // productId being actioned
 
   // Extended order filters
-  const [orderDeliveryDate,  setOrderDeliveryDate]  = useState('');
-  const [orderDeliverySlot,  setOrderDeliverySlot]  = useState('');
-  const [orderSaFilter,      setOrderSaFilter]      = useState('');
-  const [saAdminList,        setSaAdminList]        = useState([]);
+  const [orderDeliveryDate,    setOrderDeliveryDate]    = useState('');
+  const [orderDeliverySlot,    setOrderDeliverySlot]    = useState('');
+  const [orderSaFilter,        setOrderSaFilter]        = useState('');
+  const [orderCustomerSearch,  setOrderCustomerSearch]  = useState('');
+  const [saAdminList,          setSaAdminList]          = useState([]);
 
   // Item-level actions
   const [expandedOrderId,  setExpandedOrderId]   = useState(null);
+  const [walletHistories,  setWalletHistories]   = useState({}); // { [orderId]: { loading, txns } }
   const [editQtyModal,     setEditQtyModal]       = useState(null); // {order, itemIdx, currentQty}
   const [newQty,           setNewQty]             = useState('');
   const [qtyUpdating,      setQtyUpdating]        = useState(false);
@@ -334,6 +336,22 @@ export default function KoyambeduAdmin() {
     api.get('/koyambedu/admin/seller-admins').then(r => setSaAdminList(r.data.sellerAdmins || [])).catch(() => {});
   }, []);
 
+  // Toggle expanded order, and for Super Admin fetch wallet history on first expand
+  const expandOrder = (orderId) => {
+    const isNowExpanding = expandedOrderId !== orderId;
+    setExpandedOrderId(isNowExpanding ? orderId : null);
+    if (isNowExpanding && isSuperAdmin) {
+      setWalletHistories(prev => {
+        if (prev[orderId]) return prev; // already loaded
+        // Kick off fetch
+        api.get(`/koyambedu/admin/orders/${orderId}/wallet-history`)
+          .then(({ data }) => setWalletHistories(p => ({ ...p, [orderId]: { loading: false, txns: data.transactions || [] } })))
+          .catch(() => setWalletHistories(p => ({ ...p, [orderId]: { loading: false, txns: [] } })));
+        return { ...prev, [orderId]: { loading: true, txns: [] } };
+      });
+    }
+  };
+
   const loadTab = async (t) => {
     setLoading(true);
     try {
@@ -342,11 +360,12 @@ export default function KoyambeduAdmin() {
         setStats(data.stats);
       } else if (t === 'orders') {
         const params = new URLSearchParams();
-        if (statusFilter)        params.set('status', statusFilter);
-        if (searchOrder)         params.set('search', searchOrder);
-        if (orderDeliveryDate)   params.set('deliveryDate', orderDeliveryDate);
-        if (orderDeliverySlot)   params.set('deliverySlot', orderDeliverySlot);
-        if (orderSaFilter)       params.set('sellerAdmin', orderSaFilter);
+        if (statusFilter)           params.set('status', statusFilter);
+        if (searchOrder)            params.set('search', searchOrder);
+        if (orderDeliveryDate)      params.set('deliveryDate', orderDeliveryDate);
+        if (orderDeliverySlot)      params.set('deliverySlot', orderDeliverySlot);
+        if (orderSaFilter)          params.set('sellerAdmin', orderSaFilter);
+        if (orderCustomerSearch)    params.set('customerSearch', orderCustomerSearch);
         const { data } = await api.get(`/koyambedu/admin/orders?${params}&limit=100`);
         setOrders(data.orders || []);
       } else if (t === 'pending-approval') {
@@ -1171,6 +1190,13 @@ export default function KoyambeduAdmin() {
                   {['Morning (6AM-9AM)','Afternoon (12PM-3PM)','Evening (4PM-7PM)'].map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
+              <input
+                type="text"
+                value={orderCustomerSearch}
+                onChange={e => setOrderCustomerSearch(e.target.value)}
+                placeholder="Customer name or mobile number"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+              />
               <button onClick={() => loadTab('orders')} className="w-full bg-green-600 text-white font-bold px-4 py-2 rounded-xl text-sm">Search / Apply Filters</button>
             </div>
 
@@ -1215,7 +1241,7 @@ export default function KoyambeduAdmin() {
                           )}
                         </div>
                         <div className="flex gap-2 flex-wrap justify-end">
-                          <button onClick={() => setExpandedOrderId(isExp ? null : order._id)}
+                          <button onClick={() => expandOrder(order._id)}
                             className="text-xs text-green-700 font-bold border border-green-200 px-2 py-1 rounded-lg">
                             {isExp ? 'Hide' : 'Items ▾'}
                           </button>
@@ -1296,6 +1322,42 @@ export default function KoyambeduAdmin() {
                             ))}
                           </div>
                         )}
+                        {/* Wallet transaction history — Super Admin only */}
+                        {isSuperAdmin && (() => {
+                          const wh = walletHistories[order._id];
+                          if (!wh) return null;
+                          return (
+                            <div className="px-4 py-2.5 bg-amber-50">
+                              <p className="text-[10px] font-bold text-amber-700 uppercase mb-1.5 tracking-wide">💳 Wallet History</p>
+                              {wh.loading ? (
+                                <p className="text-xs text-gray-400">Loading…</p>
+                              ) : wh.txns.length === 0 ? (
+                                <p className="text-xs text-gray-400">No wallet transactions for this order.</p>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {wh.txns.map((t, i) => (
+                                    <div key={i} className="flex justify-between items-start gap-2">
+                                      <div className="flex-1 min-w-0">
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${t.type === 'credit' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                          {t.type === 'credit' ? 'Wallet Credit' : 'Wallet Debit'}
+                                        </span>
+                                        <p className="text-xs text-gray-600 mt-0.5 leading-snug">{t.reason || t.category || '—'}</p>
+                                      </div>
+                                      <div className="text-right shrink-0">
+                                        <p className={`text-sm font-bold ${t.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
+                                          {t.type === 'credit' ? '+' : '−'}₹{(t.amount || 0).toFixed(2)}
+                                        </p>
+                                        <p className="text-[10px] text-gray-400">
+                                          {new Date(t.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                         {order.items?.map((item, idx) => {
                           const price = item.finalPrice || item.orderedPrice || 0;
                           return (

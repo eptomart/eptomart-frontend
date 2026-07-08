@@ -70,7 +70,7 @@ export default function KoyambeduSellerAdminOrders() {
   const [orders,    setOrders]    = useState([]);
   const [loading,   setLoading]   = useState(false);
   const [expanded,  setExpanded]  = useState({});
-  const [filters,   setFilters]   = useState({ orderDate: '', deliveryDate: '', deliverySlot: '', status: '' });
+  const [filters,   setFilters]   = useState({ orderDate: '', deliveryDate: '', deliverySlot: '', status: '', customerSearch: '' });
   const [showFilters, setShowFilters] = useState(false);
 
   // Status modal (for confirmed/packing/dispatched/delivered)
@@ -92,10 +92,11 @@ export default function KoyambeduSellerAdminOrders() {
     setLoading(true);
     try {
       const params = {};
-      if (filters.orderDate)    params.orderDate    = filters.orderDate;
-      if (filters.deliveryDate) params.deliveryDate = filters.deliveryDate;
-      if (filters.deliverySlot) params.deliverySlot = filters.deliverySlot;
-      if (filters.status)       params.status       = filters.status;
+      if (filters.orderDate)      params.orderDate      = filters.orderDate;
+      if (filters.deliveryDate)   params.deliveryDate   = filters.deliveryDate;
+      if (filters.deliverySlot)   params.deliverySlot   = filters.deliverySlot;
+      if (filters.status)         params.status         = filters.status;
+      if (filters.customerSearch) params.customerSearch = filters.customerSearch;
       const { data } = await api.get('/koyambedu/seller-admin/orders', { params });
       setOrders(data.orders || []);
     } catch {
@@ -216,7 +217,7 @@ export default function KoyambeduSellerAdminOrders() {
           <button onClick={() => setShowFilters(f => !f)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white active:scale-95 transition"
             style={{ background: 'rgba(255,255,255,0.2)' }}>
-            <FiFilter size={12} /> Filters {(filters.orderDate || filters.deliveryDate || filters.deliverySlot || filters.status) ? '●' : ''}
+            <FiFilter size={12} /> Filters {(filters.orderDate || filters.deliveryDate || filters.deliverySlot || filters.status || filters.customerSearch) ? '●' : ''}
           </button>
         </div>
 
@@ -259,7 +260,17 @@ export default function KoyambeduSellerAdminOrders() {
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
-            <button onClick={() => setFilters({ orderDate: '', deliveryDate: '', deliverySlot: '' })}
+            <div className="col-span-2">
+              <p className="text-[10px] text-emerald-200 mb-1">Customer Name or Mobile</p>
+              <input
+                type="text"
+                value={filters.customerSearch}
+                onChange={e => setFilters(f => ({ ...f, customerSearch: e.target.value }))}
+                placeholder="Search by name or phone number"
+                className="w-full rounded-xl px-3 py-2 text-xs bg-white/90 text-gray-800 outline-none"
+              />
+            </div>
+            <button onClick={() => setFilters({ orderDate: '', deliveryDate: '', deliverySlot: '', status: '', customerSearch: '' })}
               className="col-span-2 text-xs text-emerald-200 underline text-center">
               Clear filters
             </button>
