@@ -8,7 +8,7 @@ import KoyambeduScheduleAdmin from './KoyambeduScheduleAdmin';
 import KoyambeduDailyPricePanel from '../../components/koyambedu/KoyambeduDailyPricePanel';
 import toast from 'react-hot-toast';
 
-const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'product-approvals', 'daily-price', 'schedule', 'refund-requests', 'reports', 'dev-settings'];
+const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'product-approvals', 'daily-price', 'schedule', 'refund-requests', 'wallets', 'reports', 'dev-settings'];
 
 const EXPIRY_OPTIONS = [
   { value: 'never', label: 'Never (Manual Disable Only)' },
@@ -300,6 +300,21 @@ export default function KoyambeduAdmin() {
   const [refundStatusFilter, setRefundStatusFilter] = useState('pending');
   const [refundUpdating,   setRefundUpdating]   = useState(null);
 
+  // All-customer wallets tab
+  const [allWallets,          setAllWallets]          = useState([]);
+  const [walletSummary,       setWalletSummary]        = useState(null);
+  const [walletSearch,        setWalletSearch]         = useState('');
+  const [walletBalFilter,     setWalletBalFilter]      = useState('all');
+  const [walletSort,          setWalletSort]           = useState('balance_desc');
+  const [walletPage,          setWalletPage]           = useState(1);
+  const [walletTotalPages,    setWalletTotalPages]      = useState(1);
+  const [walletTotal,         setWalletTotal]          = useState(0);
+  const [walletExpanded,      setWalletExpanded]       = useState({}); // { [walletId]: { txns, refundRequests, loading } }
+  const [walletManualModal,   setWalletManualModal]    = useState(null); // { walletId, type: 'credit'|'debit', user }
+  const [walletManualAmt,     setWalletManualAmt]      = useState('');
+  const [walletManualReason,  setWalletManualReason]   = useState('');
+  const [walletManualSaving,  setWalletManualSaving]   = useState(false);
+
   // Admin costs (per order — internal only)
   const [costsModal,    setCostsModal]    = useState(null); // order object
   const [costsForm,     setCostsForm]     = useState({ actualDeliveryCost: '', miscExpenses: '', costNote: '' });
@@ -383,6 +398,14 @@ export default function KoyambeduAdmin() {
       } else if (t === 'refund-requests') {
         const { data } = await api.get(`/koyambedu/admin/refund-requests?status=${refundStatusFilter}`);
         setRefundRequests(data.requests || []);
+      } else if (t === 'wallets') {
+        const params = new URLSearchParams({ balanceFilter: walletBalFilter, sort: walletSort, page: walletPage, limit: 50 });
+        if (walletSearch.trim()) params.set('search', walletSearch.trim());
+        const { data } = await api.get(`/koyambedu/admin/wallets?${params}`);
+        setAllWallets(data.wallets || []);
+        setWalletSummary(data.summary || null);
+        setWalletTotalPages(data.pages || 1);
+        setWalletTotal(data.total || 0);
       } else if (t === 'sellers') {
         const params = sellerFilter ? `?status=${sellerFilter}` : '';
         const { data } = await api.get(`/koyambedu/admin/sellers${params}`);
@@ -1059,7 +1082,7 @@ export default function KoyambeduAdmin() {
           {TAB_LIST.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white hover:bg-white/30'}`}>
-              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'wallets' ? '💳 Wallets' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -1650,6 +1673,260 @@ export default function KoyambeduAdmin() {
               ))}
               {refundRequests.length === 0 && <p className="text-center text-gray-500 py-8">No {refundStatusFilter} refund requests</p>}
             </div>
+          </div>
+        )}
+
+        {/* ── WALLETS ── */}
+        {tab === 'wallets' && !loading && (
+          <div>
+            {/* Summary strip */}
+            {walletSummary && (
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <div className="bg-white rounded-2xl p-3 border border-gray-100">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Total Liability</p>
+                  <p className="text-lg font-black text-green-700">₹{(walletSummary.totalLiability || 0).toLocaleString('en-IN')}</p>
+                  <p className="text-[10px] text-gray-400">Wallet credits owed to customers</p>
+                </div>
+                <div className="bg-white rounded-2xl p-3 border border-gray-100">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Pending Refunds</p>
+                  <p className="text-lg font-black text-amber-600">₹{(walletSummary.totalPendingRefund || 0).toLocaleString('en-IN')}</p>
+                  <p className="text-[10px] text-gray-400">{walletSummary.pendingRefundCount} request{walletSummary.pendingRefundCount !== 1 ? 's' : ''}</p>
+                </div>
+                <div className="bg-white rounded-2xl p-3 border border-gray-100">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Negative Balances</p>
+                  <p className="text-lg font-black text-red-600">{walletSummary.negativeCount}</p>
+                  <p className="text-[10px] text-gray-400">Customers with pending debt</p>
+                </div>
+                <div className="bg-white rounded-2xl p-3 border border-gray-100">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Total Customers</p>
+                  <p className="text-lg font-black text-gray-700">{walletTotal}</p>
+                  <p className="text-[10px] text-gray-400">With wallets</p>
+                </div>
+              </div>
+            )}
+
+            {/* Filters */}
+            <div className="bg-white rounded-2xl p-3 mb-4 border border-gray-100 space-y-2">
+              <input
+                type="text" value={walletSearch}
+                onChange={e => setWalletSearch(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && (setWalletPage(1), loadTab('wallets'))}
+                placeholder="Search by name / phone / email…"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500"
+              />
+              <div className="flex gap-2 flex-wrap">
+                {[['all','All'],['positive','Positive'],['negative','Debt'],['zero','Zero']].map(([v,label]) => (
+                  <button key={v} onClick={() => { setWalletBalFilter(v); setWalletPage(1); setTimeout(() => loadTab('wallets'), 0); }}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-full border transition ${walletBalFilter === v ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                    {label}
+                  </button>
+                ))}
+                <select value={walletSort} onChange={e => { setWalletSort(e.target.value); setWalletPage(1); setTimeout(() => loadTab('wallets'), 0); }}
+                  className="ml-auto text-xs border border-gray-200 rounded-xl px-2 py-1.5 text-gray-600 focus:outline-none">
+                  <option value="balance_desc">Balance ↓</option>
+                  <option value="balance_asc">Balance ↑</option>
+                  <option value="name">Name A–Z</option>
+                </select>
+              </div>
+              <button onClick={() => { setWalletPage(1); loadTab('wallets'); }}
+                className="w-full text-xs font-bold bg-green-600 text-white py-2 rounded-xl">
+                Apply Filters
+              </button>
+            </div>
+
+            {/* Wallet cards */}
+            <div className="space-y-3">
+              {allWallets.map(w => {
+                const isOpen = walletExpanded[w._id];
+                const detail = walletExpanded[w._id];
+                const balColor = w.balance > 0 ? 'text-green-700' : w.balance < 0 ? 'text-red-600' : 'text-gray-500';
+                const CATEGORY_LABEL = {
+                  order_cancelled: 'Order Cancelled',
+                  item_declined: 'Item Declined',
+                  price_adjustment_credit: 'Price Adj. Credit',
+                  price_adjustment_due: 'Price Adj. Debit',
+                  debt_recovery: 'Debt Recovery',
+                  wallet_applied: 'Applied at Checkout',
+                  cashback: 'Cashback',
+                  manual_credit: 'Manual Credit',
+                  manual_debit: 'Manual Debit',
+                  refund_paid: 'Bank Refund',
+                  refund_requested: 'Refund Reserved',
+                  refund_released: 'Refund Released',
+                  price_revision_credit: 'Price Revision Credit',
+                  price_revision_debit: 'Price Revision Debit',
+                  manual: 'Manual',
+                };
+                return (
+                  <div key={w._id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                    {/* Header row */}
+                    <div className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="font-bold text-gray-800">{w.user?.name || '—'}</p>
+                          <p className="text-xs text-gray-500">{w.user?.phone || ''}{w.user?.email ? ` · ${w.user.email}` : ''}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className={`text-lg font-black ${balColor}`}>
+                            {w.balance < 0 ? '−' : ''}₹{Math.abs(w.balance).toLocaleString('en-IN')}
+                          </p>
+                          {w.balance < 0 && <p className="text-[10px] text-red-500 font-bold">DEBT</p>}
+                        </div>
+                      </div>
+
+                      {/* Balance breakdown */}
+                      <div className="grid grid-cols-3 gap-1.5 mb-3 bg-gray-50 rounded-xl p-2.5">
+                        <div className="text-center">
+                          <p className="text-[9px] text-gray-400 font-semibold uppercase">Total</p>
+                          <p className={`text-xs font-bold ${balColor}`}>₹{w.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[9px] text-amber-500 font-semibold uppercase">Reserved</p>
+                          <p className="text-xs font-bold text-amber-600">₹{w.reservedBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[9px] text-green-500 font-semibold uppercase">Available</p>
+                          <p className="text-xs font-bold text-green-600">₹{w.availableBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                      </div>
+
+                      {/* Pending refund requests badges */}
+                      {w.pendingRefunds?.length > 0 && (
+                        <div className="mb-2 flex items-center gap-1.5 bg-amber-50 rounded-xl px-3 py-1.5">
+                          <span className="text-[10px] font-bold text-amber-700">⏳ {w.pendingRefunds.length} pending refund request{w.pendingRefunds.length > 1 ? 's' : ''}</span>
+                          <span className="text-[10px] text-amber-600">— ₹{w.pendingRefunds.reduce((s, r) => s + r.amount, 0).toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] text-gray-400">{w.txnCount} transaction{w.txnCount !== 1 ? 's' : ''}</span>
+                        <button
+                          onClick={async () => {
+                            if (isOpen) {
+                              setWalletExpanded(p => { const n = { ...p }; delete n[w._id]; return n; });
+                              return;
+                            }
+                            setWalletExpanded(p => ({ ...p, [w._id]: { loading: true } }));
+                            try {
+                              const { data } = await api.get(`/koyambedu/admin/wallets/${w._id}/transactions`);
+                              setWalletExpanded(p => ({ ...p, [w._id]: { loading: false, txns: data.transactions, refundRequests: data.refundRequests } }));
+                            } catch {
+                              setWalletExpanded(p => ({ ...p, [w._id]: { loading: false, txns: [], refundRequests: [] } }));
+                            }
+                          }}
+                          className="text-xs font-bold text-green-700 ml-auto">
+                          {isOpen ? 'Hide ▲' : 'Full History ▼'}
+                        </button>
+                        <button
+                          onClick={() => { setWalletManualModal({ walletId: w._id, type: 'credit', user: w.user }); setWalletManualAmt(''); setWalletManualReason(''); }}
+                          className="text-xs font-bold text-white bg-green-600 px-3 py-1.5 rounded-xl">
+                          + Credit
+                        </button>
+                        <button
+                          onClick={() => { setWalletManualModal({ walletId: w._id, type: 'debit', user: w.user }); setWalletManualAmt(''); setWalletManualReason(''); }}
+                          className="text-xs font-bold text-white bg-red-500 px-3 py-1.5 rounded-xl">
+                          − Debit
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expanded: full transaction history */}
+                    {isOpen && (
+                      <div className="border-t border-gray-50">
+                        {detail.loading && <p className="text-center text-gray-400 text-xs py-4">Loading…</p>}
+
+                        {/* Refund requests */}
+                        {!detail.loading && detail.refundRequests?.length > 0 && (
+                          <div className="p-3 bg-amber-50 border-b border-amber-100">
+                            <p className="text-[10px] font-bold text-amber-700 uppercase mb-2">Refund Requests</p>
+                            <div className="space-y-2">
+                              {detail.refundRequests.map((rr, i) => (
+                                <div key={i} className="bg-white rounded-xl p-2.5 border border-amber-100">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <p className="text-xs font-bold text-gray-800">₹{rr.amount.toLocaleString('en-IN')}</p>
+                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full capitalize ${
+                                      rr.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                      rr.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
+                                      rr.status === 'refunded' ? 'bg-green-100 text-green-700' :
+                                      'bg-red-100 text-red-700'
+                                    }`}>{rr.status}</span>
+                                  </div>
+                                  <p className="text-[10px] text-gray-500">{rr.bankAccountName} · {rr.bankAccountNumber} · {rr.bankIfsc}</p>
+                                  <p className="text-[10px] text-gray-400">{new Date(rr.requestedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                  {rr.adminNote && <p className="text-[10px] text-gray-500 italic mt-0.5">Note: {rr.adminNote}</p>}
+                                  {(rr.status === 'pending' || rr.status === 'confirmed') && (
+                                    <div className="flex gap-2 mt-2">
+                                      {rr.status === 'pending' && (
+                                        <button onClick={() => handleRefundAction(w._id, rr._id, 'confirm')}
+                                          disabled={refundUpdating === rr._id}
+                                          className="flex-1 bg-blue-600 text-white text-[10px] font-bold py-1.5 rounded-lg disabled:opacity-50">
+                                          Confirm
+                                        </button>
+                                      )}
+                                      {rr.status === 'confirmed' && (
+                                        <button onClick={() => handleRefundAction(w._id, rr._id, 'mark_refunded')}
+                                          disabled={refundUpdating === rr._id}
+                                          className="flex-1 bg-green-600 text-white text-[10px] font-bold py-1.5 rounded-lg disabled:opacity-50">
+                                          ✓ Mark Refunded
+                                        </button>
+                                      )}
+                                      <button onClick={() => handleRefundAction(w._id, rr._id, 'cancel')}
+                                        disabled={refundUpdating === rr._id}
+                                        className="flex-1 bg-red-500 text-white text-[10px] font-bold py-1.5 rounded-lg disabled:opacity-50">
+                                        Reject
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Transaction list */}
+                        {!detail.loading && (
+                          <div className="divide-y divide-gray-50">
+                            {(detail.txns || []).length === 0 && <p className="text-center text-gray-400 text-xs py-4">No transactions yet</p>}
+                            {(detail.txns || []).map((t, i) => (
+                              <div key={i} className="flex items-start justify-between px-4 py-2.5">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-bold text-gray-700 truncate">{CATEGORY_LABEL[t.category] || t.category}</p>
+                                  {t.orderId && <p className="text-[10px] text-gray-400">Order: {t.orderId}</p>}
+                                  {t.productName && <p className="text-[10px] text-gray-400">{t.productName}</p>}
+                                  {t.reason && <p className="text-[10px] text-gray-400 italic">{t.reason}</p>}
+                                  {t.adminName && <p className="text-[10px] text-gray-400">By: {t.adminName}</p>}
+                                  <p className="text-[10px] text-gray-300">{new Date(t.createdAt).toLocaleString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</p>
+                                </div>
+                                <div className="text-right ml-3 shrink-0">
+                                  <p className={`text-sm font-black ${t.type === 'credit' ? 'text-green-600' : 'text-red-500'}`}>
+                                    {t.type === 'credit' ? '+' : '−'}₹{t.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                  </p>
+                                  <p className="text-[9px] text-gray-400">Bal: ₹{(t.balanceAfter ?? 0).toFixed(2)}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {allWallets.length === 0 && <p className="text-center text-gray-500 py-8">No wallets found</p>}
+            </div>
+
+            {/* Pagination */}
+            {walletTotalPages > 1 && (
+              <div className="flex justify-center gap-2 mt-4">
+                <button disabled={walletPage <= 1}
+                  onClick={() => { setWalletPage(p => p - 1); setTimeout(() => loadTab('wallets'), 0); }}
+                  className="text-xs font-bold px-4 py-2 rounded-xl border border-gray-200 disabled:opacity-40">← Prev</button>
+                <span className="text-xs text-gray-500 self-center">Page {walletPage} / {walletTotalPages}</span>
+                <button disabled={walletPage >= walletTotalPages}
+                  onClick={() => { setWalletPage(p => p + 1); setTimeout(() => loadTab('wallets'), 0); }}
+                  className="text-xs font-bold px-4 py-2 rounded-xl border border-gray-200 disabled:opacity-40">Next →</button>
+              </div>
+            )}
           </div>
         )}
 
@@ -3235,6 +3512,60 @@ export default function KoyambeduAdmin() {
               <button onClick={handleCancelOrder} disabled={cancelling || !cancelReason.trim()}
                 className="flex-1 bg-red-600 text-white font-bold py-3 rounded-xl disabled:opacity-50 transition active:scale-95">
                 {cancelling ? 'Cancelling…' : 'Cancel Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Wallet Manual Credit / Debit modal ── */}
+      {walletManualModal && (
+        <div className="fixed inset-0 bg-black/50 z-[9996] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-5 space-y-3">
+            <h3 className="font-bold text-gray-800">
+              {walletManualModal.type === 'credit' ? '+ Manual Credit' : '− Manual Debit'}
+            </h3>
+            <p className="text-xs text-gray-500">{walletManualModal.user?.name} · {walletManualModal.user?.phone || walletManualModal.user?.email}</p>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Amount (₹)</label>
+              <input type="number" min="1" value={walletManualAmt} onChange={e => setWalletManualAmt(e.target.value)}
+                placeholder="e.g. 100"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-500" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Reason (required)</label>
+              <textarea value={walletManualReason} onChange={e => setWalletManualReason(e.target.value)} rows={2}
+                placeholder="e.g. Goodwill adjustment for delayed delivery"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none resize-none focus:border-green-500" />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setWalletManualModal(null)}
+                className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">
+                Cancel
+              </button>
+              <button
+                disabled={walletManualSaving || !walletManualAmt || !walletManualReason.trim()}
+                onClick={async () => {
+                  setWalletManualSaving(true);
+                  try {
+                    const endpoint = walletManualModal.type === 'credit'
+                      ? `/koyambedu/admin/wallets/${walletManualModal.walletId}/manual-credit`
+                      : `/koyambedu/admin/wallets/${walletManualModal.walletId}/manual-debit`;
+                    await api.post(endpoint, { amount: Number(walletManualAmt), reason: walletManualReason.trim() });
+                    toast.success(walletManualModal.type === 'credit' ? `₹${walletManualAmt} credited` : `₹${walletManualAmt} debited`);
+                    setWalletManualModal(null);
+                    // Refresh wallets tab
+                    setTimeout(() => loadTab('wallets'), 50);
+                  } catch (err) {
+                    toast.error(err?.response?.data?.message || 'Failed');
+                  } finally {
+                    setWalletManualSaving(false);
+                  }
+                }}
+                className={`flex-1 text-white font-bold py-2.5 rounded-xl disabled:opacity-50 transition ${
+                  walletManualModal.type === 'credit' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-500 hover:bg-red-600'
+                }`}>
+                {walletManualSaving ? 'Processing…' : walletManualModal.type === 'credit' ? 'Credit Wallet' : 'Debit Wallet'}
               </button>
             </div>
           </div>
