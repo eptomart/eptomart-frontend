@@ -659,15 +659,22 @@ export default function KoyambeduCheckout() {
                 razorpayPaymentId: resp.razorpay_payment_id,
                 razorpaySignature: resp.razorpay_signature,
               });
+              // Cart cleared on backend in verifyPayment; sync local state
               await clearCart();
               setPlaced(data.order);
               toast.success('Payment confirmed!');
-            } catch { toast.error('Payment verification failed'); }
+            } catch {
+              // Payment verification failed (signature mismatch or network error).
+              // Delete the pending order so it doesn't linger, and let customer retry.
+              try { await api.delete(`/koyambedu/orders/${pendingOrderId}/pending`); } catch (_) {}
+              toast.error('Payment verification failed. Please try again.');
+              setLoading(false);
+            }
           },
           modal: {
             ondismiss: async () => {
-              // User closed Razorpay without paying — delete the pending order so it
-              // doesn't show up in My Orders. Cart items remain intact.
+              // User closed Razorpay without paying — delete the pending order.
+              // Cart items are intact (not cleared until verifyPayment succeeds).
               try { await api.delete(`/koyambedu/orders/${pendingOrderId}/pending`); } catch (_) {}
               toast('Payment cancelled — your cart is saved', { icon: '🛒' });
               setLoading(false);

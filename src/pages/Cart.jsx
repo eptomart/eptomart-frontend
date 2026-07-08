@@ -4,13 +4,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiTrash2, FiShoppingBag, FiTruck, FiEdit2, FiInfo, FiCheckCircle, FiZap, FiPackage, FiLock, FiGrid } from 'react-icons/fi';
+import { FiTrash2, FiShoppingBag, FiTruck, FiEdit2, FiInfo, FiCheckCircle, FiZap, FiPackage, FiLock, FiGrid, FiMinus, FiPlus } from 'react-icons/fi';
+import { FaLeaf } from 'react-icons/fa';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import QuantityControl from '../components/cart/QuantityControl';
 import VariantPickerModal from '../components/cart/VariantPickerModal';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useKoyambeduCart } from '../context/KoyambeduCartContext';
 import { formatINR } from '../utils/currency';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
@@ -22,10 +24,13 @@ const HEAVY_SHIPPING = 149;           // >500g  → ₹149
 
 export default function Cart() {
   const { enrichedItems, sellerGroups, cartCount, subtotalExGst, gstTotal, shipping, total, updateQuantity, removeFromCart, updateItemVariant, isCodBlocked, codBlockedItems } = useCart();
+  const { cart: kbdCart, fetchCart: kbdFetchCart, updateItem: kbdUpdateItem, loading: kbdLoading, subtotal: kbdSubtotal, itemCount: kbdItemCount } = useKoyambeduCart();
   const { isLoggedIn } = useAuth();
   const navigate  = useNavigate();
   const [updating, setUpdating] = useState({});
   const [variantPickerItem, setVariantPickerItem] = useState(null);
+
+  useEffect(() => { kbdFetchCart(); }, []);
 
   const cartGrandExShipping = parseFloat((subtotalExGst + gstTotal).toFixed(2));
 
@@ -41,7 +46,7 @@ export default function Cart() {
     setVariantPickerItem(null);
   };
 
-  if (cartCount === 0) {
+  if (cartCount === 0 && kbdItemCount === 0) {
     return (
       <>
         <Helmet><title>Cart — Eptomart</title></Helmet>
@@ -62,20 +67,117 @@ export default function Cart() {
 
   return (
     <>
-      <Helmet><title>{`Cart (${cartCount}) — Eptomart`}</title></Helmet>
+      <Helmet><title>{`Cart (${cartCount + kbdItemCount}) — Eptomart`}</title></Helmet>
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center gap-2.5 mb-6">
           <span className="w-1 h-8 rounded-full bg-primary-500" />
           <h1 className="text-2xl font-bold text-gray-800">
-            My Cart <span className="text-primary-500">({cartCount} item{cartCount !== 1 ? 's' : ''})</span>
+            My Cart <span className="text-primary-500">({cartCount + kbdItemCount} item{(cartCount + kbdItemCount) !== 1 ? 's' : ''})</span>
           </h1>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* ── Cart Items (grouped by seller) ─────────────── */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className={`${cartCount === 0 ? 'lg:col-span-3' : 'lg:col-span-2'} space-y-4`}>
+
+            {/* ── Koyambedu Daily ────────────────────────────── */}
+            {kbdItemCount > 0 && (
+              <div className="card overflow-hidden">
+                {/* Section header */}
+                <div className="px-4 py-2.5 border-b"
+                  style={{ background: 'linear-gradient(135deg,#064e3b,#065f46)' }}>
+                  <p className="text-sm font-bold text-white flex items-center gap-2">
+                    <FaLeaf size={13} className="text-green-300" />
+                    Koyambedu Daily
+                    <span className="ml-auto text-green-200 text-xs font-normal">
+                      {kbdItemCount} item{kbdItemCount !== 1 ? 's' : ''}
+                    </span>
+                  </p>
+                </div>
+
+                {/* Items */}
+                <div className="divide-y divide-gray-100">
+                  {kbdCart.items?.map((item, i) => {
+                    const prod    = item.product;
+                    const img     = prod?.images?.find(im => im.isPrimary)?.url
+                                    || prod?.images?.[0]?.url
+                                    || 'https://placehold.co/80x80/dcfce7/166534?text=🌿';
+                    const pid     = String(prod?._id || item.product);
+                    const lineAmt = (item.unitPrice || 0) * (item.quantity || 0);
+                    return (
+                      <div key={item._id || i} className="p-4 flex gap-4">
+                        <Link to={`/koyambedu/product/${pid}`} className="flex-shrink-0">
+                          <img src={img} alt={item.name}
+                            className="w-20 h-20 object-cover rounded-xl bg-gray-100" />
+                        </Link>
+
+                        <div className="flex-1 min-w-0">
+                          <Link to={`/koyambedu/product/${pid}`}>
+                            <h3 className="text-sm font-medium text-gray-800 hover:text-green-700 line-clamp-2 mb-0.5">
+                              {item.name}
+                              {item.gradeKey && (
+                                <span className="ml-1.5 text-[11px] bg-green-100 text-green-700 font-semibold px-1.5 py-0.5 rounded-full">
+                                  {item.gradeName || item.gradeKey}
+                                </span>
+                              )}
+                            </h3>
+                          </Link>
+                          <p className="text-xs text-gray-500 mb-2">₹{item.unitPrice} / {item.unit}</p>
+
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => kbdUpdateItem(pid, Math.max(0, item.quantity - 1), item.deliveryType || 'tomorrow', { gradeKey: item.gradeKey, gradeName: item.gradeName, silent: true })}
+                                disabled={kbdLoading}
+                                className="w-7 h-7 rounded-full bg-green-100 text-green-700 flex items-center justify-center disabled:opacity-50 transition active:scale-90">
+                                {item.quantity <= 1 ? <FiTrash2 size={11} /> : <FiMinus size={11} />}
+                              </button>
+                              <span className="text-sm font-bold text-gray-900 w-8 text-center">{item.quantity}</span>
+                              <button
+                                onClick={() => kbdUpdateItem(pid, item.quantity + 1, item.deliveryType || 'tomorrow', { gradeKey: item.gradeKey, gradeName: item.gradeName, silent: true })}
+                                disabled={kbdLoading}
+                                className="w-7 h-7 rounded-full bg-green-600 text-white flex items-center justify-center disabled:opacity-50 transition active:scale-90">
+                                <FiPlus size={11} />
+                              </button>
+                              <span className="text-xs text-gray-400">{item.unit}</span>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-gray-900">{formatINR(lineAmt)}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => kbdUpdateItem(pid, 0)}
+                          disabled={kbdLoading}
+                          className="text-gray-300 hover:text-red-400 transition-colors self-start mt-1 disabled:opacity-50">
+                          <FiTrash2 size={16} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Subtotal + Proceed to Checkout */}
+                <div className="bg-gray-50 px-4 py-3 border-t border-gray-100">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-sm text-gray-600">
+                      Koyambedu Subtotal ({kbdItemCount} item{kbdItemCount !== 1 ? 's' : ''})
+                    </span>
+                    <span className="font-bold text-gray-800">{formatINR(kbdSubtotal)}</span>
+                  </div>
+                  <button
+                    onClick={() => navigate('/koyambedu/checkout')}
+                    className="w-full py-2.5 rounded-xl text-sm font-bold text-white active:scale-[0.98] transition"
+                    style={{ background: 'linear-gradient(135deg,#064e3b,#16a34a)', boxShadow: '0 4px 16px rgba(22,163,74,0.35)' }}>
+                    Proceed to Koyambedu Checkout →
+                  </button>
+                </div>
+              </div>
+            )}
+
             {Object.entries(sellerGroups).map(([key, group]) => (
               <div key={key} className="card overflow-hidden">
                 {/* Seller header */}
@@ -249,8 +351,8 @@ export default function Cart() {
             </div>
           </div>
 
-          {/* ── Order Summary ───────────────────────────────── */}
-          <div>
+          {/* ── Order Summary (Eptomart items only) ─────────── */}
+          {cartCount > 0 && <div>
             <div className="card p-6 sticky top-20">
               <h2 className="text-lg font-bold text-gray-800 mb-4">Order Summary</h2>
 
@@ -294,7 +396,7 @@ export default function Cart() {
 
               <p className="text-xs text-gray-400 text-center mt-3 flex items-center justify-center gap-1"><FiLock size={11} /> Secure checkout</p>
             </div>
-          </div>
+          </div>}
         </div>
       </main>
       <Footer />
