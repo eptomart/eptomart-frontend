@@ -624,9 +624,15 @@ export default function KoyambeduCheckout() {
     setLoading(true);
     try {
       const slotObj = [...(availableSlots || []), ...ALL_SLOTS].find(s => s.key === selectedSlot);
+
+      // If wallet covers the full order, skip Razorpay entirely.
+      // Razorpay rejects ₹0 orders (minimum ₹1). Instead we pass paymentMethod: 'wallet_full'
+      // which the backend treats as immediately confirmed with wallet deduction.
+      const effectivePaymentMethod = total <= 0 ? 'wallet_full' : paymentMethod;
+
       const { data } = await api.post('/koyambedu/orders', {
         shippingAddress: addr,
-        paymentMethod,
+        paymentMethod:   effectivePaymentMethod,
         deliverySlot:    slotObj?.label || '',
         deliverySlotKey: selectedSlot,
         deliveryDate:    selectedDate,
@@ -640,7 +646,16 @@ export default function KoyambeduCheckout() {
         couponCode: couponApplied?.code || undefined,
       });
 
-      // Razorpay
+      // ── Wallet-only flow (total = ₹0) ──────────────────────────────────────
+      // Backend already confirmed the order and deducted the wallet in placeOrder.
+      if (effectivePaymentMethod === 'wallet_full') {
+        await clearCart();
+        setPlaced(data.order);
+        toast.success('Order placed! Wallet balance applied in full.');
+        return;
+      }
+
+      // ── Razorpay flow ───────────────────────────────────────────────────────
       const { data: rzp } = await api.post('/koyambedu/orders/create-razorpay', { orderId: data.order._id });
       const pendingOrderId = data.order._id;
       const launch = () => {
@@ -1505,7 +1520,7 @@ export default function KoyambeduCheckout() {
                 <button onClick={handlePlaceOrder} disabled={loading}
                   className="flex-1 text-white font-black py-3 rounded-xl disabled:opacity-60 transition text-sm active:scale-95"
                   style={{ background: 'linear-gradient(135deg,#064e3b,#059669)', boxShadow: '0 4px 16px rgba(22,163,74,0.4)' }}>
-                  {loading ? 'Placing Order…' : `Place Order · ₹${total.toFixed(2)}`}
+                  {loading ? 'Placing Order…' : total <= 0 ? 'Place Order · 💚 Wallet' : `Place Order · ₹${total.toFixed(2)}`}
                 </button>
               ) : (
                 <button onClick={() => navigate('/login', { state: { from: '/koyambedu/checkout' } })}

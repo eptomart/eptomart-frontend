@@ -33,6 +33,8 @@ const CATEGORY_LABELS = {
   refund_paid:             { label: 'Bank Refund Paid',             color: 'red',   icon: '🏦' },
   refund_requested:        { label: 'Refund Requested (Reserved)',  color: 'amber', icon: '🔒' },
   refund_released:         { label: 'Refund Cancelled (Released)',  color: 'green', icon: '🔓' },
+  price_revision_credit:   { label: 'Daily Price Drop — Refunded', color: 'green', icon: '📉' },
+  price_revision_debit:    { label: 'Daily Price Rise — Recovered',color: 'red',   icon: '📈' },
   manual:                  { label: 'Transaction',                  color: 'gray',  icon: '💳' },
 };
 
@@ -46,9 +48,12 @@ const FILTER_TABS = [
 
 const FILTER_FN = {
   all:         () => true,
-  credits:     t => t.type === 'credit' && !['price_adjustment_credit', 'price_adjustment_due', 'debt_recovery'].includes(t.category),
-  debits:      t => t.type === 'debit'  && !['price_adjustment_due', 'wallet_applied'].includes(t.category),
-  adjustments: t => ['price_adjustment_credit', 'price_adjustment_due', 'debt_recovery', 'wallet_applied'].includes(t.category),
+  // Credits: cancellations, declined items, cashback, manual — NOT price adjustments
+  credits:     t => t.type === 'credit' && !['price_adjustment_credit', 'price_adjustment_due', 'debt_recovery', 'price_revision_credit'].includes(t.category),
+  // Debits: wallet applied at checkout, manual debits, bank refunds — NOT price adjustment dues
+  debits:      t => t.type === 'debit'  && !['price_adjustment_due', 'price_revision_debit'].includes(t.category),
+  // Adjustments: all price-related movements (both credit + debit sides)
+  adjustments: t => ['price_adjustment_credit', 'price_adjustment_due', 'debt_recovery', 'price_revision_credit', 'price_revision_debit'].includes(t.category),
   cashback:    t => t.category === 'cashback',
 };
 

@@ -469,6 +469,8 @@ const WALLET_CATEGORY_LABELS = {
   manual_credit:           { label: 'Manual Credit',              color: '#16a34a', icon: '👤' },
   manual_debit:            { label: 'Manual Debit',               color: '#dc2626', icon: '👤' },
   refund_paid:             { label: 'Bank Refund',                color: '#dc2626', icon: '🏦' },
+  price_revision_credit:   { label: 'Daily Price Drop — Refunded',color: '#16a34a', icon: '📉' },
+  price_revision_debit:    { label: 'Daily Price Rise — Recovered',color:'#dc2626', icon: '📈' },
   manual:                  { label: 'Transaction',                color: '#6b7280', icon: '💳' },
 };
 
@@ -494,7 +496,9 @@ function KbdWalletTab() {
     <p className="text-sm text-gray-500 text-center py-6">Could not load wallet. Try again later.</p>
   );
 
-  const balance = wallet.balance ?? 0;
+  const balance         = wallet.balance ?? 0;
+  const reservedBalance = wallet.reservedBalance ?? 0;
+  const availableBalance = Math.max(0, balance - reservedBalance);
   const isPositive = balance >= 0;
   const transactions = [...(wallet.transactions || [])].reverse().slice(0, 10);
 
@@ -513,10 +517,27 @@ function KbdWalletTab() {
           {isPositive ? '' : '−'}₹{Math.abs(balance).toFixed(2)}
         </p>
         <p className="text-white/70 text-xs">
-          {isPositive
-            ? balance > 0 ? 'Will be applied as discount on next order' : 'No balance — all settled'
-            : 'Will be recovered on next order'}
+          {!isPositive
+            ? 'Will be recovered on next order'
+            : availableBalance > 0
+              ? `₹${availableBalance.toFixed(2)} available — auto-applied on next order`
+              : balance > 0
+                ? `₹${reservedBalance.toFixed(2)} reserved for pending refund`
+                : 'No balance — all settled'}
         </p>
+        {/* Show available vs reserved breakdown when there's a reservation */}
+        {isPositive && reservedBalance > 0 && balance > 0 && (
+          <div className="mt-3 flex gap-2 justify-center">
+            <div className="bg-white/10 rounded-xl px-3 py-1.5 text-center">
+              <p className="text-white/60 text-[9px] font-semibold">AVAILABLE</p>
+              <p className="text-white font-black text-sm">₹{availableBalance.toFixed(2)}</p>
+            </div>
+            <div className="bg-white/10 rounded-xl px-3 py-1.5 text-center">
+              <p className="text-white/60 text-[9px] font-semibold">RESERVED</p>
+              <p className="text-amber-300 font-black text-sm">₹{reservedBalance.toFixed(2)}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Recent transactions */}
