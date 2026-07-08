@@ -252,7 +252,6 @@ export default function KoyambeduSellerAdminDashboard() {
           ...prodCreateForm,
           grades: activeGrades,
           variants: undefined,
-          sharedTiers: undefined,
         });
         toast.success('Product submitted for superadmin approval');
         setShowAddProduct(false);
@@ -274,7 +273,6 @@ export default function KoyambeduSellerAdminDashboard() {
       await api.post(`/koyambedu/seller-admin/sellers/${addProdSellerId}/products`, {
         ...prodCreateForm,
         variants: validVariants,
-        sharedTiers: undefined,
       });
       toast.success('Product submitted for superadmin approval');
       setShowAddProduct(false);
@@ -817,29 +815,7 @@ export default function KoyambeduSellerAdminDashboard() {
                 <button onClick={() => setShowAddProduct(false)} className="text-gray-400 text-xl">✕</button>
               </div>
 
-              {/* AI helper buttons for name */}
-              {prodCreateForm.name && (
-                <div className="flex gap-2 mb-3">
-                  <button type="button"
-                    onClick={() => translate(prodCreateForm.name, (tamil) => setProdCreateForm(f => ({ ...f, nameTamil: tamil })))}
-                    disabled={translating}
-                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 disabled:opacity-50">
-                    {translating ? '...' : '🌐 Auto-Translate Name'}
-                  </button>
-                  <button type="button"
-                    onClick={() => describe(
-                      { name: prodCreateForm.name, nameTamil: prodCreateForm.nameTamil, category: categories.find(c => c._id === prodCreateForm.categoryId)?.name, unit: prodCreateForm.unit },
-                      (desc) => setProdCreateForm(f => ({ ...f, description: desc }))
-                    )}
-                    disabled={describing}
-                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 disabled:opacity-50">
-                    {describing ? '...' : '✨ AI Description'}
-                  </button>
-                </div>
-              )}
-
               <KoyambeduVariantProductForm
-                isCreateMode={true}
                 form={prodCreateForm}
                 onChange={setProdCreateForm}
                 categories={categories}
