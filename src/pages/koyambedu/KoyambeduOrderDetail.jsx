@@ -445,14 +445,13 @@ export default function KoyambeduOrderDetail() {
             const qty   = it.orderedQty || it.quantity || 0;
             const price = it.unitPrice || it.orderedPrice || it.finalPrice || 0;
             return (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < itemsOrdered.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '8px 0', borderBottom: i < itemsOrdered.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#111', margin: 0 }}>
-                    {it.name}{it.gradeKey ? ` - ${it.gradeName || it.gradeKey}` : ''}
-                  </p>
-                  <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>{qty} {it.unit} × {fmt(price)}</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#111', margin: 0 }}>{it.name}</p>
+                  {it.gradeKey && <p style={{ fontSize: 11, color: '#6b7280', fontStyle: 'italic', margin: '1px 0 0' }}>Grade: {it.gradeName || it.gradeKey}</p>}
+                  <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>{qty} {it.unit} × {fmt(price)}</p>
                 </div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8', margin: 0 }}>{fmt(price * qty)}</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8', margin: 0, flexShrink: 0, paddingLeft: 8 }}>{fmt(price * qty)}</p>
               </div>
             );
           })}
@@ -473,9 +472,8 @@ export default function KoyambeduOrderDetail() {
                 <div key={i} style={{ padding: '8px 0', borderBottom: i < itemsDeclined.length - 1 ? '1px solid #fef2f2' : 'none' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <div>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: '#dc2626', margin: 0 }}>
-                        {it.name}{it.gradeKey ? ` - ${it.gradeName || it.gradeKey}` : ''}
-                      </p>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#dc2626', margin: 0 }}>{it.name}</p>
+                      {it.gradeKey && <p style={{ fontSize: 11, color: '#f87171', fontStyle: 'italic', margin: '1px 0 0' }}>Grade: {it.gradeName || it.gradeKey}</p>}
                       <p style={{ fontSize: 12, color: '#9ca3af', margin: '2px 0 0' }}>Declined: {decQty} {it.unit} × {fmt(price)}</p>
                       <p style={{ fontSize: 11, color: '#9ca3af', margin: '1px 0 0' }}>Reason: {it.declinedReason || 'Unavailable'}</p>
                     </div>
@@ -511,18 +509,19 @@ export default function KoyambeduOrderDetail() {
             const price        = it.orderedPrice || it.unitPrice || it.finalPrice || 0;
             const isPartial    = it.itemStatus === 'partial';
             return (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < arr.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '8px 0', borderBottom: i < arr.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: '#111', margin: 0 }}>
-                    {it.name}{it.gradeKey ? ` - ${it.gradeName || it.gradeKey}` : ''}
+                    {it.name}
                     {isPartial && <span style={{ marginLeft: 6, fontSize: 10, background: '#fff7ed', color: '#d97706', padding: '1px 6px', borderRadius: 99 }}>Partial</span>}
                   </p>
-                  <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>
+                  {it.gradeKey && <p style={{ fontSize: 11, color: '#6b7280', fontStyle: 'italic', margin: '1px 0 0' }}>Grade: {it.gradeName || it.gradeKey}</p>}
+                  <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>
                     {confirmedQty} {it.unit} × {fmt(price)}
                     {isPartial ? ` (ordered: ${it.orderedQty || it.quantity})` : ''}
                   </p>
                 </div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#065f46', margin: 0 }}>{fmt(price * confirmedQty)}</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#065f46', margin: 0, flexShrink: 0, paddingLeft: 8 }}>{fmt(price * confirmedQty)}</p>
               </div>
             );
           })}
@@ -548,10 +547,25 @@ export default function KoyambeduOrderDetail() {
           )}
           <PayRow label="GST" value="0% (Exempt)" />
           {(effective.couponDiscount || pricing.discount || 0) > 0 && (
-            <PayRow label="Coupon Discount" value={`−${fmt(effective.couponDiscount || pricing.discount)}`} color="#16a34a" />
+            <PayRow label="Coupon Discount (−)" value={`−${fmt(effective.couponDiscount || pricing.discount)}`} color="#16a34a" />
           )}
-          {((effective.walletAdjustment || pricing.walletAdjustment) || 0) > 0 && (
-            <PayRow label="Wallet Credit Applied (−)" value={`−${fmt(effective.walletAdjustment || pricing.walletAdjustment)}`} color="#16a34a" />
+          {(() => {
+            const wa = effective.walletAdjustment || pricing.walletAdjustment || 0;
+            if (wa > 0) return <PayRow label="Wallet Credit Applied (−)" value={`−${fmt(wa)}`} color="#16a34a" />;
+            if (wa < 0) return <PayRow label="Wallet Debt Recovered (+)" value={`+${fmt(Math.abs(wa))}`} color="#dc2626" />;
+            return null;
+          })()}
+          {(order.procurementPricing?.totalWalletCredit || 0) > 0 && (
+            <PayRow label="Procurement Credit (−)" value={`−${fmt(order.procurementPricing.totalWalletCredit)}`} color="#16a34a" />
+          )}
+          {(order.procurementPricing?.totalWalletDue || 0) > 0 && (
+            <PayRow label="Procurement Debit (+)" value={`+${fmt(order.procurementPricing.totalWalletDue)}`} color="#dc2626" />
+          )}
+          {(order.dailyPriceRevision?.totalCreditToWallet || 0) > 0 && (
+            <PayRow label="Price Revision Credit (−)" value={`−${fmt(order.dailyPriceRevision.totalCreditToWallet)}`} color="#16a34a" />
+          )}
+          {(order.dailyPriceRevision?.totalDebitFromWallet || 0) > 0 && (
+            <PayRow label="Price Revision Debit (+)" value={`+${fmt(order.dailyPriceRevision.totalDebitFromWallet)}`} color="#dc2626" />
           )}
           <PayRow
             label="Final Amount"
