@@ -704,15 +704,15 @@ export default function KoyambeduProductDetail() {
 
           {/* Sheet panel — anchored ABOVE the BottomNav, z-[10002] above backdrop */}
           <div
-            className="fixed left-0 right-0 z-[10002] bg-white rounded-t-3xl flex flex-col"
+            className="fixed left-0 right-0 z-[10002] bg-white rounded-t-3xl flex flex-col overflow-hidden"
             style={{
               bottom:     'var(--bottom-nav-h, 0px)',
               maxHeight:  'calc(85dvh - var(--bottom-nav-h, 0px))',
               boxShadow:  '0 -8px 40px rgba(0,0,0,0.22)',
             }}
           >
-            {/* ── Scrollable body ── */}
-            <div className="px-4 pt-4 overflow-y-auto flex-1">
+            {/* ── Scrollable body — min-h-0 lets flex-1 shrink so buttons stay visible ── */}
+            <div className="px-4 pt-4 overflow-y-auto flex-1 min-h-0">
 
             {/* Drag handle + close */}
             <div className="flex items-center justify-between mb-3">
@@ -830,7 +830,7 @@ export default function KoyambeduProductDetail() {
             </div>{/* end scrollable body */}
 
             {/* ── Action buttons — pinned outside scroll, always visible ── */}
-            <div className="px-4 pt-2 pb-4 border-t border-gray-100">
+            <div className="px-4 pt-2 border-t border-gray-100" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', flexShrink: 0 }}>
               <div className="flex gap-3">
                 <button
                   onPointerDown={e => e.preventDefault()}
