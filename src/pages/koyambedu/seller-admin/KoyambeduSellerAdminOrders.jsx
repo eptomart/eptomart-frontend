@@ -43,13 +43,6 @@ const ITEM_STATUS_CONFIG = {
 
 const SLOTS = ['Morning (6AM-9AM)', 'Afternoon (12PM-3PM)', 'Evening (4PM-7PM)'];
 
-const SA_STATUS_OPTIONS = [
-  { value: 'confirmed',  label: '✅ Confirmed',    desc: 'Order confirmed, ready to pack' },
-  { value: 'packing',    label: '📦 Procurement',  desc: 'Procurement is in progress' },
-  { value: 'dispatched', label: '🚚 Dispatched',   desc: 'Out for delivery' },
-  { value: 'delivered',  label: '🏠 Delivered',    desc: 'Delivered to customer' },
-];
-
 const DECLINE_REASONS = ['unavailable', 'out_of_stock', 'quality_issue', 'seller_issue', 'other'];
 
 // Can SA review items for this order?
@@ -72,12 +65,6 @@ export default function KoyambeduSellerAdminOrders() {
   const [expanded,  setExpanded]  = useState({});
   const [filters,   setFilters]   = useState({ orderDate: '', deliveryDate: '', deliverySlot: '', status: '', customerSearch: '' });
   const [showFilters, setShowFilters] = useState(false);
-
-  // Status modal (for confirmed/packing/dispatched/delivered)
-  const [statusModal,    setStatusModal]    = useState(null);
-  const [newStatus,      setNewStatus]      = useState('');
-  const [delivPartner,   setDelivPartner]   = useState('');
-  const [statusUpdating, setStatusUpdating] = useState(false);
 
   // Per-item action state
   const [itemAction,   setItemAction]   = useState(null); // { orderId, itemId, type: 'confirm'|'decline'|'reduce' }
@@ -171,28 +158,6 @@ export default function KoyambeduSellerAdminOrders() {
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Submit failed');
     } finally { setSubmitting(null); }
-  };
-
-  // ── Status modal ──────────────────────────────
-  const openStatusModal = (order) => {
-    setStatusModal(order);
-    setNewStatus(order.orderStatus);
-    setDelivPartner(order.deliveryPartner || '');
-  };
-
-  const submitStatusUpdate = async () => {
-    if (!newStatus) { toast.error('Select a status'); return; }
-    setStatusUpdating(true);
-    try {
-      await api.patch(`/koyambedu/seller-admin/orders/${statusModal._id}/status`, {
-        status: newStatus, deliveryPartner: delivPartner,
-      });
-      toast.success('Status updated');
-      setOrders(prev => prev.map(o => o._id === statusModal._id ? { ...o, orderStatus: newStatus } : o));
-      setStatusModal(null);
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Update failed');
-    } finally { setStatusUpdating(false); }
   };
 
   return (
@@ -301,7 +266,6 @@ export default function KoyambeduSellerAdminOrders() {
           const alreadySubmitted = order.saReview?.status === 'submitted';
           const reviewable = hasAnyReview(order) || myItems.some(it => !it.itemStatus || it.itemStatus === 'pending');
           const pendingRefund = calc.declinedRefundAmount || order.saReview?.pendingRefundAmount || 0;
-          const isPostApproval = ['confirmed','packing','dispatched'].includes(order.orderStatus);
           const isFinalised    = ['delivered','reported','closed','cancelled'].includes(order.orderStatus);
 
           return (
@@ -391,15 +355,6 @@ export default function KoyambeduSellerAdminOrders() {
                     <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-gray-100 text-gray-500">
                       🔒 Order finalised — contact Super Admin for changes
                     </span>
-                  )}
-
-                  {/* Status update for post-confirmation stages */}
-                  {isPostApproval && (
-                    <button onClick={() => openStatusModal(order)}
-                      className="text-xs font-bold text-white px-3 py-1.5 rounded-xl active:scale-95 transition"
-                      style={{ background: 'linear-gradient(135deg,#065f46,#16a34a)' }}>
-                      Update Status
-                    </button>
                   )}
                 </div>
               </div>
@@ -612,52 +567,6 @@ export default function KoyambeduSellerAdminOrders() {
         </div>
       )}
 
-      {/* ── Status Update Modal (post-approval flow) ── */}
-      {statusModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
-          <div className="bg-white rounded-t-3xl w-full max-w-lg p-5 space-y-4"
-            style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-black text-gray-800">Update Order Status</h3>
-                <p className="text-xs text-gray-400">{statusModal.orderId}</p>
-              </div>
-              <button onClick={() => setStatusModal(null)} className="text-gray-400 text-xl font-bold leading-none">✕</button>
-            </div>
-
-            <div className="space-y-2">
-              {SA_STATUS_OPTIONS.map(opt => (
-                <button key={opt.value} onClick={() => setNewStatus(opt.value)}
-                  className={`w-full text-left p-3 rounded-xl border-2 transition ${newStatus === opt.value ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
-                  <p className={`font-bold text-sm ${newStatus === opt.value ? 'text-green-700' : 'text-gray-700'}`}>{opt.label}</p>
-                  <p className="text-xs text-gray-400">{opt.desc}</p>
-                </button>
-              ))}
-            </div>
-
-            {newStatus === 'dispatched' && (
-              <div>
-                <label className="text-xs font-semibold text-gray-600 mb-1 block">Delivery Partner (optional)</label>
-                <input type="text" value={delivPartner} onChange={e => setDelivPartner(e.target.value)}
-                  placeholder="e.g. Porter, Dunzo, Own vehicle"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-500" />
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <button onClick={() => setStatusModal(null)}
-                className="flex-1 border-2 border-gray-200 text-gray-600 font-bold py-3 rounded-xl">
-                Cancel
-              </button>
-              <button onClick={submitStatusUpdate} disabled={statusUpdating}
-                className="flex-1 text-white font-bold py-3 rounded-xl disabled:opacity-50 transition active:scale-95"
-                style={{ background: 'linear-gradient(135deg,#065f46,#16a34a)' }}>
-                {statusUpdating ? 'Updating…' : 'Confirm Update'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
