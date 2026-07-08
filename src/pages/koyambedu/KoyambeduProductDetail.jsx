@@ -702,14 +702,17 @@ export default function KoyambeduProductDetail() {
             onClick={() => setShowQtySheet(false)}
           />
 
-          {/* Sheet panel */}
+          {/* Sheet panel — flex column so action buttons always stay visible */}
           <div
-            className="fixed left-0 right-0 bottom-0 z-[9990] bg-white rounded-t-3xl px-4 pt-4"
+            className="fixed left-0 right-0 bottom-0 z-[9990] bg-white rounded-t-3xl flex flex-col"
             style={{
-              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
+              maxHeight: '85dvh',
               boxShadow: '0 -8px 40px rgba(0,0,0,0.22)',
             }}
           >
+            {/* ── Scrollable body ── */}
+            <div className="px-4 pt-4 overflow-y-auto flex-1">
+
             {/* Drag handle + close */}
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-1 rounded-full mx-auto" style={{ background: '#d1d5db', position: 'absolute', left: '50%', transform: 'translateX(-50%) translateY(-8px)' }} />
@@ -823,28 +826,33 @@ export default function KoyambeduProductDetail() {
               <p className="text-green-700 font-black text-xl">₹{total}</p>
             </div>
 
-            {/* Action buttons */}
-            <div className="flex gap-3">
-              <button
-                onPointerDown={e => e.preventDefault()}
-                onClick={() => { handleAddToCart(); setShowQtySheet(false); }}
-                disabled={cartLoading || qtyInvalid}
-                className="flex-1 flex items-center justify-center gap-2 font-bold py-3.5 rounded-2xl text-sm transition active:scale-95 disabled:opacity-60"
-                style={{ background: '#f0fdf4', color: '#16a34a', border: '2px solid #16a34a' }}>
-                <FiShoppingCart size={15} />
-                {cartLoading ? '…' : cartQty > 0 ? 'Update Cart' : 'Add to Cart'}
-              </button>
-              <button
-                onPointerDown={e => e.preventDefault()}
-                onClick={() => { handleBuyNow(); setShowQtySheet(false); }}
-                disabled={cartLoading || qtyInvalid}
-                className="flex-1 flex items-center justify-center gap-2 font-bold py-3.5 rounded-2xl text-sm text-white transition active:scale-95 disabled:opacity-60"
-                style={{ background: 'linear-gradient(135deg,#064e3b,#059669)', boxShadow: '0 4px 12px rgba(22,163,74,0.4)' }}>
-                <FiZap size={15} />
-                Buy Now
-              </button>
+            </div>{/* end scrollable body */}
+
+            {/* ── Action buttons — pinned outside scroll, always visible ── */}
+            <div className="px-4 pt-2 border-t border-gray-100"
+              style={{ paddingBottom: 'calc(var(--bottom-nav-h, 80px) + env(safe-area-inset-bottom, 0px) + 12px)' }}>
+              <div className="flex gap-3">
+                <button
+                  onPointerDown={e => e.preventDefault()}
+                  onClick={() => { handleAddToCart(); setShowQtySheet(false); }}
+                  disabled={cartLoading || qtyInvalid}
+                  className="flex-1 flex items-center justify-center gap-2 font-bold py-3.5 rounded-2xl text-sm transition active:scale-95 disabled:opacity-60"
+                  style={{ background: '#f0fdf4', color: '#16a34a', border: '2px solid #16a34a' }}>
+                  <FiShoppingCart size={15} />
+                  {cartLoading ? '…' : cartQty > 0 ? 'Update Cart' : 'Add to Cart'}
+                </button>
+                <button
+                  onPointerDown={e => e.preventDefault()}
+                  onClick={() => { handleBuyNow(); setShowQtySheet(false); }}
+                  disabled={cartLoading || qtyInvalid}
+                  className="flex-1 flex items-center justify-center gap-2 font-bold py-3.5 rounded-2xl text-sm text-white transition active:scale-95 disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg,#064e3b,#059669)', boxShadow: '0 4px 12px rgba(22,163,74,0.4)' }}>
+                  <FiZap size={15} />
+                  Buy Now
+                </button>
+              </div>
             </div>
-          </div>
+          </div>{/* end sheet panel */}
         </>
       )}
 
