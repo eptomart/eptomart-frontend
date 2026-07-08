@@ -702,12 +702,13 @@ export default function KoyambeduProductDetail() {
             onClick={() => setShowQtySheet(false)}
           />
 
-          {/* Sheet panel — z-[10002] above backdrop */}
+          {/* Sheet panel — anchored ABOVE the BottomNav, z-[10002] above backdrop */}
           <div
-            className="fixed left-0 right-0 bottom-0 z-[10002] bg-white rounded-t-3xl flex flex-col"
+            className="fixed left-0 right-0 z-[10002] bg-white rounded-t-3xl flex flex-col"
             style={{
-              maxHeight: '85dvh',
-              boxShadow: '0 -8px 40px rgba(0,0,0,0.22)',
+              bottom:     'var(--bottom-nav-h, 0px)',
+              maxHeight:  'calc(85dvh - var(--bottom-nav-h, 0px))',
+              boxShadow:  '0 -8px 40px rgba(0,0,0,0.22)',
             }}
           >
             {/* ── Scrollable body ── */}
@@ -829,8 +830,7 @@ export default function KoyambeduProductDetail() {
             </div>{/* end scrollable body */}
 
             {/* ── Action buttons — pinned outside scroll, always visible ── */}
-            <div className="px-4 pt-2 border-t border-gray-100"
-              style={{ paddingBottom: 'calc(var(--bottom-nav-h, 80px) + env(safe-area-inset-bottom, 0px) + 12px)' }}>
+            <div className="px-4 pt-2 pb-4 border-t border-gray-100">
               <div className="flex gap-3">
                 <button
                   onPointerDown={e => e.preventDefault()}
