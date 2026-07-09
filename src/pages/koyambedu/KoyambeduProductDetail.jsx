@@ -702,17 +702,17 @@ export default function KoyambeduProductDetail() {
             onClick={() => setShowQtySheet(false)}
           />
 
-          {/* Sheet panel — spans from 15vh down to BottomNav; browser computes height */}
+          {/* Sheet panel — spans from 15vh down to BottomNav */}
           <div
-            className="fixed left-0 right-0 z-[10002] bg-white rounded-t-3xl flex flex-col overflow-hidden"
+            className="fixed left-0 right-0 z-[10002] bg-white rounded-t-3xl overflow-hidden"
             style={{
               top:        '15vh',
               bottom:     'var(--bottom-nav-h, 0px)',
               boxShadow:  '0 -8px 40px rgba(0,0,0,0.22)',
             }}
           >
-            {/* ── Scrollable body — flex-1 + min-h-0 lets it shrink, buttons stay pinned ── */}
-            <div className="px-4 pt-4 overflow-y-auto flex-1 min-h-0">
+            {/* ── Scrollable body — leaves 100px at bottom for the absolute-positioned buttons ── */}
+            <div className="px-4 pt-4 overflow-y-auto absolute inset-0" style={{ paddingBottom: '100px' }}>
 
             {/* Drag handle + close */}
             <div className="flex items-center justify-between mb-3">
@@ -829,8 +829,9 @@ export default function KoyambeduProductDetail() {
 
             </div>{/* end scrollable body */}
 
-            {/* ── Action buttons — pinned outside scroll, always visible ── */}
-            <div className="px-4 pt-2 border-t border-gray-100" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', flexShrink: 0 }}>
+            {/* ── Action buttons — absolutely pinned to bottom of sheet, always visible ── */}
+            <div className="px-4 pt-2 border-t border-gray-100 absolute left-0 right-0 bottom-0 bg-white"
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}>
               <div className="flex gap-3">
                 <button
                   onPointerDown={e => e.preventDefault()}
