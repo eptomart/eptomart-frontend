@@ -913,32 +913,18 @@ function MobileSearchBar() {
   );
 }
 
-// ── Koyambedu Market Tape — scrolling differentiator ──────────
-const KBD_TAPE_ITEMS = [
-  { emoji: '🏆', text: "Asia's Largest Produce Market" },
-  { emoji: '🌿', text: '300+ Varieties Daily' },
-  { emoji: '🚚', text: 'Morning Delivery by 6AM' },
-  { emoji: '🤝', text: '2,000+ Verified Vendors' },
-  { emoji: '📦', text: '1,000 Tonnes Traded Daily' },
-  { emoji: '✅', text: 'Market-Fresh Guaranteed' },
-  { emoji: '🥬', text: 'Straight from Koyambedu' },
-];
+// ══════════════════════════════════════════════════════════════
+// GENERIC SUB-APP SPOTLIGHT
+// Used for Koyambedu Daily, Farmer Fresh, Proteins
+// ══════════════════════════════════════════════════════════════
 
-function KoyambeduMarketTape() {
-  const items = [...KBD_TAPE_ITEMS, ...KBD_TAPE_ITEMS]; // duplicate for seamless loop
+// Scrolling tape — shared by all verticals, colour-configurable
+function SpotlightTape({ items, bg }) {
+  const doubled = [...items, ...items];
   return (
-    <div className="overflow-hidden my-2"
-      style={{ background: 'linear-gradient(90deg, #064e3b 0%, #065f46 50%, #064e3b 100%)' }}>
-      <div
-        style={{
-          display: 'flex',
-          gap: 28,
-          whiteSpace: 'nowrap',
-          width: 'max-content',
-          padding: '8px 0',
-          animation: 'kbdTape 26s linear infinite',
-        }}>
-        {items.map((c, i) => (
+    <div className="overflow-hidden my-2" style={{ background: bg }}>
+      <div style={{ display: 'flex', gap: 28, whiteSpace: 'nowrap', width: 'max-content', padding: '8px 0', animation: 'spotTape 26s linear infinite' }}>
+        {doubled.map((c, i) => (
           <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#fff', fontSize: 11, fontWeight: 600 }}>
             <span style={{ fontSize: 13 }}>{c.emoji}</span>
             <span style={{ opacity: 0.92 }}>{c.text}</span>
@@ -946,22 +932,17 @@ function KoyambeduMarketTape() {
           </span>
         ))}
       </div>
-      <style>{`@keyframes kbdTape { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }`}</style>
+      <style>{`@keyframes spotTape { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }`}</style>
     </div>
   );
 }
 
-// ══════════════════════════════════════════════════════════════
-// KOYAMBEDU DAILY SPOTLIGHT — curated product card
-// Green accent, lowestUnitPrice, grades badge
-// ══════════════════════════════════════════════════════════════
-function KoyambeduHomeCard({ product: p }) {
-  const ACCENT = '#059669';
-  const img = p.images?.[0]?.url || p.image?.url || '';
-  const href = `/koyambedu/product/${p._id}`;
-  const gradeCount = p.gradesEnabled && p.grades?.length > 0 ? p.grades.length : null;
-  const lup = p.lowestUnitPrice;
-
+// Product card — accent colour + image + price + badge from config
+function SpotlightCard({ product: p, cfg }) {
+  const img = cfg.getImg(p);
+  const href = cfg.getHref(p);
+  const badge = cfg.getBadge(p);
+  const price = cfg.getPrice(p);
   return (
     <div className="bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col group"
       style={{ boxShadow: '0 1px 5px rgba(0,0,0,0.06)' }}>
@@ -969,10 +950,10 @@ function KoyambeduHomeCard({ product: p }) {
         {img
           ? <img src={img} alt={p.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.07]" />
           : <div className="w-full h-full flex items-center justify-center"><FaCarrot size={28} style={{ color: '#d1d5db' }} /></div>}
-        {gradeCount && (
+        {badge && (
           <div className="absolute top-1.5 left-1.5 text-white font-black rounded-md px-1.5 py-0.5"
-            style={{ background: ACCENT, fontSize: 8, boxShadow: `0 2px 6px ${ACCENT}70` }}>
-            {gradeCount} grades
+            style={{ background: cfg.accent, fontSize: 8, boxShadow: `0 2px 6px ${cfg.accent}70` }}>
+            {badge}
           </div>
         )}
         <div className="absolute inset-x-0 bottom-0 h-6 pointer-events-none"
@@ -984,19 +965,13 @@ function KoyambeduHomeCard({ product: p }) {
         </Link>
         <div className="flex items-end justify-between mt-auto pt-1">
           <div>
-            {lup ? (
-              <>
-                <span className="text-[9px] text-gray-500 font-medium">From </span>
-                <span className="text-[12px] font-extrabold text-gray-900">₹{lup.toLocaleString('en-IN')}</span>
-                <span className="text-[9px] text-gray-500">/unit</span>
-              </>
-            ) : (
-              <span className="text-[10px] text-gray-400">View price</span>
-            )}
+            {price
+              ? <span className="text-[11px] font-extrabold text-gray-900">{price.label}</span>
+              : <span className="text-[10px] text-gray-400">View price</span>}
           </div>
           <Link to={href}
             className="w-[30px] h-[30px] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 active:scale-90"
-            style={{ background: ACCENT, boxShadow: `0 3px 8px ${ACCENT}55`, fontSize: 20, lineHeight: 1 }}>
+            style={{ background: cfg.accent, boxShadow: `0 3px 8px ${cfg.accent}55`, fontSize: 20, lineHeight: 1 }}>
             +
           </Link>
         </div>
@@ -1005,33 +980,25 @@ function KoyambeduHomeCard({ product: p }) {
   );
 }
 
-function KoyambeduDailySpotlight() {
+function SubAppSpotlight({ cfg }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/koyambedu/products/homepage?limit=10')
+    api.get(cfg.apiUrl)
       .then(r => setProducts(r.data?.products || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [cfg.apiUrl]);
 
   return (
     <section className="pt-3 pb-1">
-      <SectionHeader
-        Icon={FaLeaf}
-        iconColor="#059669"
-        dotColor="bg-emerald-500"
-        title="Fresh from Koyambedu Daily"
-        link="/koyambedu"
-      />
+      <SectionHeader Icon={cfg.Icon} iconColor={cfg.accent} dotColor={cfg.dotColor} title={cfg.title} link={cfg.link} />
       {loading ? (
         <>
           <div className="md:hidden flex gap-2 px-4 overflow-hidden">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="flex-shrink-0" style={{ width: 'calc(30% - 4px)' }}>
-                <SkeletonCard />
-              </div>
+              <div key={i} className="flex-shrink-0" style={{ width: 'calc(30% - 4px)' }}><SkeletonCard /></div>
             ))}
           </div>
           <div className="hidden md:grid md:grid-cols-5 gap-3">
@@ -1040,35 +1007,134 @@ function KoyambeduDailySpotlight() {
         </>
       ) : products.length === 0 ? (
         <div className="mx-4 rounded-2xl flex flex-col items-center justify-center py-8 gap-2"
-          style={{ background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '1.5px dashed #86efac' }}>
-          <span style={{ fontSize: 36 }}>🌿</span>
-          <p className="font-black text-green-800 text-sm">Fresh arrivals coming soon!</p>
-          <p className="text-green-600 text-xs text-center px-6">We're sourcing the best produce from Koyambedu market. Check back shortly.</p>
-          <Link to="/koyambedu" className="mt-1 text-xs font-bold text-white bg-emerald-600 px-4 py-1.5 rounded-xl active:scale-95 transition">
-            Explore Koyambedu Daily
+          style={{ background: cfg.emptyBg, border: `1.5px dashed ${cfg.emptyBorder}` }}>
+          <span style={{ fontSize: 36 }}>{cfg.emoji}</span>
+          <p className="font-black text-sm" style={{ color: cfg.emptyHeadColor }}>{cfg.emptyMsg}</p>
+          <p className="text-xs text-center px-6" style={{ color: cfg.emptySubColor }}>{cfg.emptySub}</p>
+          <Link to={cfg.link} className="mt-1 text-xs font-bold text-white px-4 py-1.5 rounded-xl active:scale-95 transition"
+            style={{ background: cfg.accent }}>
+            Explore {cfg.shortName}
           </Link>
         </div>
       ) : (
         <>
-          {/* Mobile: horizontal scroll */}
           <div className="md:hidden flex gap-2 px-4 pb-1 overflow-x-auto scrollbar-hide"
             style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
             {products.map(p => (
               <div key={p._id} className="flex-shrink-0" style={{ width: 'calc(30% - 4px)', scrollSnapAlign: 'start' }}>
-                <KoyambeduHomeCard product={p} />
+                <SpotlightCard product={p} cfg={cfg} />
               </div>
             ))}
           </div>
-          {/* Desktop: 5-col grid */}
           <div className="hidden md:grid md:grid-cols-5 gap-3">
-            {products.slice(0, 5).map(p => <KoyambeduHomeCard key={p._id} product={p} />)}
+            {products.slice(0, 5).map(p => <SpotlightCard key={p._id} product={p} cfg={cfg} />)}
           </div>
         </>
       )}
-      <KoyambeduMarketTape />
+      {cfg.tape && <SpotlightTape items={cfg.tape.items} bg={cfg.tape.bg} />}
     </section>
   );
 }
+
+// ── Per-vertical config ────────────────────────────────────────
+const SPOTLIGHT_CONFIGS = [
+  {
+    key: 'koyambedu',
+    title: 'Fresh from Koyambedu Daily',
+    shortName: 'Koyambedu Daily',
+    apiUrl: '/koyambedu/products/homepage?limit=10',
+    link: '/koyambedu',
+    accent: '#059669',
+    dotColor: 'bg-emerald-500',
+    Icon: FaLeaf,
+    emoji: '🌿',
+    emptyMsg: 'Fresh arrivals coming soon!',
+    emptySub: "We're sourcing the best produce from Koyambedu market. Check back shortly.",
+    emptyBg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)',
+    emptyBorder: '#86efac',
+    emptyHeadColor: '#166534',
+    emptySubColor: '#16a34a',
+    getImg: p => p.images?.[0]?.url || '',
+    getHref: p => `/koyambedu/product/${p._id}`,
+    getBadge: p => p.gradesEnabled && p.grades?.length > 0 ? `${p.grades.length} grades` : null,
+    getPrice: p => p.lowestUnitPrice ? { label: `From ₹${p.lowestUnitPrice.toLocaleString('en-IN')}/${p.unit || 'unit'}` } : null,
+    tape: {
+      bg: 'linear-gradient(90deg,#064e3b 0%,#065f46 50%,#064e3b 100%)',
+      items: [
+        { emoji: '🏆', text: "Asia's Largest Produce Market" },
+        { emoji: '🌿', text: '300+ Varieties Daily' },
+        { emoji: '🚚', text: 'Morning Delivery by 6AM' },
+        { emoji: '🤝', text: '2,000+ Verified Vendors' },
+        { emoji: '📦', text: '1,000 Tonnes Traded Daily' },
+        { emoji: '✅', text: 'Market-Fresh Guaranteed' },
+      ],
+    },
+  },
+  {
+    key: 'uzhavar',
+    title: 'Direct from Farmer Fresh',
+    shortName: 'Farmer Fresh',
+    apiUrl: '/uzhavar/products/homepage?limit=10',
+    link: '/uzhavar',
+    accent: '#0d9488',
+    dotColor: 'bg-teal-500',
+    Icon: FaTractor,
+    emoji: '🌾',
+    emptyMsg: 'Farm arrivals coming soon!',
+    emptySub: 'Tamil Nadu farmers are preparing their harvest. Check back shortly.',
+    emptyBg: 'linear-gradient(135deg,#f0fdfa,#ccfbf1)',
+    emptyBorder: '#5eead4',
+    emptyHeadColor: '#134e4a',
+    emptySubColor: '#0f766e',
+    getImg: p => p.image || '',
+    getHref: () => '/uzhavar',
+    getBadge: p => p.category ? p.category.charAt(0).toUpperCase() + p.category.slice(1) : null,
+    getPrice: p => p.pricePerUnit ? { label: `₹${p.pricePerUnit.toLocaleString('en-IN')}/${p.unit || 'kg'}` } : null,
+    tape: {
+      bg: 'linear-gradient(90deg,#134e4a 0%,#0f766e 50%,#134e4a 100%)',
+      items: [
+        { emoji: '🌾', text: 'Farm-to-Door Direct' },
+        { emoji: '🚫', text: 'Zero Middlemen' },
+        { emoji: '🌱', text: 'Tamil Nadu Farmers' },
+        { emoji: '✔️', text: 'Verified Growers' },
+        { emoji: '🥦', text: 'Chemical-Free Options' },
+        { emoji: '💚', text: 'Support Local Farmers' },
+      ],
+    },
+  },
+  {
+    key: 'eptofresh',
+    title: 'Fresh Proteins Near You',
+    shortName: 'Proteins',
+    apiUrl: '/eptofresh/products/homepage?limit=10',
+    link: '/eptofresh',
+    accent: '#ea580c',
+    dotColor: 'bg-orange-600',
+    Icon: FaDrumstickBite,
+    emoji: '🥩',
+    emptyMsg: 'Protein vendors coming soon!',
+    emptySub: 'Local meat & seafood shops are onboarding in your area. Check back shortly.',
+    emptyBg: 'linear-gradient(135deg,#fff7ed,#ffedd5)',
+    emptyBorder: '#fdba74',
+    emptyHeadColor: '#7c2d12',
+    emptySubColor: '#c2410c',
+    getImg: p => p.images?.find(i => i.isPrimary)?.url || p.images?.[0]?.url || '',
+    getHref: p => p.seller?._id ? `/eptofresh/sellers/${p.seller._id}` : '/eptofresh',
+    getBadge: p => p.category || null,
+    getPrice: p => p.price ? { label: `₹${p.price.toLocaleString('en-IN')}/${p.unit || 'kg'}` } : null,
+    tape: {
+      bg: 'linear-gradient(90deg,#431407 0%,#7c2d12 50%,#431407 100%)',
+      items: [
+        { emoji: '🥩', text: 'Freshly Cut Daily' },
+        { emoji: '📍', text: 'GPS-Based Hyperlocal' },
+        { emoji: '🐓', text: 'Chicken · Mutton · Fish' },
+        { emoji: '⚡', text: 'Same-Day Delivery' },
+        { emoji: '✅', text: 'Verified Local Shops' },
+        { emoji: '🌊', text: 'Fresh Seafood Too' },
+      ],
+    },
+  },
+];
 
 // ── Section divider ────────────────────────────────────────────
 const Divider = () => (
@@ -1141,8 +1207,8 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Koyambedu Daily product spotlight */}
-          <KoyambeduDailySpotlight />
+          {/* Sub-app product spotlights */}
+          {SPOTLIGHT_CONFIGS.map(cfg => <SubAppSpotlight key={cfg.key} cfg={cfg} />)}
         </div>
 
         {/* ══════════════════════════════════════════
@@ -1155,8 +1221,8 @@ export default function Home() {
             <ShopBySource />
           </div>
 
-          {/* Koyambedu Daily product spotlight */}
-          <KoyambeduDailySpotlight />
+          {/* Sub-app product spotlights — Koyambedu, Farmer Fresh, Proteins */}
+          {SPOTLIGHT_CONFIGS.map(cfg => <SubAppSpotlight key={cfg.key} cfg={cfg} />)}
 
           {/* 2. Trust indicators */}
           <div className="pt-2">
