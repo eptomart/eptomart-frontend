@@ -702,16 +702,16 @@ export default function KoyambeduProductDetail() {
             onClick={() => setShowQtySheet(false)}
           />
 
-          {/* Sheet panel — anchored ABOVE the BottomNav, z-[10002] above backdrop */}
+          {/* Sheet panel — spans from 15vh down to BottomNav; browser computes height */}
           <div
             className="fixed left-0 right-0 z-[10002] bg-white rounded-t-3xl flex flex-col overflow-hidden"
             style={{
+              top:        '15vh',
               bottom:     'var(--bottom-nav-h, 0px)',
-              maxHeight:  'calc(85dvh - var(--bottom-nav-h, 0px))',
               boxShadow:  '0 -8px 40px rgba(0,0,0,0.22)',
             }}
           >
-            {/* ── Scrollable body — min-h-0 lets flex-1 shrink so buttons stay visible ── */}
+            {/* ── Scrollable body — flex-1 + min-h-0 lets it shrink, buttons stay pinned ── */}
             <div className="px-4 pt-4 overflow-y-auto flex-1 min-h-0">
 
             {/* Drag handle + close */}
