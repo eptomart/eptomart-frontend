@@ -1451,7 +1451,6 @@ export default function Home() {
         ══════════════════════════════════════════ */}
         <div className="hidden md:block max-w-7xl mx-auto px-4 pt-4">
           <DesktopHero />
-          <DesktopCategoryStrip />
           <DesktopPromoGrid onScrollTo={(id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })} />
           {/* Desktop trust strip */}
           <div className="flex items-center justify-between gap-2 bg-white rounded-2xl px-5 py-2.5 border border-gray-100 shadow-sm mb-4">
@@ -1499,11 +1498,6 @@ export default function Home() {
             <ContinueShopping />
           </div>
 
-        </div>
-
-        {/* ── MOBILE ONLY: Category strip ── */}
-        <div className="md:hidden pt-2">
-          <MobileCategoryStrip />
         </div>
 
         {/* Recently Viewed — only shown when user has history */}
