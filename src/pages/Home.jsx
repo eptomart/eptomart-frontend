@@ -1477,8 +1477,6 @@ export default function Home() {
 
           {/* Sub-app product sections */}
           <KoyambeduShowcase />
-          <ComingSoonCard variant="farmerFresh" />
-          <ComingSoonCard variant="proteins" />
         </div>
 
         {/* ══════════════════════════════════════════
@@ -1493,8 +1491,6 @@ export default function Home() {
 
           {/* Sub-app product sections — below ShopBySource tiles */}
           <KoyambeduShowcase />
-          <ComingSoonCard variant="farmerFresh" />
-          <ComingSoonCard variant="proteins" />
 
           {/* 2. Trust indicators */}
           <div className="pt-2">
