@@ -937,63 +937,206 @@ function SpotlightTape({ items, bg }) {
   );
 }
 
-// Product card — accent colour + image + price + badge from config
-function SpotlightCard({ product: p, cfg }) {
-  const img = cfg.getImg(p);
-  const href = cfg.getHref(p);
-  const badge = cfg.getBadge(p);
-  const price = cfg.getPrice(p);
+// ══════════════════════════════════════════════════════════════
+// ANIMATION HOOK — IntersectionObserver-based in-view detection
+// ══════════════════════════════════════════════════════════════
+function useInView(threshold = 0.12, once = true) {
+  const ref = useRef(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === 'undefined') { setInView(true); return; }
+    const ob = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setInView(true); if (once) ob.disconnect(); }
+    }, { threshold });
+    ob.observe(el);
+    return () => ob.disconnect();
+  }, [threshold, once]);
+  return [ref, inView];
+}
+
+// ══════════════════════════════════════════════════════════════
+// KOYAMBEDU PRODUCT CARD — enhanced, animated, grade-aware
+// ══════════════════════════════════════════════════════════════
+function KbdProductCard({ product: p, index = 0, visible = true }) {
+  const navigate = useNavigate();
+  const img       = p.images?.[0]?.url || '';
+  const href      = `/koyambedu/product/${p._id}`;
+  const price     = p.lowestUnitPrice;
+  const numGrades = p.gradesEnabled && p.grades?.length > 0 ? p.grades.length : 0;
+  const catName   = p.category?.name || '';
+
   return (
-    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col group"
-      style={{ boxShadow: '0 1px 5px rgba(0,0,0,0.06)' }}>
-      <Link to={href} className="relative bg-gray-50 block overflow-hidden" style={{ aspectRatio: '5/4' }}>
-        {img
-          ? <img src={img} alt={p.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.07]" />
-          : <div className="w-full h-full flex items-center justify-center"><FaCarrot size={28} style={{ color: '#d1d5db' }} /></div>}
-        {badge && (
-          <div className="absolute top-1.5 left-1.5 text-white font-black rounded-md px-1.5 py-0.5"
-            style={{ background: cfg.accent, fontSize: 8, boxShadow: `0 2px 6px ${cfg.accent}70` }}>
-            {badge}
+    <div
+      className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col group"
+      style={{
+        boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
+        opacity:   visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(20px)',
+        transition: `opacity 0.45s ease ${index * 55}ms, transform 0.45s ease ${index * 55}ms, box-shadow 0.2s ease`,
+      }}
+    >
+      <Link to={href} className="relative bg-gray-50 block overflow-hidden" style={{ aspectRatio: '1/1' }}>
+        {img ? (
+          <img src={img} alt={p.name} loading="lazy"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.08]" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center" style={{ background: '#f0fdf4' }}>
+            <FaLeaf size={30} style={{ color: '#a7f3d0' }} />
           </div>
         )}
-        <div className="absolute inset-x-0 bottom-0 h-6 pointer-events-none"
-          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.06), transparent)' }} />
+        {catName && (
+          <div className="absolute top-1.5 left-1.5 text-white font-black rounded-md px-1.5 py-0.5"
+            style={{ background: '#059669', fontSize: 8, boxShadow: '0 2px 6px rgba(5,150,105,0.45)' }}>
+            {catName}
+          </div>
+        )}
+        {numGrades > 1 && (
+          <div className="absolute top-1.5 right-1.5 bg-white text-emerald-700 font-bold rounded-md px-1.5 py-0.5 border border-emerald-100"
+            style={{ fontSize: 8 }}>
+            {numGrades} grades
+          </div>
+        )}
+        <div className="absolute inset-x-0 bottom-0 h-8 pointer-events-none"
+          style={{ background: 'linear-gradient(to top,rgba(0,0,0,0.10),transparent)' }} />
       </Link>
-      <div className="p-2 flex flex-col gap-0.5 flex-1">
+
+      <div className="p-2.5 flex flex-col gap-0.5 flex-1">
         <Link to={href}>
           <p className="text-[11px] font-bold text-gray-800 line-clamp-2 leading-snug">{p.name}</p>
+          {p.seller?.businessName && (
+            <p className="text-[9px] text-gray-500 mt-0.5 truncate">{p.seller.businessName}</p>
+          )}
         </Link>
         <div className="flex items-end justify-between mt-auto pt-1">
           <div>
-            {price
-              ? <span className="text-[11px] font-extrabold text-gray-900">{price.label}</span>
-              : <span className="text-[10px] text-gray-400">View price</span>}
+            {price ? (
+              <>
+                <p className="text-[8px] text-gray-400 font-semibold leading-none mb-0.5">From</p>
+                <span className="text-[12px] font-extrabold text-gray-900">
+                  ₹{price.toLocaleString('en-IN')}
+                </span>
+                <span className="text-[9px] text-gray-500 ml-0.5">/{p.unit || 'unit'}</span>
+              </>
+            ) : (
+              <span className="text-[10px] text-gray-400">View price</span>
+            )}
           </div>
-          <Link to={href}
-            className="w-[30px] h-[30px] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 active:scale-90"
-            style={{ background: cfg.accent, boxShadow: `0 3px 8px ${cfg.accent}55`, fontSize: 20, lineHeight: 1 }}>
-            +
-          </Link>
+          <button
+            onClick={() => navigate(href)}
+            className="w-[28px] h-[28px] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 active:scale-90 transition-transform"
+            style={{ background: 'linear-gradient(135deg,#059669,#10b981)', boxShadow: '0 3px 8px rgba(5,150,105,0.40)', fontSize: 18, lineHeight: 1 }}
+            aria-label="View product">+</button>
         </div>
       </div>
     </div>
   );
 }
 
-function SubAppSpotlight({ cfg }) {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+// ══════════════════════════════════════════════════════════════
+// KOYAMBEDU SHOWCASE — category-wise product display
+// Primary product section shown immediately below Sub Apps
+// ══════════════════════════════════════════════════════════════
+const KBD_TAPE_DATA = {
+  bg: 'linear-gradient(90deg,#064e3b 0%,#065f46 50%,#064e3b 100%)',
+  items: [
+    { emoji: '🏆', text: "Asia's Largest Produce Market" },
+    { emoji: '🌿', text: '300+ Varieties Daily' },
+    { emoji: '🚚', text: 'Morning Delivery by 6AM' },
+    { emoji: '🤝', text: '2,000+ Verified Vendors' },
+    { emoji: '📦', text: '1,000 Tonnes Traded Daily' },
+    { emoji: '✅', text: 'Market-Fresh Guaranteed' },
+  ],
+};
+
+function KoyambeduShowcase() {
+  const [sections,       setSections]       = useState([]);
+  const [flatProducts,   setFlatProducts]   = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [sectionRef, inView] = useInView(0.05);
 
   useEffect(() => {
-    api.get(cfg.apiUrl)
-      .then(r => setProducts(r.data?.products || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [cfg.apiUrl]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const r1 = await api.get('/koyambedu/products/by-category?limit=8');
+        if (cancelled) return;
+        const s = r1.data?.sections || [];
+        setSections(s);
+        if (s.length === 0) {
+          const r2 = await api.get('/koyambedu/products/homepage?limit=20');
+          if (!cancelled) setFlatProducts(r2.data?.products || []);
+        }
+      } catch {
+        if (!cancelled) {
+          try {
+            const r2 = await api.get('/koyambedu/products/homepage?limit=20');
+            if (!cancelled) setFlatProducts(r2.data?.products || []);
+          } catch {}
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const categories = useMemo(() => [
+    { key: 'all', name: 'All', icon: null },
+    ...sections.map(s => ({ key: String(s.category._id), name: s.category.name, icon: s.category.icon || null })),
+  ], [sections]);
+
+  const displaySections = useMemo(() =>
+    activeCategory === 'all' ? sections : sections.filter(s => String(s.category._id) === activeCategory),
+  [sections, activeCategory]);
+
+  const viewAllLink = activeCategory === 'all'
+    ? '/koyambedu'
+    : `/koyambedu/shop?category=${activeCategory}`;
 
   return (
-    <section className="pt-3 pb-1">
-      <SectionHeader Icon={cfg.Icon} iconColor={cfg.accent} dotColor={cfg.dotColor} title={cfg.title} link={cfg.link} />
+    <section ref={sectionRef} className="pt-3 pb-0">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2 px-4">
+        <div className="flex items-center gap-2">
+          <span className="w-1 h-5 rounded-full flex-shrink-0 bg-emerald-500" />
+          <span className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: '#05966912' }}>
+            <FaLeaf size={13} style={{ color: '#059669' }} />
+          </span>
+          <h2 className="text-sm md:text-lg font-extrabold text-gray-900 tracking-tight">
+            Fresh from Koyambedu Daily
+          </h2>
+        </div>
+        <Link to="/koyambedu"
+          className="text-xs font-bold flex items-center gap-0.5 transition-all hover:gap-1.5"
+          style={{ color: '#059669' }}>
+          See all <FiChevronRight size={12} />
+        </Link>
+      </div>
+
+      {/* Category filter chips — shown only when we have multiple categories */}
+      {!loading && sections.length > 1 && (
+        <div className="flex gap-1.5 px-4 mb-2.5 overflow-x-auto scrollbar-hide pb-0.5"
+          style={{ WebkitOverflowScrolling: 'touch' }}>
+          {categories.map(cat => (
+            <button key={cat.key} onClick={() => setActiveCategory(cat.key)}
+              className="flex-shrink-0 px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all duration-200 active:scale-95"
+              style={{
+                background: activeCategory === cat.key ? 'linear-gradient(135deg,#059669,#10b981)' : 'rgba(255,255,255,0.92)',
+                color:      activeCategory === cat.key ? '#fff' : '#374151',
+                border:     activeCategory === cat.key ? 'none' : '1px solid #e5e7eb',
+                boxShadow:  activeCategory === cat.key ? '0 2px 8px rgba(5,150,105,0.35)' : '0 1px 3px rgba(0,0,0,0.05)',
+              }}>
+              {cat.icon && <span className="mr-0.5">{cat.icon}</span>}
+              {cat.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Loading skeletons */}
       {loading ? (
         <>
           <div className="md:hidden flex gap-2 px-4 overflow-hidden">
@@ -1001,140 +1144,253 @@ function SubAppSpotlight({ cfg }) {
               <div key={i} className="flex-shrink-0" style={{ width: 'calc(30% - 4px)' }}><SkeletonCard /></div>
             ))}
           </div>
-          <div className="hidden md:grid md:grid-cols-5 gap-3">
+          <div className="hidden md:grid md:grid-cols-5 gap-3 px-4">
             {[...Array(5)].map((_, i) => <SkeletonCard key={i} />)}
           </div>
         </>
-      ) : products.length === 0 ? (
-        <div className="mx-4 rounded-2xl flex flex-col items-center justify-center py-8 gap-2"
-          style={{ background: cfg.emptyBg, border: `1.5px dashed ${cfg.emptyBorder}` }}>
-          <span style={{ fontSize: 36 }}>{cfg.emoji}</span>
-          <p className="font-black text-sm" style={{ color: cfg.emptyHeadColor }}>{cfg.emptyMsg}</p>
-          <p className="text-xs text-center px-6" style={{ color: cfg.emptySubColor }}>{cfg.emptySub}</p>
-          <Link to={cfg.link} className="mt-1 text-xs font-bold text-white px-4 py-1.5 rounded-xl active:scale-95 transition"
-            style={{ background: cfg.accent }}>
-            Explore {cfg.shortName}
-          </Link>
+
+      /* Category-wise product display */
+      ) : sections.length > 0 ? (
+        <div className="space-y-3">
+          {displaySections.map(section => (
+            <div key={String(section.category._id)}>
+              {/* Category row label (only in "All" view) */}
+              {activeCategory === 'all' && (
+                <div className="flex items-center justify-between px-4 mb-1">
+                  <div className="flex items-center gap-1.5">
+                    {section.category.icon && <span className="text-sm">{section.category.icon}</span>}
+                    <p className="text-xs font-extrabold text-gray-600">{section.category.name}</p>
+                  </div>
+                  <Link
+                    to={`/koyambedu/shop?category=${section.category.slug || section.category._id}`}
+                    className="text-[10px] font-bold flex items-center gap-0.5"
+                    style={{ color: '#059669' }}>
+                    More <FiChevronRight size={10} />
+                  </Link>
+                </div>
+              )}
+              {/* Mobile: horizontal scroll */}
+              <div className="md:hidden flex gap-2 px-4 overflow-x-auto scrollbar-hide"
+                style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+                {section.products.map((p, i) => (
+                  <div key={p._id} className="flex-shrink-0"
+                    style={{ width: 'calc(30% - 4px)', scrollSnapAlign: 'start' }}>
+                    <KbdProductCard product={p} index={i} visible={inView} />
+                  </div>
+                ))}
+              </div>
+              {/* Desktop: 5-col grid */}
+              <div className="hidden md:grid md:grid-cols-5 gap-3 px-4">
+                {section.products.slice(0, 5).map((p, i) => (
+                  <KbdProductCard key={p._id} product={p} index={i} visible={inView} />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-      ) : (
+
+      /* Fallback: flat product list (no categories yet) */
+      ) : flatProducts.length > 0 ? (
         <>
-          <div className="md:hidden flex gap-2 px-4 pb-1 overflow-x-auto scrollbar-hide"
+          <div className="md:hidden flex gap-2 px-4 overflow-x-auto scrollbar-hide"
             style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
-            {products.map(p => (
-              <div key={p._id} className="flex-shrink-0" style={{ width: 'calc(30% - 4px)', scrollSnapAlign: 'start' }}>
-                <SpotlightCard product={p} cfg={cfg} />
+            {flatProducts.map((p, i) => (
+              <div key={p._id} className="flex-shrink-0"
+                style={{ width: 'calc(30% - 4px)', scrollSnapAlign: 'start' }}>
+                <KbdProductCard product={p} index={i} visible={inView} />
               </div>
             ))}
           </div>
-          <div className="hidden md:grid md:grid-cols-5 gap-3">
-            {products.slice(0, 5).map(p => <SpotlightCard key={p._id} product={p} cfg={cfg} />)}
+          <div className="hidden md:grid md:grid-cols-5 gap-3 px-4">
+            {flatProducts.slice(0, 10).map((p, i) => (
+              <KbdProductCard key={p._id} product={p} index={i} visible={inView} />
+            ))}
           </div>
         </>
+
+      /* Empty state */
+      ) : (
+        <div className="mx-4 rounded-2xl flex flex-col items-center justify-center py-8 gap-2"
+          style={{ background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '1.5px dashed #86efac' }}>
+          <span style={{ fontSize: 36 }}>🌿</span>
+          <p className="font-black text-sm" style={{ color: '#166534' }}>Fresh arrivals coming soon!</p>
+          <p className="text-xs text-center px-6" style={{ color: '#16a34a' }}>
+            We're sourcing the best produce from Koyambedu market. Check back shortly.
+          </p>
+          <Link to="/koyambedu"
+            className="mt-1 text-xs font-bold text-white px-4 py-1.5 rounded-xl active:scale-95 transition"
+            style={{ background: '#059669' }}>
+            Explore Koyambedu Daily
+          </Link>
+        </div>
       )}
-      {cfg.tape && <SpotlightTape items={cfg.tape.items} bg={cfg.tape.bg} />}
+
+      {/* "View All" CTA */}
+      {!loading && (sections.length > 0 || flatProducts.length > 0) && (
+        <div className="px-4 mt-3 mb-1">
+          <Link to={viewAllLink}
+            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-bold border bg-white transition-all active:scale-[0.98] hover:bg-emerald-50"
+            style={{ color: '#059669', borderColor: '#a7f3d0', boxShadow: '0 1px 4px rgba(5,150,105,0.10)' }}>
+            View All Koyambedu Daily Products <FiArrowRight size={12} />
+          </Link>
+        </div>
+      )}
+
+      {/* Scrolling tape */}
+      <SpotlightTape items={KBD_TAPE_DATA.items} bg={KBD_TAPE_DATA.bg} />
     </section>
   );
 }
 
-// ── Per-vertical config ────────────────────────────────────────
-const SPOTLIGHT_CONFIGS = [
-  {
-    key: 'koyambedu',
-    title: 'Fresh from Koyambedu Daily',
-    shortName: 'Koyambedu Daily',
-    apiUrl: '/koyambedu/products/homepage?limit=10',
-    link: '/koyambedu',
-    accent: '#059669',
-    dotColor: 'bg-emerald-500',
-    Icon: FaLeaf,
-    emoji: '🌿',
-    emptyMsg: 'Fresh arrivals coming soon!',
-    emptySub: "We're sourcing the best produce from Koyambedu market. Check back shortly.",
-    emptyBg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)',
-    emptyBorder: '#86efac',
-    emptyHeadColor: '#166534',
-    emptySubColor: '#16a34a',
-    getImg: p => p.images?.[0]?.url || '',
-    getHref: p => `/koyambedu/product/${p._id}`,
-    getBadge: p => p.gradesEnabled && p.grades?.length > 0 ? `${p.grades.length} grades` : null,
-    getPrice: p => p.lowestUnitPrice ? { label: `From ₹${p.lowestUnitPrice.toLocaleString('en-IN')}/${p.unit || 'unit'}` } : null,
-    tape: {
-      bg: 'linear-gradient(90deg,#064e3b 0%,#065f46 50%,#064e3b 100%)',
-      items: [
-        { emoji: '🏆', text: "Asia's Largest Produce Market" },
-        { emoji: '🌿', text: '300+ Varieties Daily' },
-        { emoji: '🚚', text: 'Morning Delivery by 6AM' },
-        { emoji: '🤝', text: '2,000+ Verified Vendors' },
-        { emoji: '📦', text: '1,000 Tonnes Traded Daily' },
-        { emoji: '✅', text: 'Market-Fresh Guaranteed' },
-      ],
-    },
-  },
-  {
-    key: 'uzhavar',
-    title: 'Direct from Farmer Fresh',
-    shortName: 'Farmer Fresh',
-    apiUrl: '/uzhavar/products/homepage?limit=10',
-    link: '/uzhavar',
-    accent: '#0d9488',
-    dotColor: 'bg-teal-500',
-    Icon: FaTractor,
+// ══════════════════════════════════════════════════════════════
+// COMING SOON CARDS — Farmer Fresh & Proteins
+// Replaces product listings for verticals not yet live
+// ══════════════════════════════════════════════════════════════
+const COMING_SOON_CONFIGS = {
+  farmerFresh: {
     emoji: '🌾',
-    emptyMsg: 'Farm arrivals coming soon!',
-    emptySub: 'Tamil Nadu farmers are preparing their harvest. Check back shortly.',
-    emptyBg: 'linear-gradient(135deg,#f0fdfa,#ccfbf1)',
-    emptyBorder: '#5eead4',
-    emptyHeadColor: '#134e4a',
-    emptySubColor: '#0f766e',
-    getImg: p => p.image || '',
-    getHref: () => '/uzhavar',
-    getBadge: p => p.category ? p.category.charAt(0).toUpperCase() + p.category.slice(1) : null,
-    getPrice: p => p.pricePerUnit ? { label: `₹${p.pricePerUnit.toLocaleString('en-IN')}/${p.unit || 'kg'}` } : null,
+    title: 'Farmer Fresh',
+    titleTamil: 'உழவர் சந்தை',
+    subtitle: 'Coming Soon to Serve You',
+    desc: 'Farm-fresh vegetables and fruits directly from Tamil Nadu farmers. Zero middlemen, maximum freshness.',
+    cta: 'Explore Farmer Fresh',
+    link: '/uzhavar',
+    gradient: 'linear-gradient(135deg,#f0fdfa 0%,#ccfbf1 60%,#99f6e4 100%)',
+    accentGradient: 'linear-gradient(135deg,#0f766e,#0d9488)',
+    accent: '#0d9488',
+    border: '#5eead4',
+    headColor: '#134e4a',
+    tagBg: 'rgba(13,148,136,0.10)',
+    tagColor: '#0f766e',
+    stats: [
+      { value: '500+', label: 'Farmers' },
+      { value: 'Pan TN', label: 'Coverage' },
+      { value: 'No', label: 'Middlemen' },
+    ],
     tape: {
       bg: 'linear-gradient(90deg,#134e4a 0%,#0f766e 50%,#134e4a 100%)',
       items: [
-        { emoji: '🌾', text: 'Farm-to-Door Direct' },
-        { emoji: '🚫', text: 'Zero Middlemen' },
-        { emoji: '🌱', text: 'Tamil Nadu Farmers' },
-        { emoji: '✔️', text: 'Verified Growers' },
-        { emoji: '🥦', text: 'Chemical-Free Options' },
-        { emoji: '💚', text: 'Support Local Farmers' },
+        { emoji: '🌾', text: 'Farm-to-Door Direct' }, { emoji: '🚫', text: 'Zero Middlemen' },
+        { emoji: '🌱', text: 'Tamil Nadu Farmers' }, { emoji: '✔️', text: 'Verified Growers' },
+        { emoji: '🥦', text: 'Chemical-Free Options' }, { emoji: '💚', text: 'Support Local Farmers' },
       ],
     },
   },
-  {
-    key: 'eptofresh',
-    title: 'Fresh Proteins Near You',
-    shortName: 'Proteins',
-    apiUrl: '/eptofresh/products/homepage?limit=10',
-    link: '/eptofresh',
-    accent: '#ea580c',
-    dotColor: 'bg-orange-600',
-    Icon: FaDrumstickBite,
+  proteins: {
     emoji: '🥩',
-    emptyMsg: 'Protein vendors coming soon!',
-    emptySub: 'Local meat & seafood shops are onboarding in your area. Check back shortly.',
-    emptyBg: 'linear-gradient(135deg,#fff7ed,#ffedd5)',
-    emptyBorder: '#fdba74',
-    emptyHeadColor: '#7c2d12',
-    emptySubColor: '#c2410c',
-    getImg: p => p.images?.find(i => i.isPrimary)?.url || p.images?.[0]?.url || '',
-    getHref: p => p.seller?._id ? `/eptofresh/sellers/${p.seller._id}` : '/eptofresh',
-    getBadge: p => p.category || null,
-    getPrice: p => p.price ? { label: `₹${p.price.toLocaleString('en-IN')}/${p.unit || 'kg'}` } : null,
+    title: 'Proteins by EptoFresh',
+    titleTamil: 'மீட் & சீஃபுட்',
+    subtitle: 'Coming Soon to Serve You',
+    desc: 'Fresh meat, seafood, eggs & protein products from verified local shops near you. GPS-based hyperlocal delivery.',
+    cta: 'Explore Proteins',
+    link: '/eptofresh',
+    gradient: 'linear-gradient(135deg,#fff7ed 0%,#ffedd5 60%,#fed7aa 100%)',
+    accentGradient: 'linear-gradient(135deg,#c2410c,#ea580c)',
+    accent: '#ea580c',
+    border: '#fdba74',
+    headColor: '#7c2d12',
+    tagBg: 'rgba(234,88,12,0.10)',
+    tagColor: '#c2410c',
+    stats: [
+      { value: 'GPS', label: 'Based' },
+      { value: 'Same', label: 'Day' },
+      { value: 'Fresh', label: 'Daily' },
+    ],
     tape: {
       bg: 'linear-gradient(90deg,#431407 0%,#7c2d12 50%,#431407 100%)',
       items: [
-        { emoji: '🥩', text: 'Freshly Cut Daily' },
-        { emoji: '📍', text: 'GPS-Based Hyperlocal' },
-        { emoji: '🐓', text: 'Chicken · Mutton · Fish' },
-        { emoji: '⚡', text: 'Same-Day Delivery' },
-        { emoji: '✅', text: 'Verified Local Shops' },
-        { emoji: '🌊', text: 'Fresh Seafood Too' },
+        { emoji: '🥩', text: 'Freshly Cut Daily' }, { emoji: '📍', text: 'GPS-Based Hyperlocal' },
+        { emoji: '🐓', text: 'Chicken · Mutton · Fish' }, { emoji: '⚡', text: 'Same-Day Delivery' },
+        { emoji: '✅', text: 'Verified Local Shops' }, { emoji: '🌊', text: 'Fresh Seafood Too' },
       ],
     },
   },
-];
+};
+
+function ComingSoonCard({ variant }) {
+  const cfg = COMING_SOON_CONFIGS[variant];
+  const [cardRef, cardInView] = useInView(0.10);
+
+  return (
+    <section ref={cardRef} className="pt-3 pb-0">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2 px-4">
+        <div className="flex items-center gap-2">
+          <span className="w-1 h-5 rounded-full flex-shrink-0" style={{ background: cfg.accent }} />
+          <h2 className="text-sm md:text-lg font-extrabold text-gray-900 tracking-tight">{cfg.title}</h2>
+        </div>
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+          style={{ background: cfg.tagBg, color: cfg.tagColor }}>
+          Coming Soon
+        </span>
+      </div>
+
+      {/* Main card — animated entrance */}
+      <div className="mx-4 rounded-2xl overflow-hidden"
+        style={{
+          background: cfg.gradient,
+          border: `1.5px solid ${cfg.border}`,
+          boxShadow: `0 4px 20px ${cfg.accent}18`,
+          opacity:   cardInView ? 1 : 0,
+          transform: cardInView ? 'translateY(0)' : 'translateY(24px)',
+          transition: 'opacity 0.55s ease, transform 0.55s ease',
+        }}>
+        <div className="p-5">
+          {/* Top row: emoji icon + text */}
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center text-[32px]"
+              style={{
+                background: `${cfg.accent}16`,
+                border: `1.5px solid ${cfg.border}`,
+                animation: 'csEmojiPulse 3.5s ease-in-out infinite',
+              }}>
+              {cfg.emoji}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <p className="font-black text-base leading-tight" style={{ color: cfg.headColor }}>
+                  {cfg.title}
+                </p>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full text-white flex-shrink-0"
+                  style={{ background: cfg.accentGradient }}>SOON</span>
+              </div>
+              <p className="text-xs font-semibold mb-1.5" style={{ color: cfg.accent }}>
+                {cfg.titleTamil}
+              </p>
+              <p className="text-xs text-gray-600 leading-relaxed">{cfg.desc}</p>
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="flex gap-2 mt-4">
+            {cfg.stats.map(s => (
+              <div key={s.label} className="flex-1 text-center rounded-xl py-2"
+                style={{ background: `${cfg.accent}0e`, border: `1px solid ${cfg.border}` }}>
+                <p className="font-black text-sm" style={{ color: cfg.headColor }}>{s.value}</p>
+                <p className="text-[9px] font-semibold" style={{ color: cfg.accent }}>{s.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Headline */}
+          <p className="text-center font-black text-sm mt-4 mb-3" style={{ color: cfg.headColor }}>
+            🚀 {cfg.subtitle}
+          </p>
+
+          {/* CTA */}
+          <Link to={cfg.link}
+            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-bold text-white active:scale-[0.98] transition-transform"
+            style={{ background: cfg.accentGradient, boxShadow: `0 4px 12px ${cfg.accent}40` }}>
+            {cfg.cta} <FiArrowRight size={12} />
+          </Link>
+        </div>
+      </div>
+
+      {/* Scrolling tape */}
+      <SpotlightTape items={cfg.tape.items} bg={cfg.tape.bg} />
+    </section>
+  );
+}
 
 // ── Section divider ────────────────────────────────────────────
 const Divider = () => (
@@ -1179,6 +1435,18 @@ export default function Home() {
 
       <Navbar />
 
+      {/* ── Global animation keyframes ── */}
+      <style>{`
+        @keyframes csEmojiPulse {
+          0%,100% { transform: scale(1); }
+          50%      { transform: scale(1.10); }
+        }
+        @keyframes kbdFadeUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
       <main className="min-h-screen bg-[#f5f5f7] pb-24 md:pb-8">
 
         {/* ══════════════════════════════════════════
@@ -1207,8 +1475,10 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Sub-app product spotlights */}
-          {SPOTLIGHT_CONFIGS.map(cfg => <SubAppSpotlight key={cfg.key} cfg={cfg} />)}
+          {/* Sub-app product sections */}
+          <KoyambeduShowcase />
+          <ComingSoonCard variant="farmerFresh" />
+          <ComingSoonCard variant="proteins" />
         </div>
 
         {/* ══════════════════════════════════════════
@@ -1221,8 +1491,10 @@ export default function Home() {
             <ShopBySource />
           </div>
 
-          {/* Sub-app product spotlights — Koyambedu, Farmer Fresh, Proteins */}
-          {SPOTLIGHT_CONFIGS.map(cfg => <SubAppSpotlight key={cfg.key} cfg={cfg} />)}
+          {/* Sub-app product sections — below ShopBySource tiles */}
+          <KoyambeduShowcase />
+          <ComingSoonCard variant="farmerFresh" />
+          <ComingSoonCard variant="proteins" />
 
           {/* 2. Trust indicators */}
           <div className="pt-2">
