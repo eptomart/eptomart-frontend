@@ -913,6 +913,116 @@ function MobileSearchBar() {
   );
 }
 
+// ══════════════════════════════════════════════════════════════
+// KOYAMBEDU DAILY SPOTLIGHT — curated product card
+// Green accent, lowestUnitPrice, grades badge
+// ══════════════════════════════════════════════════════════════
+function KoyambeduHomeCard({ product: p }) {
+  const ACCENT = '#059669';
+  const img = p.images?.[0]?.url || p.image?.url || '';
+  const href = `/koyambedu/product/${p._id}`;
+  const gradeCount = p.gradesEnabled && p.grades?.length > 0 ? p.grades.length : null;
+  const lup = p.lowestUnitPrice;
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col group"
+      style={{ boxShadow: '0 1px 5px rgba(0,0,0,0.06)' }}>
+      <Link to={href} className="relative bg-gray-50 block overflow-hidden" style={{ aspectRatio: '5/4' }}>
+        {img
+          ? <img src={img} alt={p.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.07]" />
+          : <div className="w-full h-full flex items-center justify-center"><FaCarrot size={28} style={{ color: '#d1d5db' }} /></div>}
+        {gradeCount && (
+          <div className="absolute top-1.5 left-1.5 text-white font-black rounded-md px-1.5 py-0.5"
+            style={{ background: ACCENT, fontSize: 8, boxShadow: `0 2px 6px ${ACCENT}70` }}>
+            {gradeCount} grades
+          </div>
+        )}
+        <div className="absolute inset-x-0 bottom-0 h-6 pointer-events-none"
+          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.06), transparent)' }} />
+      </Link>
+      <div className="p-2 flex flex-col gap-0.5 flex-1">
+        <Link to={href}>
+          <p className="text-[11px] font-bold text-gray-800 line-clamp-2 leading-snug">{p.name}</p>
+        </Link>
+        <div className="flex items-end justify-between mt-auto pt-1">
+          <div>
+            {lup ? (
+              <>
+                <span className="text-[9px] text-gray-500 font-medium">From </span>
+                <span className="text-[12px] font-extrabold text-gray-900">₹{lup.toLocaleString('en-IN')}</span>
+                <span className="text-[9px] text-gray-500">/unit</span>
+              </>
+            ) : (
+              <span className="text-[10px] text-gray-400">View price</span>
+            )}
+          </div>
+          <Link to={href}
+            className="w-[30px] h-[30px] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 active:scale-90"
+            style={{ background: ACCENT, boxShadow: `0 3px 8px ${ACCENT}55`, fontSize: 20, lineHeight: 1 }}>
+            +
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KoyambeduDailySpotlight() {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/koyambedu/products/homepage?limit=10')
+      .then(r => setProducts(r.data?.products || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (!loading && products.length === 0) return null;
+
+  return (
+    <section className="pt-3 pb-1">
+      <SectionHeader
+        Icon={FaLeaf}
+        iconColor="#059669"
+        dotColor="bg-emerald-500"
+        title="Fresh from Koyambedu Daily"
+        link="/koyambedu"
+      />
+      {loading ? (
+        <>
+          <div className="md:hidden flex gap-2 px-4 overflow-hidden">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex-shrink-0" style={{ width: 'calc(30% - 4px)' }}>
+                <SkeletonCard />
+              </div>
+            ))}
+          </div>
+          <div className="hidden md:grid md:grid-cols-5 gap-3">
+            {[...Array(5)].map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Mobile: horizontal scroll */}
+          <div className="md:hidden flex gap-2 px-4 pb-1 overflow-x-auto scrollbar-hide"
+            style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+            {products.map(p => (
+              <div key={p._id} className="flex-shrink-0" style={{ width: 'calc(30% - 4px)', scrollSnapAlign: 'start' }}>
+                <KoyambeduHomeCard product={p} />
+              </div>
+            ))}
+          </div>
+          {/* Desktop: 5-col grid */}
+          <div className="hidden md:grid md:grid-cols-5 gap-3">
+            {products.slice(0, 5).map(p => <KoyambeduHomeCard key={p._id} product={p} />)}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 // ── Section divider ────────────────────────────────────────────
 const Divider = () => (
   <div className="px-4 my-0.5">
@@ -983,6 +1093,9 @@ export default function Home() {
               </React.Fragment>
             ))}
           </div>
+
+          {/* Koyambedu Daily product spotlight */}
+          <KoyambeduDailySpotlight />
         </div>
 
         {/* ══════════════════════════════════════════
@@ -994,6 +1107,9 @@ export default function Home() {
           <div className="pt-3 px-0">
             <ShopBySource />
           </div>
+
+          {/* Koyambedu Daily product spotlight */}
+          <KoyambeduDailySpotlight />
 
           {/* 2. Trust indicators */}
           <div className="pt-2">
