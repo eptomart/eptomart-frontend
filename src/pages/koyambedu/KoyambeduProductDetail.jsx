@@ -35,17 +35,26 @@ export default function KoyambeduProductDetail() {
   const [priceHistory, setPriceHistory] = useState([]);
   const [showQtySheet, setShowQtySheet] = useState(false); // variant qty bottom sheet
   const [activeGradeKey, setActiveGradeKey] = useState(null); // grade system
+  const [navH, setNavH] = useState(72); // measured px height of BottomNav, default 72
   const autoCommitRef = useRef(null);
   const scrollYRef    = useRef(0);
 
   // Lock body scroll when bottom sheet is open.
   // Uses overflow:hidden on <html> + <body> — more reliable than position:fixed on iOS,
   // which can permanently freeze the page if cleanup is missed (fast taps, keyboard, etc.)
+  // Also measure the real BottomNav height so buttons are positioned correctly.
   useEffect(() => {
     if (showQtySheet) {
       scrollYRef.current = window.scrollY;
       document.documentElement.style.overflow = 'hidden';
       document.body.style.overflow = 'hidden';
+      // Measure real nav height NOW (before CSS variable can get stale)
+      const navEl = document.querySelector('nav.fixed');
+      const domH  = navEl ? navEl.offsetHeight : 0;
+      const cssH  = parseInt(
+        getComputedStyle(document.documentElement).getPropertyValue('--bottom-nav-h') || '0', 10
+      );
+      setNavH(Math.max(domH, cssH, 65)); // never less than 65px
     } else {
       document.documentElement.style.overflow = '';
       document.body.style.overflow = '';
@@ -702,12 +711,12 @@ export default function KoyambeduProductDetail() {
             onClick={() => setShowQtySheet(false)}
           />
 
-          {/* Sheet panel — spans from 15vh down to BottomNav */}
+          {/* Sheet panel — spans from 15vh down; stops 80px above BottomNav */}
           <div
             className="fixed left-0 right-0 z-[10002] bg-white rounded-t-3xl"
             style={{
               top:        '15vh',
-              bottom:     'calc(var(--bottom-nav-h, 0px) + 80px)',
+              bottom:     `${navH + 80}px`,
               boxShadow:  '0 -8px 40px rgba(0,0,0,0.22)',
               overflowY:  'auto',
             }}
@@ -835,8 +844,8 @@ export default function KoyambeduProductDetail() {
           <div
             className="fixed left-0 right-0 z-[10003] bg-white border-t border-gray-100 px-4 pt-2"
             style={{
-              bottom: 'var(--bottom-nav-h, 0px)',
-              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
+              bottom: `${navH}px`,
+              paddingBottom: '16px',
             }}
           >
             <div className="flex gap-3">
