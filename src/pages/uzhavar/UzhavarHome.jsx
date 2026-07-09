@@ -347,10 +347,10 @@ export default function UzhavarHome() {
               ))}
             </div>
           ) : farmers.length === 0 ? (
-            <div className="text-center py-10 bg-white rounded-2xl" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-              <FaSeedling size={32} className="text-gray-300 mx-auto mb-2" />
-              <p className="font-semibold text-sm text-gray-500">No farmers registered yet</p>
-              <p className="text-xs text-gray-400 mt-0.5">Check back soon!</p>
+            <div className="text-center py-10 rounded-2xl" style={{ background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '2px dashed #86efac' }}>
+              <div className="text-3xl mb-2">🌱</div>
+              <p className="font-black text-sm text-teal-700">Coming Soon</p>
+              <p className="text-xs text-teal-600 mt-1 font-medium">Farmers are joining — check back soon!</p>
             </div>
           ) : (
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
@@ -385,10 +385,10 @@ export default function UzhavarHome() {
               ))}
             </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="text-center py-10 bg-white rounded-2xl" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-              <FaLeaf size={32} className="text-gray-300 mx-auto mb-2" />
-              <p className="font-semibold text-sm text-gray-500">No products yet</p>
-              <p className="text-xs text-gray-400 mt-0.5">Farmers will add harvest soon!</p>
+            <div className="text-center py-10 rounded-2xl" style={{ background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '2px dashed #86efac' }}>
+              <div className="text-3xl mb-2">🌿</div>
+              <p className="font-black text-sm text-teal-700">Coming Soon</p>
+              <p className="text-xs text-teal-600 mt-1 font-medium">Fresh harvests arriving soon!</p>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2">

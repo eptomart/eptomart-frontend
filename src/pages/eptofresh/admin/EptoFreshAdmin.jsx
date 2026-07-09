@@ -46,7 +46,7 @@ export default function EptoFreshAdmin() {
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className="flex items-center gap-1.5 px-4 py-3 text-xs font-semibold whitespace-nowrap transition-all"
-            style={{ color: tab === t.key ? '#f4941c' : 'rgba(255,255,255,0.4)', borderBottom: tab === t.key ? '2px solid #f4941c' : '2px solid transparent' }}>
+            style={{ color: tab === t.key ? '#f4941c' : '#6b7280', borderBottom: tab === t.key ? '2px solid #f4941c' : '2px solid transparent' }}>
             <t.Icon size={13} /> {t.label}
           </button>
         ))}
