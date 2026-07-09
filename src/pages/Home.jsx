@@ -1016,8 +1016,6 @@ function KoyambeduDailySpotlight() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (!loading && products.length === 0) return null;
-
   return (
     <section className="pt-3 pb-1">
       <SectionHeader
@@ -1040,6 +1038,16 @@ function KoyambeduDailySpotlight() {
             {[...Array(5)].map((_, i) => <SkeletonCard key={i} />)}
           </div>
         </>
+      ) : products.length === 0 ? (
+        <div className="mx-4 rounded-2xl flex flex-col items-center justify-center py-8 gap-2"
+          style={{ background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '1.5px dashed #86efac' }}>
+          <span style={{ fontSize: 36 }}>🌿</span>
+          <p className="font-black text-green-800 text-sm">Fresh arrivals coming soon!</p>
+          <p className="text-green-600 text-xs text-center px-6">We're sourcing the best produce from Koyambedu market. Check back shortly.</p>
+          <Link to="/koyambedu" className="mt-1 text-xs font-bold text-white bg-emerald-600 px-4 py-1.5 rounded-xl active:scale-95 transition">
+            Explore Koyambedu Daily
+          </Link>
+        </div>
       ) : (
         <>
           {/* Mobile: horizontal scroll */}
