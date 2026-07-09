@@ -702,6 +702,7 @@ function SellersTab() {
   const [linkBusy, setLinkBusy]     = useState(false);
   const [rejectId, setRejectId]     = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const loadSellers = () => {
     api.get(`/eptofresh/admin/sellers?status=${filter}&limit=50`).then(r => { if (r.data.success) setSellers(r.data.sellers); }).catch(() => {});
@@ -752,8 +753,7 @@ function SellersTab() {
     setSellers(s => s.map(x => x._id === updated._id ? { ...x, ...updated } : x));
   };
 
-  const deleteSeller = async (id, name) => {
-    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  const deleteSeller = async (id) => {
     try {
       const { data } = await api.delete(`/eptofresh/admin/sellers/${id}`);
       if (data.success) {
@@ -761,6 +761,7 @@ function SellersTab() {
         setSellers(s => s.filter(x => x._id !== id));
       }
     } catch (err) { toast.error(err.response?.data?.message || 'Delete failed'); }
+    finally { setConfirmDeleteId(null); }
   };
 
   return (
@@ -770,7 +771,7 @@ function SellersTab() {
         <div className="flex gap-2 overflow-x-auto">
           {['pending_review','approved','rejected','suspended'].map(f => (
             <button key={f} onClick={() => setFilter(f)} className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap capitalize"
-              style={{ background: filter === f ? '#f4941c' : 'rgba(0,0,0,0.05)', color: filter === f ? '#fff' : 'rgba(255,255,255,0.5)' }}>
+              style={{ background: filter === f ? '#f4941c' : 'rgba(0,0,0,0.06)', color: filter === f ? '#fff' : '#374151' }}>
               {f.replace('_', ' ')}
             </button>
           ))}
@@ -817,9 +818,9 @@ function SellersTab() {
                   <FiEdit2 size={11} /> Edit
                 </button>
                 <button
-                  onClick={() => deleteSeller(s._id, s.shopName)}
+                  onClick={() => setConfirmDeleteId(String(s._id))}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold"
-                  style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)' }}
+                  style={{ background: 'rgba(248,113,113,0.1)', color: '#ef4444', border: '1px solid rgba(248,113,113,0.3)' }}
                 >
                   <FiTrash2 size={11} /> Delete
                 </button>
@@ -894,6 +895,26 @@ function SellersTab() {
                   <button onClick={() => { setRejectId(null); setRejectReason(''); }}
                     className="px-3 py-2 rounded-lg text-xs text-gray-400"
                     style={{ background: 'rgba(0,0,0,0.03)' }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Inline delete confirm */}
+            {confirmDeleteId === String(s._id) && (
+              <div className="mt-2 mb-2 rounded-xl p-3 space-y-2" style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)' }}>
+                <p className="text-red-500 text-xs font-bold">⚠️ Delete "{s.shopName}"?</p>
+                <p className="text-gray-500 text-[11px]">This is a soft delete — order history is preserved but the seller will be removed from all listings.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => deleteSeller(s._id)}
+                    className="flex-1 py-2 rounded-lg text-xs font-bold text-white"
+                    style={{ background: '#ef4444' }}>
+                    Yes, Delete
+                  </button>
+                  <button onClick={() => setConfirmDeleteId(null)}
+                    className="px-4 py-2 rounded-lg text-xs font-semibold text-gray-600"
+                    style={{ background: 'rgba(0,0,0,0.05)' }}>
                     Cancel
                   </button>
                 </div>
@@ -1154,13 +1175,13 @@ function ProductsTab() {
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         <button onClick={() => setFilterStat('')}
           className="px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
-          style={{ background: filterStat === '' ? '#f4941c' : 'rgba(0,0,0,0.05)', color: '#fff' }}>
+          style={{ background: filterStat === '' ? '#f4941c' : 'rgba(0,0,0,0.06)', color: filterStat === '' ? '#fff' : '#374151' }}>
           All Status
         </button>
         {['pending','approved','rejected'].map(s => (
           <button key={s} onClick={() => setFilterStat(s)}
             className="px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap capitalize"
-            style={{ background: filterStat === s ? '#f4941c' : 'rgba(0,0,0,0.05)', color: '#fff' }}>
+            style={{ background: filterStat === s ? '#f4941c' : 'rgba(0,0,0,0.06)', color: filterStat === s ? '#fff' : '#374151' }}>
             {s}
           </button>
         ))}
@@ -1168,13 +1189,13 @@ function ProductsTab() {
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         <button onClick={() => setFilterCat('')}
           className="px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
-          style={{ background: filterCat === '' ? 'rgba(244,148,28,0.6)' : 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)' }}>
+          style={{ background: filterCat === '' ? '#f4941c' : 'rgba(0,0,0,0.06)', color: filterCat === '' ? '#fff' : '#374151' }}>
           All Categories
         </button>
         {PRODUCT_CATEGORIES.map(c => (
           <button key={c.key} onClick={() => setFilterCat(c.key)}
             className="px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
-            style={{ background: filterCat === c.key ? 'rgba(244,148,28,0.6)' : 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)' }}>
+            style={{ background: filterCat === c.key ? '#f4941c' : 'rgba(0,0,0,0.06)', color: filterCat === c.key ? '#fff' : '#374151' }}>
             {c.label}
           </button>
         ))}
