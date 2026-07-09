@@ -913,6 +913,44 @@ function MobileSearchBar() {
   );
 }
 
+// ── Koyambedu Market Tape — scrolling differentiator ──────────
+const KBD_TAPE_ITEMS = [
+  { emoji: '🏆', text: "Asia's Largest Produce Market" },
+  { emoji: '🌿', text: '300+ Varieties Daily' },
+  { emoji: '🚚', text: 'Morning Delivery by 6AM' },
+  { emoji: '🤝', text: '2,000+ Verified Vendors' },
+  { emoji: '📦', text: '1,000 Tonnes Traded Daily' },
+  { emoji: '✅', text: 'Market-Fresh Guaranteed' },
+  { emoji: '🥬', text: 'Straight from Koyambedu' },
+];
+
+function KoyambeduMarketTape() {
+  const items = [...KBD_TAPE_ITEMS, ...KBD_TAPE_ITEMS]; // duplicate for seamless loop
+  return (
+    <div className="overflow-hidden my-2"
+      style={{ background: 'linear-gradient(90deg, #064e3b 0%, #065f46 50%, #064e3b 100%)' }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: 28,
+          whiteSpace: 'nowrap',
+          width: 'max-content',
+          padding: '8px 0',
+          animation: 'kbdTape 26s linear infinite',
+        }}>
+        {items.map((c, i) => (
+          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#fff', fontSize: 11, fontWeight: 600 }}>
+            <span style={{ fontSize: 13 }}>{c.emoji}</span>
+            <span style={{ opacity: 0.92 }}>{c.text}</span>
+            <span style={{ opacity: 0.25, marginLeft: 8 }}>✦</span>
+          </span>
+        ))}
+      </div>
+      <style>{`@keyframes kbdTape { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }`}</style>
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════
 // KOYAMBEDU DAILY SPOTLIGHT — curated product card
 // Green accent, lowestUnitPrice, grades badge
@@ -1019,6 +1057,7 @@ function KoyambeduDailySpotlight() {
           </div>
         </>
       )}
+      <KoyambeduMarketTape />
     </section>
   );
 }
