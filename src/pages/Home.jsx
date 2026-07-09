@@ -9,8 +9,7 @@ import EptoSEO from '../components/common/EptoSEO';
 import {
   FiArrowRight, FiSearch, FiZap, FiChevronRight, FiMic, FiX,
   FiStar, FiClock, FiTruck, FiShield, FiCheckCircle, FiRefreshCw,
-  FiTag, FiPhone, FiPackage, FiMapPin, FiShoppingBag, FiGrid,
-  FiShoppingCart, FiEye,
+  FiTag, FiPhone, FiPackage, FiMapPin, FiGrid, FiEye,
 } from 'react-icons/fi';
 import {
   FaShoppingBasket, FaPepperHot, FaCookieBite, FaSeedling, FaWineBottle,
@@ -20,7 +19,6 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
-import ProductCard from '../components/product/ProductCard';
 import api from '../utils/api';
 
 // ── Recently viewed (localStorage) ────────────────────────────
@@ -1427,28 +1425,6 @@ const Divider = () => (
 //   → Category Strip → Continue Shopping → Featured → Flash → Recently Viewed → New Arrivals
 // ══════════════════════════════════════════════════════════════
 export default function Home() {
-  const [allProducts, setAllProducts] = useState([]);
-  const [loading,     setLoading]     = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await api.get('/products?limit=40&sort=-createdAt');
-        setAllProducts(data.products || []);
-      } catch (e) {
-        console.error('Home products fetch error:', e);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  const featuredProducts = useMemo(() => allProducts.slice(0, 10), [allProducts]);
-  const flashProducts    = useMemo(() => {
-    const withDiscount = allProducts.filter(p => p.discountPrice && p.discountPrice < p.price);
-    return withDiscount.length >= 3 ? [...withDiscount, ...allProducts.filter(p => !withDiscount.includes(p))] : allProducts;
-  }, [allProducts]);
-  const newArrivals = allProducts.slice(0, 10);
 
   return (
     <>
@@ -1525,111 +1501,14 @@ export default function Home() {
 
         </div>
 
-        {/* ── MOBILE ONLY: Category strip moved lower ── */}
+        {/* ── MOBILE ONLY: Category strip ── */}
         <div className="md:hidden pt-2">
           <MobileCategoryStrip />
         </div>
 
-        {/* ── SHARED: Featured Products ── */}
-        <div className="md:max-w-7xl md:mx-auto">
-          <Divider />
-          <section id="section-featured" className="pt-2 pb-2">
-            <SectionHeader Icon={FiStar} iconColor="#f4941c" dotColor="bg-orange-500" title="Featured Products" link="/shop" />
-            {loading ? (
-              <div className="flex gap-2.5 px-4 overflow-hidden">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="flex-shrink-0 w-36 bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse">
-                    <div className="aspect-square bg-gray-100" />
-                    <div className="p-2.5 space-y-1.5"><div className="h-3 bg-gray-100 rounded w-3/4" /><div className="h-3 bg-gray-100 rounded w-1/2" /></div>
-                  </div>
-                ))}
-              </div>
-            ) : featuredProducts.length > 0 ? (
-              <ProductCarouselTrack products={featuredProducts} accent="#f4941c" />
-            ) : (
-              <div className="text-center py-10 px-4">
-                <FiStar size={36} className="mx-auto mb-2 text-gray-300" />
-                <p className="text-gray-500 text-sm font-medium">Featured products coming soon</p>
-                <Link to="/shop" className="mt-3 inline-block text-xs text-orange-500 font-bold">Browse all products →</Link>
-              </div>
-            )}
-          </section>
-
-          <Divider />
-
-          {/* Flash Deals */}
-          <section className="pt-2 pb-2">
-            {loading
-              ? <div className="flex gap-2.5 px-4 overflow-hidden">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="flex-shrink-0 w-36 bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse">
-                      <div className="aspect-square bg-gray-100" />
-                      <div className="p-2.5 space-y-1.5"><div className="h-3 bg-gray-100 rounded w-3/4" /><div className="h-4 bg-gray-100 rounded w-1/2" /></div>
-                    </div>
-                  ))}
-                </div>
-              : <FlashDeals products={flashProducts} />
-            }
-          </section>
-
-          <Divider />
-
-          {/* Recently Viewed */}
+        {/* Recently Viewed — only shown when user has history */}
+        <div className="md:max-w-7xl md:mx-auto pb-4">
           <RecentlyViewed />
-
-          <Divider />
-
-          {/* New Arrivals */}
-          <section id="section-new" className="pt-2 pb-4">
-            <SectionHeader Icon={FiClock} iconColor="#3b82f6" dotColor="bg-blue-500" title="New Arrivals" link="/shop?sort=-createdAt" />
-            {loading ? (
-              <div className="px-4 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
-                {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
-              </div>
-            ) : newArrivals.length > 0 ? (
-              <>
-                <div className="px-4 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
-                  {newArrivals.map(p => <ProductCard key={p._id} product={p} />)}
-                </div>
-                <div className="text-center mt-5 px-4">
-                  <Link to="/shop"
-                    className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 text-gray-700 font-bold text-sm px-6 py-2.5 rounded-xl hover:border-orange-300 hover:text-orange-600 transition-all">
-                    Browse all products <FiArrowRight size={14} />
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-10 px-4">
-                <FiPackage size={36} className="mx-auto mb-2 text-gray-300" />
-                <p className="text-gray-500 text-sm font-medium">New products arriving soon</p>
-                <Link to="/shop" className="mt-3 inline-block text-xs text-orange-500 font-bold">Explore the shop →</Link>
-              </div>
-            )}
-          </section>
-        </div>
-
-        {/* Why Eptomart (desktop) */}
-        <div className="hidden md:block max-w-7xl mx-auto px-4 pb-12">
-          <section className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
-            <h2 className="text-xl font-extrabold text-center text-gray-900 mb-1">Why Shop at Eptomart?</h2>
-            <p className="text-center text-sm text-gray-600 mb-8">India's fastest growing multi-seller marketplace</p>
-            <div className="grid grid-cols-4 gap-6">
-              {[
-                { Icon: FiShield, color: '#0d9488', title: 'Verified Sellers',   desc: 'KYC verified with GST & FSSAI compliance' },
-                { Icon: FiTruck,  color: '#f4941c', title: 'Pan-India Delivery', desc: 'Powered by Shiprocket — to every pincode' },
-                { Icon: FiTag,    color: '#9333ea', title: 'Best Prices',        desc: 'Direct from sellers — no middlemen' },
-                { Icon: FiPhone,  color: '#3b82f6', title: 'Real Support',       desc: 'Human support via WhatsApp, 7 days a week' },
-              ].map(item => (
-                <div key={item.title} className="text-center">
-                  <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: `${item.color}12` }}>
-                    <item.Icon size={24} style={{ color: item.color }} />
-                  </div>
-                  <h3 className="font-bold text-sm text-gray-800 mb-1">{item.title}</h3>
-                  <p className="text-xs text-gray-700 leading-relaxed">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </section>
         </div>
 
       </main>
