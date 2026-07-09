@@ -339,30 +339,51 @@ function ShopBySource() {
         </div>
       </Link>
 
-      {/* Farmer Fresh + Proteins — photo-first tiles, bottom text overlay */}
+      {/* Farmer Fresh + Proteins — "Coming Soon" tiles */}
       <div className="grid grid-cols-2 gap-2">
+        {/* Farmer Fresh */}
         <Link to="/uzhavar"
           className="relative overflow-hidden rounded-xl active:scale-[0.96] transition-transform block"
           style={{ aspectRatio: '2/1', maxHeight: 100, boxShadow: '0 4px 16px rgba(13,148,136,0.35)' }}>
           <img src="/categories/uzhavar.jpg" alt="Farmer Fresh"
             className="absolute inset-0 w-full h-full object-cover" />
+          {/* Stronger overlay to dim image for "coming soon" feel */}
           <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.10) 55%, transparent 100%)' }} />
+            style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 55%, rgba(0,0,0,0.20) 100%)' }} />
+          {/* Coming Soon badge — top right */}
+          <div className="absolute top-1.5 right-1.5">
+            <span className="text-white font-black tracking-wide px-1.5 py-0.5 rounded-md"
+              style={{ background: 'rgba(13,148,136,0.85)', fontSize: 7, backdropFilter: 'blur(4px)' }}>
+              COMING SOON
+            </span>
+          </div>
+          {/* Bottom text */}
           <div className="absolute bottom-0 left-0 right-0 px-2.5 py-2">
             <p className="text-white font-black text-[13px] leading-tight drop-shadow-sm">Farmer Fresh</p>
-            <p className="text-white/80 text-[10px] font-semibold">Farm Direct</p>
+            <p className="text-[10px] font-bold" style={{ color: '#5eead4' }}>Coming Soon to Serve You</p>
           </div>
         </Link>
+
+        {/* Proteins */}
         <Link to="/eptofresh"
           className="relative overflow-hidden rounded-xl active:scale-[0.96] transition-transform block"
           style={{ aspectRatio: '2/1', maxHeight: 100, boxShadow: '0 4px 16px rgba(234,88,12,0.35)' }}>
           <img src="/categories/proteins.jpg" alt="Proteins"
             className="absolute inset-0 w-full h-full object-cover" />
+          {/* Stronger overlay */}
           <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.10) 55%, transparent 100%)' }} />
+            style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 55%, rgba(0,0,0,0.20) 100%)' }} />
+          {/* Coming Soon badge — top right */}
+          <div className="absolute top-1.5 right-1.5">
+            <span className="text-white font-black tracking-wide px-1.5 py-0.5 rounded-md"
+              style={{ background: 'rgba(194,65,12,0.85)', fontSize: 7, backdropFilter: 'blur(4px)' }}>
+              COMING SOON
+            </span>
+          </div>
+          {/* Bottom text */}
           <div className="absolute bottom-0 left-0 right-0 px-2.5 py-2">
             <p className="text-white font-black text-[13px] leading-tight drop-shadow-sm">Proteins</p>
-            <p className="text-white/80 text-[10px] font-semibold">Hyperlocal</p>
+            <p className="text-[10px] font-bold" style={{ color: '#fdba74' }}>Coming Soon to Serve You</p>
           </div>
         </Link>
       </div>
