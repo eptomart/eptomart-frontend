@@ -1023,9 +1023,6 @@ function KbdProductCard({ product: p, index = 0, visible = true }) {
       <div className="p-2.5 flex flex-col gap-0.5 flex-1">
         <Link to={href}>
           <p className="text-[11px] font-bold text-gray-800 line-clamp-2 leading-snug">{p.name}</p>
-          {p.seller?.businessName && (
-            <p className="text-[9px] text-gray-500 mt-0.5 truncate">{p.seller.businessName}</p>
-          )}
         </Link>
         <div className="flex items-end justify-between mt-auto pt-1">
           <div>
