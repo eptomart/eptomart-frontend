@@ -144,12 +144,19 @@ const buildInvoiceHtml = (order, type = 'proforma') => {
     sumRow('GST / Tax', 'NIL (Exempt)', '#9ca3af'),
   ].join('');
 
+  // ── GST exemption notice — shown on every invoice type ──────
+  const GST_NOTE = '<div style="margin-top:8px;padding:7px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:3px">'
+    + '<p style="font-size:10px;color:#166534;margin:0"><strong>GST Exemption Notice:</strong> '
+    + 'This bill is exempt from Goods &amp; Services Tax (GST). Fresh vegetables, fruits, flowers, '
+    + 'and produce are exempt from GST as per Chapter 7 &amp; 8, Notification No. 2/2017-Central Tax (Rate) '
+    + 'of the Indian GST law. No GST is charged or collected on this transaction.</p></div>';
+
   // ── Disclaimer ──────────────────────────────────────────────
   const disclaimer = type === 'proforma'
-    ? '<p style="color:#6b7280;font-size:11px;margin-top:10px">⚠️ This is a Proforma Invoice — <b>not a tax invoice</b>. Final Tax Invoice will be generated after successful delivery.</p>'
+    ? '<p style="color:#6b7280;font-size:11px;margin-top:10px">⚠️ This is a Proforma Invoice — <b>not a tax invoice</b>. Final Tax Invoice will be generated after successful delivery.</p>' + GST_NOTE
     : type === 'confirmation'
-    ? '<p style="color:#6b7280;font-size:11px;margin-top:10px">This document confirms items for delivery after seller review. Final Tax Invoice issued upon delivery.</p>'
-    : '<p style="color:#6b7280;font-size:11px;margin-top:10px">Fresh vegetables and fruits are exempt from GST under Indian GST law, Chapter 7 &amp; 8, Notification 2/2017-CT(Rate).</p>';
+    ? '<p style="color:#6b7280;font-size:11px;margin-top:10px">This document confirms items for delivery after seller review. Final Tax Invoice issued upon delivery.</p>' + GST_NOTE
+    : GST_NOTE;
 
   const addrParts = [addr.addressLine1 || addr.address, addr.addressLine2, addr.city, addr.state, addr.pincode].filter(Boolean).join(', ');
 

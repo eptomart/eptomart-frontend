@@ -102,6 +102,26 @@ export default function KoyambeduOrders() {
         </div>
       </div>
 
+      {/* ── Cancellation deadline notice ── */}
+      <div className="mx-4 mt-4 rounded-2xl p-3.5 flex items-start gap-3"
+        style={{ background: '#fff7ed', border: '1px solid #fed7aa' }}>
+        <span className="text-lg shrink-0 leading-none mt-0.5">⏰</span>
+        <div>
+          <p className="text-xs font-extrabold text-orange-800 leading-snug">
+            Cancellation Deadline — 1:00 AM
+          </p>
+          <p className="text-[11px] text-orange-700 mt-1 leading-relaxed">
+            Orders placed today can be cancelled before <strong>1:00 AM</strong>.
+            Call or WhatsApp our Help Desk:{' '}
+            <a href="tel:+919514519518"
+              className="font-bold underline"
+              style={{ color: '#c2410c' }}>
+              +91 95145 19518
+            </a>
+          </p>
+        </div>
+      </div>
+
       <div className="px-4 mt-4 space-y-4">
         {orders.map(order => {
           const cfg = STATUS_CONFIG[order.orderStatus] || { label: order.orderStatus, color: '#6b7280', bg: '#f3f4f6', Icon: FiList };
