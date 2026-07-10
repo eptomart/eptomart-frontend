@@ -33,6 +33,9 @@ const FREE_SHIPPING_THRESHOLD = 999;
 const LIGHT_SHIPPING = 49;
 const HEAVY_SHIPPING = 149;
 
+// ── Koyambedu Daily minimum order value (must match backend MIN_ORDER_VALUE) ─
+const KBD_MIN_ORDER = 1500;
+
 // ── Vertical configuration registry ─────────────────────
 // displayOrder controls left-to-right tab ordering.
 // Add new entries here when a sub-app integrates its cart.
@@ -510,10 +513,30 @@ function KoyambeduTab({
             </div>
           </div>
 
+          {/* Minimum order warning */}
+          {kbdSubtotal < KBD_MIN_ORDER && (
+            <div className="mb-3 rounded-xl px-3 py-2.5 flex items-start gap-2"
+                 style={{ background: '#fef3c7', border: '1px solid #fde68a' }}>
+              <FiInfo size={14} className="flex-shrink-0 mt-0.5" style={{ color: '#b45309' }} />
+              <div>
+                <p className="text-xs font-semibold" style={{ color: '#92400e' }}>
+                  Minimum order ₹{KBD_MIN_ORDER}
+                </p>
+                <p className="text-[11px]" style={{ color: '#b45309' }}>
+                  Add ₹{(KBD_MIN_ORDER - kbdSubtotal).toFixed(0)} more to proceed
+                </p>
+              </div>
+            </div>
+          )}
+
           <button
-            onClick={() => navigate(vertical.checkoutPath)}
-            className="w-full py-3 rounded-xl text-sm font-bold text-white active:scale-[0.98] transition mb-3"
-            style={{ background: vertical.btnGradient, boxShadow: vertical.btnShadow }}
+            onClick={() => kbdSubtotal >= KBD_MIN_ORDER && navigate(vertical.checkoutPath)}
+            disabled={kbdSubtotal < KBD_MIN_ORDER}
+            className="w-full py-3 rounded-xl text-sm font-bold text-white transition mb-3
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+            style={kbdSubtotal >= KBD_MIN_ORDER
+              ? { background: vertical.btnGradient, boxShadow: vertical.btnShadow }
+              : { background: '#9ca3af' }}
           >
             {vertical.checkoutLabel}
           </button>
