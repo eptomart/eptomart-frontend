@@ -73,7 +73,7 @@ function SectionHeader({ Icon, iconColor = '#f4941c', title, link, linkLabel = '
             <Icon size={13} style={{ color: iconColor }} />
           </span>
         )}
-        <h2 className="text-sm md:text-lg font-extrabold text-gray-900 tracking-tight">{title}</h2>
+        <h2 className="title-ink text-sm md:text-lg font-extrabold text-gray-900 tracking-tight">{title}</h2>
       </div>
       {link && (
         <Link to={link} className="text-xs font-bold text-orange-500 flex items-center gap-0.5 hover:gap-1.5 transition-all">
@@ -96,10 +96,10 @@ function ProductGridCard({ product: p, accent = '#f4941c', index = 0 }) {
 
   return (
     <div
-      className="bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col group"
+      className="wow-card bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col group"
       style={{ boxShadow: '0 1px 5px rgba(0,0,0,0.06)' }}
     >
-      <Link to={href} className="relative bg-gray-50 block overflow-hidden" style={{ aspectRatio: '5/4' }}>
+      <Link to={href} className="img-frame relative bg-gray-50 block overflow-hidden" style={{ aspectRatio: '5/4' }}>
         {img
           ? <img src={img} alt={p.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.07]" />
           : <div className="w-full h-full flex items-center justify-center"><FiPackage size={30} className="text-gray-200" /></div>}
@@ -121,12 +121,12 @@ function ProductGridCard({ product: p, accent = '#f4941c', index = 0 }) {
         </Link>
         <div className="flex items-end justify-between mt-auto pt-1">
           <div>
-            <span className="text-[12px] font-extrabold text-gray-900">₹{(disc || orig).toLocaleString('en-IN')}</span>
+            <span className="price-pop text-[12px] font-extrabold text-gray-900">₹{(disc || orig).toLocaleString('en-IN')}</span>
             {disc && <span className="text-[9.5px] text-gray-400 line-through ml-1">₹{orig.toLocaleString('en-IN')}</span>}
           </div>
           <button
             onClick={() => navigate(href)}
-            className="w-[30px] h-[30px] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 active:scale-90"
+            className="tap-ripple w-[30px] h-[30px] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 active:scale-90"
             style={{ background: accent, boxShadow: `0 3px 8px ${accent}55`, fontSize: 20, lineHeight: 1 }}
             aria-label="Add to cart"
           >+</button>
@@ -287,7 +287,7 @@ function ShopBySource() {
     <div className="px-4 space-y-2">
       {/* Koyambedu Daily — HERO tile (live video when configured) */}
       <Link to="/koyambedu"
-        className="relative overflow-hidden rounded-2xl active:scale-[0.98] transition-transform block"
+        className="tap-ripple relative overflow-hidden rounded-2xl active:scale-[0.98] transition-transform block"
         style={{ aspectRatio: '2.4/1', maxHeight: 165, boxShadow: '0 8px 28px rgba(6,78,59,0.50)' }}>
         {heroVideo ? (
           <video
@@ -341,7 +341,7 @@ function ShopBySource() {
       <div className="grid grid-cols-2 gap-2">
         {/* Farmer Fresh */}
         <Link to="/uzhavar"
-          className="relative overflow-hidden rounded-xl active:scale-[0.96] transition-transform block"
+          className="glow-float tease relative overflow-hidden rounded-xl active:scale-[0.96] transition-transform block"
           style={{ aspectRatio: '2/1', maxHeight: 100, boxShadow: '0 4px 16px rgba(13,148,136,0.35)' }}>
           <img src="/categories/uzhavar.jpg" alt="Farmer Fresh"
             className="absolute inset-0 w-full h-full object-cover" />
@@ -350,7 +350,7 @@ function ShopBySource() {
             style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 55%, rgba(0,0,0,0.20) 100%)' }} />
           {/* Coming Soon badge — top right */}
           <div className="absolute top-1.5 right-1.5">
-            <span className="text-white font-black tracking-wide px-1.5 py-0.5 rounded-md"
+            <span className="tease-badge text-white font-black tracking-wide px-1.5 py-0.5 rounded-md"
               style={{ background: 'rgba(13,148,136,0.85)', fontSize: 7, backdropFilter: 'blur(4px)' }}>
               COMING SOON
             </span>
@@ -358,13 +358,13 @@ function ShopBySource() {
           {/* Bottom text */}
           <div className="absolute bottom-0 left-0 right-0 px-2.5 py-2">
             <p className="text-white font-black text-[13px] leading-tight drop-shadow-sm">Farmer Fresh</p>
-            <p className="text-[10px] font-bold" style={{ color: '#5eead4' }}>Coming Soon to Serve You</p>
+            <p className="text-[10px] font-bold"><span className="tease-sub" style={{ color: '#5eead4' }}>🌱 Coming Soon to Serve You</span></p>
           </div>
         </Link>
 
         {/* Proteins */}
         <Link to="/eptofresh"
-          className="relative overflow-hidden rounded-xl active:scale-[0.96] transition-transform block"
+          className="glow-float tease relative overflow-hidden rounded-xl active:scale-[0.96] transition-transform block"
           style={{ aspectRatio: '2/1', maxHeight: 100, boxShadow: '0 4px 16px rgba(234,88,12,0.35)' }}>
           <img src="/categories/proteins.jpg" alt="Proteins"
             className="absolute inset-0 w-full h-full object-cover" />
@@ -373,7 +373,7 @@ function ShopBySource() {
             style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 55%, rgba(0,0,0,0.20) 100%)' }} />
           {/* Coming Soon badge — top right */}
           <div className="absolute top-1.5 right-1.5">
-            <span className="text-white font-black tracking-wide px-1.5 py-0.5 rounded-md"
+            <span className="tease-badge text-white font-black tracking-wide px-1.5 py-0.5 rounded-md"
               style={{ background: 'rgba(194,65,12,0.85)', fontSize: 7, backdropFilter: 'blur(4px)' }}>
               COMING SOON
             </span>
@@ -381,7 +381,7 @@ function ShopBySource() {
           {/* Bottom text */}
           <div className="absolute bottom-0 left-0 right-0 px-2.5 py-2">
             <p className="text-white font-black text-[13px] leading-tight drop-shadow-sm">Proteins</p>
-            <p className="text-[10px] font-bold" style={{ color: '#fdba74' }}>Coming Soon to Serve You</p>
+            <p className="text-[10px] font-bold"><span className="tease-sub" style={{ color: '#fdba74' }}>🥩 Coming Soon to Serve You</span></p>
           </div>
         </Link>
       </div>
@@ -987,15 +987,15 @@ function KbdProductCard({ product: p, index = 0, visible = true }) {
 
   return (
     <div
-      className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col group"
+      className="wow-card bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col group"
       style={{
         boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
         opacity:   visible ? 1 : 0,
         transform: visible ? 'translateY(0)' : 'translateY(20px)',
-        transition: `opacity 0.45s ease ${index * 55}ms, transform 0.45s ease ${index * 55}ms, box-shadow 0.2s ease`,
+        transition: `opacity 0.45s cubic-bezier(0.16,1,0.3,1) ${index * 55}ms, transform 0.45s cubic-bezier(0.16,1,0.3,1) ${index * 55}ms, box-shadow 0.2s ease, border-color 0.2s ease`,
       }}
     >
-      <Link to={href} className="relative bg-gray-50 block overflow-hidden" style={{ aspectRatio: '1/1' }}>
+      <Link to={href} className="img-frame relative bg-gray-50 block overflow-hidden" style={{ aspectRatio: '1/1' }}>
         {img ? (
           <img src={img} alt={p.name} loading="lazy"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.08]" />
@@ -1032,7 +1032,7 @@ function KbdProductCard({ product: p, index = 0, visible = true }) {
             {price ? (
               <>
                 <p className="text-[8px] text-gray-400 font-semibold leading-none mb-0.5">From</p>
-                <span className="text-[12px] font-extrabold text-gray-900">
+                <span className="price-pop text-[12px] font-extrabold text-gray-900">
                   ₹{price.toLocaleString('en-IN')}
                 </span>
                 <span className="text-[9px] text-gray-500 ml-0.5">/{p.unit || 'unit'}</span>
@@ -1043,7 +1043,7 @@ function KbdProductCard({ product: p, index = 0, visible = true }) {
           </div>
           <button
             onClick={() => navigate(href)}
-            className="w-[28px] h-[28px] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 active:scale-90 transition-transform"
+            className="tap-ripple w-[28px] h-[28px] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 active:scale-90 transition-transform"
             style={{ background: 'linear-gradient(135deg,#059669,#10b981)', boxShadow: '0 3px 8px rgba(5,150,105,0.40)', fontSize: 18, lineHeight: 1 }}
             aria-label="View product">+</button>
         </div>
@@ -1444,7 +1444,7 @@ export default function Home() {
         }
       `}</style>
 
-      <main className="min-h-screen bg-[#f5f5f7] pb-24 md:pb-8">
+      <main className="wow-ambient min-h-screen bg-[#f5f5f7] pb-24 md:pb-8 overflow-x-clip">
 
         {/* ══════════════════════════════════════════
             DESKTOP LAYOUT

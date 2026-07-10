@@ -291,6 +291,161 @@
   }
 }
 
+/* ════════════════════════════════════════════════════════════
+   WOW LAYER — flagship home-page polish
+   Pure visual layer: ambient depth, living tiles, tactile
+   feedback, luxurious imagery. No layout / logic changes.
+   All effects are transform/opacity/filter (GPU compositor)
+   and vanish under prefers-reduced-motion.
+   ════════════════════════════════════════════════════════════ */
+
+@keyframes w-drift-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(4vw, 3vh) scale(1.12); }
+}
+@keyframes w-drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1.1); }
+  50%      { transform: translate(-4vw, -2vh) scale(1); }
+}
+@keyframes w-levitate {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+@keyframes w-bob {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50%      { transform: translateY(-5px) rotate(3deg); }
+}
+@keyframes w-light-sweep {
+  0%   { transform: translateX(-160%) skewX(-20deg); }
+  100% { transform: translateX(260%)  skewX(-20deg); }
+}
+@keyframes w-soft-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+@keyframes w-img-in {
+  from { opacity: 0; filter: blur(10px); transform: scale(1.05); }
+  to   { opacity: 1; filter: blur(0);   transform: scale(1); }
+}
+@keyframes w-underline {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+
+  /* ── Ambient depth: two brand-colored light fields drifting
+       behind the whole home page (zero DOM changes) ── */
+  .wow-ambient { position: relative; isolation: isolate; }
+  .wow-ambient::before,
+  .wow-ambient::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    width: 60vw; height: 60vw;
+    max-width: 560px; max-height: 560px;
+    border-radius: 50%;
+    filter: blur(70px);
+    pointer-events: none;
+  }
+  .wow-ambient::before {
+    top: -8vh; right: -18vw;
+    background: radial-gradient(circle, rgba(244,148,28,0.10), transparent 65%);
+    animation: w-drift-a 26s ease-in-out infinite;
+  }
+  .wow-ambient::after {
+    top: 45vh; left: -20vw;
+    background: radial-gradient(circle, rgba(22,163,74,0.09), transparent 65%);
+    animation: w-drift-b 32s ease-in-out infinite;
+  }
+
+  /* ── Living sub-app tiles: gentle levitation + breathing glow ── */
+  .glow-float {
+    animation: w-levitate 6s ease-in-out infinite;
+    transition: transform var(--dur-med) var(--ease-out-back),
+                box-shadow var(--dur-med) var(--ease-out-expo);
+  }
+  .glow-float:nth-child(2) { animation-delay: 1.4s; }
+  .glow-float:active { transform: scale(0.96); }
+
+  /* ── Premium teaser (Coming Soon) tiles ──
+       Recurrent light sweep + softly pulsing badge + bobbing text */
+  .tease { position: relative; }
+  .tease::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0; left: 0; width: 45%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+    transform: translateX(-160%) skewX(-20deg);
+    animation: w-light-sweep 4.5s var(--ease-in-out) infinite;
+    animation-delay: 1.2s;
+    pointer-events: none;
+  }
+  .tease .tease-badge { animation: w-soft-pulse 2.6s ease-in-out infinite; }
+  .tease .tease-sub   { animation: w-bob 5s ease-in-out infinite; display: inline-block; }
+
+  /* ── Tactile press ripple — pure CSS, any element ── */
+  .tap-ripple { position: relative; overflow: hidden; }
+  .tap-ripple::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at center, rgba(255,255,255,0.45) 0%, transparent 60%);
+    opacity: 0;
+    transform: scale(0.4);
+    transition: opacity 500ms ease, transform 500ms var(--ease-out-expo);
+    pointer-events: none;
+  }
+  .tap-ripple:active::before {
+    opacity: 1;
+    transform: scale(1.6);
+    transition-duration: 0s;
+  }
+
+  /* ── Luxurious imagery: blur-to-clear entrance + shimmer
+       placeholder so empty space never flashes ── */
+  .img-frame {
+    background: linear-gradient(110deg, #f1f0ee 30%, #faf9f7 50%, #f1f0ee 70%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+  .img-frame img { animation: w-img-in 560ms var(--ease-out-expo) both; }
+
+  /* ── Section titles: accent underline draws itself in ── */
+  .title-ink { position: relative; }
+  .title-ink::after {
+    content: '';
+    position: absolute;
+    left: 0; bottom: -3px;
+    width: 34px; height: 2.5px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #f4941c, rgba(244,148,28,0.15));
+    transform-origin: left center;
+    animation: w-underline 700ms var(--ease-out-expo) 150ms both;
+  }
+
+  /* ── Price emphasis on card focus ── */
+  .group:hover .price-pop, .group:active .price-pop {
+    display: inline-block;
+    transform: scale(1.07);
+    transition: transform var(--dur-fast) var(--ease-out-back);
+    color: #16a34a;
+  }
+  .price-pop { transition: transform var(--dur-fast) var(--ease-out-back), color var(--dur-fast) ease; }
+
+  /* ── Product cards: richer elevation language ── */
+  .wow-card {
+    transition: transform var(--dur-med) var(--ease-out-expo),
+                box-shadow var(--dur-med) var(--ease-out-expo),
+                border-color var(--dur-med) ease;
+  }
+  .wow-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.10), 0 2px 8px rgba(15, 23, 42, 0.06) !important;
+    border-color: rgba(244,148,28,0.35) !important;
+  }
+  .wow-card:active { transform: translateY(-1px) scale(0.985); }
+}
+
 /* Loading shimmer animation */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
