@@ -1538,7 +1538,7 @@ export default function Home() {
             <div>
               <h4 className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-3">Policies</h4>
               <ul className="space-y-2">
-                {[['Privacy Policy','/privacy-policy'],['Terms of Service','/terms'],['GST Invoices','/faq#gst'],['Farmer Fresh','/uzhavar'],['Koyambedu Daily','/koyambedu']].map(([l,p]) => (
+                {[['Privacy Policy','/privacy-policy'],['Terms of Service','/terms'],['GST Invoices','/faq#gst'],['Farmer Fresh','/uzhavar'],['Koyambedu Daily','/koyambedu/policy']].map(([l,p]) => (
                   <li key={p}><Link to={p} className="text-sm text-gray-600 hover:text-orange-500 transition-colors">{l}</Link></li>
                 ))}
               </ul>
