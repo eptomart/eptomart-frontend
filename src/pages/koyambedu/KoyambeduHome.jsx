@@ -319,6 +319,15 @@ export default function KoyambeduHome() {
 
       </div>
 
+      {/* ── Footer links ── */}
+      <div className="px-4 pb-2 flex items-center justify-center gap-4 text-[11px] text-gray-400">
+        <Link to="/koyambedu/policy" className="hover:text-green-600 underline underline-offset-2">Policies &amp; Guidelines</Link>
+        <span>·</span>
+        <a href="tel:+919514519518" className="hover:text-green-600">Help: +91 95145 19518</a>
+        <span>·</span>
+        <Link to="/privacy-policy" className="hover:text-green-600 underline underline-offset-2">Privacy</Link>
+      </div>
+
       <BottomNav />
     </div>
   );

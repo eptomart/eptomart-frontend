@@ -70,6 +70,7 @@ const AdminCoupons      = lazy(() => import('./pages/admin/Coupons'));
 
 // ── Koyambedu Daily pages ─────────────────────
 const KoyambeduHome         = lazy(() => import('./pages/koyambedu/KoyambeduHome'));
+const KoyambeduPolicy       = lazy(() => import('./pages/koyambedu/KoyambeduPolicy'));
 const KoyambeduShop         = lazy(() => import('./pages/koyambedu/KoyambeduShop'));
 const KoyambeduProductDetail= lazy(() => import('./pages/koyambedu/KoyambeduProductDetail'));
 const KoyambeduCart             = lazy(() => import('./pages/koyambedu/KoyambeduCart'));
@@ -241,6 +242,7 @@ function AppRoutes() {
 
           {/* ── Koyambedu Daily ─────────────────── */}
           <Route path="/koyambedu"                           element={<KoyambeduHome />} />
+          <Route path="/koyambedu/policy"                    element={<KoyambeduPolicy />} />
           <Route path="/koyambedu/location"                  element={<KoyambeduLocationPicker />} />
           <Route path="/koyambedu/shop"                      element={<KoyambeduShop />} />
           <Route path="/koyambedu/product/:productId"        element={<KoyambeduProductDetail />} />
