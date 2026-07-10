@@ -112,7 +112,7 @@ export default function PrivacyPolicy() {
             </p>
           </section>
 
-          <p className="text-xs text-gray-400">Last updated: May 2025</p>
+          <p className="text-xs text-gray-400">Last updated: May 2026</p>
         </div>
       </main>
 
