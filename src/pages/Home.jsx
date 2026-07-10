@@ -309,21 +309,25 @@ function ShopBySource() {
             <span className="bg-emerald-500 text-white text-[9px] font-black tracking-widest uppercase px-2 py-0.5 rounded-full shadow">
               MARKET FRESH · DAILY
             </span>
-            <span className="bg-black/40 text-white text-[9px] font-bold px-2 py-0.5 rounded-full border border-white/25">
-              🏆 Asia's Largest
+            <span className="bg-amber-400/90 text-amber-900 text-[9px] font-black px-2 py-0.5 rounded-full shadow">
+              💰 Wholesale Rates
             </span>
           </div>
-          {/* Middle: headline + stats */}
+          {/* Middle: headline + hooks */}
           <div>
             <p className="text-white font-black text-[22px] leading-tight tracking-tight"
               style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>
               Koyambedu Daily
             </p>
+            <p className="text-emerald-200 text-[10px] font-semibold mt-0.5 leading-snug"
+              style={{ textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>
+              No Stock Maintained — 100% Fresh Procurement
+            </p>
             <div className="flex gap-1.5 mt-2">
-              {[['2,000+','Vendors'],['300+','Varieties'],['1,000T','Daily Trade']].map(([num, label]) => (
+              {[['🚫','No Inventory'],['📦','Order-to-Source'],['🏪','Direct Market']].map(([icon, label]) => (
                 <div key={label} className="bg-white/20 rounded-lg px-2 py-1 border border-white/30">
-                  <p className="text-white font-black text-[11px] leading-tight">{num}</p>
-                  <p className="text-white text-[8px] opacity-80 font-medium">{label}</p>
+                  <p className="text-white font-black text-[11px] leading-tight">{icon}</p>
+                  <p className="text-white text-[8px] opacity-90 font-bold">{label}</p>
                 </div>
               ))}
             </div>
