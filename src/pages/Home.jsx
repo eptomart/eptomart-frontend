@@ -1058,7 +1058,6 @@ const KBD_TAPE_DATA = {
   items: [
     { emoji: '🏆', text: "Asia's Largest Produce Market" },
     { emoji: '🌿', text: '300+ Varieties Daily' },
-    { emoji: '🚚', text: 'Morning Delivery by 6AM' },
     { emoji: '🤝', text: '2,000+ Verified Vendors' },
     { emoji: '📦', text: '1,000 Tonnes Traded Daily' },
     { emoji: '✅', text: 'Market-Fresh Guaranteed' },
