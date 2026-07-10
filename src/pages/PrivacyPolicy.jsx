@@ -29,7 +29,7 @@ export default function PrivacyPolicy() {
 
           <section>
             <h2 className="text-xl font-bold text-gray-800 mb-2">1. Who We Are</h2>
-            <p>Eptomart is an online marketplace operated by Eptosi Group of Companies, registered in India. We connect buyers with verified local sellers for a safe and seamless shopping experience. For queries, contact us at <a href="mailto:eptosicare@gmail.com" className="text-primary-500 hover:underline">eptosicare@gmail.com</a>.</p>
+            <p>Eptomart is an online marketplace operated by Eptosi Group of Companies, registered in India. We connect buyers with verified local sellers for a safe and seamless shopping experience. For queries, contact us at <a href="mailto:support@eptomart.com" className="text-primary-500 hover:underline">support@eptomart.com</a>.</p>
           </section>
 
           <section>
@@ -86,7 +86,7 @@ export default function PrivacyPolicy() {
               <li>Request deletion of your account and associated data.</li>
               <li>Withdraw consent for marketing communications.</li>
             </ul>
-            <p className="mt-2">To exercise these rights, contact us at <a href="mailto:eptosicare@gmail.com" className="text-primary-500 hover:underline">eptosicare@gmail.com</a>.</p>
+            <p className="mt-2">To exercise these rights, contact us at <a href="mailto:support@eptomart.com" className="text-primary-500 hover:underline">support@eptomart.com</a>.</p>
           </section>
 
           <section>
@@ -108,7 +108,7 @@ export default function PrivacyPolicy() {
             <h2 className="text-xl font-bold text-gray-800 mb-2">11. Contact</h2>
             <p>For privacy-related queries or concerns, please contact:<br />
               <strong>Eptosi Group of Companies</strong><br />
-              Email: <a href="mailto:eptosicare@gmail.com" className="text-primary-500 hover:underline">eptosicare@gmail.com</a>
+              Email: <a href="mailto:support@eptomart.com" className="text-primary-500 hover:underline">support@eptomart.com</a>
             </p>
           </section>
 

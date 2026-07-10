@@ -50,7 +50,7 @@ const FAQS = [
   },
   {
     q: 'How do I contact customer support?',
-    a: 'Visit our Contact Us page or email us at eptosicare@gmail.com. We respond within 24 hours on business days.',
+    a: 'Visit our Contact Us page or email us at support@eptomart.com. We respond within 24 hours on business days.',
   },
   {
     q: 'How do I become a seller on Eptomart?',

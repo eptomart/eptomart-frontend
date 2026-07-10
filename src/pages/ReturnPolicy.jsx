@@ -72,7 +72,7 @@ export default function ReturnPolicy() {
             <ol className="space-y-3 text-sm">
               {[
                 'Go to My Orders and find the order you want to return.',
-                'Contact us via the Contact Us page or email eptosicare@gmail.com with your order ID and reason for return.',
+                'Contact us via the Contact Us page or email support@eptomart.com with your order ID and reason for return.',
                 'Our team will review your request within 1–2 business days.',
                 'If approved, you will receive return pickup instructions. Pack the item securely in its original packaging.',
                 'Once the item is received and inspected, your refund will be processed.',
@@ -114,7 +114,7 @@ export default function ReturnPolicy() {
 
           <section>
             <h2 className="text-xl font-bold text-gray-800 mb-3">Contact Us</h2>
-            <p className="text-sm">For return or refund queries, email us at <a href="mailto:eptosicare@gmail.com" className="text-primary-500 hover:underline">eptosicare@gmail.com</a> or use our <a href="/contact" className="text-primary-500 hover:underline">Contact page</a>. Include your order ID for faster assistance.</p>
+            <p className="text-sm">For return or refund queries, email us at <a href="mailto:support@eptomart.com" className="text-primary-500 hover:underline">support@eptomart.com</a> or use our <a href="/contact" className="text-primary-500 hover:underline">Contact page</a>. Include your order ID for faster assistance.</p>
           </section>
 
           <p className="text-xs text-gray-400">Last updated: May 2025</p>

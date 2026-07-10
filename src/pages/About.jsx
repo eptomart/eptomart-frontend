@@ -35,7 +35,7 @@ export default function About() {
           "description": "Eptomart is a premium quality-focused ecommerce platform from Eptosi Group of Companies. Trusted products, reliable service, transparent billing across India.",
           "foundingDate": "2026",
           "areaServed": { "@type": "Country", "name": "India" },
-          "email": "eptosicare@gmail.com",
+          "email": "support@eptomart.com",
           "parentOrganization": { "@type": "Organization", "name": "Eptosi Group of Companies" },
           "sameAs": ["https://www.eptomart.com"]
         })}</script>

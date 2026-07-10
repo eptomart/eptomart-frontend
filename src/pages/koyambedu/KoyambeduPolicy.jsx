@@ -144,7 +144,7 @@ export default function KoyambeduPolicy() {
           {/* 7 — Quality */}
           <Section icon={FiCheckCircle} title="Quality Guarantee" color="green">
             <p>All produce is sourced directly from licensed traders at Koyambedu Wholesale Market — Asia's largest fruits &amp; vegetables market. Quality is inspected at the source.</p>
-            <p className="mt-1">If you receive damaged or sub-standard produce, contact us at <a href="tel:+919514519518" className="text-green-700 font-semibold">+91 95145 19518</a> or email <a href="mailto:eptosicare@gmail.com" className="text-green-700 font-semibold">eptosicare@gmail.com</a> within 2 hours of delivery.</p>
+            <p className="mt-1">If you receive damaged or sub-standard produce, contact us at <a href="tel:+919514519518" className="text-green-700 font-semibold">+91 95145 19518</a> or email <a href="mailto:support@eptomart.com" className="text-green-700 font-semibold">support@eptomart.com</a> within 2 hours of delivery.</p>
             <p className="text-[11px] text-gray-500 mt-2">Note: Fresh produce cannot be returned after acceptance. Quality complaints must be raised with photo evidence immediately upon delivery.</p>
           </Section>
 
@@ -156,7 +156,7 @@ export default function KoyambeduPolicy() {
               className="inline-flex items-center gap-2 bg-green-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl">
               <FiPhone size={14} /> Call +91 95145 19518
             </a>
-            <p className="text-gray-500 text-[11px] mt-2">Or email: eptosicare@gmail.com</p>
+            <p className="text-gray-500 text-[11px] mt-2">Or email: support@eptomart.com</p>
           </div>
 
           <p className="text-[10px] text-gray-400 text-center pb-2">Last updated: July 2026</p>

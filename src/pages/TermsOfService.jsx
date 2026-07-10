@@ -108,7 +108,7 @@ export default function TermsOfService() {
 
           <section>
             <h2 className="text-xl font-bold text-gray-800 mb-2">13. Contact</h2>
-            <p>For questions about these Terms, contact us at <a href="mailto:eptosicare@gmail.com" className="text-primary-500 hover:underline">eptosicare@gmail.com</a> or visit our <a href="/contact" className="text-primary-500 hover:underline">Contact page</a>.</p>
+            <p>For questions about these Terms, contact us at <a href="mailto:support@eptomart.com" className="text-primary-500 hover:underline">support@eptomart.com</a> or visit our <a href="/contact" className="text-primary-500 hover:underline">Contact page</a>.</p>
           </section>
 
           <p className="text-xs text-gray-400">Last updated: May 2025</p>
