@@ -118,6 +118,7 @@ const buildInvoiceHtml = (order, type = 'proforma') => {
   const couponDisc     = r2(calc.couponDiscount || pricing.discount || 0);
   const delivFee       = r2(calc.deliveryCharge || pricing.deliveryCharge || pricing.deliveryFee || 0);
   const platFee        = r2(calc.platformFee || pricing.platformFee || 0);
+  const platFeeGst     = r2(platFee * 18 / 118); // GST portion extracted from tax-inclusive platform fee
   const packFee        = r2(calc.packingLogisticsFee || pricing.packingLogisticsFee || 0);
   const declinedRefund = r2(calc.declinedRefundAmount || 0);
   const finalAmt       = r2(calc.finalPayableAmount && calc.finalPayableAmount > 0 ? calc.finalPayableAmount : (pricing.total || subtotal));
@@ -132,7 +133,8 @@ const buildInvoiceHtml = (order, type = 'proforma') => {
   const summaryRows = [
     sumRow('Items Subtotal', fmtC(subtotal)),
     delivFee > 0  ? sumRow('Delivery Charge', fmtC(delivFee)) : '',
-    platFee  > 0  ? sumRow('Platform Fee', fmtC(platFee)) : '',
+    platFee  > 0  ? sumRow('Platform Fee (incl. GST)', fmtC(platFee)) : '',
+    platFeeGst > 0 ? sumRow('&nbsp;&nbsp;GST @18% on Platform Fee (SAC 9985)', fmtC(platFeeGst), '#6b7280') : '',
     packFee  > 0  ? sumRow('Packing &amp; Logistics', fmtC(packFee)) : '',
     couponDisc > 0 ? sumRow('Coupon Discount (−)', `&minus; ${fmtC(couponDisc)}`, '#16a34a', '#f0fdf4') : '',
     walletAdj > 0  ? sumRow('Wallet Credit Applied (−)', `&minus; ${fmtC(walletAdj)}`, '#16a34a', '#f0fdf4') : '',
@@ -141,15 +143,16 @@ const buildInvoiceHtml = (order, type = 'proforma') => {
     priceRevDebit  > 0 ? sumRow('Price Revision Debit (+)',  `+ ${fmtC(priceRevDebit)}`,  '#dc2626', '#fff7ed') : '',
     procCredit > 0 ? sumRow('Procurement Credit (−)', `&minus; ${fmtC(procCredit)}`, '#16a34a', '#f0fdf4') : '',
     procDebit  > 0 ? sumRow('Procurement Debit (+)',  `+ ${fmtC(procDebit)}`,  '#dc2626', '#fff7ed') : '',
-    sumRow('GST / Tax', 'NIL (Exempt)', '#9ca3af'),
+    sumRow('Fresh Produce GST', '0% (Exempt)', '#9ca3af'),
   ].join('');
 
-  // ── GST exemption notice — shown on every invoice type ──────
+  // ── GST notice — shown on every invoice type ──────────────
   const GST_NOTE = '<div style="margin-top:8px;padding:7px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:3px">'
-    + '<p style="font-size:10px;color:#166534;margin:0"><strong>GST Exemption Notice:</strong> '
-    + 'This bill is exempt from Goods &amp; Services Tax (GST). Fresh vegetables, fruits, flowers, '
-    + 'and produce are exempt from GST as per Chapter 7 &amp; 8, Notification No. 2/2017-Central Tax (Rate) '
-    + 'of the Indian GST law. No GST is charged or collected on this transaction.</p></div>';
+    + '<p style="font-size:10px;color:#166534;margin:0"><strong>GST Notice (GSTIN: 33IFLPS7086Q1Z6):</strong> '
+    + 'Fresh vegetables, fruits, flowers, and produce are exempt from GST as per Chapter 7 &amp; 8, '
+    + 'Notification No. 2/2017-Central Tax (Rate) of the Indian GST law — no GST on produce items. '
+    + 'The Platform Fee includes 18% GST (CGST 9% + SGST 9%, SAC 9985 — marketplace services), '
+    + 'disclosed above as a breakout line. All other charges are GST-exempt.</p></div>';
 
   // ── Disclaimer ──────────────────────────────────────────────
   const disclaimer = type === 'proforma'
@@ -181,7 +184,7 @@ const buildInvoiceHtml = (order, type = 'proforma') => {
     <td width="55%" valign="top">
       <div style="color:#065f46;font-size:24px;font-weight:bold;line-height:1">EPTOMART</div>
       <div style="color:#374151;font-size:12px;margin-top:3px">Koyambedu Daily — Fresh from the Market</div>
-      <div style="color:#9ca3af;font-size:11px;margin-top:2px">GSTIN: Exempt (Fresh Produce) &nbsp;|&nbsp; support@eptomart.com</div>
+      <div style="color:#9ca3af;font-size:11px;margin-top:2px">GSTIN: 33IFLPS7086Q1Z6 &nbsp;|&nbsp; support@eptomart.com</div>
     </td>
     <td width="45%" valign="top" style="text-align:right">
       <div style="color:#065f46;font-size:18px;font-weight:bold">${title}</div>
