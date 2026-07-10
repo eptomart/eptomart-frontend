@@ -411,6 +411,7 @@ export default function KoyambeduCheckout() {
 
   // ── Address ────────────────────────────────
   const [selectedSavedAddrId, setSelectedSavedAddrId] = useState(null);
+  const hasAutoSelectedAddr = useRef(false); // run address auto-select only once on mount
 
   // Pre-fill from localStorage cache (works for guests too)
   const cachedAddr = (() => {
@@ -427,11 +428,14 @@ export default function KoyambeduCheckout() {
     landmark:     '',
   });
 
-  // Auto-select default saved address on first load (logged-in users)
-  // If a valid saved address is found, skip the address form and jump to map (step 1).
+  // Auto-select default saved address on first load (logged-in users).
+  // Runs only once — guarded by hasAutoSelectedAddr so that subsequent
+  // changes to userLocation / locationLabel don't reset a user-chosen address.
   useEffect(() => {
+    if (hasAutoSelectedAddr.current) return; // already ran — don't override user's choice
     const saved = user?.addresses || [];
     if (!saved.length) return;
+    hasAutoSelectedAddr.current = true;
     const def = saved.find(a => a.isDefault) || saved[0];
     setSelectedSavedAddrId(String(def._id));
     setAddr({
