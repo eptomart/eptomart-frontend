@@ -126,7 +126,10 @@ export default function KoyambeduShop() {
       if (search)     params.set('search',   search);
       if (categoryId) params.set('category', categoryId);
       const { data } = await api.get(`/koyambedu/products?${params}`);
-      setProducts(pg === 1 ? data.products : prev => [...prev, ...data.products]);
+      setProducts(pg === 1 ? data.products : prev => {
+        const seen = new Set(prev.map(p => p._id));
+        return [...prev, ...data.products.filter(p => !seen.has(p._id))];
+      });
       setTotal(data.total);
       setPage(pg);
     } catch {
