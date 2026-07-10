@@ -208,6 +208,23 @@ export default function UnifiedOrders() {
           )}
         </div>
 
+        {/* ── Koyambedu Daily: cancellation deadline notice ── */}
+        {(activeTab === 'koyambedu') && (
+          <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+            <span className="text-amber-500 mt-0.5 text-base">⏰</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-amber-900">Cancellation Deadline — 1:00 AM</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Orders placed today can be cancelled before <strong>1:00 AM</strong>.
+                Contact our help desk to cancel:&nbsp;
+                <a href="tel:+919514519518" className="font-bold underline underline-offset-2">
+                  +91 95145 19518
+                </a>
+              </p>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <Loader fullPage={false} />
         ) : orders.length === 0 ? (
