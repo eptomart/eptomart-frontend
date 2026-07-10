@@ -1178,7 +1178,7 @@ function KoyambeduShowcase() {
                     <p className="text-xs font-extrabold text-gray-600">{section.category.name}</p>
                   </div>
                   <Link
-                    to={`/koyambedu/shop?category=${section.category.slug || section.category._id}`}
+                    to={`/koyambedu/shop?category=${section.category._id}`}
                     className="text-[10px] font-bold flex items-center gap-0.5"
                     style={{ color: '#059669' }}>
                     More <FiChevronRight size={10} />
