@@ -18,10 +18,10 @@ const APP_CONFIG = {
     twitterSite: '@eptomart',
     pages: {
       home: {
-        title:       'Eptomart — Shop Everything Online | Fast Delivery in Chennai',
-        description: "India's fast, affordable online shopping destination. Electronics, fashion, groceries and more — delivered to your door.",
+        title:       'Eptomart — Wholesale Fruits & Vegetables, Groceries & More | Chennai',
+        description: "Eptomart brings Koyambedu Market home: wholesale fruits and vegetables at market rates, fresh groceries, electronics, fashion and more — fast delivery across Chennai.",
         canonical:   `${BASE_URL}/`,
-        keywords:    'online shopping, buy online India, electronics, fashion, groceries, Chennai delivery',
+        keywords:    'wholesale fruits and vegetables, wholesale vegetables Chennai, koyambedu market online, online shopping, groceries, bulk vegetables delivery, Chennai delivery',
         image:       DEFAULT_IMAGE,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -82,16 +82,17 @@ const APP_CONFIG = {
     twitterSite: '@eptomart',
     pages: {
       home: {
-        title:       'Koyambedu Daily — Fresh Vegetables & Fruits Delivered | Eptomart',
-        description: "Order fresh vegetables, fruits and groceries from Koyambedu Market — Asia's largest wholesale market — delivered to your doorstep in Chennai.",
+        title:       'Wholesale Fruits & Vegetables Online — Koyambedu Market Prices | Eptomart',
+        description: "Buy wholesale fruits and vegetables online at Koyambedu Market rates — Asia's largest wholesale market. Bulk vegetables, fresh fruits, greens & flowers delivered across Chennai at daily wholesale prices.",
         canonical:   `${BASE_URL}/koyambedu`,
-        keywords:    'koyambedu market, fresh vegetables online Chennai, fruits delivery, wholesale prices, daily groceries',
+        keywords:    'wholesale fruits and vegetables, wholesale vegetables online, wholesale fruits Chennai, bulk vegetables online, koyambedu wholesale market, koyambedu market online, vegetables wholesale price, fruits wholesale price, bulk fruit vegetable delivery Chennai, wholesale vegetable app',
         image:       `${BASE_URL}/icons/koyambedu-og.png`,
         jsonLd: {
           '@context':   'https://schema.org',
           '@type':      'LocalBusiness',
-          name:         'Koyambedu Daily',
-          description:  'Fresh vegetables, fruits and groceries from Koyambedu Market delivered to your doorstep.',
+          name:         'Koyambedu Daily — Wholesale Fruits & Vegetables',
+          description:  'Wholesale fruits and vegetables at Koyambedu Market prices — bulk vegetables, fresh fruits, greens and flowers delivered across Chennai at daily wholesale rates.',
+          keywords:     'wholesale fruits and vegetables, bulk vegetables, koyambedu market, wholesale prices Chennai',
           url:          `${BASE_URL}/koyambedu`,
           image:        `${BASE_URL}/icons/koyambedu-og.png`,
           priceRange:   '₹',
