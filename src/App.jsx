@@ -42,6 +42,7 @@ const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const DeleteAccount  = lazy(() => import('./pages/DeleteAccount'));
 const ProductPreview = lazy(() => import('./pages/ProductPreview'));
 const InvoiceView    = lazy(() => import('./pages/invoice/InvoiceView'));
+const WholesaleChennai = lazy(() => import('./pages/WholesaleChennai'));   // SEO landing page
 
 // ── Admin pages ──────────────────────────────
 const AdminLayout       = lazy(() => import('./pages/admin/AdminLayout'));
@@ -175,6 +176,7 @@ function AppRoutes() {
           {/* Public */}
           <Route path="/"              element={<Home />} />
           <Route path="/categories"    element={<Categories />} />
+          <Route path="/wholesale-chennai" element={<WholesaleChennai />} />
           <Route path="/shop"          element={<Shop />} />
           <Route path="/shop/:category"element={<Shop />} />
           <Route path="/product/:slug" element={<ProductPage />} />
