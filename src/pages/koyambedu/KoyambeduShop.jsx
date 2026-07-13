@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import EptoSEO from '../../components/common/EptoSEO';
 import {
@@ -115,6 +115,10 @@ export default function KoyambeduShop() {
   const [total,      setTotal]      = useState(0);
   const [page,       setPage]       = useState(1);
 
+  // Infinite scroll sentinel
+  const sentinelRef = useRef(null);
+  const loadingRef  = useRef(false); // shadow ref so observer doesn't capture stale state
+
   const search       = searchParams.get('search')   || '';
   const categoryId   = searchParams.get('category') || '';
   const sortBy       = searchParams.get('sort')      || 'default';
@@ -145,6 +149,29 @@ export default function KoyambeduShop() {
   }, []);
 
   useEffect(() => { loadProducts(1); }, [search, categoryId, sortBy]);
+
+  // Keep shadow ref in sync so the IntersectionObserver closure is never stale
+  useEffect(() => { loadingRef.current = loading; }, [loading]);
+
+  // Infinite scroll: trigger next page when sentinel enters viewport
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingRef.current) {
+          // Read page from DOM attr so closure doesn't go stale
+          const nextPage = Number(sentinel.dataset.page);
+          loadProducts(nextPage);
+        }
+      },
+      { rootMargin: '200px' } // start loading 200px before sentinel is visible
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  // Re-connect observer whenever search/category/sort changes (sentinel re-mounts)
+  }, [search, categoryId, sortBy, loadProducts]);
 
   const setParam = (key, val) => {
     const np = new URLSearchParams(searchParams);
@@ -285,14 +312,13 @@ export default function KoyambeduShop() {
             </div>
           )}
 
-          {/* ── Load more ── */}
-          {!loading && products.length < total && (
-            <div className="flex justify-center mt-4 mb-6">
-              <button onClick={() => loadProducts(page + 1)}
-                className="bg-green-600 text-white font-semibold text-sm px-6 py-2.5 rounded-xl hover:bg-green-700 transition">
-                Load more
-              </button>
-            </div>
+          {/* ── Infinite scroll sentinel ── */}
+          {products.length < total && (
+            <div
+              ref={sentinelRef}
+              data-page={page + 1}
+              className="h-10"
+            />
           )}
 
       </div>
