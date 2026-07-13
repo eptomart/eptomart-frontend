@@ -27,6 +27,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useKoyambeduCart } from '../context/KoyambeduCartContext';
 import { formatINR } from '../utils/currency';
+import toast from 'react-hot-toast';
 
 // ── Eptomart (main cart) shipping thresholds ────────────
 const FREE_SHIPPING_THRESHOLD = 999;
@@ -354,9 +355,20 @@ function KoyambeduTab({
 
   const commitQty = (pid, itemKey, rawVal, item) => {
     const val = parseInt(rawVal, 10);
-    if (!isNaN(val) && val >= 0) {
-      kbdUpdateItem(pid, val, item.deliveryType || 'tomorrow',
-        { gradeKey: item.gradeKey, gradeName: item.gradeName, silent: true });
+    const moq = item.product?.minQty || 1;
+    if (!isNaN(val)) {
+      if (val === 0) {
+        // Allow full removal
+        kbdUpdateItem(pid, 0, item.deliveryType || 'tomorrow',
+          { gradeKey: item.gradeKey, gradeName: item.gradeName, silent: true });
+      } else if (val < moq) {
+        // Reject below-MOQ values
+        toast.error(`Minimum order is ${moq} ${item.unit || 'kg'}`, { duration: 2000 });
+        // Don't update — input closes and quantity stays unchanged
+      } else {
+        kbdUpdateItem(pid, val, item.deliveryType || 'tomorrow',
+          { gradeKey: item.gradeKey, gradeName: item.gradeName, silent: true });
+      }
     }
     setEditQty(p => { const n = { ...p }; delete n[itemKey]; return n; });
   };
@@ -427,19 +439,26 @@ function KoyambeduTab({
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       {/* Qty stepper */}
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => kbdUpdateItem(
-                            pid,
-                            Math.max(0, item.quantity - 1),
-                            item.deliveryType || 'tomorrow',
-                            { gradeKey: item.gradeKey, gradeName: item.gradeName, silent: true }
-                          )}
-                          disabled={kbdLoading}
-                          className="w-7 h-7 rounded-full bg-green-100 text-green-700 flex items-center
-                                     justify-center disabled:opacity-50 transition active:scale-90"
-                        >
-                          {item.quantity <= 1 ? <FiTrash2 size={11} /> : <FiMinus size={11} />}
-                        </button>
+                        {(() => {
+                          const moq  = prod?.minQty || 1;
+                          const step = prod?.qtyStep || 1;
+                          const atMoq = item.quantity <= moq;
+                          return (
+                            <button
+                              onClick={() => kbdUpdateItem(
+                                pid,
+                                atMoq ? 0 : Math.max(moq, item.quantity - step),
+                                item.deliveryType || 'tomorrow',
+                                { gradeKey: item.gradeKey, gradeName: item.gradeName, silent: true }
+                              )}
+                              disabled={kbdLoading}
+                              className="w-7 h-7 rounded-full bg-green-100 text-green-700 flex items-center
+                                         justify-center disabled:opacity-50 transition active:scale-90"
+                            >
+                              {atMoq ? <FiTrash2 size={11} /> : <FiMinus size={11} />}
+                            </button>
+                          );
+                        })()}
                         {editQty[item._id] !== undefined ? (
                           <input
                             type="number"
