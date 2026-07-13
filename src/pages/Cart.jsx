@@ -445,17 +445,26 @@ function KoyambeduTab({
                           const atMoq = item.quantity <= moq;
                           return (
                             <button
-                              onClick={() => kbdUpdateItem(
-                                pid,
-                                atMoq ? 0 : Math.max(moq, item.quantity - step),
-                                item.deliveryType || 'tomorrow',
-                                { gradeKey: item.gradeKey, gradeName: item.gradeName, silent: true }
-                              )}
+                              onClick={() => {
+                                if (atMoq) {
+                                  toast.error(`Minimum order is ${moq} ${item.unit || 'kg'}`, { duration: 2500 });
+                                  return;
+                                }
+                                kbdUpdateItem(
+                                  pid,
+                                  Math.max(moq, item.quantity - step),
+                                  item.deliveryType || 'tomorrow',
+                                  { gradeKey: item.gradeKey, gradeName: item.gradeName, silent: true }
+                                );
+                              }}
                               disabled={kbdLoading}
-                              className="w-7 h-7 rounded-full bg-green-100 text-green-700 flex items-center
-                                         justify-center disabled:opacity-50 transition active:scale-90"
+                              className="w-7 h-7 rounded-full flex items-center justify-center disabled:opacity-50 transition active:scale-90"
+                              style={{
+                                background: atMoq ? '#fee2e2' : '#dcfce7',
+                                color:      atMoq ? '#dc2626' : '#16a34a',
+                              }}
                             >
-                              {atMoq ? <FiTrash2 size={11} /> : <FiMinus size={11} />}
+                              <FiMinus size={11} />
                             </button>
                           );
                         })()}
