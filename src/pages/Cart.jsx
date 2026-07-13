@@ -440,9 +440,28 @@ function KoyambeduTab({
                         >
                           {item.quantity <= 1 ? <FiTrash2 size={11} /> : <FiMinus size={11} />}
                         </button>
-                        <span className="text-sm font-bold text-gray-900 w-8 text-center">
-                          {item.quantity}
-                        </span>
+                        {editQty[item._id] !== undefined ? (
+                          <input
+                            type="number"
+                            value={editQty[item._id]}
+                            onChange={e => setEditQty(p => ({ ...p, [item._id]: e.target.value }))}
+                            onBlur={() => commitQty(pid, item._id, editQty[item._id], item)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') commitQty(pid, item._id, editQty[item._id], item);
+                              if (e.key === 'Escape') setEditQty(p => { const n = { ...p }; delete n[item._id]; return n; });
+                            }}
+                            className="w-12 text-center text-sm font-bold border border-green-300 rounded-lg px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-green-400"
+                            autoFocus
+                          />
+                        ) : (
+                          <span
+                            onClick={() => setEditQty(p => ({ ...p, [item._id]: String(item.quantity) }))}
+                            className="text-sm font-bold text-gray-900 w-8 text-center cursor-pointer underline underline-offset-2 decoration-dotted select-none"
+                            title="Tap to edit quantity"
+                          >
+                            {item.quantity}
+                          </span>
+                        )}
                         <button
                           onClick={() => kbdUpdateItem(
                             pid,
