@@ -562,6 +562,7 @@ export default function KoyambeduCheckout() {
 
   // Reset slot selection when tab changes
   const handleTabChange = (tab) => {
+    if (tab === deliveryTab) return; // already on this tab — don't wipe slots
     setDeliveryTab(tab);
     setSelectedSlot(null);
     setAvailableSlots(null);
