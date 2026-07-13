@@ -6,7 +6,7 @@
 // Step 3: Payment
 // Privacy: buyer full address NEVER shown to sellers
 // ============================================
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiMapPin, FiCheck, FiArrowLeft, FiSearch, FiX } from 'react-icons/fi';
 import api from '../../utils/api';
@@ -127,7 +127,10 @@ function reverseGeocode(lat, lng) {
 }
 
 // ── Embedded Google Maps picker ─────────────
-function EmbeddedMapPicker({ initialCenter, onLocationConfirmed }) {
+// EmbeddedMapPicker — the Confirm button lives in the parent's fixed bottom bar
+// to avoid being covered by it. The child notifies the parent of its button state
+// via onStateChange({ disabled, label }) and exposes triggerConfirm via ref.
+const EmbeddedMapPicker = forwardRef(function EmbeddedMapPicker({ initialCenter, onLocationConfirmed, onStateChange }, ref) {
   const mapDivRef  = useRef(null);
   const mapRef     = useRef(null);
   const geoTimer   = useRef(null);
@@ -223,6 +226,19 @@ function EmbeddedMapPicker({ initialCenter, onLocationConfirmed }) {
 
     return () => { alive = false; clearTimeout(geoTimer.current); };
   }, []);
+
+  // Push button state up to parent so the fixed bottom bar re-renders correctly
+  useEffect(() => {
+    onStateChange?.({
+      disabled: !mapReady || mapMoving || confirming,
+      label:    confirming ? 'Checking…' : mapMoving ? 'Adjusting…' : 'Confirm Location',
+    });
+  }, [mapReady, mapMoving, confirming, onStateChange]);
+
+  // Expose only the trigger action via ref (state is pushed via onStateChange)
+  useImperativeHandle(ref, () => ({
+    triggerConfirm: () => handleConfirm(),
+  }));
 
   const handleConfirm = async () => {
     if (!center || mapMoving || confirming) return;
@@ -374,23 +390,9 @@ function EmbeddedMapPicker({ initialCenter, onLocationConfirmed }) {
         </div>
       )}
 
-      {/* Confirm button */}
-      <button
-        onClick={handleConfirm}
-        disabled={!mapReady || mapMoving || confirming}
-        className="w-full py-4 rounded-2xl font-extrabold text-white text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50"
-        style={{
-          background: (mapReady && !mapMoving)
-            ? 'linear-gradient(135deg, #16a34a, #059669)'
-            : '#d1d5db',
-          boxShadow: (mapReady && !mapMoving) ? '0 4px 16px rgba(22,163,74,0.4)' : 'none',
-        }}>
-        <FiCheck size={18} />
-        {confirming ? 'Checking availability…' : mapMoving ? 'Keep dragging…' : 'Confirm This Location'}
-      </button>
     </div>
   );
-}
+});
 
 // ═══════════════════════════════════════════
 // MAIN CHECKOUT
@@ -412,6 +414,8 @@ export default function KoyambeduCheckout() {
   // ── Address ────────────────────────────────
   const [selectedSavedAddrId, setSelectedSavedAddrId] = useState(null);
   const hasAutoSelectedAddr = useRef(false); // run address auto-select only once on mount
+  const mapPickerRef        = useRef(null);  // access EmbeddedMapPicker triggerConfirm
+  const [mapBtnState, setMapBtnState] = useState({ disabled: true, label: 'Confirm Location' });
 
   // Pre-fill from localStorage cache (works for guests too)
   const cachedAddr = (() => {
@@ -986,8 +990,10 @@ export default function KoyambeduCheckout() {
             </div>
 
             <EmbeddedMapPicker
+              ref={mapPickerRef}
               initialCenter={mapInitCenter}
               onLocationConfirmed={handleLocationConfirmed}
+              onStateChange={setMapBtnState}
             />
 
           </div>
@@ -1246,14 +1252,31 @@ export default function KoyambeduCheckout() {
           </div>
         )}
 
-        {/* Floating bottom bar — Step 1 */}
+        {/* Floating bottom bar — Step 1 (map pin) */}
         {step === 1 && (
           <div className="fixed bottom-0 left-0 right-0 above-bottom-nav bg-white border-t border-gray-100 px-4 pt-3 z-[9970]"
             style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}>
-            <button onClick={() => setStep(0)}
-              className="w-full py-3.5 rounded-2xl font-bold text-green-700 text-sm border-2 border-green-200 bg-white transition active:scale-[0.98]">
-              ← Back to Address
-            </button>
+            <div className="flex gap-3">
+              <button onClick={() => setStep(0)}
+                className="flex-shrink-0 px-4 py-3.5 rounded-2xl font-bold text-green-700 text-sm border-2 border-green-200 bg-white transition active:scale-[0.98]">
+                ← Back
+              </button>
+              <button
+                onClick={() => mapPickerRef.current?.triggerConfirm()}
+                disabled={mapBtnState.disabled}
+                className="flex-1 py-3.5 rounded-2xl font-extrabold text-white text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50"
+                style={{
+                  background: mapBtnState.disabled
+                    ? '#d1d5db'
+                    : 'linear-gradient(135deg,#16a34a,#059669)',
+                  boxShadow: mapBtnState.disabled
+                    ? 'none'
+                    : '0 4px 16px rgba(22,163,74,0.4)',
+                }}>
+                <FiCheck size={16} />
+                {mapBtnState.label}
+              </button>
+            </div>
           </div>
         )}
 
