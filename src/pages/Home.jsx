@@ -833,7 +833,8 @@ function MobileSearchBar() {
   const navigate  = useNavigate();
   const { user }  = useAuth();
   const [query,       setQuery]       = useState('');
-  const [suggestions, setSuggestions] = useState([]);
+  const [kbdResults,  setKbdResults]  = useState([]);
+  const [eptResults,  setEptResults]  = useState([]);
   const [open,        setOpen]        = useState(false);
   const [loading,     setLoading]     = useState(false);
   const [listening,   setListening]   = useState(false);
@@ -841,16 +842,24 @@ function MobileSearchBar() {
   const wrapRef  = useRef(null);
   const debounce = useRef(null);
 
+  const totalResults = kbdResults.length + eptResults.length;
+
   useEffect(() => {
     clearTimeout(debounce.current);
-    if (!query.trim() || query.length < 2) { setSuggestions([]); setOpen(false); return; }
+    if (!query.trim() || query.length < 2) { setKbdResults([]); setEptResults([]); setOpen(false); return; }
     debounce.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const { data } = await api.get(`/products/search?q=${encodeURIComponent(query)}&limit=7`);
-        setSuggestions(data.products || []);
-        setOpen(true);
-      } catch { setSuggestions([]); }
+        const [kbdRes, eptRes] = await Promise.allSettled([
+          api.get(`/koyambedu/products?search=${encodeURIComponent(query)}&limit=5&page=1`),
+          api.get(`/products/search?q=${encodeURIComponent(query)}&limit=5`),
+        ]);
+        const kbd = kbdRes.status === 'fulfilled' ? kbdRes.value.data.products || [] : [];
+        const ept = eptRes.status === 'fulfilled' ? eptRes.value.data.products || [] : [];
+        setKbdResults(kbd);
+        setEptResults(ept);
+        setOpen(kbd.length > 0 || ept.length > 0 || query.length >= 3);
+      } catch { setKbdResults([]); setEptResults([]); }
       finally { setLoading(false); }
     }, 280);
   }, [query]);
@@ -861,12 +870,19 @@ function MobileSearchBar() {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  const submit = async (q) => {
+  const submit = async (q, destination) => {
     const v = (q || query).trim();
     if (!v) return;
     setOpen(false);
-    navigate(`/shop?search=${encodeURIComponent(v)}`);
-    if (suggestions.length === 0 && v.length >= 3) {
+    // Navigate to whichever store has results; default to Koyambedu (primary vertical)
+    if (destination === 'eptomart') {
+      navigate(`/shop?search=${encodeURIComponent(v)}`);
+    } else if (kbdResults.length > 0 || destination === 'koyambedu') {
+      navigate(`/koyambedu/shop?search=${encodeURIComponent(v)}`);
+    } else {
+      navigate(`/shop?search=${encodeURIComponent(v)}`);
+    }
+    if (totalResults === 0 && v.length >= 3) {
       try {
         await api.post('/settings/product-inquiry', { query: v, name: user?.name || '', email: user?.email || '', phone: user?.phone || '' });
         toast.success(`We've noted your search for "${v}" — we'll source it soon! 🙌`, { duration: 4500, icon: '📬' });
@@ -891,11 +907,11 @@ function MobileSearchBar() {
         className="flex items-center gap-2 bg-white rounded-2xl px-4 py-2.5 shadow-sm border border-gray-200/80">
         <FiSearch className="text-gray-400 flex-shrink-0" size={16} />
         <input ref={inputRef} id="mobile-search-input" type="text" value={query}
-          onChange={e => setQuery(e.target.value)} onFocus={() => suggestions.length > 0 && setOpen(true)}
-          placeholder="Search products, brands…"
+          onChange={e => setQuery(e.target.value)} onFocus={() => totalResults > 0 && setOpen(true)}
+          placeholder="Search vegetables, products, brands…"
           className="flex-1 text-sm text-gray-700 placeholder-gray-400 bg-transparent outline-none font-medium" />
         {query
-          ? <button type="button" onClick={() => { setQuery(''); setSuggestions([]); setOpen(false); }} className="flex-shrink-0 text-gray-300 hover:text-gray-500"><FiX size={16} /></button>
+          ? <button type="button" onClick={() => { setQuery(''); setKbdResults([]); setEptResults([]); setOpen(false); }} className="flex-shrink-0 text-gray-300 hover:text-gray-500"><FiX size={16} /></button>
           : <button type="button" onClick={startVoice} className={`flex-shrink-0 p-1 rounded-lg transition-all ${listening ? 'text-red-500 animate-pulse' : 'text-orange-400 hover:text-orange-600'}`}><FiMic size={17} /></button>
         }
       </form>
@@ -903,24 +919,60 @@ function MobileSearchBar() {
         <div className="absolute left-4 right-4 top-full mt-1 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50">
           {loading
             ? <div className="px-4 py-3 text-xs text-gray-400 flex items-center gap-2"><span className="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />Searching…</div>
-            : suggestions.length > 0
+            : totalResults > 0
               ? <>
-                  {suggestions.map(p => (
-                    <button key={p._id} onClick={() => { setOpen(false); navigate(`/product/${p.slug || p._id}`); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 transition-colors text-left group">
-                      <div className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
-                        {p.images?.[0]?.url ? <img src={p.images[0].url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><FiPackage size={18} className="text-gray-400" /></div>}
+                  {/* Koyambedu Daily results */}
+                  {kbdResults.length > 0 && (
+                    <>
+                      <div className="px-4 py-1.5 bg-green-50 border-b border-green-100">
+                        <p className="text-[10px] font-bold text-green-700">🥬 Koyambedu Daily</p>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-gray-800 line-clamp-1 group-hover:text-orange-600">{p.name}</p>
-                        <p className="text-[10px] text-gray-600">{p.category?.name || ''}</p>
+                      {kbdResults.map(p => {
+                        const img = p.images?.find(i => i.isPrimary)?.url || p.images?.[0]?.url;
+                        const price = p.lowestUnitPrice ?? p.currentPrice;
+                        return (
+                          <button key={p._id} onClick={() => { setOpen(false); navigate(`/koyambedu/product/${p._id}`); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-green-50 transition-colors text-left group">
+                            <div className="w-9 h-9 rounded-xl overflow-hidden bg-green-50 flex-shrink-0">
+                              {img ? <img src={img} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-green-200">🌿</div>}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-gray-800 line-clamp-1 group-hover:text-green-700">{p.name}</p>
+                              <p className="text-[10px] text-gray-500">{p.category?.name || 'Koyambedu Daily'}</p>
+                            </div>
+                            {price ? <span className="text-xs font-bold text-green-600 flex-shrink-0">₹{price}</span> : null}
+                          </button>
+                        );
+                      })}
+                      <button onClick={() => submit(query, 'koyambedu')} className="w-full px-4 py-2 text-xs font-bold text-green-600 border-b border-gray-100 hover:bg-green-50 transition-colors text-left flex items-center gap-2">
+                        <FiSearch size={12} /> See all Koyambedu results for "{query}"
+                      </button>
+                    </>
+                  )}
+                  {/* Eptomart results */}
+                  {eptResults.length > 0 && (
+                    <>
+                      <div className="px-4 py-1.5 bg-orange-50 border-b border-orange-100">
+                        <p className="text-[10px] font-bold text-orange-600">🛒 Eptomart</p>
                       </div>
-                      <span className="text-xs font-bold text-orange-500 flex-shrink-0">₹{(p.discountPrice || p.price)?.toLocaleString('en-IN')}</span>
-                    </button>
-                  ))}
-                  <button onClick={() => submit(query)} className="w-full px-4 py-2.5 text-xs font-bold text-orange-500 border-t border-gray-100 hover:bg-orange-50 transition-colors text-left flex items-center gap-2">
-                    <FiSearch size={12} /> See all results for "{query}"
-                  </button>
+                      {eptResults.map(p => (
+                        <button key={p._id} onClick={() => { setOpen(false); navigate(`/product/${p.slug || p._id}`); }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 transition-colors text-left group">
+                          <div className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                            {p.images?.[0]?.url ? <img src={p.images[0].url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><FiPackage size={18} className="text-gray-400" /></div>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-gray-800 line-clamp-1 group-hover:text-orange-600">{p.name}</p>
+                            <p className="text-[10px] text-gray-500">{p.category?.name || ''}</p>
+                          </div>
+                          <span className="text-xs font-bold text-orange-500 flex-shrink-0">₹{(p.discountPrice || p.price)?.toLocaleString('en-IN')}</span>
+                        </button>
+                      ))}
+                      <button onClick={() => submit(query, 'eptomart')} className="w-full px-4 py-2.5 text-xs font-bold text-orange-500 border-t border-gray-100 hover:bg-orange-50 transition-colors text-left flex items-center gap-2">
+                        <FiSearch size={12} /> See all Eptomart results for "{query}"
+                      </button>
+                    </>
+                  )}
                 </>
               : query.length >= 3
                 ? <div className="px-4 py-4 text-center">

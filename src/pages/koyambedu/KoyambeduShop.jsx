@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import EptoSEO from '../../components/common/EptoSEO';
 import {
@@ -115,9 +115,10 @@ export default function KoyambeduShop() {
   const [total,      setTotal]      = useState(0);
   const [page,       setPage]       = useState(1);
 
-  // Infinite scroll sentinel
-  const sentinelRef = useRef(null);
-  const loadingRef  = useRef(false); // shadow ref so observer doesn't capture stale state
+  // Infinite scroll — use callback ref so observer attaches when sentinel mounts
+  const sentinelRef  = useRef(null);
+  const observerRef  = useRef(null);
+  const loadingRef   = useRef(false); // shadow ref so observer doesn't capture stale state
 
   const search       = searchParams.get('search')   || '';
   const categoryId   = searchParams.get('category') || '';
@@ -153,25 +154,25 @@ export default function KoyambeduShop() {
   // Keep shadow ref in sync so the IntersectionObserver closure is never stale
   useEffect(() => { loadingRef.current = loading; }, [loading]);
 
-  // Infinite scroll: trigger next page when sentinel enters viewport
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
+  // Callback ref: attaches observer whenever the sentinel element mounts/unmounts.
+  // This is crucial — useEffect with sentinelRef would miss the moment the sentinel
+  // first appears (after products load), because deps don't change at that point.
+  const sentinelCallbackRef = useCallback((node) => {
+    if (observerRef.current) { observerRef.current.disconnect(); observerRef.current = null; }
+    if (!node) return;
+    sentinelRef.current = node;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !loadingRef.current) {
-          // Read page from DOM attr so closure doesn't go stale
-          const nextPage = Number(sentinel.dataset.page);
+          const nextPage = Number(node.dataset.page);
           loadProducts(nextPage);
         }
       },
-      { rootMargin: '200px' } // start loading 200px before sentinel is visible
+      { rootMargin: '200px' }
     );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  // Re-connect observer whenever search/category/sort changes (sentinel re-mounts)
-  }, [search, categoryId, sortBy, loadProducts]);
+    observer.observe(node);
+    observerRef.current = observer;
+  }, [loadProducts]); // re-create when loadProducts changes (i.e. search/category/sort change)
 
   const setParam = (key, val) => {
     const np = new URLSearchParams(searchParams);
@@ -315,7 +316,7 @@ export default function KoyambeduShop() {
           {/* ── Infinite scroll sentinel ── */}
           {products.length < total && (
             <div
-              ref={sentinelRef}
+              ref={sentinelCallbackRef}
               data-page={page + 1}
               className="h-10"
             />

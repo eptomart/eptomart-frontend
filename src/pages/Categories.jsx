@@ -23,6 +23,7 @@ const VERTICALS = [
     bg: '#f0fdf4',
     border: '#86efac',
     accent: '#16a34a',
+    path: '/koyambedu/shop',
     hasCats: true,
   },
   {
@@ -58,6 +59,7 @@ const VERTICALS = [
     bg: '#fff7ed',
     border: '#fdba74',
     accent: '#f97316',
+    path: '/shop',
     hasCats: true,
   },
 ];
@@ -126,12 +128,12 @@ export default function Categories() {
   });
 
   const handleVerticalTap = (v) => {
-    if (!v.hasCats) {
-      navigate(v.path);
-      return;
-    }
-    setActiveId(v.id);
-    if (v.id === 'eptomart') loadEptomart();
+    navigate(v.path);
+  };
+
+  const handleCatTabChange = (id) => {
+    setActiveId(id);
+    if (id === 'eptomart') loadEptomart();
   };
 
   const activeVertical = VERTICALS.find(v => v.id === activeId);
@@ -162,7 +164,6 @@ export default function Categories() {
           {/* ── Vertical tiles (2×2 grid) ─────────────── */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             {VERTICALS.map(v => {
-              const isActive = v.id === activeId && v.hasCats;
               return (
                 <button
                   key={v.id}
@@ -170,15 +171,10 @@ export default function Categories() {
                   className="relative text-left rounded-3xl p-4 transition-all active:scale-95 overflow-hidden"
                   style={{
                     background: v.bg,
-                    border: `2px solid ${isActive ? v.accent : v.border}`,
-                    boxShadow: isActive ? `0 4px 20px ${v.accent}28` : '0 1px 4px rgba(0,0,0,0.06)',
+                    border: `2px solid ${v.border}`,
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
                   }}
                 >
-                  {/* Active glow bar at top */}
-                  {isActive && (
-                    <div className="absolute top-0 left-0 right-0 h-1 rounded-t-3xl"
-                      style={{ background: v.gradient }} />
-                  )}
 
                   {/* Emoji */}
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-3 shadow-sm"
@@ -191,12 +187,42 @@ export default function Categories() {
 
                   <div className="flex items-center gap-0.5 text-[11px] font-bold"
                     style={{ color: v.accent }}>
-                    {v.hasCats ? 'View categories' : 'Visit store'}
+                    Visit store
                     <FiChevronRight size={11} />
                   </div>
                 </button>
               );
             })}
+          </div>
+
+          {/* ── Browse by category ─────────────────────── */}
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-1 h-4 rounded-full bg-gray-400 flex-shrink-0" />
+              <p className="text-xs font-extrabold text-gray-600 uppercase tracking-wide">Browse by category</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleCatTabChange('koyambedu')}
+                className="flex-1 py-1.5 rounded-xl text-xs font-bold transition-all"
+                style={{
+                  background: activeId === 'koyambedu' ? '#16a34a' : '#f0fdf4',
+                  color:      activeId === 'koyambedu' ? '#fff' : '#16a34a',
+                  border:     `1.5px solid ${activeId === 'koyambedu' ? '#16a34a' : '#86efac'}`,
+                }}>
+                🥬 Koyambedu Daily
+              </button>
+              <button
+                onClick={() => handleCatTabChange('eptomart')}
+                className="flex-1 py-1.5 rounded-xl text-xs font-bold transition-all"
+                style={{
+                  background: activeId === 'eptomart' ? '#f97316' : '#fff7ed',
+                  color:      activeId === 'eptomart' ? '#fff' : '#f97316',
+                  border:     `1.5px solid ${activeId === 'eptomart' ? '#f97316' : '#fdba74'}`,
+                }}>
+                🛒 Eptomart
+              </button>
+            </div>
           </div>
 
           {/* ── Koyambedu Daily categories ─────────────── */}
