@@ -147,6 +147,12 @@ export const KoyambeduCartProvider = ({ children }) => {
   // options.gradeKey    — grade to update (null = non-graded product)
   const updateItem = useCallback((productId, quantity, deliveryType = 'tomorrow', { silent = false, productData, gradeKey = null, gradeName = null } = {}) => {
     const pid    = String(productId);
+
+    // Guard: never send "null" or "undefined" to the backend — it causes a MongoDB ObjectId cast error
+    if (!productId || pid === 'null' || pid === 'undefined') {
+      console.warn('[KoyambeduCart] updateItem called with invalid productId:', productId);
+      return;
+    }
     const qty    = Math.max(0, quantity);
     const key    = cartKey(pid, gradeKey);
 
@@ -233,7 +239,12 @@ export const KoyambeduCartProvider = ({ children }) => {
 
   // ── Derived values (merge optimistic for logged-in) ─
   const effectiveItems = isLoggedIn()
-    ? (cart.items?.map(item => {
+    ? (cart.items?.filter(item => {
+        // Skip items whose product reference is null (deleted/stale product)
+        // so we never render them or call updateItem with productId = "null"
+        const pid = String(item.product?._id || item.product);
+        return item.product != null && pid !== 'null' && pid !== 'undefined';
+      }).map(item => {
         const pid    = String(item.product?._id || item.product);
         const optKey = cartKey(pid, item.gradeKey || null);
         const newQty = optKey in optimisticQtys ? optimisticQtys[optKey] : item.quantity;

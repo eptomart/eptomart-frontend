@@ -381,11 +381,15 @@ function KoyambeduTab({
 
           <div className="divide-y divide-gray-100">
             {kbdCart.items?.map((item, i) => {
-              const prod    = item.product;
+              const prod = item.product;
+
+              // Skip rendering items whose product reference was deleted / failed to populate
+              const pid = String(prod?._id || item.product);
+              if (!prod || pid === 'null' || pid === 'undefined') return null;
+
               const img     = prod?.images?.find(im => im.isPrimary)?.url
                               || prod?.images?.[0]?.url
                               || 'https://placehold.co/80x80/dcfce7/166534?text=🌿';
-              const pid     = String(prod?._id || item.product);
               const lineAmt = (item.unitPrice || 0) * (item.quantity || 0);
 
               return (
