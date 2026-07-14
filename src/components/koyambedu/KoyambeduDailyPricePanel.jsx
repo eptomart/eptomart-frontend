@@ -12,7 +12,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   FiRefreshCw, FiSave, FiClock, FiChevronDown, FiChevronUp,
-  FiFilter, FiAlertCircle, FiDownload,
+  FiFilter, FiAlertCircle, FiDownload, FiSearch, FiTrendingUp, FiX,
 } from 'react-icons/fi';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
@@ -120,7 +120,7 @@ function GradeInputBlock({ grade, gradeEdit, onEdit, chargePercents }) {
 }
 
 // ── ProductRow ────────────────────────────────────────────────────────────────
-function ProductRow({ product, edit, onEdit, showPreview, onTogglePreview }) {
+function ProductRow({ product, edit, onEdit, showPreview, onTogglePreview, onShowHistory }) {
   const {
     _id, name, nameTamil, unit, variants, variantDiffPercent: savedDiff,
     procurementChargePercent: proc, platformChargePercent: plat, logisticsChargePercent: log,
@@ -169,12 +169,21 @@ function ProductRow({ product, edit, onEdit, showPreview, onTogglePreview }) {
               )}
             </p>
           </div>
-          {!hasGrades && highestQtyVariant && (
-            <div className="text-right shrink-0">
-              <p className="text-[10px] text-gray-400">Highest variant</p>
-              <p className="text-xs font-bold text-green-700">{fmtRange(highestQtyVariant, unit)}</p>
-            </div>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {!hasGrades && highestQtyVariant && (
+              <div className="text-right">
+                <p className="text-[10px] text-gray-400">Highest variant</p>
+                <p className="text-xs font-bold text-green-700">{fmtRange(highestQtyVariant, unit)}</p>
+              </div>
+            )}
+            <button
+              onClick={() => onShowHistory(product)}
+              title="Price History"
+              className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition shrink-0"
+            >
+              <FiTrendingUp size={14} />
+            </button>
+          </div>
         </div>
 
         {hasGrades ? (
@@ -285,6 +294,99 @@ function ProductRow({ product, edit, onEdit, showPreview, onTogglePreview }) {
   );
 }
 
+// ── Per-product Price History Drawer ─────────────────────────────────────────
+function ProductHistoryDrawer({ product, onClose }) {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get(`/koyambedu/products/${product._id}/price-history?days=30`)
+      .then(({ data }) => setHistory(data.history || data || []))
+      .catch(() => toast.error('Could not load history'))
+      .finally(() => setLoading(false));
+  }, [product._id]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40"
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="bg-green-600 text-white px-5 py-4 flex items-center justify-between shrink-0">
+          <div>
+            <p className="font-black text-base flex items-center gap-2">
+              📈 Price History
+            </p>
+            <p className="text-green-200 text-xs mt-0.5 font-semibold">{product.name} — last 30 days</p>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white text-xl font-bold leading-none">
+            <FiX size={20} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="overflow-y-auto flex-1 p-4">
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <div className="w-7 h-7 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : history.length === 0 ? (
+            <div className="text-center py-10 text-gray-400 text-sm">
+              <p className="text-3xl mb-2">📊</p>
+              No price changes recorded yet.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {history.map((h, i) => {
+                const prev   = Number(h.previousPrice || 0);
+                const next   = Number(h.updatedPrice  || h.newPrice || 0);
+                const diff   = prev > 0 ? ((next - prev) / prev * 100).toFixed(1) : null;
+                const isUp   = next > prev;
+                const isDown = next < prev;
+                return (
+                  <div key={h._id || i} className="bg-gray-50 rounded-xl px-4 py-3 flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold ${
+                      isUp ? 'bg-red-100 text-red-600' : isDown ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      {isUp ? '↑' : isDown ? '↓' : '='}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 text-sm">
+                        {prev > 0 && <span className="text-gray-400 line-through">{fmt(prev)}</span>}
+                        <span className="font-black text-gray-800">{fmt(next)}</span>
+                        {diff !== null && (
+                          <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                            isUp ? 'bg-red-100 text-red-600' : isDown ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
+                          }`}>
+                            {isUp ? '+' : ''}{diff}%
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {h.gradeKey && h.gradeKey !== 'base' && (
+                          <span className="mr-2 bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded capitalize">{h.gradeKey}</span>
+                        )}
+                        {h.updatedByName || '—'} ·{' '}
+                        {new Date(h.createdAt).toLocaleString('en-IN', {
+                          day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+                        })}
+                        {h.source && (
+                          <span className="ml-2 text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
+                            {h.source.replace(/_/g, ' ')}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main exported panel ───────────────────────────────────────────────────────
 /**
  * @param {string}  apiBase   e.g. '/koyambedu/seller-admin' or '/koyambedu/admin'
@@ -293,15 +395,17 @@ function ProductRow({ product, edit, onEdit, showPreview, onTogglePreview }) {
 export default function KoyambeduDailyPricePanel({ apiBase, saAdmins }) {
   const isAdmin = !!saAdmins;
 
-  const [products,    setProducts]    = useState([]);
-  const [categories,  setCategories]  = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [catFilter,   setCatFilter]   = useState('');
-  const [saFilter,    setSaFilter]    = useState('');
-  const [edits,       setEdits]       = useState({});    // { [id]: { highestBasePrice?, variantDiffPercent?, grades?: {...} } }
-  const [previews,    setPreviews]    = useState({});    // { [id]: boolean }
-  const [bulkSaving,  setBulkSaving]  = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(null);
+  const [products,       setProducts]       = useState([]);
+  const [categories,     setCategories]     = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [catFilter,      setCatFilter]      = useState('');
+  const [saFilter,       setSaFilter]       = useState('');
+  const [search,         setSearch]         = useState('');
+  const [edits,          setEdits]          = useState({});
+  const [previews,       setPreviews]       = useState({});
+  const [bulkSaving,     setBulkSaving]     = useState(false);
+  const [lastUpdated,    setLastUpdated]    = useState(null);
+  const [historyProduct, setHistoryProduct] = useState(null); // product for history drawer
 
   const loadCategories = useCallback(async () => {
     try {
@@ -367,7 +471,12 @@ export default function KoyambeduDailyPricePanel({ apiBase, saAdmins }) {
   const onTogglePreview = (id) =>
     setPreviews(prev => ({ ...prev, [id]: !prev[id] }));
 
-  const changedCount = Object.keys(edits).length;
+  const changedCount   = Object.keys(edits).length;
+  const filteredProducts = products.filter(p =>
+    !search.trim() ||
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    (p.nameTamil || '').toLowerCase().includes(search.toLowerCase())
+  );
 
   const saveAll = async () => {
     if (!changedCount) { toast('No changes to save'); return; }
@@ -426,6 +535,32 @@ export default function KoyambeduDailyPricePanel({ apiBase, saAdmins }) {
 
   return (
     <div className="space-y-4">
+      {/* ── History Drawer ── */}
+      {historyProduct && (
+        <ProductHistoryDrawer
+          product={historyProduct}
+          onClose={() => setHistoryProduct(null)}
+        />
+      )}
+
+      {/* ── Search Bar ── */}
+      <div className="relative">
+        <FiSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search vegetable by name…"
+          className="w-full pl-9 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+        />
+        {search && (
+          <button onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <FiX size={14} />
+          </button>
+        )}
+      </div>
+
       {/* ── Toolbar ── */}
       <div className="flex items-center gap-2 flex-wrap">
         {/* SA filter (admin only) */}
@@ -507,7 +642,11 @@ export default function KoyambeduDailyPricePanel({ apiBase, saAdmins }) {
         </div>
       ) : (
         <div className="space-y-3">
-          {products.map(p => (
+          {filteredProducts.length === 0 && search.trim() ? (
+            <div className="text-center py-8 text-gray-400 text-sm">
+              No products match "<span className="font-medium text-gray-600">{search}</span>"
+            </div>
+          ) : filteredProducts.map(p => (
             <ProductRow
               key={p._id}
               product={p}
@@ -515,6 +654,7 @@ export default function KoyambeduDailyPricePanel({ apiBase, saAdmins }) {
               onEdit={onEdit}
               showPreview={!!previews[p._id]}
               onTogglePreview={onTogglePreview}
+              onShowHistory={setHistoryProduct}
             />
           ))}
         </div>

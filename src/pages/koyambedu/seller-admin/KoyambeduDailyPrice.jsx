@@ -8,6 +8,8 @@ import api from '../../../utils/api';
 import toast from 'react-hot-toast';
 import KoyambeduDailyPricePanel from '../../../components/koyambedu/KoyambeduDailyPricePanel';
 
+const fmt = (n) => `₹${Number(n || 0).toFixed(2)}`;
+
 // DailyPriceTab is now the shared panel component
 // (helpers, GradeInputBlock, ProductRow, and DailyPriceTab have been extracted
 //  into src/components/koyambedu/KoyambeduDailyPricePanel.jsx)
