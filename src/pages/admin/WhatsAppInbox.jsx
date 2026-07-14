@@ -2,19 +2,259 @@
 // ADMIN — WhatsApp Inbox
 // Super Admin only: view & reply to inbound
 // WhatsApp messages from customers.
+//
+// SMART FEATURE: detects "Fresh Market Price List"
+// messages, matches product names to Koyambedu
+// Daily products, and lets admin bulk-update
+// base prices with one click.
 // ============================================
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
+// ── Price List Parser ──────────────────────────────────────────────────────
+
+/**
+ * Parses a WhatsApp message that looks like:
+ *   🌿 Fresh Market Price List
+ *   Date : 14/07/2026
+ *   Capsicum Green - ₹40/kg
+ *   Cucumber - ₹33/kg
+ *
+ * Returns { date: Date, items: [{ name, price, unit }] } or null.
+ */
+function parsePriceList(text) {
+  if (!text) return null;
+
+  // Must contain a date and at least one ₹ price
+  const dateMatch = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  const hasPrices = (text.match(/₹\d+/g) || []).length >= 1;
+  if (!dateMatch || !hasPrices) return null;
+
+  const [, day, month, year] = dateMatch;
+  const msgDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+
+  // Extract price lines: "Name - ₹XX/unit" or "Name: ₹XX"
+  const items = [];
+  for (const line of text.split('\n')) {
+    const m = line.match(/^([^₹\n]+?)\s*[-:–]\s*₹(\d+(?:\.\d+)?)\s*(?:\/\s*(\w+))?/);
+    if (m) {
+      const name = m[1].replace(/^[•\-*\s🌿🥬🍅🥒]+/, '').trim();
+      const price = parseFloat(m[2]);
+      const unit  = m[3] || 'kg';
+      if (name && price > 0) items.push({ name, price, unit });
+    }
+  }
+
+  return items.length ? { date: msgDate, items } : null;
+}
+
+function dateLabel(date) {
+  const today = new Date();
+  const isToday = date.toDateString() === today.toDateString();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  if (isToday)     return { label: "Today's date ✓", ok: true };
+  if (isYesterday) return { label: 'Yesterday — 1 day old', ok: 'warn' };
+  const diffDays = Math.round((today - date) / 86400000);
+  return { label: `${diffDays} days old`, ok: false };
+}
+
+/** Case-insensitive best-match between a message item name and a product list */
+function matchItem(itemName, products) {
+  const needle = itemName.toLowerCase().trim();
+  // Exact match first
+  let hit = products.find(p => p.name.toLowerCase().trim() === needle);
+  if (hit) return hit;
+  // Contains match
+  hit = products.find(p => p.name.toLowerCase().includes(needle) || needle.includes(p.name.toLowerCase().trim()));
+  return hit || null;
+}
+
+// ── Price List Card ────────────────────────────────────────────────────────
+
+function PriceListCard({ parsed, onClose }) {
+  const [products,   setProducts]   = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [matches,    setMatches]    = useState([]);   // [{ item, product, accepted, newPrice }]
+  const [applying,   setApplying]   = useState(false);
+  const [applied,    setApplied]    = useState(false);
+
+  useEffect(() => {
+    api.get('/koyambedu/admin/daily-price')
+      .then(({ data }) => {
+        const prods = data.products || [];
+        setProducts(prods);
+        setMatches(parsed.items.map(item => {
+          const product = matchItem(item.name, prods);
+          return { item, product, accepted: !!product, newPrice: item.price };
+        }));
+      })
+      .catch(() => toast.error('Could not load products'))
+      .finally(() => setLoading(false));
+  }, [parsed]);
+
+  const { label: dateText, ok: dateOk } = dateLabel(parsed.date);
+
+  const toggleAccept = (idx) => setMatches(m => m.map((x, i) =>
+    i === idx ? { ...x, accepted: !x.accepted } : x
+  ));
+
+  const setPrice = (idx, val) => setMatches(m => m.map((x, i) =>
+    i === idx ? { ...x, newPrice: parseFloat(val) || x.newPrice } : x
+  ));
+
+  const applyPrices = async () => {
+    const updates = matches
+      .filter(m => m.accepted && m.product && m.newPrice > 0)
+      .map(m => ({ productId: m.product._id, highestBasePrice: m.newPrice }));
+
+    if (!updates.length) { toast.error('No items selected'); return; }
+
+    setApplying(true);
+    try {
+      await api.post('/koyambedu/admin/daily-price/bulk', { updates });
+      toast.success(`✅ Updated ${updates.length} product${updates.length > 1 ? 's' : ''}`);
+      setApplied(true);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Update failed');
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const acceptedCount = matches.filter(m => m.accepted && m.product).length;
+
+  return (
+    <div className="mt-3 bg-green-50 border border-green-200 rounded-2xl overflow-hidden">
+      {/* Header */}
+      <div className="bg-green-600 text-white px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">🌿</span>
+          <div>
+            <p className="font-black text-sm">Market Price List Detected</p>
+            <p className={`text-xs font-semibold mt-0.5 ${
+              dateOk === true ? 'text-green-200' : dateOk === 'warn' ? 'text-yellow-200' : 'text-red-200'
+            }`}>
+              {dateText}
+            </p>
+          </div>
+        </div>
+        <button onClick={onClose} className="text-white/70 hover:text-white text-xl font-bold leading-none">✕</button>
+      </div>
+
+      {/* Date warning */}
+      {dateOk === false && (
+        <div className="bg-red-50 border-b border-red-200 px-4 py-2 text-sm text-red-700 font-semibold">
+          ⚠️ This price list is outdated. Date does not match today. You can still apply if needed.
+        </div>
+      )}
+      {dateOk === 'warn' && (
+        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-sm text-yellow-700 font-semibold">
+          ⚠️ This price list is from yesterday. Verify before applying.
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div className="flex justify-center py-6">
+          <div className="w-7 h-7 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+
+      {/* Match table */}
+      {!loading && (
+        <div className="p-4 space-y-2">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
+            {matches.filter(m => m.product).length} of {matches.length} items matched to Koyambedu Daily products
+          </p>
+
+          {matches.map((m, idx) => (
+            <div key={idx} className={`rounded-xl border px-4 py-3 flex items-center gap-3 transition ${
+              !m.product ? 'bg-gray-50 border-gray-200 opacity-60' :
+              m.accepted ? 'bg-white border-green-300' : 'bg-white border-gray-200'
+            }`}>
+              {/* Checkbox */}
+              <input
+                type="checkbox"
+                checked={!!m.accepted && !!m.product}
+                disabled={!m.product}
+                onChange={() => toggleAccept(idx)}
+                className="w-4 h-4 accent-green-600 cursor-pointer shrink-0"
+              />
+
+              {/* Item name */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-gray-800 truncate">{m.item.name}</p>
+                {m.product
+                  ? <p className="text-xs text-green-600 font-semibold truncate">→ {m.product.name}</p>
+                  : <p className="text-xs text-red-400 font-semibold">No match found in Koyambedu Daily</p>
+                }
+              </div>
+
+              {/* Price input */}
+              {m.product ? (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-sm font-bold text-gray-500">₹</span>
+                  <input
+                    type="number"
+                    value={m.newPrice}
+                    min={1}
+                    onChange={e => setPrice(idx, e.target.value)}
+                    disabled={!m.accepted}
+                    className="w-20 text-sm font-black border-2 border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-green-400 disabled:opacity-40"
+                  />
+                  <span className="text-xs text-gray-400">/{m.item.unit}</span>
+                </div>
+              ) : (
+                <span className="text-sm font-bold text-gray-400 shrink-0">₹{m.item.price}/{m.item.unit}</span>
+              )}
+            </div>
+          ))}
+
+          {/* Unmatched note */}
+          {matches.some(m => !m.product) && (
+            <p className="text-xs text-gray-400 pt-1">
+              Unmatched items were not found in Koyambedu Daily — add them as products first.
+            </p>
+          )}
+
+          {/* Apply button */}
+          {!applied ? (
+            <button
+              onClick={applyPrices}
+              disabled={applying || acceptedCount === 0}
+              className="mt-3 w-full py-3 bg-green-600 text-white font-black rounded-xl hover:bg-green-700 disabled:opacity-40 transition text-sm"
+            >
+              {applying
+                ? 'Updating…'
+                : `Update Base Price for ${acceptedCount} Product${acceptedCount !== 1 ? 's' : ''}`
+              }
+            </button>
+          ) : (
+            <div className="mt-3 bg-green-600 text-white font-black rounded-xl py-3 text-center text-sm">
+              ✅ Prices updated successfully!
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Inbox ─────────────────────────────────────────────────────────────
+
 export default function WhatsAppInbox() {
-  const [msgs,          setMsgs]          = useState([]);
-  const [unread,        setUnread]        = useState(0);
-  const [loading,       setLoading]       = useState(true);
-  const [unreadOnly,    setUnreadOnly]    = useState(false);
-  const [replyModal,    setReplyModal]    = useState(null);
-  const [replyText,     setReplyText]     = useState('');
-  const [replying,      setReplying]      = useState(false);
+  const [msgs,       setMsgs]       = useState([]);
+  const [unread,     setUnread]     = useState(0);
+  const [loading,    setLoading]    = useState(true);
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [replyModal, setReplyModal] = useState(null);
+  const [replyText,  setReplyText]  = useState('');
+  const [replying,   setReplying]   = useState(false);
+  // track which messages have the price panel open
+  const [pricePanel, setPricePanel] = useState({});   // { [msgId]: boolean }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,8 +310,6 @@ export default function WhatsAppInbox() {
     }
   };
 
-  const displayed = unreadOnly ? msgs.filter(m => !m.isRead) : msgs;
-
   const msgContent = (msg) => {
     if (msg.type === 'text' || msg.type === 'button') return msg.text || '—';
     if (msg.type === 'image')    return `📷 Image${msg.mediaCaption ? ` — ${msg.mediaCaption}` : ''}`;
@@ -84,6 +322,8 @@ export default function WhatsAppInbox() {
   };
 
   const hoursSince = (date) => (Date.now() - new Date(date).getTime()) / 3_600_000;
+
+  const displayed = unreadOnly ? msgs.filter(m => !m.isRead) : msgs;
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-5">
@@ -117,14 +357,15 @@ export default function WhatsAppInbox() {
 
       {/* Filter */}
       <div className="flex gap-2">
-        <button onClick={() => setUnreadOnly(false)}
-          className={`text-sm font-bold px-4 py-2 rounded-xl transition ${!unreadOnly ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-          All messages
-        </button>
-        <button onClick={() => setUnreadOnly(true)}
-          className={`text-sm font-bold px-4 py-2 rounded-xl transition ${unreadOnly ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-          Unread only
-        </button>
+        {['All messages', 'Unread only'].map((label, i) => (
+          <button key={label}
+            onClick={() => setUnreadOnly(i === 1)}
+            className={`text-sm font-bold px-4 py-2 rounded-xl transition ${
+              (i === 1) === unreadOnly ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}>
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Loading */}
@@ -140,72 +381,97 @@ export default function WhatsAppInbox() {
           <p className="text-4xl">📲</p>
           <p className="font-bold text-gray-700">No messages yet</p>
           <p className="text-sm text-gray-400 leading-relaxed">
-            Register the webhook in Meta Developer Dashboard to start receiving messages.<br />
-            <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">
-              WhatsApp → Configuration → Webhook → messages field
-            </span>
+            Subscribe the <span className="font-mono font-bold">messages</span> field in Meta Developer Dashboard
+            → WhatsApp → Configuration → Webhook Fields.
           </p>
         </div>
       )}
 
-      {/* Message list */}
       {!loading && displayed.length === 0 && msgs.length > 0 && (
         <div className="text-center py-8 text-gray-400 text-sm">No unread messages</div>
       )}
 
+      {/* Message list */}
       <div className="space-y-3">
-        {displayed.map(msg => (
-          <div key={msg._id}
-            className={`bg-white rounded-2xl border p-5 transition ${msg.isRead ? 'border-gray-100' : 'border-green-300 shadow-sm'}`}>
+        {displayed.map(msg => {
+          const text       = (msg.type === 'text' || msg.type === 'button') ? (msg.text || '') : '';
+          const parsed     = parsePriceList(text);
+          const panelOpen  = !!pricePanel[msg._id];
 
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0 text-lg">
-                  👤
+          return (
+            <div key={msg._id}
+              className={`bg-white rounded-2xl border p-5 transition ${
+                msg.isRead ? 'border-gray-100' : 'border-green-300 shadow-sm'
+              }`}>
+
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0 text-lg">
+                    👤
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-800">{msg.profileName || msg.from}</p>
+                    <p className="text-xs text-gray-400">{msg.from}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold text-gray-800">{msg.profileName || msg.from}</p>
-                  <p className="text-xs text-gray-400">{msg.from}</p>
+                <div className="flex items-center gap-2 shrink-0">
+                  {!msg.isRead && <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />}
+                  <span className="text-xs text-gray-400">
+                    {new Date(msg.sentAt).toLocaleString('en-IN', {
+                      day: '2-digit', month: 'short', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {!msg.isRead && <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />}
-                <span className="text-xs text-gray-400">
-                  {new Date(msg.sentAt).toLocaleString('en-IN', {
-                    day: '2-digit', month: 'short', year: 'numeric',
-                    hour: '2-digit', minute: '2-digit',
-                  })}
-                </span>
+
+              {/* Message content */}
+              <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-700 leading-relaxed mb-3 whitespace-pre-wrap">
+                {msgContent(msg)}
               </div>
-            </div>
 
-            {/* Content */}
-            <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-700 leading-relaxed mb-3">
-              {msgContent(msg)}
-            </div>
+              {/* Price list detected badge */}
+              {parsed && (
+                <div className="mb-3">
+                  <button
+                    onClick={() => setPricePanel(p => ({ ...p, [msg._id]: !p[msg._id] }))}
+                    className="flex items-center gap-2 text-sm font-black text-green-700 bg-green-50 border border-green-200 px-4 py-2 rounded-xl hover:bg-green-100 transition"
+                  >
+                    🌿 Price list detected — {panelOpen ? 'Hide' : 'Review & Update Prices'}
+                  </button>
 
-            {/* Replied */}
-            {msg.repliedAt && (
-              <p className="text-xs text-green-600 font-semibold mb-2">
-                ✓ Replied: {msg.replyText}
-              </p>
-            )}
-
-            {/* Actions */}
-            <div className="flex gap-2">
-              {!msg.isRead && (
-                <button onClick={() => markRead(msg)}
-                  className="text-sm px-4 py-1.5 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition font-bold">
-                  Mark read
-                </button>
+                  {panelOpen && (
+                    <PriceListCard
+                      parsed={parsed}
+                      onClose={() => setPricePanel(p => ({ ...p, [msg._id]: false }))}
+                    />
+                  )}
+                </div>
               )}
-              <button onClick={() => { setReplyModal(msg); setReplyText(''); }}
-                className="text-sm px-4 py-1.5 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition">
-                💬 Reply
-              </button>
+
+              {/* Replied */}
+              {msg.repliedAt && (
+                <p className="text-xs text-green-600 font-semibold mb-2">
+                  ✓ Replied: {msg.replyText}
+                </p>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                {!msg.isRead && (
+                  <button onClick={() => markRead(msg)}
+                    className="text-sm px-4 py-1.5 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition font-bold">
+                    Mark read
+                  </button>
+                )}
+                <button onClick={() => { setReplyModal(msg); setReplyText(''); }}
+                  className="text-sm px-4 py-1.5 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition">
+                  💬 Reply
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Reply modal */}
@@ -223,13 +489,11 @@ export default function WhatsAppInbox() {
                 className="text-gray-400 text-2xl font-bold leading-none hover:text-gray-600">✕</button>
             </div>
 
-            {/* Original message */}
             <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-600">
               <p className="text-xs font-bold text-gray-400 mb-1">Customer said:</p>
-              {msgContent(replyModal)}
+              <span className="whitespace-pre-wrap">{msgContent(replyModal)}</span>
             </div>
 
-            {/* 24h warning */}
             {hoursSince(replyModal.sentAt) > 20 && (
               <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-2 text-sm text-orange-700">
                 ⚠️ This message is over 20 hours old. Replies only work within Meta's 24-hour window.
