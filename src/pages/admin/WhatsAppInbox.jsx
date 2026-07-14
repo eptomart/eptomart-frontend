@@ -16,34 +16,45 @@ import toast from 'react-hot-toast';
 
 /**
  * Parses a WhatsApp message that looks like:
- *   🌿 Fresh Market Price List
- *   Date : 14/07/2026
- *   Capsicum Green - ₹40/kg
- *   Cucumber - ₹33/kg
+ *   "🌿 Fresh Market Price List Date : 15/07/2026 Capsicum Green - ₹40/kg Cucumber - ₹33/kg"
  *
+ * Works whether the message has newlines or is all on one line.
  * Returns { date: Date, items: [{ name, price, unit }] } or null.
  */
+
+// Words that indicate a header/title line — not a product
+const SKIP_WORDS = ['price list', 'market', 'date', 'fresh market'];
+
 function parsePriceList(text) {
   if (!text) return null;
 
-  // Must contain a date and at least one ₹ price
+  // Must contain a date pattern DD/MM/YYYY and at least one ₹ price
   const dateMatch = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-  const hasPrices = (text.match(/₹\d+/g) || []).length >= 1;
-  if (!dateMatch || !hasPrices) return null;
+  if (!dateMatch) return null;
+  if (!(text.match(/₹\d+/g) || []).length) return null;
 
   const [, day, month, year] = dateMatch;
   const msgDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
 
-  // Extract price lines: "Name - ₹XX/unit" or "Name: ₹XX"
+  // Global scan: find every occurrence of "SomeName - ₹NUM/unit"
+  // Works on single-line or multi-line text.
+  // Name: starts with a letter, 2-35 chars of letters/spaces/parens
+  const ITEM_RE = /([A-Za-z][A-Za-z0-9 ()\/]{1,34?}?)\s*[-–]\s*₹(\d+(?:\.\d+)?)\s*(?:\/\s*([A-Za-z]+))?/g;
+
   const items = [];
-  for (const line of text.split('\n')) {
-    const m = line.match(/^([^₹\n]+?)\s*[-:–]\s*₹(\d+(?:\.\d+)?)\s*(?:\/\s*(\w+))?/);
-    if (m) {
-      const name = m[1].replace(/^[•\-*\s🌿🥬🍅🥒]+/, '').trim();
-      const price = parseFloat(m[2]);
-      const unit  = m[3] || 'kg';
-      if (name && price > 0) items.push({ name, price, unit });
-    }
+  let m;
+  while ((m = ITEM_RE.exec(text)) !== null) {
+    const name  = m[1].trim();
+    const price = parseFloat(m[2]);
+    const unit  = m[3] || 'kg';
+
+    // Skip title/header fragments
+    const lower = name.toLowerCase();
+    if (SKIP_WORDS.some(w => lower.includes(w))) continue;
+    // Skip very short leftovers
+    if (name.length < 3 || price <= 0) continue;
+
+    items.push({ name, price, unit });
   }
 
   return items.length ? { date: msgDate, items } : null;
