@@ -42,8 +42,9 @@ const NAV_GROUPS = [
       { path: '/admin/settlements', label: 'Settlements', icon: FiCreditCard,   permission: 'settlements' },
       { path: '/admin/expenses',    label: 'Expenses',    icon: FiDollarSign,   permission: 'expenses'    },
       { path: '/admin/coupons',     label: 'Promo Codes', icon: FiTag,          permission: null          },
-      { path: '/admin/enquiries',   label: 'Enquiries',   icon: FiMessageSquare,permission: 'orders'      },
-      { path: '/admin/messages',    label: 'Messages',    icon: FiMessageSquare,permission: 'orders'      },
+      { path: '/admin/enquiries',        label: 'Enquiries',        icon: FiMessageSquare, permission: 'orders' },
+      { path: '/admin/messages',         label: 'Messages',         icon: FiMessageSquare, permission: 'orders' },
+      { path: '/admin/whatsapp-inbox',   label: 'WhatsApp Inbox',   icon: FiMessageSquare, permission: null    },
     ],
   },
   {
@@ -77,7 +78,7 @@ const ALL_NAV = NAV_GROUPS.flatMap(g => g.items);
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen]   = useState(false);
   const [collapsed, setCollapsed]       = useState(new Set());
-  const [badges, setBadges]             = useState({ unreadMessages: 0, pendingApprovals: 0 });
+  const [badges, setBadges]             = useState({ unreadMessages: 0, pendingApprovals: 0, whatsappUnread: 0 });
   const [newOrderBadge, setNewOrderBadge] = useState(0);
   const { logout, user, isSuperAdmin }  = useAuth();
   const location                        = useLocation();
@@ -89,8 +90,17 @@ export default function AdminLayout() {
   useEffect(() => {
     const fetchBadges = async () => {
       try {
-        const { data } = await api.get('/conversations/admin/badge-counts');
-        if (data.success) setBadges({ unreadMessages: data.unreadMessages, pendingApprovals: data.pendingApprovals });
+        const [convRes, waRes] = await Promise.allSettled([
+          api.get('/conversations/admin/badge-counts'),
+          isSuperAdmin ? api.get('/koyambedu/admin/whatsapp/messages?limit=1') : Promise.resolve(null),
+        ]);
+        const conv = convRes.status === 'fulfilled' ? convRes.value.data : null;
+        const wa   = waRes.status === 'fulfilled' && waRes.value?.data ? waRes.value.data : null;
+        setBadges({
+          unreadMessages:  conv?.success ? conv.unreadMessages  : 0,
+          pendingApprovals: conv?.success ? conv.pendingApprovals : 0,
+          whatsappUnread:  wa?.unreadCount ?? 0,
+        });
       } catch { /* silent */ }
     };
     fetchBadges();
@@ -256,9 +266,10 @@ export default function AdminLayout() {
                   <div className="ml-1 mt-0.5 space-y-0.5">
                     {items.map(({ path, label, icon: Icon, end }) => {
                       const badgeCount =
-                        path === '/admin/messages'  ? badges.unreadMessages  :
-                        path === '/admin/approvals' ? badges.pendingApprovals :
-                        path === '/admin/orders'    ? newOrderBadge : 0;
+                        path === '/admin/messages'        ? badges.unreadMessages   :
+                        path === '/admin/approvals'       ? badges.pendingApprovals :
+                        path === '/admin/orders'          ? newOrderBadge           :
+                        path === '/admin/whatsapp-inbox'  ? badges.whatsappUnread   : 0;
                       return (
                         <Link
                           key={path}
