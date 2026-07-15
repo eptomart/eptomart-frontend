@@ -112,7 +112,7 @@ function MobileSearchOverlay({ onClose }) {
             style={{ background: '#f5f5f7', fontSize: '16px' /* prevent iOS zoom */ }}
           />
           {query
-            ? <button onClick={() => { setQuery(''); setResults([]); }} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5"><FiX size={16} className="text-gray-400" /></button>
+            ? <button onClick={() => { setQuery(''); setEptResults([]); setKbdResults([]); }} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5"><FiX size={16} className="text-gray-400" /></button>
             : <button onClick={startVoice} className={`absolute right-3 top-1/2 -translate-y-1/2 p-0.5 transition-colors ${listening ? 'text-red-500 animate-pulse' : 'text-gray-400'}`}><FiMic size={16} /></button>
           }
         </div>
