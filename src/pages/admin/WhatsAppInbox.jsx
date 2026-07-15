@@ -43,6 +43,196 @@ function fmtRange(v, unit) {
   return from;
 }
 
+// ── Not Available Today Parser ─────────────────────────────────────────────
+
+const NOT_AVAIL_HEADERS = [
+  'not available today', 'not available', 'unavailable today', 'unavailable',
+  'out of stock today', 'no stock today', 'not coming today',
+];
+
+/**
+ * Parses messages like:
+ *   "❌ Not Available Today:\nCarrot\nBeetroot"
+ * Returns { names: ['Carrot', 'Beetroot'] } or null.
+ */
+function parseNotAvailable(text) {
+  if (!text) return null;
+  const lines = text.split(/\n/);
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const low = lines[i].toLowerCase().replace(/[❌✖×🚫⛔✗]/gu, '').trim();
+    if (NOT_AVAIL_HEADERS.some(h => low.includes(h))) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx === -1) return null;
+
+  const names = [];
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) break;
+    // Stop if a new section header begins
+    if (/[❌✅✓🌿🥬]/u.test(line) || (line.endsWith(':') && line.length < 40)) break;
+    // Skip price-list lines
+    if (/₹\d+/.test(line)) break;
+    if (line.length < 2) continue;
+    names.push(line.replace(/^[-•*·\d.]+\s*/, '').trim());
+  }
+  return names.length ? { names } : null;
+}
+
+// ── Not Available Card ─────────────────────────────────────────────────────
+
+function NotAvailableCard({ parsed, onClose }) {
+  const [loading,  setLoading]  = useState(true);
+  const [matches,  setMatches]  = useState([]);
+  const [applying, setApplying] = useState(false);
+  const [applied,  setApplied]  = useState(false);
+
+  useEffect(() => {
+    api.get('/koyambedu/admin/daily-price')
+      .then(({ data }) => {
+        const prods = data.products || [];
+        setMatches(parsed.names.map(name => {
+          const { cleanName } = extractGrade(name);
+          const product = matchItem(cleanName, prods);
+          return { name, cleanName, product, selected: !!product };
+        }));
+      })
+      .catch(() => toast.error('Could not load products'))
+      .finally(() => setLoading(false));
+  }, [parsed]);
+
+  const toggle = (idx) => setMatches(m => m.map((x, i) => i === idx ? { ...x, selected: !x.selected } : x));
+
+  const applyDeactivate = async () => {
+    const toDeactivate = matches.filter(m => m.selected && m.product);
+    if (!toDeactivate.length) { toast.error('No products selected'); return; }
+    setApplying(true);
+    try {
+      await api.post('/koyambedu/admin/products/bulk-availability', {
+        productIds: toDeactivate.map(m => m.product._id),
+        available:  false,
+      });
+      toast.success(`❌ ${toDeactivate.length} product${toDeactivate.length > 1 ? 's' : ''} marked as not available today`);
+      setApplied(true);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Update failed');
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const selectedCount = matches.filter(m => m.selected && m.product).length;
+
+  return (
+    <div className="mt-3 bg-red-50 border border-red-200 rounded-2xl overflow-hidden">
+      {/* Header */}
+      <div className="bg-red-600 text-white px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">❌</span>
+          <div>
+            <p className="font-black text-sm">Not Available Today — Detected</p>
+            <p className="text-xs text-red-200 mt-0.5">
+              {parsed.names.length} item{parsed.names.length !== 1 ? 's' : ''} listed
+            </p>
+          </div>
+        </div>
+        <button onClick={onClose} className="text-white/70 hover:text-white text-xl font-bold leading-none">✕</button>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-6">
+          <div className="w-7 h-7 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="p-4 space-y-2">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
+            {matches.filter(m => m.product).length} of {matches.length} items matched — confirm which to mark unavailable
+          </p>
+
+          {matches.map((m, idx) => (
+            <div key={idx} className={`rounded-xl border px-4 py-3 transition flex items-center gap-3 ${
+              !m.product ? 'bg-gray-50 border-gray-200 opacity-50' :
+              m.selected ? 'bg-white border-red-300 shadow-sm' : 'bg-white border-gray-200'
+            }`}>
+              <input
+                type="checkbox"
+                checked={!!m.selected && !!m.product}
+                disabled={!m.product}
+                onChange={() => toggle(idx)}
+                className="w-4 h-4 accent-red-600 cursor-pointer shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-gray-800">{m.cleanName || m.name}</p>
+                {m.product ? (
+                  <p className="text-xs text-red-500 font-semibold">→ {m.product.name} · will be marked unavailable today</p>
+                ) : (
+                  <p className="text-xs text-gray-400 font-semibold">No exact match in Koyambedu Daily</p>
+                )}
+              </div>
+              {m.product && (
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                  m.product.isAvailable === false
+                    ? 'bg-gray-100 text-gray-500'
+                    : 'bg-green-100 text-green-700'
+                }`}>
+                  {m.product.isAvailable === false ? 'Already off' : 'Live'}
+                </span>
+              )}
+            </div>
+          ))}
+
+          {matches.some(m => !m.product) && (
+            <p className="text-xs text-gray-400 pt-1">
+              Unmatched items not found in Koyambedu Daily — check product names.
+            </p>
+          )}
+
+          {!applied ? (
+            <div className="mt-4">
+              {selectedCount > 0 && (
+                <p className="text-xs text-gray-500 text-center mb-2">
+                  Will mark{' '}
+                  <span className="font-bold text-red-600">
+                    {selectedCount} product{selectedCount !== 1 ? 's' : ''}
+                  </span>{' '}
+                  as not available today
+                </p>
+              )}
+              <button
+                onClick={applyDeactivate}
+                disabled={applying || selectedCount === 0}
+                className={`w-full py-3 font-black rounded-xl transition text-sm flex items-center justify-center gap-2 ${
+                  selectedCount > 0
+                    ? 'bg-red-600 text-white hover:bg-red-700 shadow-md'
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                {applying ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Updating…
+                  </>
+                ) : selectedCount > 0 ? (
+                  `❌ Mark ${selectedCount} Product${selectedCount !== 1 ? 's' : ''} Not Available Today`
+                ) : (
+                  'Select at least one product'
+                )}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-3 bg-red-600 text-white font-black rounded-xl py-3 text-center text-sm">
+              ❌ Products marked as not available today!
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Price List Parser ──────────────────────────────────────────────────────
 
 /**
@@ -424,7 +614,8 @@ export default function WhatsAppInbox() {
   const [replyText,  setReplyText]  = useState('');
   const [replying,   setReplying]   = useState(false);
   // track which messages have the price panel open
-  const [pricePanel, setPricePanel] = useState({});   // { [msgId]: boolean }
+  const [pricePanel,   setPricePanel]   = useState({});   // { [msgId]: boolean }
+  const [unavailPanel, setUnavailPanel] = useState({});   // { [msgId]: boolean }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -564,9 +755,11 @@ export default function WhatsAppInbox() {
       {/* Message list */}
       <div className="space-y-3">
         {displayed.map(msg => {
-          const text       = (msg.type === 'text' || msg.type === 'button') ? (msg.text || '') : '';
-          const parsed     = parsePriceList(text);
-          const panelOpen  = !!pricePanel[msg._id];
+          const text            = (msg.type === 'text' || msg.type === 'button') ? (msg.text || '') : '';
+          const parsed          = parsePriceList(text);
+          const notAvail        = parseNotAvailable(text);
+          const panelOpen       = !!pricePanel[msg._id];
+          const unavailOpen     = !!unavailPanel[msg._id];
 
           return (
             <div key={msg._id}
@@ -614,6 +807,25 @@ export default function WhatsAppInbox() {
                     <PriceListCard
                       parsed={parsed}
                       onClose={() => setPricePanel(p => ({ ...p, [msg._id]: false }))}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Not Available Today badge */}
+              {notAvail && (
+                <div className="mb-3">
+                  <button
+                    onClick={() => setUnavailPanel(p => ({ ...p, [msg._id]: !p[msg._id] }))}
+                    className="flex items-center gap-2 text-sm font-black text-red-700 bg-red-50 border border-red-200 px-4 py-2 rounded-xl hover:bg-red-100 transition"
+                  >
+                    ❌ Not Available items detected — {unavailOpen ? 'Hide' : 'Review & Deactivate'}
+                  </button>
+
+                  {unavailOpen && (
+                    <NotAvailableCard
+                      parsed={notAvail}
+                      onClose={() => setUnavailPanel(p => ({ ...p, [msg._id]: false }))}
                     />
                   )}
                 </div>
