@@ -38,34 +38,43 @@ function getPageTitle(pathname) {
 // ── Full-screen mobile search overlay ─────────────────────────
 function MobileSearchOverlay({ onClose }) {
   const navigate   = useNavigate();
-  const [query,    setQuery]   = useState('');
-  const [results,  setResults] = useState([]);
-  const [loading,  setLoading] = useState(false);
+  const [query,     setQuery]     = useState('');
+  const [eptResults,setEptResults]= useState([]);
+  const [kbdResults,setKbdResults]= useState([]);
+  const [loading,   setLoading]   = useState(false);
   const [listening, setListening] = useState(false);
   const inputRef   = useRef(null);
   const debounce   = useRef(null);
   const { user }   = useAuth();
 
+  const totalResults = eptResults.length + kbdResults.length;
+
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   useEffect(() => {
     clearTimeout(debounce.current);
-    if (query.trim().length < 3) { setResults([]); setLoading(false); return; }
+    if (query.trim().length < 3) { setEptResults([]); setKbdResults([]); setLoading(false); return; }
     setLoading(true);
     debounce.current = setTimeout(async () => {
       try {
-        const { data } = await api.get(`/products/search?q=${encodeURIComponent(query)}&limit=8`);
-        setResults(data.products || []);
-      } catch { setResults([]); } finally { setLoading(false); }
+        const [eptRes, kbdRes] = await Promise.allSettled([
+          api.get(`/products/search?q=${encodeURIComponent(query)}&limit=6`),
+          api.get(`/koyambedu/products?search=${encodeURIComponent(query)}&limit=5&page=1`),
+        ]);
+        setEptResults(eptRes.status === 'fulfilled' ? eptRes.value.data.products || [] : []);
+        setKbdResults(kbdRes.status === 'fulfilled' ? kbdRes.value.data.products || [] : []);
+      } catch { setEptResults([]); setKbdResults([]); } finally { setLoading(false); }
     }, 300);
   }, [query]);
 
-  const submit = async (q) => {
+  const submit = async (q, dest) => {
     const v = (q || query).trim();
     if (!v) return;
     onClose();
+    if (dest === 'koyambedu') { navigate(`/koyambedu/shop?search=${encodeURIComponent(v)}`); return; }
+    if (kbdResults.length > 0 && eptResults.length === 0) { navigate(`/koyambedu/shop?search=${encodeURIComponent(v)}`); return; }
     navigate(`/shop?search=${encodeURIComponent(v)}`);
-    if (results.length === 0 && v.length >= 3) {
+    if (totalResults === 0 && v.length >= 3) {
       try { await api.post('/settings/product-inquiry', { query: v, name: user?.name || '', email: user?.email || '' }); } catch {}
     }
   };
@@ -120,35 +129,77 @@ function MobileSearchOverlay({ onClose }) {
         )}
 
         {/* Results */}
-        {!loading && results.length > 0 && (
+        {!loading && totalResults > 0 && (
           <>
-            {results.map(p => (
-              <button key={p._id} onClick={() => { onClose(); navigate(`/product/${p.slug || p._id}`); }}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
-                style={{ borderBottom: '1px solid #f9fafb' }}>
-                <div className="w-12 h-12 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0">
-                  {p.images?.[0]?.url
-                    ? <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>
-                  }
+            {/* Koyambedu Daily */}
+            {kbdResults.length > 0 && (
+              <>
+                <div className="px-4 py-2 bg-green-50 border-b border-green-100">
+                  <p className="text-[11px] font-bold text-green-700">🥬 Koyambedu Daily</p>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 line-clamp-1">{p.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{p.category?.name || ''}</p>
-                </div>
-                <span className="text-sm font-bold flex-shrink-0" style={{ color: '#f4941c' }}>
-                  ₹{(p.discountPrice || p.price)?.toLocaleString('en-IN')}
-                </span>
-              </button>
-            ))}
-            <button onClick={() => submit()} className="w-full flex items-center gap-2 px-4 py-3.5 text-sm font-bold" style={{ color: '#f4941c', background: '#fff7ed' }}>
-              <FiSearch size={14} /> See all results for "{query}"
-            </button>
+                {kbdResults.map(p => {
+                  const img   = p.images?.find(i => i.isPrimary)?.url || p.images?.[0]?.url;
+                  const price = p.lowestUnitPrice ?? p.currentPrice;
+                  return (
+                    <button key={p._id} onClick={() => { onClose(); navigate(`/koyambedu/product/${p._id}`); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-green-50 active:bg-green-100 transition-colors text-left"
+                      style={{ borderBottom: '1px solid #f0fdf4' }}>
+                      <div className="w-11 h-11 rounded-2xl overflow-hidden bg-green-50 flex-shrink-0">
+                        {img ? <img src={img} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-2xl">🌿</div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 line-clamp-1">{p.name}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{p.category?.name || 'Koyambedu Daily'}</p>
+                      </div>
+                      {price ? <span className="text-sm font-bold text-green-600 flex-shrink-0">₹{price}</span> : null}
+                    </button>
+                  );
+                })}
+                <button onClick={() => submit(query, 'koyambedu')}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-sm font-bold border-b border-gray-100"
+                  style={{ color: '#16a34a', background: '#f0fdf4' }}>
+                  <FiSearch size={14} /> All Koyambedu results for "{query}"
+                </button>
+              </>
+            )}
+
+            {/* Eptomart */}
+            {eptResults.length > 0 && (
+              <>
+                {kbdResults.length > 0 && (
+                  <div className="px-4 py-2 bg-orange-50 border-b border-orange-100">
+                    <p className="text-[11px] font-bold text-orange-600">🛒 Eptomart</p>
+                  </div>
+                )}
+                {eptResults.map(p => (
+                  <button key={p._id} onClick={() => { onClose(); navigate(`/product/${p.slug || p._id}`); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
+                    style={{ borderBottom: '1px solid #f9fafb' }}>
+                    <div className="w-12 h-12 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0">
+                      {p.images?.[0]?.url
+                        ? <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 line-clamp-1">{p.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{p.category?.name || ''}</p>
+                    </div>
+                    <span className="text-sm font-bold flex-shrink-0" style={{ color: '#f4941c' }}>
+                      ₹{(p.discountPrice || p.price)?.toLocaleString('en-IN')}
+                    </span>
+                  </button>
+                ))}
+                <button onClick={() => submit()} className="w-full flex items-center gap-2 px-4 py-3.5 text-sm font-bold" style={{ color: '#f4941c', background: '#fff7ed' }}>
+                  <FiSearch size={14} /> See all Eptomart results for "{query}"
+                </button>
+              </>
+            )}
           </>
         )}
 
         {/* No results */}
-        {!loading && query.length >= 3 && results.length === 0 && (
+        {!loading && query.length >= 3 && totalResults === 0 && (
           <div className="text-center px-6 py-12">
             <p className="text-3xl mb-2">🔍</p>
             <p className="text-gray-700 font-semibold text-sm">No results for "{query}"</p>
@@ -192,6 +243,7 @@ export default function Navbar() {
 
   const [query,            setQuery]            = useState('');
   const [results,          setResults]          = useState([]);
+  const [kbdResults,       setKbdResults]       = useState([]);
   const [dropOpen,         setDropOpen]         = useState(false);
   const [showUserMenu,     setShowUserMenu]      = useState(false);
   const [listening,        setListening]        = useState(false);
@@ -220,23 +272,31 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  // Desktop live search — min 3 chars
+  // Desktop live search — min 3 chars, searches both Eptomart + Koyambedu
   useEffect(() => {
-    if (query.trim().length < 3) { setResults([]); return; }
+    if (query.trim().length < 3) { setResults([]); setKbdResults([]); return; }
     clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(async () => {
       try {
-        const { data } = await api.get(`/products/search?q=${encodeURIComponent(query)}&limit=6`);
-        setResults(data.products || []);
-        setDropOpen(true);
+        const [eptRes, kbdRes] = await Promise.allSettled([
+          api.get(`/products/search?q=${encodeURIComponent(query)}&limit=5`),
+          api.get(`/koyambedu/products?search=${encodeURIComponent(query)}&limit=4&page=1`),
+        ]);
+        const ept = eptRes.status === 'fulfilled' ? eptRes.value.data.products || [] : [];
+        const kbd = kbdRes.status === 'fulfilled' ? kbdRes.value.data.products || [] : [];
+        setResults(ept);
+        setKbdResults(kbd);
+        if (ept.length > 0 || kbd.length > 0) setDropOpen(true);
       } catch (_) {}
     }, 300);
   }, [query]);
 
-  const submit = (q = query) => {
+  const submit = (q = query, dest) => {
     if (!q.trim()) return;
-    navigate(`/shop?search=${encodeURIComponent(q.trim())}`);
-    setQuery(''); setResults([]); setDropOpen(false);
+    if (dest === 'koyambedu') navigate(`/koyambedu/shop?search=${encodeURIComponent(q.trim())}`);
+    else if (kbdResults.length > 0 && results.length === 0) navigate(`/koyambedu/shop?search=${encodeURIComponent(q.trim())}`);
+    else navigate(`/shop?search=${encodeURIComponent(q.trim())}`);
+    setQuery(''); setResults([]); setKbdResults([]); setDropOpen(false);
   };
 
   const handleKey = (e) => {
@@ -315,24 +375,64 @@ export default function Navbar() {
                     </button>
                 }
               </form>
-              {dropOpen && results.length > 0 && (
+              {dropOpen && (results.length > 0 || kbdResults.length > 0) && (
                 <div className="absolute top-full left-0 right-0 bg-white shadow-2xl rounded-xl mt-1 border z-50 overflow-hidden pop-in" style={{ transformOrigin: 'top center' }}>
-                  {results.map(p => (
-                    <Link key={p._id} to={`/product/${p.slug || p._id}`}
-                      className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 transition-colors border-b border-gray-50 last:border-0"
-                      onClick={() => { setQuery(''); setResults([]); setDropOpen(false); }}>
-                      <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
-                        {p.images?.[0]?.url ? <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl">📦</div>}
+                  {/* Koyambedu Daily results */}
+                  {kbdResults.length > 0 && (
+                    <>
+                      <div className="px-3 py-1.5 bg-green-50 border-b border-green-100 flex items-center justify-between">
+                        <p className="text-[10px] font-bold text-green-700">🥬 Koyambedu Daily</p>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 line-clamp-1">{p.name}</p>
-                        <p className="text-xs font-bold" style={{ color: '#f4941c' }}>₹{(p.discountPrice || p.price)?.toLocaleString('en-IN')}</p>
-                      </div>
-                    </Link>
-                  ))}
-                  <button onClick={() => submit()} className="w-full px-4 py-2.5 text-xs font-bold text-orange-500 bg-orange-50 flex items-center gap-2">
-                    <FiSearch size={11} /> See all results for "{query}"
-                  </button>
+                      {kbdResults.map(p => {
+                        const img   = p.images?.find(i => i.isPrimary)?.url || p.images?.[0]?.url;
+                        const price = p.lowestUnitPrice ?? p.currentPrice;
+                        return (
+                          <button key={p._id}
+                            onClick={() => { setQuery(''); setResults([]); setKbdResults([]); setDropOpen(false); navigate(`/koyambedu/product/${p._id}`); }}
+                            className="w-full flex items-center gap-3 px-4 py-2 hover:bg-green-50 transition-colors border-b border-gray-50 text-left">
+                            <div className="w-9 h-9 rounded-xl overflow-hidden bg-green-50 flex-shrink-0">
+                              {img ? <img src={img} alt="" className="w-full h-full object-cover" /> : <span className="flex items-center justify-center w-full h-full text-green-200">🌿</span>}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-gray-800 line-clamp-1">{p.name}</p>
+                              <p className="text-[10px] text-gray-400">{p.category?.name || 'Koyambedu Daily'}</p>
+                            </div>
+                            {price ? <span className="text-xs font-bold text-green-600 flex-shrink-0">₹{price}</span> : null}
+                          </button>
+                        );
+                      })}
+                      <button onClick={() => submit(query, 'koyambedu')}
+                        className="w-full px-4 py-1.5 text-[10px] font-bold text-green-600 bg-green-50 border-b border-gray-100 flex items-center gap-2">
+                        <FiSearch size={10} /> All Koyambedu results for "{query}"
+                      </button>
+                    </>
+                  )}
+                  {/* Eptomart results */}
+                  {results.length > 0 && (
+                    <>
+                      {kbdResults.length > 0 && (
+                        <div className="px-3 py-1.5 bg-orange-50 border-b border-orange-100">
+                          <p className="text-[10px] font-bold text-orange-600">🛒 Eptomart</p>
+                        </div>
+                      )}
+                      {results.map(p => (
+                        <Link key={p._id} to={`/product/${p.slug || p._id}`}
+                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 transition-colors border-b border-gray-50 last:border-0"
+                          onClick={() => { setQuery(''); setResults([]); setKbdResults([]); setDropOpen(false); }}>
+                          <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                            {p.images?.[0]?.url ? <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl">📦</div>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 line-clamp-1">{p.name}</p>
+                            <p className="text-xs font-bold" style={{ color: '#f4941c' }}>₹{(p.discountPrice || p.price)?.toLocaleString('en-IN')}</p>
+                          </div>
+                        </Link>
+                      ))}
+                      <button onClick={() => submit()} className="w-full px-4 py-2.5 text-xs font-bold text-orange-500 bg-orange-50 flex items-center gap-2">
+                        <FiSearch size={11} /> See all Eptomart results for "{query}"
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
