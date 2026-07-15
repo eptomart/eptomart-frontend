@@ -59,7 +59,7 @@ function MobileSearchOverlay({ onClose }) {
       try {
         const [eptRes, kbdRes] = await Promise.allSettled([
           api.get(`/products/search?q=${encodeURIComponent(query)}&limit=6`),
-          api.get(`/koyambedu/products?search=${encodeURIComponent(query)}&limit=5&page=1`),
+          api.get(`/koyambedu/products?search=${encodeURIComponent(query)}&limit=5&page=1&context=navbar`),
         ]);
         setEptResults(eptRes.status === 'fulfilled' ? eptRes.value.data.products || [] : []);
         setKbdResults(kbdRes.status === 'fulfilled' ? kbdRes.value.data.products || [] : []);
@@ -280,7 +280,7 @@ export default function Navbar() {
       try {
         const [eptRes, kbdRes] = await Promise.allSettled([
           api.get(`/products/search?q=${encodeURIComponent(query)}&limit=5`),
-          api.get(`/koyambedu/products?search=${encodeURIComponent(query)}&limit=4&page=1`),
+          api.get(`/koyambedu/products?search=${encodeURIComponent(query)}&limit=4&page=1&context=navbar`),
         ]);
         const ept = eptRes.status === 'fulfilled' ? eptRes.value.data.products || [] : [];
         const kbd = kbdRes.status === 'fulfilled' ? kbdRes.value.data.products || [] : [];
