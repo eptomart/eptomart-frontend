@@ -101,22 +101,35 @@ function dateLabel(date) {
 const GRADE_KEYS = ['premium', 'mixed', 'economy'];
 
 /**
- * Extracts an optional grade from item name like "Pomegranate (Premium)".
+ * Extracts an optional grade from item name.
+ * Handles: "Pomegranate (Premium)", "Pomegranate (mixed grade)",
+ *          "Pomegranate (economy grade)", "Pomegranate Premium"
  * Returns { cleanName, gradeKey } — gradeKey is null if none found.
  */
 function extractGrade(itemName) {
   const parenMatch = itemName.match(/\(([^)]+)\)/i);
   if (parenMatch) {
-    const g = parenMatch[1].toLowerCase().trim();
-    if (GRADE_KEYS.includes(g)) {
-      return { cleanName: itemName.replace(/\s*\([^)]+\)/, '').trim(), gradeKey: g };
+    const inner = parenMatch[1].toLowerCase().trim();
+    // Match: exact ("premium"), starts-with ("premium grade"), ends-with ("grade premium")
+    const gradeKey = GRADE_KEYS.find(g =>
+      inner === g ||
+      inner.startsWith(g + ' ') ||
+      inner.endsWith(' ' + g) ||
+      inner.includes(g)          // "mixed grade" contains "mixed"
+    );
+    if (gradeKey) {
+      return { cleanName: itemName.replace(/\s*\([^)]+\)/, '').trim(), gradeKey };
     }
   }
-  // Also support "Pomegranate Premium" (no parens) at end of name
+  // Also support suffix without parens: "Pomegranate Premium" or "Pomegranate Mixed Grade"
+  const lowerName = itemName.toLowerCase();
   for (const g of GRADE_KEYS) {
-    const suffix = ' ' + g;
-    if (itemName.toLowerCase().endsWith(suffix)) {
-      return { cleanName: itemName.slice(0, -suffix.length).trim(), gradeKey: g };
+    // Check for " premium", " premium grade", " mixed grade", etc.
+    const patterns = [' ' + g, ' ' + g + ' grade', ' ' + g + 'grade'];
+    for (const pat of patterns) {
+      if (lowerName.endsWith(pat)) {
+        return { cleanName: itemName.slice(0, -pat.length).trim(), gradeKey: g };
+      }
     }
   }
   return { cleanName: itemName.trim(), gradeKey: null };
