@@ -98,21 +98,56 @@ function dateLabel(date) {
   return { label: `${diffDays} days old`, ok: false };
 }
 
-/** Case-insensitive best-match between a message item name and a product list */
-function matchItem(itemName, products) {
-  const needle = itemName.toLowerCase().trim();
-  // Exact match first
-  let hit = products.find(p => p.name.toLowerCase().trim() === needle);
-  if (hit) return hit;
-  // Contains match
-  hit = products.find(p => p.name.toLowerCase().includes(needle) || needle.includes(p.name.toLowerCase().trim()));
-  return hit || null;
+const GRADE_KEYS = ['premium', 'mixed', 'economy'];
+
+/**
+ * Extracts an optional grade from item name like "Pomegranate (Premium)".
+ * Returns { cleanName, gradeKey } — gradeKey is null if none found.
+ */
+function extractGrade(itemName) {
+  const parenMatch = itemName.match(/\(([^)]+)\)/i);
+  if (parenMatch) {
+    const g = parenMatch[1].toLowerCase().trim();
+    if (GRADE_KEYS.includes(g)) {
+      return { cleanName: itemName.replace(/\s*\([^)]+\)/, '').trim(), gradeKey: g };
+    }
+  }
+  // Also support "Pomegranate Premium" (no parens) at end of name
+  for (const g of GRADE_KEYS) {
+    const suffix = ' ' + g;
+    if (itemName.toLowerCase().endsWith(suffix)) {
+      return { cleanName: itemName.slice(0, -suffix.length).trim(), gradeKey: g };
+    }
+  }
+  return { cleanName: itemName.trim(), gradeKey: null };
+}
+
+/** Exact case-insensitive match only — no partial/contains fallback */
+function matchItem(cleanName, products) {
+  const needle = cleanName.toLowerCase().trim();
+  return products.find(p => p.name.toLowerCase().trim() === needle) || null;
 }
 
 // ── Variant preview chips for a single match row ──────────────────────────
-function MatchVariantPreview({ product, newPrice }) {
+function MatchVariantPreview({ product, newPrice, gradeKey }) {
   const preview = useMemo(() => {
     if (!product || !(newPrice > 0)) return [];
+    // If gradeKey is set and product has grade rows, use that grade's config
+    if (gradeKey && product.gradesEnabled && product.gradeRows?.length) {
+      const gradeRow = product.gradeRows.find(g => g.gradeKey === gradeKey);
+      if (gradeRow) {
+        return previewVariants(
+          gradeRow.variants?.length ? gradeRow.variants : product.variants,
+          newPrice,
+          gradeRow.variantDiffPercent ?? product.variantDiffPercent ?? 2,
+          {
+            procurement: product.procurementChargePercent,
+            platform:    product.platformChargePercent,
+            logistics:   product.logisticsChargePercent,
+          }
+        );
+      }
+    }
     return previewVariants(
       product.variants,
       newPrice,
@@ -123,7 +158,7 @@ function MatchVariantPreview({ product, newPrice }) {
         logistics:   product.logisticsChargePercent,
       }
     );
-  }, [product, newPrice]);
+  }, [product, newPrice, gradeKey]);
 
   if (!preview.length) return null;
   const unit = product.unit || 'kg';
@@ -160,8 +195,13 @@ function PriceListCard({ parsed, onClose }) {
         const prods = data.products || [];
         setProducts(prods);
         setMatches(parsed.items.map(item => {
-          const product = matchItem(item.name, prods);
-          return { item, product, accepted: !!product, newPrice: item.price };
+          const { cleanName, gradeKey: parsedGrade } = extractGrade(item.name);
+          const product = matchItem(cleanName, prods);
+          // Only use gradeKey if the matched product actually has grades
+          const gradeKey = product?.gradesEnabled && product.gradeRows?.length && parsedGrade
+            ? parsedGrade
+            : null;
+          return { item, product, accepted: !!product, newPrice: item.price, gradeKey, cleanName };
         }));
       })
       .catch(() => toast.error('Could not load products'))
@@ -181,7 +221,11 @@ function PriceListCard({ parsed, onClose }) {
   const applyPrices = async () => {
     const updates = matches
       .filter(m => m.accepted && m.product && m.newPrice > 0)
-      .map(m => ({ productId: m.product._id, highestBasePrice: m.newPrice }));
+      .map(m => ({
+        productId:        m.product._id,
+        highestBasePrice: m.newPrice,
+        ...(m.gradeKey ? { gradeKey: m.gradeKey } : {}),
+      }));
 
     if (!updates.length) { toast.error('No items selected'); return; }
 
@@ -260,11 +304,26 @@ function PriceListCard({ parsed, onClose }) {
 
                 {/* Item name */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-800 truncate">{m.item.name}</p>
-                  {m.product
-                    ? <p className="text-xs text-green-600 font-semibold truncate">→ {m.product.name}</p>
-                    : <p className="text-xs text-red-400 font-semibold">No match found in Koyambedu Daily</p>
-                  }
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="text-sm font-bold text-gray-800">{m.cleanName || m.item.name}</p>
+                    {m.gradeKey && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black shrink-0 ${
+                        m.gradeKey === 'premium' ? 'bg-purple-100 text-purple-700' :
+                        m.gradeKey === 'mixed'   ? 'bg-blue-100 text-blue-700'   :
+                                                   'bg-gray-100 text-gray-600'
+                      }`}>
+                        {m.gradeKey.charAt(0).toUpperCase() + m.gradeKey.slice(1)}
+                      </span>
+                    )}
+                  </div>
+                  {m.product ? (
+                    <p className="text-xs text-green-600 font-semibold truncate">
+                      → {m.product.name}
+                      {m.gradeKey && ` · ${m.gradeKey} grade only`}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-red-400 font-semibold">No exact match in Koyambedu Daily</p>
+                  )}
                 </div>
 
                 {/* Price input */}
@@ -288,7 +347,7 @@ function PriceListCard({ parsed, onClose }) {
 
               {/* Variant price preview — shown when accepted & price > 0 */}
               {m.accepted && m.product && m.newPrice > 0 && (
-                <MatchVariantPreview product={m.product} newPrice={m.newPrice} />
+                <MatchVariantPreview product={m.product} newPrice={m.newPrice} gradeKey={m.gradeKey} />
               )}
             </div>
           ))}
