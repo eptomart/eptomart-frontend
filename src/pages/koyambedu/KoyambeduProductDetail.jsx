@@ -658,7 +658,19 @@ export default function KoyambeduProductDetail() {
           paddingRight: 12,
         }}
       >
+        {/* Not available today — full-width banner replacing action row */}
+        {product.isAvailable === false && (
+          <div className="w-full flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-1">
+            <span className="text-lg">❌</span>
+            <div>
+              <p className="text-sm font-black text-red-700">Not Available Today</p>
+              <p className="text-xs text-red-400">This product is not available for today's delivery. Check back tomorrow.</p>
+            </div>
+          </div>
+        )}
+
         {/* Price + buttons in one compact row */}
+        {product.isAvailable !== false && (
         <div className="flex items-center gap-2">
           {/* Price summary */}
           <div className="flex-1 min-w-0">
@@ -699,6 +711,7 @@ export default function KoyambeduProductDetail() {
             Buy Now
           </button>
         </div>
+        )}
       </div>
 
       {/* ══ Variant Qty Bottom Sheet ══ */}

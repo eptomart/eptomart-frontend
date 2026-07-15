@@ -95,9 +95,12 @@ function NotAvailableCard({ parsed, onClose }) {
       .then(({ data }) => {
         const prods = data.products || [];
         setMatches(parsed.names.map(name => {
-          const { cleanName } = extractGrade(name);
+          const { cleanName, gradeKey: parsedGrade } = extractGrade(name);
           const product = matchItem(cleanName, prods);
-          return { name, cleanName, product, selected: !!product };
+          // Only use gradeKey if product actually has grades enabled
+          const gradeKey = product?.gradesEnabled && product.gradeRows?.length && parsedGrade
+            ? parsedGrade : null;
+          return { name, cleanName, product, gradeKey, selected: !!product };
         }));
       })
       .catch(() => toast.error('Could not load products'))
@@ -112,10 +115,13 @@ function NotAvailableCard({ parsed, onClose }) {
     setApplying(true);
     try {
       await api.post('/koyambedu/admin/products/bulk-availability', {
-        productIds: toDeactivate.map(m => m.product._id),
-        available:  false,
+        updates:   toDeactivate.map(m => ({
+          productId: m.product._id,
+          ...(m.gradeKey ? { gradeKey: m.gradeKey } : {}),
+        })),
+        available: false,
       });
-      toast.success(`❌ ${toDeactivate.length} product${toDeactivate.length > 1 ? 's' : ''} marked as not available today`);
+      toast.success(`❌ ${toDeactivate.length} item${toDeactivate.length > 1 ? 's' : ''} marked as not available today`);
       setApplied(true);
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Update failed');
@@ -165,9 +171,22 @@ function NotAvailableCard({ parsed, onClose }) {
                 className="w-4 h-4 accent-red-600 cursor-pointer shrink-0"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-800">{m.cleanName || m.name}</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="text-sm font-bold text-gray-800">{m.cleanName || m.name}</p>
+                  {m.gradeKey && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black shrink-0 ${
+                      m.gradeKey === 'premium' ? 'bg-purple-100 text-purple-700' :
+                      m.gradeKey === 'mixed'   ? 'bg-blue-100 text-blue-700'   :
+                                                 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {m.gradeKey.charAt(0).toUpperCase() + m.gradeKey.slice(1)} Grade
+                    </span>
+                  )}
+                </div>
                 {m.product ? (
-                  <p className="text-xs text-red-500 font-semibold">→ {m.product.name} · will be marked unavailable today</p>
+                  <p className="text-xs text-red-500 font-semibold">
+                    → {m.product.name}{m.gradeKey ? ` · ${m.gradeKey} grade only` : ' · full product'} will be marked unavailable
+                  </p>
                 ) : (
                   <p className="text-xs text-gray-400 font-semibold">No exact match in Koyambedu Daily</p>
                 )}
