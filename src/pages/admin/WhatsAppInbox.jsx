@@ -8,9 +8,40 @@
 // Daily products, and lets admin bulk-update
 // base prices with one click.
 // ============================================
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
+
+// ── Variant price helpers (mirrors backend variantPricingService) ──────────
+const fmt = (n) => `₹${Number(n || 0).toFixed(2)}`;
+
+function previewVariants(variants, highestBasePrice, variantDiffPercent, chargePercents) {
+  if (!variants || !variants.length) return [];
+  const totalCharge = (chargePercents.procurement ?? 0) + (chargePercents.platform ?? 10) + (chargePercents.logistics ?? 10);
+  const diff        = 1 + (Number(variantDiffPercent) || 0) / 100;
+  const sorted      = [...variants].sort((a, b) => Number(b.fromQty) - Number(a.fromQty));
+  let running       = Number(highestBasePrice) || 0;
+  const result      = sorted.map(v => {
+    const basePrice  = Math.round(running * 100) / 100;
+    const finalPrice = Math.round(running * (1 + totalCharge / 100) * 100) / 100;
+    running          = running * diff;
+    return { ...v, basePrice, finalPrice };
+  });
+  return result.sort((a, b) => Number(a.fromQty) - Number(b.fromQty));
+}
+
+function fmtQty(qty, unit) {
+  const n = Number(qty);
+  if (unit === 'kg' && n < 1) return `${Math.round(n * 1000)} g`;
+  if (unit === 'g'  && n >= 1000) return `${n / 1000} kg`;
+  return `${n} ${unit}`;
+}
+
+function fmtRange(v, unit) {
+  const from = fmtQty(v.fromQty, unit);
+  if (!v.toQty) return `${from}+`;
+  return from;
+}
 
 // ── Price List Parser ──────────────────────────────────────────────────────
 
@@ -76,6 +107,42 @@ function matchItem(itemName, products) {
   // Contains match
   hit = products.find(p => p.name.toLowerCase().includes(needle) || needle.includes(p.name.toLowerCase().trim()));
   return hit || null;
+}
+
+// ── Variant preview chips for a single match row ──────────────────────────
+function MatchVariantPreview({ product, newPrice }) {
+  const preview = useMemo(() => {
+    if (!product || !(newPrice > 0)) return [];
+    return previewVariants(
+      product.variants,
+      newPrice,
+      product.variantDiffPercent || 2,
+      {
+        procurement: product.procurementChargePercent,
+        platform:    product.platformChargePercent,
+        logistics:   product.logisticsChargePercent,
+      }
+    );
+  }, [product, newPrice]);
+
+  if (!preview.length) return null;
+  const unit = product.unit || 'kg';
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {[...preview].reverse().map((v, i) => (
+        <span key={i} className={`text-[10px] rounded-lg px-2 py-1 font-semibold ${
+          i === 0
+            ? 'bg-green-100 text-green-700 border border-green-200'
+            : 'bg-gray-100 text-gray-500'
+        }`}>
+          {fmtRange(v, unit)} → <span className="font-black">{fmt(v.finalPrice)}</span>
+          {i === 0 && <span className="ml-1 text-[9px] opacity-70">base {fmt(v.basePrice)}</span>}
+        </span>
+      ))}
+      <span className="text-[9px] text-gray-400 self-center ml-1">sell prices</span>
+    </div>
+  );
 }
 
 // ── Price List Card ────────────────────────────────────────────────────────
@@ -177,44 +244,51 @@ function PriceListCard({ parsed, onClose }) {
           </p>
 
           {matches.map((m, idx) => (
-            <div key={idx} className={`rounded-xl border px-4 py-3 flex items-center gap-3 transition ${
+            <div key={idx} className={`rounded-xl border px-4 py-3 transition ${
               !m.product ? 'bg-gray-50 border-gray-200 opacity-60' :
-              m.accepted ? 'bg-white border-green-300' : 'bg-white border-gray-200'
+              m.accepted ? 'bg-white border-green-300 shadow-sm' : 'bg-white border-gray-200'
             }`}>
-              {/* Checkbox */}
-              <input
-                type="checkbox"
-                checked={!!m.accepted && !!m.product}
-                disabled={!m.product}
-                onChange={() => toggleAccept(idx)}
-                className="w-4 h-4 accent-green-600 cursor-pointer shrink-0"
-              />
+              <div className="flex items-center gap-3">
+                {/* Checkbox */}
+                <input
+                  type="checkbox"
+                  checked={!!m.accepted && !!m.product}
+                  disabled={!m.product}
+                  onChange={() => toggleAccept(idx)}
+                  className="w-4 h-4 accent-green-600 cursor-pointer shrink-0"
+                />
 
-              {/* Item name */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-800 truncate">{m.item.name}</p>
-                {m.product
-                  ? <p className="text-xs text-green-600 font-semibold truncate">→ {m.product.name}</p>
-                  : <p className="text-xs text-red-400 font-semibold">No match found in Koyambedu Daily</p>
-                }
+                {/* Item name */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-800 truncate">{m.item.name}</p>
+                  {m.product
+                    ? <p className="text-xs text-green-600 font-semibold truncate">→ {m.product.name}</p>
+                    : <p className="text-xs text-red-400 font-semibold">No match found in Koyambedu Daily</p>
+                  }
+                </div>
+
+                {/* Price input */}
+                {m.product ? (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-sm font-bold text-gray-500">₹</span>
+                    <input
+                      type="number"
+                      value={m.newPrice}
+                      min={1}
+                      onChange={e => setPrice(idx, e.target.value)}
+                      disabled={!m.accepted}
+                      className="w-20 text-sm font-black border-2 border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-green-400 disabled:opacity-40"
+                    />
+                    <span className="text-xs text-gray-400">/{m.item.unit}</span>
+                  </div>
+                ) : (
+                  <span className="text-sm font-bold text-gray-400 shrink-0">₹{m.item.price}/{m.item.unit}</span>
+                )}
               </div>
 
-              {/* Price input */}
-              {m.product ? (
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-sm font-bold text-gray-500">₹</span>
-                  <input
-                    type="number"
-                    value={m.newPrice}
-                    min={1}
-                    onChange={e => setPrice(idx, e.target.value)}
-                    disabled={!m.accepted}
-                    className="w-20 text-sm font-black border-2 border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-green-400 disabled:opacity-40"
-                  />
-                  <span className="text-xs text-gray-400">/{m.item.unit}</span>
-                </div>
-              ) : (
-                <span className="text-sm font-bold text-gray-400 shrink-0">₹{m.item.price}/{m.item.unit}</span>
+              {/* Variant price preview — shown when accepted & price > 0 */}
+              {m.accepted && m.product && m.newPrice > 0 && (
+                <MatchVariantPreview product={m.product} newPrice={m.newPrice} />
               )}
             </div>
           ))}
@@ -228,19 +302,37 @@ function PriceListCard({ parsed, onClose }) {
 
           {/* Apply button */}
           {!applied ? (
-            <button
-              onClick={applyPrices}
-              disabled={applying || acceptedCount === 0}
-              className="mt-3 w-full py-3 bg-green-600 text-white font-black rounded-xl hover:bg-green-700 disabled:opacity-40 transition text-sm"
-            >
-              {applying
-                ? 'Updating…'
-                : `Update Base Price for ${acceptedCount} Product${acceptedCount !== 1 ? 's' : ''}`
-              }
-            </button>
+            <div className="mt-4 space-y-2">
+              {acceptedCount > 0 && (
+                <p className="text-xs text-gray-500 text-center">
+                  This will update base prices + auto-recalculate all variants for{' '}
+                  <span className="font-bold text-green-700">{acceptedCount} product{acceptedCount !== 1 ? 's' : ''}</span>
+                </p>
+              )}
+              <button
+                onClick={applyPrices}
+                disabled={applying || acceptedCount === 0}
+                className={`w-full py-3 font-black rounded-xl transition text-sm flex items-center justify-center gap-2 ${
+                  acceptedCount > 0
+                    ? 'bg-green-600 text-white hover:bg-green-700 shadow-md'
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                {applying ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Updating prices…
+                  </>
+                ) : acceptedCount > 0 ? (
+                  `✅ Update Base Price + Variants for ${acceptedCount} Product${acceptedCount !== 1 ? 's' : ''}`
+                ) : (
+                  'Select at least one product to update'
+                )}
+              </button>
+            </div>
           ) : (
             <div className="mt-3 bg-green-600 text-white font-black rounded-xl py-3 text-center text-sm">
-              ✅ Prices updated successfully!
+              ✅ Prices + variants updated in Koyambedu Daily!
             </div>
           )}
         </div>
