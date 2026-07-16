@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
 import KoyambeduImageUploader from '../../../components/koyambedu/KoyambeduImageUploader';
-import KoyambeduVariantProductForm, { EMPTY_VARIANT_PRODUCT, getVariantOverlapError } from '../../../components/koyambedu/KoyambeduVariantProductForm';
+import KoyambeduVariantProductForm, { makeEmptyVariantProduct, getVariantOverlapError } from '../../../components/koyambedu/KoyambeduVariantProductForm';
 
 // ── AI helpers ───────────────────────────────
 const useAI = () => {
@@ -78,7 +78,7 @@ export default function KoyambeduSellerAdminDashboard() {
   // Product create modal
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [addProdSellerId, setAddProdSellerId] = useState('');
-  const [prodCreateForm,  setProdCreateForm]  = useState(EMPTY_VARIANT_PRODUCT);
+  const [prodCreateForm,  setProdCreateForm]  = useState(makeEmptyVariantProduct);
   const [categories,      setCategories]      = useState([]);
 
   // Edit seller (pending-approval flow)
@@ -227,7 +227,7 @@ export default function KoyambeduSellerAdminDashboard() {
   // ── Add Product (for a seller) ────────────────────────
   const openAddProduct = async (sellerId) => {
     setAddProdSellerId(sellerId);
-    setProdCreateForm(EMPTY_VARIANT_PRODUCT);
+    setProdCreateForm(makeEmptyVariantProduct());
     await loadCategories();
     setShowAddProduct(true);
   };
@@ -292,8 +292,8 @@ export default function KoyambeduSellerAdminDashboard() {
       description:              p.description || '',
       unit:                     p.unit || 'kg',
       procurementChargePercent: p.procurementChargePercent ?? 0,
-      platformChargePercent:    p.platformChargePercent    || 10,
-      logisticsChargePercent:   p.logisticsChargePercent   || 10,
+      platformChargePercent:    p.platformChargePercent    ?? 0,
+      logisticsChargePercent:   p.logisticsChargePercent   ?? 0,
       gradesEnabled:            p.gradesEnabled            || false,
       variantDiffPercent:       p.variantDiffPercent       || 2,
       grades: p.gradesEnabled && p.grades?.length

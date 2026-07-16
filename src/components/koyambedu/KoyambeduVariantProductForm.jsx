@@ -50,15 +50,17 @@ export const getVariantOverlapError = (variants = []) => {
   return null;
 };
 
-export const EMPTY_VARIANT_PRODUCT = {
+// Factory function — always returns a fresh object so opening the form twice
+// never shares mutated nested arrays (grades/variants) from a previous session.
+export const makeEmptyVariantProduct = () => ({
   categoryId: '',
   name: '',
   nameTamil: '',
   description: '',
   unit: 'kg',
   procurementChargePercent: 0,
-  platformChargePercent: 10,
-  logisticsChargePercent: 10,
+  platformChargePercent: 0,   // admin/SA sets this per product — no default markup
+  logisticsChargePercent: 0,  // admin/SA sets this per product — no default markup
   variantDiffPercent: 2,
   variants: [
     { ...EMPTY_VARIANT },
@@ -71,7 +73,9 @@ export const EMPTY_VARIANT_PRODUCT = {
   isAvailable: true,
   badges: [],
   images: [],
-};
+});
+// Keep the named constant for backward-compat import paths
+export const EMPTY_VARIANT_PRODUCT = makeEmptyVariantProduct();
 
 // ── Single-grade variant editor ──────────────────────────────────────────────
 function VariantTable({ variants, onChange, proc, plat, log, unit }) {

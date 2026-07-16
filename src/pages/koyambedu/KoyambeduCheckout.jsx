@@ -590,7 +590,7 @@ export default function KoyambeduCheckout() {
 
   const deliveryCharge = locationData?.deliveryCharge ?? 249;
   const distanceKm     = locationData?.distanceKm ?? null;
-  const platformFee    = 15;
+  const platformFee    = 75; // ₹75 incl. 18% GST (SAC 9985)
   const couponDiscount = couponApplied?.discount || 0;
   const baseTotal      = parseFloat((subtotal + deliveryCharge + platformFee - couponDiscount).toFixed(2));
 

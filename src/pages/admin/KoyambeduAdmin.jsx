@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import KoyambeduImageUploader from '../../components/koyambedu/KoyambeduImageUploader';
-import KoyambeduVariantProductForm, { EMPTY_VARIANT_PRODUCT, getVariantOverlapError } from '../../components/koyambedu/KoyambeduVariantProductForm';
+import KoyambeduVariantProductForm, { makeEmptyVariantProduct, getVariantOverlapError } from '../../components/koyambedu/KoyambeduVariantProductForm';
 import KoyambeduScheduleAdmin from './KoyambeduScheduleAdmin';
 import KoyambeduDailyPricePanel from '../../components/koyambedu/KoyambeduDailyPricePanel';
 import toast from 'react-hot-toast';
 
-const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'product-approvals', 'daily-price', 'schedule', 'refund-requests', 'wallets', 'reports', 'dev-settings'];
+const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'product-approvals', 'daily-price', 'schedule', 'refund-requests', 'wallets', 'reports', 'whatsapp-inbox', 'dev-settings'];
 
 const EXPIRY_OPTIONS = [
   { value: 'never', label: 'Never (Manual Disable Only)' },
@@ -206,7 +206,7 @@ export default function KoyambeduAdmin() {
   const [showAddProduct,   setShowAddProduct]   = useState(false);
   const [addProdSeller,    setAddProdSeller]     = useState(null); // full seller object
   const [kbdCategories,    setKbdCategories]     = useState([]);
-  const [kbdProdForm,      setKbdProdForm]       = useState(EMPTY_VARIANT_PRODUCT);
+  const [kbdProdForm,      setKbdProdForm]       = useState(makeEmptyVariantProduct);
   const [addProdSaving,    setAddProdSaving]      = useState(false);
 
   // Products tab
@@ -343,6 +343,14 @@ export default function KoyambeduAdmin() {
   // Lightweight poll: fetch current test-mode status for dashboard banner
   const [testModeActive, setTestModeActive] = useState(false);
 
+  // WhatsApp Inbox tab
+  const [waMsgs,         setWaMsgs]         = useState([]);
+  const [waUnread,       setWaUnread]       = useState(0);
+  const [waUnreadFilter, setWaUnreadFilter] = useState(false);
+  const [waReplyModal,   setWaReplyModal]   = useState(null); // message object
+  const [waReplyText,    setWaReplyText]    = useState('');
+  const [waReplying,     setWaReplying]     = useState(false);
+
   useEffect(() => { loadTab(tab); }, [tab]);
 
   // Load seller admin list for order filter on first visit
@@ -433,6 +441,10 @@ export default function KoyambeduAdmin() {
         const { data } = await api.get('/koyambedu/admin/dev-settings/payment-test-mode');
         setDevSettings(data);
         setTestModeActive(data.enabled);
+      } else if (t === 'whatsapp-inbox') {
+        const { data } = await api.get('/koyambedu/admin/whatsapp/messages?limit=100');
+        setWaMsgs(data.messages || []);
+        setWaUnread(data.unreadCount || 0);
       }
     } catch { toast.error('Failed to load'); }
     finally { setLoading(false); setDevLoading(false); }
@@ -690,7 +702,7 @@ export default function KoyambeduAdmin() {
 
   const openAddProduct = async (seller) => {
     setAddProdSeller(seller);
-    setKbdProdForm(EMPTY_VARIANT_PRODUCT);
+    setKbdProdForm(makeEmptyVariantProduct());
     if (!kbdCategories.length) {
       try {
         const { data } = await api.get('/koyambedu/categories');
@@ -823,8 +835,8 @@ export default function KoyambeduAdmin() {
       badges:                   p.badges || [],
       images:                   p.images || [],
       procurementChargePercent: p.procurementChargePercent ?? 0,
-      platformChargePercent:    p.platformChargePercent    ?? 10,
-      logisticsChargePercent:   p.logisticsChargePercent   ?? 10,
+      platformChargePercent:    p.platformChargePercent    ?? 0,
+      logisticsChargePercent:   p.logisticsChargePercent   ?? 0,
       // Grade system — filter out hidden 'base' grade (auto-managed by backend, never shown in UI)
       gradesEnabled: !!p.gradesEnabled,
       grades: p.grades?.length
@@ -1082,7 +1094,7 @@ export default function KoyambeduAdmin() {
           {TAB_LIST.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white hover:bg-white/30'}`}>
-              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'wallets' ? '💳 Wallets' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'wallets' ? '💳 Wallets' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t === 'whatsapp-inbox' ? `💬 WhatsApp${waUnread > 0 ? ` (${waUnread})` : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -3324,6 +3336,152 @@ export default function KoyambeduAdmin() {
         </div>
       )}
 
+      {/* ── WHATSAPP INBOX TAB ── */}
+      {tab === 'whatsapp-inbox' && (
+        <div className="space-y-4 pb-10">
+
+          {/* Header */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-black text-gray-800 text-base">💬 WhatsApp Inbox</h2>
+                <p className="text-xs text-gray-400 mt-0.5 leading-snug">
+                  Messages received from customers on your business WhatsApp number.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {waUnread > 0 && (
+                  <span className="bg-green-500 text-white text-xs font-black px-2.5 py-1 rounded-full">
+                    {waUnread} unread
+                  </span>
+                )}
+                <button
+                  onClick={async () => {
+                    try {
+                      await api.patch('/koyambedu/admin/whatsapp/messages/read-all');
+                      setWaMsgs(m => m.map(msg => ({ ...msg, isRead: true })));
+                      setWaUnread(0);
+                      toast.success('All marked as read');
+                    } catch { toast.error('Failed'); }
+                  }}
+                  className="text-xs font-bold px-3 py-1.5 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition">
+                  Mark all read
+                </button>
+                <button
+                  onClick={() => loadTab('whatsapp-inbox')}
+                  className="text-xs font-bold px-3 py-1.5 rounded-xl bg-green-50 text-green-700 hover:bg-green-100 transition">
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            {/* Filter toggle */}
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => setWaUnreadFilter(false)}
+                className={`text-xs font-bold px-3 py-1.5 rounded-xl transition ${!waUnreadFilter ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                All
+              </button>
+              <button
+                onClick={() => setWaUnreadFilter(true)}
+                className={`text-xs font-bold px-3 py-1.5 rounded-xl transition ${waUnreadFilter ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                Unread only
+              </button>
+            </div>
+          </div>
+
+          {/* Setup instructions if no messages yet */}
+          {waMsgs.length === 0 && !loading && (
+            <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-6 text-center space-y-3">
+              <p className="text-3xl">📲</p>
+              <p className="font-bold text-gray-700">No messages yet</p>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                To receive messages here, register the webhook in your Meta Developer Dashboard:<br />
+                <strong>WhatsApp → Configuration → Webhook</strong><br />
+                Callback URL: <code className="bg-gray-100 px-1 rounded text-[11px]">https://your-backend.onrender.com/api/webhooks/whatsapp</code><br />
+                Verify Token: value of <code className="bg-gray-100 px-1 rounded text-[11px]">META_WHATSAPP_WEBHOOK_VERIFY_TOKEN</code> env var<br />
+                Subscribe to the <strong>messages</strong> field.
+              </p>
+            </div>
+          )}
+
+          {/* Message list */}
+          <div className="space-y-3">
+            {(waUnreadFilter ? waMsgs.filter(m => !m.isRead) : waMsgs).map(msg => (
+              <div
+                key={msg._id}
+                className={`bg-white rounded-2xl border p-4 space-y-2 transition ${msg.isRead ? 'border-gray-100' : 'border-green-300 shadow-sm'}`}>
+
+                {/* Sender row */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                      <span className="text-base">👤</span>
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-800 text-sm">{msg.profileName || msg.from}</p>
+                      <p className="text-xs text-gray-400">{msg.from}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!msg.isRead && (
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />
+                    )}
+                    <span className="text-xs text-gray-400">
+                      {new Date(msg.sentAt).toLocaleString('en-IN', {
+                        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Message content */}
+                <div className="bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-700 leading-relaxed">
+                  {msg.type === 'text' || msg.type === 'button'
+                    ? (msg.text || <em className="text-gray-400">empty message</em>)
+                    : msg.type === 'image'    ? `📷 Image${msg.mediaCaption ? ` — ${msg.mediaCaption}` : ''}`
+                    : msg.type === 'audio'    ? '🎵 Audio message'
+                    : msg.type === 'video'    ? `🎥 Video${msg.mediaCaption ? ` — ${msg.mediaCaption}` : ''}`
+                    : msg.type === 'document' ? `📄 Document${msg.text ? `: ${msg.text}` : ''}`
+                    : msg.type === 'sticker'  ? '🙂 Sticker'
+                    : msg.type === 'location' ? `📍 Location${msg.locationName ? `: ${msg.locationName}` : ''}`
+                    : `[${msg.type}]`}
+                </div>
+
+                {/* Replied indicator */}
+                {msg.repliedAt && (
+                  <p className="text-xs text-green-600 font-bold">
+                    ✓ Replied: {msg.replyText}
+                  </p>
+                )}
+
+                {/* Action row */}
+                <div className="flex gap-2 pt-1">
+                  {!msg.isRead && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await api.patch(`/koyambedu/admin/whatsapp/messages/${msg._id}/read`);
+                          setWaMsgs(m => m.map(x => x._id === msg._id ? { ...x, isRead: true } : x));
+                          setWaUnread(u => Math.max(0, u - 1));
+                        } catch { toast.error('Failed'); }
+                      }}
+                      className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition font-bold">
+                      Mark read
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setWaReplyModal(msg); setWaReplyText(''); }}
+                    className="text-xs px-3 py-1.5 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition flex items-center gap-1">
+                    💬 Reply
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── DEV SETTINGS TAB ── */}
       {tab === 'dev-settings' && (
         <div className="space-y-5 pb-10">
@@ -3471,6 +3629,81 @@ export default function KoyambeduAdmin() {
             <p className="mt-1">• Only Super Admins can enable or disable this feature. Seller Admins have no access.</p>
           </div>
 
+        </div>
+      )}
+
+      {/* ── WhatsApp Reply Modal ── */}
+      {waReplyModal && (
+        <div className="fixed inset-0 bg-black/50 z-[9997] flex items-end justify-center">
+          <div className="bg-white rounded-t-3xl w-full max-w-lg p-5 space-y-4"
+            style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-black text-green-700">💬 Reply via WhatsApp</h3>
+                <p className="text-xs text-gray-400">
+                  To: {waReplyModal.profileName || waReplyModal.from} ({waReplyModal.from})
+                </p>
+              </div>
+              <button onClick={() => setWaReplyModal(null)} className="text-gray-400 text-xl font-bold leading-none">✕</button>
+            </div>
+
+            {/* Original message */}
+            <div className="bg-gray-50 rounded-xl px-3 py-2.5 text-xs text-gray-500 leading-relaxed">
+              <span className="font-bold text-gray-400 block mb-1">Customer said:</span>
+              {waReplyModal.type === 'text' || waReplyModal.type === 'button'
+                ? waReplyModal.text
+                : `[${waReplyModal.type}]`}
+            </div>
+
+            {/* 24-hour warning */}
+            {(Date.now() - new Date(waReplyModal.sentAt).getTime()) > 20 * 3_600_000 && (
+              <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2 text-xs text-orange-700">
+                ⚠️ Message is over 20 hours old. Replies only work within Meta's 24-hour window.
+              </div>
+            )}
+
+            <textarea
+              value={waReplyText}
+              onChange={e => setWaReplyText(e.target.value)}
+              placeholder="Type your reply…"
+              rows={4}
+              className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-400 resize-none"
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setWaReplyModal(null)}
+                className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-bold text-sm">
+                Cancel
+              </button>
+              <button
+                disabled={waReplying || !waReplyText.trim()}
+                onClick={async () => {
+                  setWaReplying(true);
+                  try {
+                    await api.post(`/koyambedu/admin/whatsapp/messages/${waReplyModal._id}/reply`, {
+                      text: waReplyText.trim()
+                    });
+                    toast.success('Reply sent!');
+                    // Update local state
+                    setWaMsgs(m => m.map(x => x._id === waReplyModal._id
+                      ? { ...x, isRead: true, repliedAt: new Date(), replyText: waReplyText.trim() }
+                      : x
+                    ));
+                    if (!waReplyModal.isRead) setWaUnread(u => Math.max(0, u - 1));
+                    setWaReplyModal(null);
+                    setWaReplyText('');
+                  } catch (err) {
+                    toast.error(err?.response?.data?.message || 'Failed to send reply');
+                  } finally {
+                    setWaReplying(false);
+                  }
+                }}
+                className="flex-1 py-3 rounded-xl bg-green-600 text-white font-bold text-sm disabled:opacity-40">
+                {waReplying ? 'Sending…' : '📤 Send Reply'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
