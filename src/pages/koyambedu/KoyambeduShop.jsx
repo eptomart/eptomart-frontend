@@ -37,6 +37,67 @@ const getLowestUnitPrice = (variants) => {
   return min === Infinity ? null : min;
 };
 
+// Grade badge colours
+const GRADE_COLORS = {
+  premium: { badge: 'bg-purple-600', bg: 'bg-purple-50' },
+  mixed:   { badge: 'bg-blue-500',   bg: 'bg-blue-50'   },
+  economy: { badge: 'bg-green-600',  bg: 'bg-green-50'  },
+};
+
+/**
+ * GradeCard — renders one grade of a graded product as its own card.
+ * Used when gradesEnabled=true so each grade appears separately in the grid.
+ */
+const GradeCard = ({ product, grade }) => {
+  const img = product.images?.find(i => i.isPrimary)?.url || product.images?.[0]?.url || null;
+  const colors = GRADE_COLORS[grade.gradeKey] || GRADE_COLORS.economy;
+  const gradePrice = (() => {
+    if (!grade.variants?.length) return null;
+    const prices = grade.variants.map(v => Number(v.finalPrice) || 0).filter(p => p > 0);
+    return prices.length ? Math.min(...prices) : null;
+  })();
+
+  return (
+    <div className="bg-white rounded-2xl border border-green-100 shadow-sm overflow-hidden">
+      <Link to={`/koyambedu/product/${product._id}`}>
+        <div className="relative">
+          {img
+            ? <img src={img} alt={product.name} className="w-full h-[72px] object-cover" />
+            : <div className={`w-full h-[72px] ${colors.bg} flex items-center justify-center`}>
+                <FaLeaf size={20} className="text-green-200" />
+              </div>}
+          {product.badges?.includes('fresh_arrival') && (
+            <span className="absolute top-1.5 left-1.5 bg-green-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">Fresh</span>
+          )}
+          <span className={`absolute top-1.5 right-1.5 ${colors.badge} text-white text-[8px] font-black px-1.5 py-0.5 rounded-full tracking-wide uppercase`}>
+            {grade.gradeName || grade.gradeKey}
+          </span>
+        </div>
+      </Link>
+      <div className="p-2">
+        <Link to={`/koyambedu/product/${product._id}`}>
+          <p className="text-xs font-semibold text-gray-800 line-clamp-1">{product.name}</p>
+          {product.nameTamil && <p className="text-[10px] text-gray-400 leading-tight">{product.nameTamil}</p>}
+        </Link>
+        <div className="mt-1.5">
+          {gradePrice ? (
+            <div>
+              <span className="text-[9px] text-gray-400 font-medium">From </span>
+              <span className="text-green-700 font-bold text-xs">₹{gradePrice}</span>
+              <span className="text-gray-400 text-[10px]">/{product.unit}</span>
+            </div>
+          ) : (
+            <div className="flex items-baseline gap-0.5">
+              <span className="text-green-700 font-bold text-xs">₹{product.currentPrice}</span>
+              <span className="text-gray-400 text-[10px]">/{product.unit}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ProductCard = ({ product }) => {
   const img = product.images?.find(i => i.isPrimary)?.url || product.images?.[0]?.url || null;
   const hasGrades   = !!(product.gradesEnabled && product.grades?.length > 0);
@@ -291,9 +352,17 @@ export default function KoyambeduShop() {
             {loading ? 'Loading...' : `${total} product${total !== 1 ? 's' : ''} found`}
           </p>
 
-          {/* ── Product grid ── */}
+          {/* ── Product grid ──
+               Graded products are expanded: each active grade gets its own card
+               so all variants (e.g. Premium, Mixed, Economy) appear individually. */}
           <div className="px-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {products.map(p => <ProductCard key={p._id} product={p} />)}
+            {products.flatMap(p =>
+              p.gradesEnabled && p.grades?.some(g => g.isActive)
+                ? p.grades
+                    .filter(g => g.isActive)
+                    .map(g => <GradeCard key={`${p._id}-${g.gradeKey}`} product={p} grade={g} />)
+                : [<ProductCard key={p._id} product={p} />]
+            )}
           </div>
 
           {!loading && products.length === 0 && (

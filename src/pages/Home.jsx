@@ -1120,6 +1120,28 @@ const KBD_TAPE_DATA = {
   ],
 };
 
+/**
+ * Pick a random sample from the lowest-priced products.
+ * Sorts ascending by lowestUnitPrice/currentPrice, takes the cheapest 60%,
+ * Fisher-Yates shuffles, then returns up to maxCount items.
+ * Called once when data loads → stable random order for the page visit.
+ */
+function pickRandomLowest(products, maxCount = 8) {
+  if (!products?.length) return [];
+  const sorted = [...products].sort((a, b) => {
+    const pa = (a.lowestUnitPrice > 0 ? a.lowestUnitPrice : null) ?? a.currentPrice ?? Infinity;
+    const pb = (b.lowestUnitPrice > 0 ? b.lowestUnitPrice : null) ?? b.currentPrice ?? Infinity;
+    return pa - pb;
+  });
+  const poolSize = Math.max(Math.min(6, sorted.length), Math.ceil(sorted.length * 0.6));
+  const pool = sorted.slice(0, poolSize);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, maxCount);
+}
+
 function KoyambeduShowcase() {
   const [sections,       setSections]       = useState([]);
   const [flatProducts,   setFlatProducts]   = useState([]);
@@ -1158,9 +1180,21 @@ function KoyambeduShowcase() {
     ...sections.map(s => ({ key: String(s.category._id), name: s.category.name, icon: s.category.icon || null })),
   ], [sections]);
 
+  // Each section's products randomised from the cheapest subset — stable for the page visit.
+  const randomizedSections = useMemo(() =>
+    sections.map(s => ({ ...s, products: pickRandomLowest(s.products, 8) })),
+  [sections]);
+
+  // Flat fallback products randomised from cheapest subset.
+  const randomizedFlatProducts = useMemo(() =>
+    pickRandomLowest(flatProducts, 20),
+  [flatProducts]);
+
   const displaySections = useMemo(() =>
-    activeCategory === 'all' ? sections : sections.filter(s => String(s.category._id) === activeCategory),
-  [sections, activeCategory]);
+    activeCategory === 'all'
+      ? randomizedSections
+      : randomizedSections.filter(s => String(s.category._id) === activeCategory),
+  [randomizedSections, activeCategory]);
 
   const viewAllLink = activeCategory === 'all'
     ? '/koyambedu'
@@ -1261,11 +1295,11 @@ function KoyambeduShowcase() {
         </div>
 
       /* Fallback: flat product list (no categories yet) */
-      ) : flatProducts.length > 0 ? (
+      ) : randomizedFlatProducts.length > 0 ? (
         <>
           <div className="md:hidden flex gap-2 px-4 overflow-x-auto scrollbar-hide"
             style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
-            {flatProducts.map((p, i) => (
+            {randomizedFlatProducts.map((p, i) => (
               <div key={p._id} className="flex-shrink-0"
                 style={{ width: 'calc(30% - 4px)', scrollSnapAlign: 'start' }}>
                 <KbdProductCard product={p} index={i} visible={inView} />
@@ -1273,7 +1307,7 @@ function KoyambeduShowcase() {
             ))}
           </div>
           <div className="hidden md:grid md:grid-cols-5 gap-3 px-4">
-            {flatProducts.slice(0, 10).map((p, i) => (
+            {randomizedFlatProducts.slice(0, 10).map((p, i) => (
               <KbdProductCard key={p._id} product={p} index={i} visible={inView} />
             ))}
           </div>
@@ -1297,7 +1331,7 @@ function KoyambeduShowcase() {
       )}
 
       {/* "View All" CTA */}
-      {!loading && (sections.length > 0 || flatProducts.length > 0) && (
+      {!loading && (sections.length > 0 || randomizedFlatProducts.length > 0) && (
         <div className="px-4 mt-3 mb-1">
           <Link to={viewAllLink}
             className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-bold border bg-white transition-all active:scale-[0.98] hover:bg-emerald-50"
