@@ -179,13 +179,17 @@ export default function KoyambeduHome() {
 
         {/* ── Feature 1: Last Product Update Time ── */}
         {lastUpdate && (
-          <div className="mb-3 rounded-2xl px-4 py-2.5 flex items-center gap-2.5"
-            style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', boxShadow: '0 1px 6px rgba(22,163,74,0.08)' }}>
-            <span className="w-2 h-2 rounded-full bg-green-500 shrink-0 animate-pulse" />
-            <div className="flex-1 min-w-0">
-              <p className="text-green-800 text-xs font-bold leading-tight">Today's Market Prices Updated</p>
-              <p className="text-green-600 text-[10px] mt-0.5">{fmtIST(lastUpdate)}</p>
+          <div className="mb-3 rounded-2xl px-4 py-3 flex items-center gap-3"
+            style={{ background: 'linear-gradient(135deg,#dcfce7,#bbf7d0)', border: '2px solid #16a34a', boxShadow: '0 3px 12px rgba(22,163,74,0.18)' }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: 'linear-gradient(135deg,#16a34a,#15803d)', boxShadow: '0 2px 8px rgba(22,163,74,0.35)' }}>
+              <span style={{ fontSize: 18 }}>✅</span>
             </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-green-900 text-xs font-black uppercase tracking-wide leading-tight">Live Market Prices</p>
+              <p className="text-green-800 text-sm font-bold mt-0.5">Updated at {fmtIST(lastUpdate)}</p>
+            </div>
+            <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0 animate-pulse" />
           </div>
         )}
 
@@ -223,18 +227,7 @@ export default function KoyambeduHome() {
           </Link>
         )}
 
-        {/* ── Market Closed Banner ── */}
-        {isMarketClosed && (
-          <div className="mb-4 rounded-2xl overflow-hidden"
-            style={{ background: '#fffbeb', border: '1.5px solid #fde68a', boxShadow: '0 2px 8px rgba(234,179,8,0.10)' }}>
-            <div className="px-4 py-3 flex items-start gap-3">
-              <span className="text-xl mt-0.5 shrink-0">⏰</span>
-              <p className="text-amber-800 text-xs leading-relaxed">
-                Wholesale market closes by <strong>9:00 AM</strong>. Orders placed after 9 AM will be delivered the <strong>next day</strong>.
-              </p>
-            </div>
-          </div>
-        )}
+        {/* Market Closed Banner removed — cutoff logic unchanged in checkout */}
 
         {/* No location nudge */}
         {!locationLabel && (
