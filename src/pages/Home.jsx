@@ -274,6 +274,8 @@ function ShopBySource() {
   // Admin-configurable market video — plays as the live background of
   // the Koyambedu hero tile (falls back to the photo when not set)
   const [heroVideo, setHeroVideo] = useState(null);
+  const videoRef = useRef(null);
+
   useEffect(() => {
     api.get('/settings')
       .then(r => {
@@ -283,6 +285,21 @@ function ShopBySource() {
       .catch(() => {});
   }, []);
 
+  // Manually trigger play after video mounts — browsers often ignore the
+  // autoPlay HTML attribute even for muted videos; calling .play() directly
+  // is the reliable cross-browser fix (mobile Chrome, Safari, etc.)
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid || !heroVideo) return;
+    vid.muted = true;
+    vid.play().catch(() => {
+      // Autoplay still blocked — wait for first user interaction then retry
+      const resume = () => { vid.play().catch(() => {}); };
+      document.addEventListener('touchstart', resume, { once: true });
+      document.addEventListener('click',      resume, { once: true });
+    });
+  }, [heroVideo]);
+
   return (
     <div className="px-4 space-y-2">
       {/* Koyambedu Daily — HERO tile (live video when configured) */}
@@ -291,11 +308,13 @@ function ShopBySource() {
         style={{ aspectRatio: '2.4/1', maxHeight: 165, boxShadow: '0 8px 28px rgba(6,78,59,0.50)' }}>
         {heroVideo ? (
           <video
+            ref={videoRef}
             src={heroVideo.url}
             poster={heroVideo.poster || '/categories/koyambedu.jpg'}
-            autoPlay muted loop playsInline preload="metadata"
+            autoPlay muted loop playsInline preload="auto"
             className="absolute inset-0 w-full h-full object-cover"
             onError={() => setHeroVideo(null)}
+            onCanPlay={() => videoRef.current?.play().catch(() => {})}
           />
         ) : (
           <img src="/categories/koyambedu.jpg" alt="Koyambedu Market"
