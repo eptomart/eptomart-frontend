@@ -119,18 +119,25 @@ export default function KoyambeduShop() {
   const sentinelRef  = useRef(null);
   const observerRef  = useRef(null);
   const loadingRef   = useRef(false); // shadow ref so observer doesn't capture stale state
+  // Guards against race conditions: a stale in-flight request (e.g. from a
+  // scroll-triggered page load) resolving after the user changed search/
+  // category/sort should never overwrite the newer results, and should
+  // never be treated as a "duplicate" of the current request.
+  const requestIdRef = useRef(0);
 
   const search       = searchParams.get('search')   || '';
   const categoryId   = searchParams.get('category') || '';
   const sortBy       = searchParams.get('sort')      || 'default';
 
   const loadProducts = useCallback(async (pg = 1) => {
+    const reqId = ++requestIdRef.current;
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: pg, limit: 20, sort: sortBy });
       if (search)     params.set('search',   search);
       if (categoryId) params.set('category', categoryId);
       const { data } = await api.get(`/koyambedu/products?${params}`);
+      if (reqId !== requestIdRef.current) return; // superseded by a newer request — ignore stale response
       setProducts(pg === 1 ? data.products : prev => {
         const seen = new Set(prev.map(p => p._id));
         return [...prev, ...data.products.filter(p => !seen.has(p._id))];
@@ -138,9 +145,9 @@ export default function KoyambeduShop() {
       setTotal(data.total);
       setPage(pg);
     } catch {
-      toast.error('Failed to load products');
+      if (reqId === requestIdRef.current) toast.error('Failed to load products');
     } finally {
-      setLoading(false);
+      if (reqId === requestIdRef.current) setLoading(false);
     }
   }, [search, categoryId, sortBy]);
 
@@ -173,6 +180,26 @@ export default function KoyambeduShop() {
     observer.observe(node);
     observerRef.current = observer;
   }, [loadProducts]); // re-create when loadProducts changes (i.e. search/category/sort change)
+
+  // ── Fix: infinite scroll stalling until the user scrolls up and back down ──
+  // An IntersectionObserver only invokes its callback when intersection STATUS
+  // CHANGES (entering/leaving the viewport threshold). On wide screens/grids
+  // — or whenever a loaded batch doesn't push the sentinel far enough down —
+  // the sentinel can remain continuously intersecting across a page load. In
+  // that case no new callback ever fires, so loading silently stalls, even
+  // though the sentinel is still sitting at the bottom of the visible list.
+  // The only way it "unsticks" previously was the user scrolling away and
+  // back, which produces a fresh enter event. Re-observing the same node
+  // after every successful load forces the browser to recompute intersection
+  // immediately, so loading continues automatically without any manual
+  // scroll action — while `loadingRef`/`requestIdRef` above still prevent any
+  // duplicate or overlapping requests.
+  useEffect(() => {
+    if (observerRef.current && sentinelRef.current) {
+      observerRef.current.unobserve(sentinelRef.current);
+      observerRef.current.observe(sentinelRef.current);
+    }
+  }, [products]);
 
   const setParam = (key, val) => {
     const np = new URLSearchParams(searchParams);

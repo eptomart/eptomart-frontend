@@ -296,6 +296,34 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
     }
   }, [proc, plat, log]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Fix: grade controls becoming unresponsive for some products ──────────
+  // When editing a product whose saved `grades` array doesn't contain all 3
+  // canonical keys (premium/mixed/economy) — e.g. legacy data, a partial save,
+  // or a product that only ever had 1-2 grades — the render below falls back
+  // to a throwaway `makeDefaultGrade()` object just to display something.
+  // But `updateGrade`/`toggleGradeActive` update via `.map()` over `form.grades`,
+  // which silently no-ops for any key not actually present in that array.
+  // Net effect: the toggle/price inputs for the missing grade(s) appear
+  // completely unresponsive — every render regenerates the same fresh
+  // default object, discarding whatever the admin just tried to change.
+  // Fix: backfill any missing canonical grade into form.grades (inactive by
+  // default, so nothing is unintentionally exposed to customers on next
+  // save) so every grade's controls always have a real, updatable entry.
+  useEffect(() => {
+    if (!form.gradesEnabled) return;
+    const existing = form.grades || [];
+    const missing = GRADE_DEFS.filter(def => !existing.some(g => g.gradeKey === def.gradeKey));
+    if (missing.length > 0) {
+      onChange({
+        ...form,
+        grades: [
+          ...existing,
+          ...missing.map(def => ({ ...makeDefaultGrade(def.gradeKey, def.gradeName), isActive: false })),
+        ],
+      });
+    }
+  }, [form.gradesEnabled, form.grades]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const setField = (k, v) => onChange({ ...form, [k]: v });
 
   // ── AI helpers ────────────────────────────────────────────────────────────
