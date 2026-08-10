@@ -67,6 +67,7 @@ const AdminVisitors     = lazy(() => import('./pages/admin/Visitors'));
 const AdminMessages     = lazy(() => import('./pages/admin/Messages'));
 const AdminUzhavar      = lazy(() => import('./pages/admin/UzhavarAdmin'));
 const AdminKoyambedu    = lazy(() => import('./pages/admin/KoyambeduAdmin'));
+const AdminKoyambeduInventory = lazy(() => import('./pages/admin/KoyambeduInventory'));
 const AdminCoupons         = lazy(() => import('./pages/admin/Coupons'));
 const AdminWhatsAppInbox   = lazy(() => import('./pages/admin/WhatsAppInbox'));
 
@@ -240,6 +241,7 @@ function AppRoutes() {
             <Route path="messages"         element={<AdminMessages />} />
             <Route path="uzhavar"          element={<AdminUzhavar />} />
             <Route path="koyambedu"        element={<AdminKoyambedu />} />
+            <Route path="koyambedu/inventory" element={<AdminKoyambeduInventory />} />
             <Route path="coupons"          element={<AdminCoupons />} />
             <Route path="whatsapp-inbox"   element={<AdminWhatsAppInbox />} />
           </Route>
