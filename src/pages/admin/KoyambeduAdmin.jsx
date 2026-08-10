@@ -315,6 +315,9 @@ export default function KoyambeduAdmin() {
   const [walletManualReason,  setWalletManualReason]   = useState('');
   const [walletManualSaving,  setWalletManualSaving]   = useState(false);
 
+  // Invoice download (Super Admin — Order Summary)
+  const [invoiceDownloading, setInvoiceDownloading] = useState({}); // { [orderId]: true }
+
   // Admin costs (per order — internal only)
   const [costsModal,    setCostsModal]    = useState(null); // order object
   const [costsForm,     setCostsForm]     = useState({ actualDeliveryCost: '', miscExpenses: '', costNote: '' });
@@ -564,6 +567,35 @@ export default function KoyambeduAdmin() {
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Cancel failed');
     } finally { setCancelling(false); }
+  };
+
+  // Super Admin — view/download a customer's invoice from the Order Summary page.
+  // Reuses the same PDF the customer sees; just streams it as a blob and either
+  // opens it in a new tab (view) or triggers a file download.
+  const handleInvoiceDownload = async (order, mode = 'download') => {
+    const id = order._id;
+    setInvoiceDownloading(p => ({ ...p, [id]: true }));
+    try {
+      const res = await api.get(`/koyambedu/admin/orders/${id}/invoice`, { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url  = URL.createObjectURL(blob);
+      if (mode === 'view') {
+        window.open(url, '_blank');
+      } else {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `invoice-${order.orderId || id}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('Invoice downloaded');
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not load invoice');
+    } finally {
+      setInvoiceDownloading(p => ({ ...p, [id]: false }));
+    }
   };
 
   const handleRefundAction = async (walletId, requestId, action) => {
@@ -1294,6 +1326,13 @@ export default function KoyambeduAdmin() {
                             <button onClick={() => { setRefundModal(order); setRefundAmt(''); setRefundReason(''); }}
                               className="text-xs text-purple-700 font-bold border border-purple-200 px-2 py-1 rounded-lg">
                               💳 Refund
+                            </button>
+                          )}
+                          {isSuperAdmin && (
+                            <button onClick={() => handleInvoiceDownload(order, 'view')}
+                              disabled={invoiceDownloading[order._id]}
+                              className="text-xs text-blue-700 font-bold border border-blue-200 px-2 py-1 rounded-lg disabled:opacity-50">
+                              {invoiceDownloading[order._id] ? '…' : '📄 Invoice'}
                             </button>
                           )}
                           {isSuperAdmin && !['cancelled','delivered'].includes(order.orderStatus) && (
