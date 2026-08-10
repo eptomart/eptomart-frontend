@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
@@ -154,11 +154,13 @@ function PurchasesTab({ products, sellers }) {
           <input type="date" value={form.purchaseDate} onChange={e => setForm(f => ({ ...f, purchaseDate: e.target.value }))}
             className="border border-gray-200 rounded-xl px-3 py-2 text-sm" />
           {form.itemType === 'produce' ? (
-            <select value={form.product} onChange={e => setForm(f => ({ ...f, product: e.target.value }))}
-              className="border border-gray-200 rounded-xl px-3 py-2 text-sm col-span-2">
-              <option value="">Select active item…</option>
-              {products.map(p => <option key={p._id} value={p._id}>{p.name} ({p.unit})</option>)}
-            </select>
+            <SearchableSelect
+              className="col-span-2"
+              value={form.product}
+              onChange={v => setForm(f => ({ ...f, product: v }))}
+              placeholder="Search or select active item…"
+              options={products.map(p => ({ value: p._id, label: p.name, sub: `(${p.unit})` }))}
+            />
           ) : (
             <>
               <input placeholder="Item name (e.g. Packing Bags 1kg)" value={form.itemName}
@@ -333,11 +335,13 @@ function WastageTab({ products }) {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
           <input type="date" value={form.wastageDate} onChange={e => setForm(f => ({ ...f, wastageDate: e.target.value }))}
             className="border border-gray-200 rounded-xl px-3 py-2 text-sm" />
-          <select value={form.product} onChange={e => setForm(f => ({ ...f, product: e.target.value }))}
-            className="border border-gray-200 rounded-xl px-3 py-2 text-sm col-span-2 sm:col-span-1">
-            <option value="">Select Product…</option>
-            {products.map(p => <option key={p._id} value={p._id}>{p.name} ({p.unit})</option>)}
-          </select>
+          <SearchableSelect
+            className="col-span-2 sm:col-span-1"
+            value={form.product}
+            onChange={v => setForm(f => ({ ...f, product: v }))}
+            placeholder="Search or select product…"
+            options={products.map(p => ({ value: p._id, label: p.name, sub: `(${p.unit})` }))}
+          />
           <input type="number" min="0" step="0.01" placeholder="Quantity" value={form.quantity}
             onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
             className="border border-gray-200 rounded-xl px-3 py-2 text-sm" />
@@ -509,11 +513,13 @@ function MaterialsUsedTab() {
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
-          <select value={form.purchase} onChange={e => pickMaterial(e.target.value)}
-            className="border border-gray-200 rounded-xl px-3 py-2 text-sm col-span-2">
-            <option value="">Pick a purchased material… (optional)</option>
-            {materialPurchases.map(p => <option key={p._id} value={p._id}>{p.itemName} — ₹{p.costPricePerUnit}/{p.unit}</option>)}
-          </select>
+          <SearchableSelect
+            className="col-span-2"
+            value={form.purchase}
+            onChange={pickMaterial}
+            placeholder="Search or pick a purchased material… (optional)"
+            options={materialPurchases.map(p => ({ value: p._id, label: p.itemName, sub: `— ₹${p.costPricePerUnit}/${p.unit}` }))}
+          />
           <input placeholder="Material name" value={form.materialName}
             onChange={e => setForm(f => ({ ...f, materialName: e.target.value }))}
             className="border border-gray-200 rounded-xl px-3 py-2 text-sm" />
@@ -785,6 +791,56 @@ function DateRangeFilter({ filters, setFilters }) {
       <span className="text-gray-400 text-xs">to</span>
       <input type="date" value={filters.to} onChange={e => setFilters(f => ({ ...f, to: e.target.value }))}
         className="border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+    </div>
+  );
+}
+
+// Searchable dropdown — type to filter, or click to browse the full list.
+// `options` is [{ value, label, sub? }]. Behaves like a combobox: shows the
+// selected option's label when closed, an editable search box when open.
+function SearchableSelect({ options, value, onChange, placeholder, className }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const onClick = e => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, []);
+
+  const selected = options.find(o => o.value === value);
+  const q = query.trim().toLowerCase();
+  const filtered = q ? options.filter(o => o.label.toLowerCase().includes(q)) : options;
+
+  return (
+    <div ref={wrapRef} className={`relative ${className || ''}`}>
+      <input
+        value={open ? query : (selected?.label || '')}
+        onChange={e => { setQuery(e.target.value); if (!open) setOpen(true); }}
+        onFocus={() => { setQuery(''); setOpen(true); }}
+        placeholder={placeholder}
+        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
+      />
+      {open && (
+        <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg">
+          {value && (
+            <button type="button" onClick={() => { onChange(''); setQuery(''); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-xs text-gray-400 hover:bg-gray-50 border-b border-gray-50">
+              ✕ Clear selection
+            </button>
+          )}
+          {filtered.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-gray-400">No matches</p>
+          ) : filtered.map(o => (
+            <button type="button" key={o.value}
+              onClick={() => { onChange(o.value); setQuery(''); setOpen(false); }}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-green-50 ${o.value === value ? 'bg-green-50 font-semibold' : ''}`}>
+              {o.label}{o.sub && <span className="text-gray-400 text-xs ml-1">{o.sub}</span>}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
