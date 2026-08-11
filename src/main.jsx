@@ -7,6 +7,45 @@ import App from './App';
 import './index.css';
 
 // ============================================
+// CHUNK-LOAD FAILURE AUTO-RECOVERY
+// After a new deploy, a browser tab that already has the app open (or one
+// serving a stale cached index.html) can try to fetch a hashed JS chunk
+// filename that no longer exists (e.g. "Home-<oldhash>.js"), throwing
+// "Failed to fetch dynamically imported module". Previously this only ever
+// surfaced as the ErrorBoundary's static "App Error" card below, requiring
+// the user to notice and tap Reload themselves.
+//
+// This is purely a client-side safety net — it does one automatic reload
+// (guarded by sessionStorage so it can never loop) and otherwise falls
+// through to the same ErrorBoundary UI unchanged if the reload doesn't help.
+// ============================================
+const CHUNK_ERROR_PATTERN = /dynamically imported module|loading chunk|failed to fetch/i;
+const CHUNK_RELOAD_FLAG = 'eptomart_chunk_reload_attempted';
+
+function isChunkLoadError(error) {
+  const msg = error?.message || String(error || '');
+  return CHUNK_ERROR_PATTERN.test(msg);
+}
+
+function tryAutoReloadOnce() {
+  try {
+    if (sessionStorage.getItem(CHUNK_RELOAD_FLAG)) return false; // already tried this session
+    sessionStorage.setItem(CHUNK_RELOAD_FLAG, '1');
+    window.location.reload();
+    return true;
+  } catch {
+    return false; // sessionStorage unavailable (e.g. private mode) — fall through to manual UI
+  }
+}
+
+// Vite fires this on the window when a dynamic import() it manages fails to
+// load — catches cases that never reach a React render (e.g. route preloading).
+window.addEventListener('vite:preloadError', (event) => {
+  console.warn('[Eptomart] vite:preloadError — attempting one automatic reload', event.payload);
+  if (tryAutoReloadOnce()) event.preventDefault();
+});
+
+// ============================================
 // ERROR BOUNDARY — catches ALL React crashes
 // Shows visible error instead of blank page
 // ============================================
@@ -22,6 +61,12 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     console.error('[Eptomart] React crash:', error, info);
+    // A failed lazy()/dynamic-import chunk surfaces here as a normal render
+    // error. Try one silent auto-reload before falling back to the visible
+    // "App Error" card — most users hitting this never need to see it at all.
+    if (isChunkLoadError(error)) {
+      tryAutoReloadOnce();
+    }
   }
 
   render() {

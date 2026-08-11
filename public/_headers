@@ -6,6 +6,19 @@
   Cache-Control: public, max-age=3600
 
 # HTML — no cache (always fresh)
+# NOTE: `/*.html` only matches literal *.html URLs, which this SPA never
+# actually serves — every real route (/, /koyambedu, /admin/... etc.) is
+# extensionless and gets rewritten to index.html by _redirects, but that
+# rewrite happens AFTER header matching, so `/*.html` never applied to any
+# real page. Explicit `/` and `/index.html` rules below close that gap
+# without touching the /assets, /icons, /manifest.json rules further down
+# (Cloudflare joins values when multiple rules match the same header on the
+# same request, so we deliberately do NOT use a `/*` wildcard here — that
+# would merge into the long-cache asset rules and defeat them).
+/
+  Cache-Control: no-cache, no-store, must-revalidate
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
 /*.html
   Cache-Control: no-cache, no-store, must-revalidate
 
