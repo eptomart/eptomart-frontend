@@ -901,12 +901,31 @@ function MobileSearchBar() {
     } else {
       navigate(`/shop?search=${encodeURIComponent(v)}`);
     }
-    if (totalResults === 0 && v.length >= 3) {
-      try {
+    if (v.length < 3) return;
+
+    // Re-check with a fresh, authoritative search for the exact submitted query
+    // before notifying the team. Do NOT rely on kbdResults/eptResults state —
+    // that comes from a 280ms-debounced background search that may not have
+    // finished for `v` yet if the user typed fast and submitted immediately.
+    // Trusting stale state here was firing false "not found" emails for
+    // products (e.g. "onion") that do exist but hadn't finished loading yet.
+    try {
+      const [kbdRes, eptRes] = await Promise.allSettled([
+        api.get(`/koyambedu/products?search=${encodeURIComponent(v)}&limit=1&page=1`),
+        api.get(`/products/search?q=${encodeURIComponent(v)}&limit=1`),
+      ]);
+      const kbdOk = kbdRes.status === 'fulfilled';
+      const eptOk = eptRes.status === 'fulfilled';
+      const kbdCount = kbdOk ? (kbdRes.value.data.products || []).length : 0;
+      const eptCount = eptOk ? (eptRes.value.data.products || []).length : 0;
+      // Only notify if BOTH searches actually completed and BOTH found nothing —
+      // a failed request is treated as "unknown", not "not found", so a
+      // network blip doesn't also trigger a false email.
+      if (kbdOk && eptOk && kbdCount === 0 && eptCount === 0) {
         await api.post('/settings/product-inquiry', { query: v, name: user?.name || '', email: user?.email || '', phone: user?.phone || '' });
         toast.success(`We've noted your search for "${v}" — we'll source it soon! 🙌`, { duration: 4500, icon: '📬' });
-      } catch {}
-    }
+      }
+    } catch {}
   };
 
   const startVoice = () => {

@@ -74,9 +74,31 @@ function MobileSearchOverlay({ onClose }) {
     if (dest === 'koyambedu') { navigate(`/koyambedu/shop?search=${encodeURIComponent(v)}`); return; }
     if (kbdResults.length > 0 && eptResults.length === 0) { navigate(`/koyambedu/shop?search=${encodeURIComponent(v)}`); return; }
     navigate(`/shop?search=${encodeURIComponent(v)}`);
-    if (totalResults === 0 && v.length >= 3) {
-      try { await api.post('/settings/product-inquiry', { query: v, name: user?.name || '', email: user?.email || '' }); } catch {}
-    }
+    if (v.length < 3) return;
+
+    // Re-check with a fresh, authoritative search for the exact submitted query
+    // before notifying the team. Do NOT rely on eptResults/kbdResults state —
+    // those come from a 300ms-debounced background search that may not have
+    // finished for `v` yet if the user typed fast and hit Enter/voice-submit
+    // immediately. Trusting stale state here was firing false "not found"
+    // emails for products (e.g. "onion") that do exist but just hadn't
+    // finished loading in the dropdown at submit time.
+    try {
+      const [eptRes, kbdRes] = await Promise.allSettled([
+        api.get(`/products/search?q=${encodeURIComponent(v)}&limit=1`),
+        api.get(`/koyambedu/products?search=${encodeURIComponent(v)}&limit=1&page=1&context=navbar`),
+      ]);
+      const eptOk = eptRes.status === 'fulfilled';
+      const kbdOk = kbdRes.status === 'fulfilled';
+      const eptCount = eptOk ? (eptRes.value.data.products || []).length : 0;
+      const kbdCount = kbdOk ? (kbdRes.value.data.products || []).length : 0;
+      // Only notify if BOTH searches actually completed and BOTH found nothing —
+      // if either request failed, treat it as "unknown" rather than "not found"
+      // so a network blip doesn't also trigger a false email.
+      if (eptOk && kbdOk && eptCount === 0 && kbdCount === 0) {
+        await api.post('/settings/product-inquiry', { query: v, name: user?.name || '', email: user?.email || '' });
+      }
+    } catch {}
   };
 
   const startVoice = () => {
