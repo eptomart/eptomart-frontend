@@ -62,6 +62,10 @@ const KoyambeduCartContext = createContext(null);
 export const KoyambeduCartProvider = ({ children }) => {
   const [cart,    setCart]    = useState({ items: [] });
   const [loading, setLoading] = useState(false);
+  // Items whose ordered quantity has fallen below the product's CURRENT minimum
+  // quantity since they were added to cart (e.g. admin raised minQty). Always
+  // refreshed by the server on every fetchCart() call — see getCart backend.
+  const [minQtyIssues, setMinQtyIssues] = useState([]);
 
   // optimisticQtys: { [cartKey]: qty }
   // cartKey = pid for non-graded, "pid__gradeKey" for graded
@@ -95,6 +99,7 @@ export const KoyambeduCartProvider = ({ children }) => {
   const fetchCart = useCallback(async () => {
     if (!isLoggedIn()) {
       setCart(guestToCart(readGuestCart()));
+      setMinQtyIssues([]); // minQty is only enforced server-side; guest cart can't check it
       return;
     }
 
@@ -120,6 +125,7 @@ export const KoyambeduCartProvider = ({ children }) => {
     try {
       const { data } = await api.get('/koyambedu/cart');
       setCart(data.cart || { items: [] });
+      setMinQtyIssues(data.minQtyIssues || []);
     } catch {}
   }, []);
 
@@ -273,6 +279,7 @@ export const KoyambeduCartProvider = ({ children }) => {
       cart: { ...cart, items: effectiveItems },
       loading, fetchCart, updateItem, clearCart,
       itemCount, subtotal, getQty,
+      minQtyIssues,
       userLocation, setUserLocation,
       locationLabel, setLocationLabel,
     }}>

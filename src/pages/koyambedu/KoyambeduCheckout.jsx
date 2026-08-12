@@ -54,6 +54,14 @@ const fmtDate = (d) => {
 const fmtDisplayDate = (d) =>
   d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
+// "09:30" → "9:30 AM" — for displaying the admin-configurable same-day cutoff
+const fmtCutoffDisplay = (hhmm) => {
+  const [h, m] = (hhmm || '09:00').split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+};
+
 // ── All 4 delivery slots ───────────────────
 const ALL_SLOTS = [
   { key: 'slot1', label: '7 AM – 9 AM',   display: 'Slot 1  ·  7 AM – 9 AM' },
@@ -62,15 +70,16 @@ const ALL_SLOTS = [
   { key: 'slot4', label: '2 PM – 4 PM',   display: 'Slot 4  ·  2 PM – 4 PM' },
 ];
 
-// Return slot keys available for TODAY based on current IST hour.
+// Return slot keys available for TODAY based on current IST hour and the
+// admin-configurable same-day cutoff hour (decimal, e.g. 9.5 for "09:30").
 // Slot is available if there is still time to place the order before that slot ends.
 // Rule:
-//   00:00–03:59 → slots 2, 3, 4 available (slot 1 already started before market opens)
-//   04:00–08:59 → slots 3, 4 available   (slot 1 & 2 cutoff passed)
-//   09:00+      → no same-day slots       (Today tab disabled)
-const getTodayAvailableSlots = (istHour) => {
-  if (istHour < 4)  return ['slot2', 'slot3', 'slot4'];
-  if (istHour < 9)  return ['slot3', 'slot4'];
+//   00:00–03:59        → slots 2, 3, 4 available (slot 1 already started before market opens)
+//   04:00–<cutoffHour  → slots 3, 4 available   (slot 1 & 2 cutoff passed)
+//   >=cutoffHour       → no same-day slots       (Today tab disabled)
+const getTodayAvailableSlots = (istHour, cutoffHour = 9) => {
+  if (istHour < 4)         return ['slot2', 'slot3', 'slot4'];
+  if (istHour < cutoffHour) return ['slot3', 'slot4'];
   return [];
 };
 
@@ -399,9 +408,10 @@ const EmbeddedMapPicker = forwardRef(function EmbeddedMapPicker({ initialCenter,
 // ═══════════════════════════════════════════
 export default function KoyambeduCheckout() {
   const {
-    cart, subtotal, clearCart,
+    cart, subtotal, clearCart, fetchCart,
     userLocation, setUserLocation,
     locationLabel, setLocationLabel,
+    minQtyIssues,
   } = useKoyambeduCart();
   const { user, loadUser }  = useAuth();
   const navigate  = useNavigate();
@@ -479,6 +489,17 @@ export default function KoyambeduCheckout() {
     }
   }, [step, user]);
 
+  // ── Re-sync cart (price + minimum quantity) right before payment ──────
+  // getCart on the backend always refreshes each item's price against the
+  // live product and flags any item that has fallen below its current
+  // minQty — re-fetching here (in addition to whatever loaded the cart page
+  // earlier) means the numbers shown at the exact moment of payment are
+  // never stale, even if a price/minQty changed while the user was filling
+  // in their address/slot on the earlier steps.
+  useEffect(() => {
+    if (step === 3 && user) fetchCart();
+  }, [step, user, fetchCart]);
+
   // ── Location (set after map step) ─────────
   const [locationData, setLocationData] = useState(
     userLocation
@@ -511,10 +532,26 @@ export default function KoyambeduCheckout() {
   // Pre-load Google Maps in background when checkout opens
   useEffect(() => { loadGoogleMaps().catch(() => {}); }, []);
 
+  // ── Same-day delivery settings (Super Admin controlled) ──────────
+  // Defaults match the previous hardcoded behaviour (enabled, 9 AM cutoff)
+  // so nothing changes until the fetch resolves, and it fails safe (same
+  // default) if the request errors.
+  const [sameDaySettings, setSameDaySettings] = useState({ enabled: true, cutoffTime: '09:00' });
+  useEffect(() => {
+    api.get('/koyambedu/dev-settings/same-day-delivery')
+      .then(r => { if (r.data?.success) setSameDaySettings({ enabled: r.data.enabled, cutoffTime: r.data.cutoffTime }); })
+      .catch(() => {});
+  }, []);
+  const cutoffHourDecimal = (() => {
+    const [h, m] = (sameDaySettings.cutoffTime || '09:00').split(':').map(Number);
+    return h + (m || 0) / 60;
+  })();
+
   // ── Delivery slot state (API-driven) ─────────
   const istNow        = getISTDate();
   const istHour       = getISTHour();
-  const todayDisabled = istHour >= 9; // 9 AM IST — no same-day if all slots started
+  const istHourExact  = istHour + istNow.getMinutes() / 60;
+  const todayDisabled = !sameDaySettings.enabled || istHourExact >= cutoffHourDecimal;
 
   // Date values
   const todayIST    = new Date(istNow); todayIST.setHours(0,0,0,0);
@@ -630,6 +667,10 @@ export default function KoyambeduCheckout() {
       toast.error('Please fill all address fields'); return;
     }
     if (!locationData?.lat) { toast.error('Please confirm your delivery location on the map'); return; }
+    if (minQtyIssues.length > 0) {
+      toast.error('Please update your cart — some items no longer meet the minimum order quantity');
+      return;
+    }
     setLoading(true);
     try {
       const slotObj = [...(availableSlots || []), ...ALL_SLOTS].find(s => s.key === selectedSlot);
@@ -716,7 +757,17 @@ export default function KoyambeduCheckout() {
         document.body.appendChild(s);
       } else { launch(); }
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to place order');
+      const violations = err?.response?.data?.minQtyViolations;
+      if (violations?.length) {
+        // The backend is the final authority — if it still rejected this
+        // (e.g. a price/minQty change landed between our pre-payment fetch
+        // and this submit), re-sync the cart so the banner above reflects
+        // it immediately rather than leaving the user stuck on a generic error.
+        await fetchCart();
+        toast.error(`${violations.length} item${violations.length > 1 ? 's' : ''} below minimum quantity — please update your cart`);
+      } else {
+        toast.error(err?.response?.data?.message || 'Failed to place order');
+      }
     } finally { setLoading(false); }
   };
 
@@ -1037,20 +1088,24 @@ export default function KoyambeduCheckout() {
             </div>
 
             {/* Market hours notice */}
-            <div className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2">
-              <span className="text-amber-500 text-sm shrink-0">🕘</span>
-              <p className="text-amber-700 text-[11px] leading-snug">
-                Orders for the current day must be placed before <strong>9:00 AM</strong> — Koyambedu wholesale market closes early.
-              </p>
-            </div>
+            {sameDaySettings.enabled && (
+              <div className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2">
+                <span className="text-amber-500 text-sm shrink-0">🕘</span>
+                <p className="text-amber-700 text-[11px] leading-snug">
+                  Orders for the current day must be placed before <strong>{fmtCutoffDisplay(sameDaySettings.cutoffTime)}</strong> — Koyambedu wholesale market closes early.
+                </p>
+              </div>
+            )}
 
             {/* Header */}
             <div className="bg-white rounded-2xl p-4"
               style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
               <h2 className="font-bold text-gray-800 text-sm">Choose Delivery Date & Slot</h2>
               <p className="text-xs text-gray-400 mt-0.5">
-                {todayDisabled
-                  ? 'Same-day booking closed (after 9 AM). Showing tomorrow\'s slots.'
+                {!sameDaySettings.enabled
+                  ? 'Same-day delivery is currently unavailable. Showing tomorrow\'s slots.'
+                  : todayDisabled
+                  ? `Same-day booking closed (after ${fmtCutoffDisplay(sameDaySettings.cutoffTime)}). Showing tomorrow's slots.`
                   : 'Select a delivery date and time slot.'}
               </p>
             </div>
@@ -1059,7 +1114,8 @@ export default function KoyambeduCheckout() {
             <div className="bg-white rounded-2xl overflow-hidden"
               style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
               <div className="flex">
-                {/* Today tab */}
+                {/* Today tab — hidden entirely when same-day delivery is globally off */}
+                {sameDaySettings.enabled && (
                 <button
                   disabled={todayDisabled}
                   onClick={() => handleTabChange('today')}
@@ -1082,9 +1138,10 @@ export default function KoyambeduCheckout() {
                     <span className="text-[9px] font-bold text-red-400 mt-0.5">CLOSED</span>
                   )}
                 </button>
+                )}
 
                 {/* Divider */}
-                <div className="w-px bg-gray-100 self-stretch" />
+                {sameDaySettings.enabled && <div className="w-px bg-gray-100 self-stretch" />}
 
                 {/* Tomorrow tab */}
                 <button
@@ -1307,6 +1364,30 @@ export default function KoyambeduCheckout() {
         {/* ═════ STEP 3 — PAYMENT ═════ */}
         {step === 3 && (
           <div className="space-y-4 pb-24">
+            {/* Minimum-quantity violations — must be resolved before payment */}
+            {minQtyIssues.length > 0 && (
+              <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4">
+                <p className="font-black text-red-700 text-sm mb-1">⚠️ Cart needs an update before you can pay</p>
+                <p className="text-red-600 text-xs mb-3">
+                  The minimum order quantity has changed for {minQtyIssues.length === 1 ? 'this item' : 'these items'} since you added {minQtyIssues.length === 1 ? 'it' : 'them'} to your cart:
+                </p>
+                <div className="space-y-2 mb-3">
+                  {minQtyIssues.map((it, i) => (
+                    <div key={i} className="bg-white rounded-xl p-2.5 border border-red-100 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-gray-800">{it.name}{it.gradeName ? ` (${it.gradeName})` : ''}</p>
+                        <p className="text-[11px] text-red-500">In cart: {it.quantity} {it.unit} · Needs at least {it.minQty} {it.unit}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={() => navigate('/cart')}
+                  className="w-full bg-red-600 text-white font-bold text-xs py-2.5 rounded-xl active:scale-95 transition">
+                  Update Cart
+                </button>
+              </div>
+            )}
+
             {/* Summary pills */}
             <div className="bg-white rounded-2xl p-4 space-y-2.5"
               style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
@@ -1545,10 +1626,10 @@ export default function KoyambeduCheckout() {
                 ← Back
               </button>
               {user ? (
-                <button onClick={handlePlaceOrder} disabled={loading}
+                <button onClick={handlePlaceOrder} disabled={loading || minQtyIssues.length > 0}
                   className="flex-1 text-white font-black py-3 rounded-xl disabled:opacity-60 transition text-sm active:scale-95"
                   style={{ background: 'linear-gradient(135deg,#064e3b,#059669)', boxShadow: '0 4px 16px rgba(22,163,74,0.4)' }}>
-                  {loading ? 'Placing Order…' : total <= 0 ? 'Place Order · 💚 Wallet' : `Place Order · ₹${total.toFixed(2)}`}
+                  {loading ? 'Placing Order…' : minQtyIssues.length > 0 ? 'Update Cart to Continue' : total <= 0 ? 'Place Order · 💚 Wallet' : `Place Order · ₹${total.toFixed(2)}`}
                 </button>
               ) : (
                 <button onClick={() => navigate('/login', { state: { from: '/koyambedu/checkout' } })}

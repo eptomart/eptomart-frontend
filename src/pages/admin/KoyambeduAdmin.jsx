@@ -8,7 +8,7 @@ import KoyambeduScheduleAdmin from './KoyambeduScheduleAdmin';
 import KoyambeduDailyPricePanel from '../../components/koyambedu/KoyambeduDailyPricePanel';
 import toast from 'react-hot-toast';
 
-const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'product-approvals', 'daily-price', 'schedule', 'refund-requests', 'wallets', 'reports', 'whatsapp-inbox', 'dev-settings'];
+const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'product-approvals', 'daily-price', 'schedule', 'refund-requests', 'wallets', 'users-cart', 'reports', 'whatsapp-inbox', 'dev-settings'];
 
 const EXPIRY_OPTIONS = [
   { value: 'never', label: 'Never (Manual Disable Only)' },
@@ -18,11 +18,14 @@ const EXPIRY_OPTIONS = [
   { value: 'eod',   label: 'End of Day' },
 ];
 
+// Must match ALL_SLOTS labels in KoyambeduCheckout.jsx exactly — orders store
+// order.deliverySlot as that label string, so report filters compare against
+// these same values. A mismatch here silently returns zero matching orders.
 const DELIVERY_SLOTS = [
-  '06:00 AM – 08:59 AM',
-  '09:00 AM – 11:59 AM',
-  '12:00 PM – 02:59 PM',
-  '03:00 PM – 05:59 PM',
+  '7 AM – 9 AM',
+  '9 AM – 12 PM',
+  '12 PM – 2 PM',
+  '2 PM – 4 PM',
 ];
 
 // ── PDF generation helper ────────────────────────────────────────
@@ -346,6 +349,15 @@ export default function KoyambeduAdmin() {
   // Lightweight poll: fetch current test-mode status for dashboard banner
   const [testModeActive, setTestModeActive] = useState(false);
 
+  // Dev Settings tab — Same-Day Delivery cutoff + on/off gate
+  const [sameDaySettings, setSameDaySettings] = useState(null); // { enabled, cutoffTime, updatedByName, updatedAt }
+  const [sameDaySaving,   setSameDaySaving]   = useState(false);
+  const [sameDayCutoffInput, setSameDayCutoffInput] = useState('09:00');
+
+  // Users Cart tab (SuperAdmin) — in-progress customer carts
+  const [usersCarts,      setUsersCarts]      = useState([]);
+  const [usersCartSearch, setUsersCartSearch] = useState('');
+
   // WhatsApp Inbox tab
   const [waMsgs,         setWaMsgs]         = useState([]);
   const [waUnread,       setWaUnread]       = useState(0);
@@ -444,6 +456,13 @@ export default function KoyambeduAdmin() {
         const { data } = await api.get('/koyambedu/admin/dev-settings/payment-test-mode');
         setDevSettings(data);
         setTestModeActive(data.enabled);
+        const { data: sdData } = await api.get('/koyambedu/admin/dev-settings/same-day-delivery');
+        setSameDaySettings(sdData);
+        setSameDayCutoffInput(sdData.cutoffTime || '09:00');
+      } else if (t === 'users-cart') {
+        const params = usersCartSearch.trim() ? `?search=${encodeURIComponent(usersCartSearch.trim())}` : '';
+        const { data } = await api.get(`/koyambedu/admin/carts${params}`);
+        setUsersCarts(data.carts || []);
       } else if (t === 'whatsapp-inbox') {
         const { data } = await api.get('/koyambedu/admin/whatsapp/messages?limit=100');
         setWaMsgs(data.messages || []);
@@ -1031,9 +1050,15 @@ export default function KoyambeduAdmin() {
     setRptLoading(true);
     setRptData(null);
     try {
-      const params = new URLSearchParams({ deliveryDate: rptDate });
-      if (rptSlot) params.set('slot', rptSlot);
-      if (rptSa)   params.set('sellerAdmin', rptSa);
+      // Area-wise report groups by the order's procurement cutoffCycle (query
+      // param "date"), not deliveryDate/slot/sellerAdmin like the other reports.
+      const params = rptType === 'destination'
+        ? new URLSearchParams({ date: rptDate })
+        : new URLSearchParams({ deliveryDate: rptDate });
+      if (rptType !== 'destination') {
+        if (rptSlot) params.set('slot', rptSlot);
+        if (rptSa)   params.set('sellerAdmin', rptSa);
+      }
       const { data } = await api.get(`/koyambedu/admin/reports/${rptType}?${params}`);
       setRptData(data);
     } catch (err) { toast.error(err?.response?.data?.message || 'Report failed'); }
@@ -1090,9 +1115,18 @@ export default function KoyambeduAdmin() {
         content += `<tr><td>${d.orderId}</td><td>${d.deliverySlot || '-'}</td><td>₹${d.deliveryCharge?.toFixed(0)}</td><td>₹${d.actualDeliveryCost?.toFixed(0)}</td><td>₹${d.miscExpenses?.toFixed(0)}</td><td>₹${d.netDeliveryProfit?.toFixed(0)}</td></tr>`;
       });
       content += `</tbody></table>`;
+    } else if (rptType === 'destination') {
+      (rptData.grouped || []).forEach(g => {
+        content += `<div class="sa-header">📍 ${g.area} — ${g.pincode} (${g.orders?.length || 0} orders)</div>`;
+        content += `<table><thead><tr><th>Order ID</th><th>Customer</th><th>Phone</th><th>Slot</th><th>Address</th><th>Items</th><th>Amount</th></tr></thead><tbody>`;
+        (g.orders || []).forEach(o => {
+          content += `<tr><td>${o.orderId}</td><td>${o.buyerName || '-'}</td><td>${o.phone || '-'}</td><td>${o.deliverySlot || '-'}</td><td>${o.address || ''}</td><td>${o.items || ''}</td><td>₹${o.amount?.toFixed(0)}</td></tr>`;
+        });
+        content += `</tbody></table>`;
+      });
     }
 
-    const rptTitle = rptType === 'order-report' ? 'Order Report' : rptType === 'product-consolidation' ? 'Product Consolidation Report' : 'Cash Flow Report';
+    const rptTitle = rptType === 'order-report' ? 'Order Report' : rptType === 'product-consolidation' ? 'Product Consolidation Report' : rptType === 'destination' ? 'Area Wise Report' : 'Cash Flow Report';
     const html = generateReportHtml(`Koyambedu Daily — ${rptTitle}`, `Delivery Date: ${dateLabel} · Generated: ${new Date().toLocaleString('en-IN')}`, content);
     const blob = new Blob([html], { type: 'text/html' });
     const url  = URL.createObjectURL(blob);
@@ -1134,7 +1168,7 @@ export default function KoyambeduAdmin() {
           {TAB_LIST.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white hover:bg-white/30'}`}>
-              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'wallets' ? '💳 Wallets' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t === 'whatsapp-inbox' ? `💬 WhatsApp${waUnread > 0 ? ` (${waUnread})` : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'wallets' ? '💳 Wallets' : t === 'users-cart' ? '🛒 Users Cart' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t === 'whatsapp-inbox' ? `💬 WhatsApp${waUnread > 0 ? ` (${waUnread})` : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -2949,6 +2983,63 @@ export default function KoyambeduAdmin() {
       {tab === 'danger' && <DangerZone />}
 
       {/* ══════════════════════════════════════════════
+          🛒 USERS CART TAB — SuperAdmin only
+          Shows customers' in-progress carts (items added, order not placed).
+      ══════════════════════════════════════════════ */}
+      {tab === 'users-cart' && (
+        !isSuperAdmin ? (
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center">
+            <p className="text-orange-600 font-semibold text-sm">⚠️ Viewing customer carts requires SuperAdmin access.</p>
+          </div>
+        ) : (
+          <div className="space-y-3 pb-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-3">
+              <input
+                type="text" value={usersCartSearch}
+                onChange={e => setUsersCartSearch(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && loadTab('users-cart')}
+                placeholder="Search by customer name / phone / email…"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500"
+              />
+              <button onClick={() => loadTab('users-cart')}
+                className="mt-2 w-full bg-green-600 text-white font-bold text-xs py-2 rounded-xl active:scale-95 transition">
+                🔍 Search
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-400 px-1">{usersCarts.length} customer{usersCarts.length !== 1 ? 's' : ''} with items in cart</p>
+
+            {!loading && usersCarts.map(c => (
+              <div key={c._id} className="bg-white rounded-2xl border border-gray-200 p-3">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="font-bold text-gray-800 text-sm">{c.customerName}</p>
+                    <p className="text-xs text-gray-500">📞 {c.phone} {c.email && c.email !== '—' ? `· ✉️ ${c.email}` : ''}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Updated {new Date(c.updatedAt).toLocaleString('en-IN')}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-black text-green-700 text-sm">₹{c.cartValue?.toFixed(0)}</p>
+                    <p className="text-[10px] text-gray-400">{c.itemCount} item{c.itemCount !== 1 ? 's' : ''}</p>
+                  </div>
+                </div>
+                <div className="border-t border-gray-100 pt-2 space-y-1">
+                  {c.items.map((it, ii) => (
+                    <div key={ii} className="flex justify-between text-xs">
+                      <span className="text-gray-700">{it.name}{it.gradeName ? ` (${it.gradeName})` : ''} × {it.quantity}{it.unit} <span className="text-gray-400">({it.deliveryType})</span></span>
+                      <span className="text-gray-500">₹{((it.unitPrice || 0) * (it.quantity || 0)).toFixed(0)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {!loading && usersCarts.length === 0 && (
+              <p className="text-center text-gray-400 py-8">No customers currently have items in their cart</p>
+            )}
+          </div>
+        )
+      )}
+
+      {/* ══════════════════════════════════════════════
           📊 REPORTS TAB
       ══════════════════════════════════════════════ */}
       {tab === 'reports' && (
@@ -2961,6 +3052,7 @@ export default function KoyambeduAdmin() {
                 ['order-report',           '📋 Order Report',            'Delivery date wise — orders grouped by Seller Admin'],
                 ['product-consolidation',  '📦 Product Consolidation',   'Products & quantities to procure for a date + slot'],
                 ['cashflow',               '💰 Cash Flow Report',        'Revenue, procurement, commissions, delivery expenses'],
+                ['destination',            '📍 Area Wise Report',        'Orders grouped by delivery area / pincode'],
               ].map(([val, label, desc]) => (
                 <button key={val} onClick={() => { setRptType(val); setRptData(null); }}
                   className={`text-left p-3 rounded-xl border-2 transition ${rptType === val ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'}`}>
@@ -3009,7 +3101,7 @@ export default function KoyambeduAdmin() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="font-bold text-green-700 text-sm">
-                    {rptType === 'order-report' ? '📋 Order Report' : rptType === 'product-consolidation' ? '📦 Product Consolidation' : '💰 Cash Flow'}
+                    {rptType === 'order-report' ? '📋 Order Report' : rptType === 'product-consolidation' ? '📦 Product Consolidation' : rptType === 'destination' ? '📍 Area Wise Report' : '💰 Cash Flow'}
                   </p>
                   <p className="text-xs text-gray-400">{rptDate}{rptSlot ? ' · ' + rptSlot : ''}</p>
                 </div>
@@ -3154,6 +3246,36 @@ export default function KoyambeduAdmin() {
                   </div>
                 );
               })()}
+
+              {/* AREA WISE (DESTINATION) REPORT */}
+              {rptType === 'destination' && (
+                <div className="space-y-4">
+                  {(rptData.grouped || []).map((g, gi) => (
+                    <div key={gi}>
+                      <div className="flex items-center gap-2 mb-2 px-2 py-1.5 rounded-lg" style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+                        <span className="font-bold text-blue-800 text-sm">📍 {g.area} — {g.pincode}</span>
+                        <span className="text-xs text-blue-600 ml-auto">{g.orders?.length} orders</span>
+                      </div>
+                      <div className="space-y-2">
+                        {(g.orders || []).map((o, oi) => (
+                          <div key={oi} className="border border-gray-100 rounded-xl overflow-hidden">
+                            <div className="px-3 py-2 bg-gray-50 flex justify-between items-center">
+                              <div>
+                                <p className="text-xs font-bold text-gray-800">{o.orderId} · {o.buyerName || '—'}</p>
+                                <p className="text-[10px] text-gray-500">📞 {o.phone || '—'} · {o.deliverySlot || '-'}</p>
+                                <p className="text-[10px] text-gray-500">{o.address}</p>
+                              </div>
+                              <p className="text-sm font-bold text-green-700">₹{o.amount?.toFixed(0)}</p>
+                            </div>
+                            <div className="px-3 py-1.5 border-t border-gray-50 text-xs text-gray-600">{o.items}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {(!rptData.grouped || rptData.grouped.length === 0) && <p className="text-center text-gray-400 py-4">No orders found for the selected date</p>}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -3650,6 +3772,83 @@ export default function KoyambeduAdmin() {
                 {devSaving ? 'Disabling…' : '⏹ Disable Payment Test Mode'}
               </button>
             )}
+          </div>
+
+          {/* Same-Day Delivery cutoff + on/off gate */}
+          <div className="bg-white rounded-2xl border-2 border-blue-200 p-4 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-blue-50">
+                <span className="text-xl">⏰</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-black text-gray-800 text-sm">Same-Day Delivery</h3>
+                <p className="text-xs text-gray-400 mt-0.5 leading-snug">
+                  Controls the order cutoff time for same-day delivery, and can fully turn
+                  off same-day ordering platform-wide. This applies on top of the existing
+                  per-slot delivery schedule — it doesn't replace it.
+                </p>
+              </div>
+              <span className={`shrink-0 text-[10px] font-black px-2 py-1 rounded-full ${
+                sameDaySettings?.enabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+              }`}>
+                {sameDaySettings?.enabled ? '🟢 ON' : '🔴 OFF'}
+              </span>
+            </div>
+
+            {sameDaySettings?.updatedByName && (
+              <p className="text-[11px] text-gray-400">
+                Last changed by {sameDaySettings.updatedByName}
+                {sameDaySettings.updatedAt ? ` · ${new Date(sameDaySettings.updatedAt).toLocaleString('en-IN')}` : ''}
+              </p>
+            )}
+
+            <div className="flex items-center justify-between rounded-xl p-3 bg-gray-50">
+              <div>
+                <p className="text-sm font-bold text-gray-800">Same-Day Delivery</p>
+                <p className="text-xs text-gray-400">When off, customers can only order for tomorrow onward</p>
+              </div>
+              <button
+                disabled={sameDaySaving}
+                onClick={async () => {
+                  setSameDaySaving(true);
+                  try {
+                    const { data } = await api.put('/koyambedu/admin/dev-settings/same-day-delivery', {
+                      enabled: !sameDaySettings?.enabled,
+                    });
+                    setSameDaySettings(s => ({ ...s, enabled: data.enabled, cutoffTime: data.cutoffTime }));
+                    toast.success(`Same-day delivery ${data.enabled ? 'enabled' : 'disabled'}`);
+                  } catch (err) { toast.error(err?.response?.data?.message || 'Failed to update'); }
+                  finally { setSameDaySaving(false); }
+                }}
+                className={`shrink-0 relative w-12 h-7 rounded-full transition ${sameDaySettings?.enabled ? 'bg-green-500' : 'bg-gray-300'} disabled:opacity-50`}>
+                <span className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition ${sameDaySettings?.enabled ? 'left-5' : 'left-0.5'}`} />
+              </button>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Order Cutoff Time (24-hour, IST)</label>
+              <div className="flex gap-2">
+                <input type="time" value={sameDayCutoffInput} onChange={e => setSameDayCutoffInput(e.target.value)}
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+                <button
+                  disabled={sameDaySaving || !sameDayCutoffInput}
+                  onClick={async () => {
+                    setSameDaySaving(true);
+                    try {
+                      const { data } = await api.put('/koyambedu/admin/dev-settings/same-day-delivery', {
+                        cutoffTime: sameDayCutoffInput,
+                      });
+                      setSameDaySettings(s => ({ ...s, enabled: data.enabled, cutoffTime: data.cutoffTime }));
+                      toast.success(`Cutoff time updated to ${data.cutoffTime}`);
+                    } catch (err) { toast.error(err?.response?.data?.message || 'Failed to update'); }
+                    finally { setSameDaySaving(false); }
+                  }}
+                  className="shrink-0 bg-blue-600 text-white font-bold text-xs px-4 py-2 rounded-xl disabled:opacity-50 active:scale-95 transition">
+                  {sameDaySaving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Customers ordering for today after this time will only be able to choose tomorrow's delivery.</p>
+            </div>
           </div>
 
           {/* Audit Log */}
