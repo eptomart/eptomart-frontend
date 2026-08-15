@@ -1050,12 +1050,14 @@ export default function KoyambeduAdmin() {
     setRptLoading(true);
     setRptData(null);
     try {
-      // Area-wise report groups by the order's procurement cutoffCycle (query
-      // param "date"), not deliveryDate/slot/sellerAdmin like the other reports.
-      const params = rptType === 'destination'
+      // Area-wise and Procurement reports group by the order's procurement
+      // cutoffCycle (query param "date"), not deliveryDate/slot/sellerAdmin
+      // like the other reports.
+      const cycleScoped = rptType === 'destination' || rptType === 'procurement-confirmed';
+      const params = cycleScoped
         ? new URLSearchParams({ date: rptDate })
         : new URLSearchParams({ deliveryDate: rptDate });
-      if (rptType !== 'destination') {
+      if (!cycleScoped) {
         if (rptSlot) params.set('slot', rptSlot);
         if (rptSa)   params.set('sellerAdmin', rptSa);
       }
@@ -1063,6 +1065,58 @@ export default function KoyambeduAdmin() {
       setRptData(data);
     } catch (err) { toast.error(err?.response?.data?.message || 'Report failed'); }
     finally { setRptLoading(false); }
+  };
+
+  // ── Procurement checklist: toggle purchased / save comment ────
+  // Optimistically updates the row in rptData.products, then persists.
+  // Only used by the 'procurement-confirmed' report — doesn't touch any
+  // other report type's data or the underlying order/product records.
+  const [procCommentDrafts, setProcCommentDrafts] = useState({}); // productKey -> draft text
+  const [procSaving, setProcSaving] = useState({}); // productKey -> bool
+
+  const toggleProcurementPurchased = async (row) => {
+    const nextPurchased = !row.purchased;
+    setRptData(d => ({
+      ...d,
+      products: d.products.map(p => p.productKey === row.productKey ? { ...p, purchased: nextPurchased } : p),
+    }));
+    setProcSaving(s => ({ ...s, [row.productKey]: true }));
+    try {
+      await api.patch('/koyambedu/admin/reports/procurement-confirmed/item', {
+        cycle: rptDate, productKey: row.productKey,
+        productName: row.productName, gradeKey: row.gradeKey, gradeName: row.gradeName,
+        purchased: nextPurchased,
+      });
+    } catch (err) {
+      toast.error('Failed to update — reverting');
+      setRptData(d => ({
+        ...d,
+        products: d.products.map(p => p.productKey === row.productKey ? { ...p, purchased: !nextPurchased } : p),
+      }));
+    } finally {
+      setProcSaving(s => ({ ...s, [row.productKey]: false }));
+    }
+  };
+
+  const saveProcurementComment = async (row) => {
+    const comment = procCommentDrafts[row.productKey] ?? row.comment ?? '';
+    if (comment === (row.comment || '')) return; // no change
+    setProcSaving(s => ({ ...s, [row.productKey]: true }));
+    try {
+      const { data } = await api.patch('/koyambedu/admin/reports/procurement-confirmed/item', {
+        cycle: rptDate, productKey: row.productKey,
+        productName: row.productName, gradeKey: row.gradeKey, gradeName: row.gradeName,
+        comment,
+      });
+      setRptData(d => ({
+        ...d,
+        products: d.products.map(p => p.productKey === row.productKey
+          ? { ...p, comment: data.item.comment, commentByName: data.item.commentByName, commentAt: data.item.commentAt }
+          : p),
+      }));
+      toast.success('Note saved');
+    } catch { toast.error('Failed to save note'); }
+    finally { setProcSaving(s => ({ ...s, [row.productKey]: false })); }
   };
 
   // ── Print/Share report ────────────────────────────────────────
@@ -1124,9 +1178,16 @@ export default function KoyambeduAdmin() {
         });
         content += `</tbody></table>`;
       });
+    } else if (rptType === 'procurement-confirmed') {
+      content += `<div class="summary-box"><div class="summary-row"><span class="label">Confirmed Orders</span><span class="value">${rptData.orderCount}</span></div><div class="summary-row"><span class="label">Purchased</span><span class="value">${rptData.purchasedCount} / ${rptData.totalCount}</span></div></div>`;
+      content += `<table><thead><tr><th>Product</th><th>Total Qty</th><th>Unit</th><th>Total Value</th><th>Purchased</th><th>Note</th></tr></thead><tbody>`;
+      rptData.products?.forEach(p => {
+        content += `<tr><td>${p.productName}${p.gradeName ? ` (${p.gradeName})` : ''}</td><td><strong>${p.totalQty.toFixed(2)}</strong></td><td>${p.unit}</td><td>₹${p.totalValue?.toFixed(0)}</td><td>${p.purchased ? '✅ Yes' : '—'}</td><td>${p.comment || ''}</td></tr>`;
+      });
+      content += `</tbody></table>`;
     }
 
-    const rptTitle = rptType === 'order-report' ? 'Order Report' : rptType === 'product-consolidation' ? 'Product Consolidation Report' : rptType === 'destination' ? 'Area Wise Report' : 'Cash Flow Report';
+    const rptTitle = rptType === 'order-report' ? 'Order Report' : rptType === 'product-consolidation' ? 'Product Consolidation Report' : rptType === 'destination' ? 'Area Wise Report' : rptType === 'procurement-confirmed' ? 'Procurement Report' : 'Cash Flow Report';
     const html = generateReportHtml(`Koyambedu Daily — ${rptTitle}`, `Delivery Date: ${dateLabel} · Generated: ${new Date().toLocaleString('en-IN')}`, content);
     const blob = new Blob([html], { type: 'text/html' });
     const url  = URL.createObjectURL(blob);
@@ -3053,6 +3114,7 @@ export default function KoyambeduAdmin() {
                 ['product-consolidation',  '📦 Product Consolidation',   'Products & quantities to procure for a date + slot'],
                 ['cashflow',               '💰 Cash Flow Report',        'Revenue, procurement, commissions, delivery expenses'],
                 ['destination',            '📍 Area Wise Report',        'Orders grouped by delivery area / pincode'],
+                ['procurement-confirmed',  '✅ Procurement Report',       'Confirmed orders only — mark items purchased + add notes'],
               ].map(([val, label, desc]) => (
                 <button key={val} onClick={() => { setRptType(val); setRptData(null); }}
                   className={`text-left p-3 rounded-xl border-2 transition ${rptType === val ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'}`}>
@@ -3101,7 +3163,7 @@ export default function KoyambeduAdmin() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="font-bold text-green-700 text-sm">
-                    {rptType === 'order-report' ? '📋 Order Report' : rptType === 'product-consolidation' ? '📦 Product Consolidation' : rptType === 'destination' ? '📍 Area Wise Report' : '💰 Cash Flow'}
+                    {rptType === 'order-report' ? '📋 Order Report' : rptType === 'product-consolidation' ? '📦 Product Consolidation' : rptType === 'destination' ? '📍 Area Wise Report' : rptType === 'procurement-confirmed' ? '✅ Procurement Report' : '💰 Cash Flow'}
                   </p>
                   <p className="text-xs text-gray-400">{rptDate}{rptSlot ? ' · ' + rptSlot : ''}</p>
                 </div>
@@ -3274,6 +3336,58 @@ export default function KoyambeduAdmin() {
                     </div>
                   ))}
                   {(!rptData.grouped || rptData.grouped.length === 0) && <p className="text-center text-gray-400 py-4">No orders found for the selected date</p>}
+                </div>
+              )}
+
+              {/* PROCUREMENT REPORT — confirmed orders only */}
+              {rptType === 'procurement-confirmed' && (
+                <div>
+                  <div className="flex gap-4 mb-3 text-sm">
+                    <div className="bg-green-50 rounded-xl px-3 py-2 flex-1 text-center">
+                      <p className="text-xs text-gray-500">Confirmed Orders</p>
+                      <p className="font-bold text-green-700">{rptData.orderCount}</p>
+                    </div>
+                    <div className="bg-blue-50 rounded-xl px-3 py-2 flex-1 text-center">
+                      <p className="text-xs text-gray-500">Purchased</p>
+                      <p className="font-bold text-blue-700">{rptData.purchasedCount} / {rptData.totalCount}</p>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-gray-400 mb-3">Only orders confirmed by SuperAdmin are counted here. Check off each item once it's been physically purchased and leave a note if needed.</p>
+                  <div className="space-y-2">
+                    {(rptData.products || []).map((p, pi) => (
+                      <div key={pi} className={`border rounded-xl px-3 py-2.5 ${p.purchased ? 'border-green-200 bg-green-50' : 'border-gray-100'}`}>
+                        <div className="flex items-start gap-3">
+                          <button
+                            onClick={() => toggleProcurementPurchased(p)}
+                            disabled={procSaving[p.productKey]}
+                            className={`shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center mt-0.5 transition ${p.purchased ? 'bg-green-600 border-green-600 text-white' : 'border-gray-300 text-transparent'}`}>
+                            ✓
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-bold text-gray-800">{p.productName}{p.gradeName ? ` (${p.gradeName})` : ''}</p>
+                              <div className="text-right shrink-0">
+                                <p className="text-base font-black text-green-700">{p.totalQty.toFixed(2)} <span className="text-xs font-normal text-gray-500">{p.unit}</span></p>
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-400">{p.orderCount} orders · ₹{p.totalValue?.toFixed(0)} value{p.purchasedByName ? ` · marked by ${p.purchasedByName}` : ''}</p>
+                            <textarea
+                              value={procCommentDrafts[p.productKey] ?? p.comment ?? ''}
+                              onChange={e => setProcCommentDrafts(d => ({ ...d, [p.productKey]: e.target.value }))}
+                              onBlur={() => saveProcurementComment(p)}
+                              placeholder="Add a note (e.g. sourced from a different seller, quality issue)…"
+                              rows={1}
+                              className="w-full mt-1.5 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-green-500 resize-none"
+                            />
+                            {p.commentByName && p.comment && (
+                              <p className="text-[10px] text-gray-400 mt-0.5">Last noted by {p.commentByName}{p.commentAt ? ` · ${new Date(p.commentAt).toLocaleString('en-IN')}` : ''}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {(!rptData.products || rptData.products.length === 0) && <p className="text-center text-gray-400 py-4">No confirmed orders found for the selected date</p>}
                 </div>
               )}
             </div>
