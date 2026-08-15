@@ -8,7 +8,7 @@ import KoyambeduScheduleAdmin from './KoyambeduScheduleAdmin';
 import KoyambeduDailyPricePanel from '../../components/koyambedu/KoyambeduDailyPricePanel';
 import toast from 'react-hot-toast';
 
-const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'product-approvals', 'daily-price', 'schedule', 'refund-requests', 'wallets', 'users-cart', 'reports', 'whatsapp-inbox', 'dev-settings'];
+const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'product-approvals', 'daily-price', 'schedule', 'refund-requests', 'wallets', 'users-cart', 'procurement', 'reports', 'whatsapp-inbox', 'dev-settings'];
 
 const EXPIRY_OPTIONS = [
   { value: 'never', label: 'Never (Manual Disable Only)' },
@@ -1059,10 +1059,10 @@ export default function KoyambeduAdmin() {
     setRptLoading(true);
     setRptData(null);
     try {
-      // Area-wise and Procurement reports group by the order's procurement
-      // cutoffCycle (query param "date"), not deliveryDate/slot/sellerAdmin
-      // like the other reports.
-      const cycleScoped = rptType === 'destination' || rptType === 'procurement-confirmed';
+      // Area-wise reports group by the order's procurement cutoffCycle
+      // (query param "date"), not deliveryDate/slot/sellerAdmin like the
+      // other reports. (Procurement now lives in its own dedicated tab.)
+      const cycleScoped = rptType === 'destination';
       const params = cycleScoped
         ? new URLSearchParams({ date: rptDate })
         : new URLSearchParams({ deliveryDate: rptDate });
@@ -1076,29 +1076,45 @@ export default function KoyambeduAdmin() {
     finally { setRptLoading(false); }
   };
 
-  // ── Procurement checklist: toggle purchased / save comment ────
-  // Optimistically updates the row in rptData.products, then persists.
-  // Only used by the 'procurement-confirmed' report — doesn't touch any
-  // other report type's data or the underlying order/product records.
+  // ── Procurement tab (dedicated, separate from Reports) ──────────
+  const [procDate,    setProcDate]    = useState(() => new Date().toISOString().slice(0, 10));
+  const [procData,    setProcData]    = useState(null);
+  const [procLoading, setProcLoading] = useState(false);
+  const [procView,    setProcView]    = useState('checklist'); // 'checklist' | 'share'
   const [procCommentDrafts, setProcCommentDrafts] = useState({}); // productKey -> draft text
-  const [procSaving, setProcSaving] = useState({}); // productKey -> bool
+  const [procPackingDrafts, setProcPackingDrafts] = useState({}); // productKey -> draft text
+  const [procSaving,  setProcSaving]  = useState({}); // productKey -> bool
+  const [procSharing, setProcSharing] = useState(false);
+
+  const fetchProcurement = async () => {
+    setProcLoading(true);
+    try {
+      const { data } = await api.get(`/koyambedu/admin/reports/procurement-confirmed?date=${procDate}`);
+      setProcData(data);
+      setProcCommentDrafts({});
+      setProcPackingDrafts({});
+    } catch { toast.error('Failed to load procurement list'); }
+    finally { setProcLoading(false); }
+  };
+
+  useEffect(() => { if (tab === 'procurement') fetchProcurement(); }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleProcurementPurchased = async (row) => {
     const nextPurchased = !row.purchased;
-    setRptData(d => ({
+    setProcData(d => ({
       ...d,
       products: d.products.map(p => p.productKey === row.productKey ? { ...p, purchased: nextPurchased } : p),
     }));
     setProcSaving(s => ({ ...s, [row.productKey]: true }));
     try {
       await api.patch('/koyambedu/admin/reports/procurement-confirmed/item', {
-        cycle: rptDate, productKey: row.productKey,
+        cycle: procDate, productKey: row.productKey,
         productName: row.productName, gradeKey: row.gradeKey, gradeName: row.gradeName,
         purchased: nextPurchased,
       });
     } catch (err) {
       toast.error('Failed to update — reverting');
-      setRptData(d => ({
+      setProcData(d => ({
         ...d,
         products: d.products.map(p => p.productKey === row.productKey ? { ...p, purchased: !nextPurchased } : p),
       }));
@@ -1113,11 +1129,11 @@ export default function KoyambeduAdmin() {
     setProcSaving(s => ({ ...s, [row.productKey]: true }));
     try {
       const { data } = await api.patch('/koyambedu/admin/reports/procurement-confirmed/item', {
-        cycle: rptDate, productKey: row.productKey,
+        cycle: procDate, productKey: row.productKey,
         productName: row.productName, gradeKey: row.gradeKey, gradeName: row.gradeName,
         comment,
       });
-      setRptData(d => ({
+      setProcData(d => ({
         ...d,
         products: d.products.map(p => p.productKey === row.productKey
           ? { ...p, comment: data.item.comment, commentByName: data.item.commentByName, commentAt: data.item.commentAt }
@@ -1126,6 +1142,68 @@ export default function KoyambeduAdmin() {
       toast.success('Note saved');
     } catch { toast.error('Failed to save note'); }
     finally { setProcSaving(s => ({ ...s, [row.productKey]: false })); }
+  };
+
+  const savePackingNote = async (row) => {
+    const packingNote = procPackingDrafts[row.productKey] ?? row.packingNote ?? '';
+    if (packingNote === (row.packingNote || '')) return; // no change
+    setProcSaving(s => ({ ...s, [row.productKey]: true }));
+    try {
+      const { data } = await api.patch('/koyambedu/admin/reports/procurement-confirmed/item', {
+        cycle: procDate, productKey: row.productKey,
+        productName: row.productName, gradeKey: row.gradeKey, gradeName: row.gradeName,
+        packingNote,
+      });
+      setProcData(d => ({
+        ...d,
+        products: d.products.map(p => p.productKey === row.productKey
+          ? { ...p, packingNote: data.item.packingNote, packingNoteByName: data.item.packingNoteByName, packingNoteAt: data.item.packingNoteAt }
+          : p),
+      }));
+      toast.success('Packing note saved');
+    } catch { toast.error('Failed to save packing note'); }
+    finally { setProcSaving(s => ({ ...s, [row.productKey]: false })); }
+  };
+
+  // Builds the supplier-facing plain-text list — item name + total qty/unit
+  // + optional packing note ONLY. No prices, no order counts, no customer
+  // data of any kind.
+  const buildSupplierShareText = () => {
+    if (!procData) return '';
+    const lines = [`🧺 Procurement List — ${new Date(procDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`, ''];
+    for (const p of procData.products || []) {
+      lines.push(`• ${p.productName}${p.gradeName ? ` (${p.gradeName})` : ''} — ${p.totalQty.toFixed(2)} ${p.unit}`);
+      if (p.packingNote?.trim()) lines.push(`   ↳ Pack as: ${p.packingNote.trim()}`);
+    }
+    lines.push('', `Total items: ${(procData.products || []).length}`);
+    return lines.join('\n');
+  };
+
+  const recordProcurementShare = async (via) => {
+    try {
+      const { data } = await api.post('/koyambedu/admin/reports/procurement-confirmed/share', { cycle: procDate, via });
+      setProcData(d => ({ ...d, shareStatus: data.shareStatus }));
+    } catch { /* non-blocking — sharing itself already happened */ }
+  };
+
+  const shareViaWhatsApp = async () => {
+    setProcSharing(true);
+    try {
+      const text = buildSupplierShareText();
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+      await recordProcurementShare('whatsapp');
+    } finally { setProcSharing(false); }
+  };
+
+  const copyShareText = async () => {
+    setProcSharing(true);
+    try {
+      const text = buildSupplierShareText();
+      await navigator.clipboard.writeText(text);
+      toast.success('Copied — paste it wherever you need');
+      await recordProcurementShare('copy');
+    } catch { toast.error('Failed to copy'); }
+    finally { setProcSharing(false); }
   };
 
   // ── Print/Share report ────────────────────────────────────────
@@ -1187,16 +1265,9 @@ export default function KoyambeduAdmin() {
         });
         content += `</tbody></table>`;
       });
-    } else if (rptType === 'procurement-confirmed') {
-      content += `<div class="summary-box"><div class="summary-row"><span class="label">Confirmed Orders</span><span class="value">${rptData.orderCount}</span></div><div class="summary-row"><span class="label">Purchased</span><span class="value">${rptData.purchasedCount} / ${rptData.totalCount}</span></div></div>`;
-      content += `<table><thead><tr><th>Product</th><th>Total Qty</th><th>Unit</th><th>Total Value</th><th>Purchased</th><th>Note</th></tr></thead><tbody>`;
-      rptData.products?.forEach(p => {
-        content += `<tr><td>${p.productName}${p.gradeName ? ` (${p.gradeName})` : ''}</td><td><strong>${p.totalQty.toFixed(2)}</strong></td><td>${p.unit}</td><td>₹${p.totalValue?.toFixed(0)}</td><td>${p.purchased ? '✅ Yes' : '—'}</td><td>${p.comment || ''}</td></tr>`;
-      });
-      content += `</tbody></table>`;
     }
 
-    const rptTitle = rptType === 'order-report' ? 'Order Report' : rptType === 'product-consolidation' ? 'Product Consolidation Report' : rptType === 'destination' ? 'Area Wise Report' : rptType === 'procurement-confirmed' ? 'Procurement Report' : 'Cash Flow Report';
+    const rptTitle = rptType === 'order-report' ? 'Order Report' : rptType === 'product-consolidation' ? 'Product Consolidation Report' : rptType === 'destination' ? 'Area Wise Report' : 'Cash Flow Report';
     const html = generateReportHtml(`Koyambedu Daily — ${rptTitle}`, `Delivery Date: ${dateLabel} · Generated: ${new Date().toLocaleString('en-IN')}`, content);
     const blob = new Blob([html], { type: 'text/html' });
     const url  = URL.createObjectURL(blob);
@@ -1238,7 +1309,7 @@ export default function KoyambeduAdmin() {
           {TAB_LIST.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white hover:bg-white/30'}`}>
-              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'wallets' ? '💳 Wallets' : t === 'users-cart' ? '🛒 Users Cart' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t === 'whatsapp-inbox' ? `💬 WhatsApp${waUnread > 0 ? ` (${waUnread})` : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'wallets' ? '💳 Wallets' : t === 'users-cart' ? '🛒 Users Cart' : t === 'procurement' ? '📦 Procurement' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t === 'whatsapp-inbox' ? `💬 WhatsApp${waUnread > 0 ? ` (${waUnread})` : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -3129,7 +3200,6 @@ export default function KoyambeduAdmin() {
                 ['product-consolidation',  '📦 Product Consolidation',   'Products & quantities to procure for a date — optionally one slot'],
                 ['cashflow',               '💰 Cash Flow Report',        'Revenue, procurement, commissions, delivery expenses'],
                 ['destination',            '📍 Area Wise Report',        'Orders grouped by delivery area / pincode'],
-                ['procurement-confirmed',  '✅ Procurement Report',       'Confirmed orders only — mark items purchased + add notes'],
               ].map(([val, label, desc]) => (
                 <button key={val} onClick={() => { setRptType(val); setRptData(null); }}
                   className={`text-left p-3 rounded-xl border-2 transition ${rptType === val ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'}`}>
@@ -3178,7 +3248,7 @@ export default function KoyambeduAdmin() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="font-bold text-green-700 text-sm">
-                    {rptType === 'order-report' ? '📋 Order Report' : rptType === 'product-consolidation' ? '📦 Product Consolidation' : rptType === 'destination' ? '📍 Area Wise Report' : rptType === 'procurement-confirmed' ? '✅ Procurement Report' : '💰 Cash Flow'}
+                    {rptType === 'order-report' ? '📋 Order Report' : rptType === 'product-consolidation' ? '📦 Product Consolidation' : rptType === 'destination' ? '📍 Area Wise Report' : '💰 Cash Flow'}
                   </p>
                   <p className="text-xs text-gray-400">{rptDate}{rptSlot ? ' · ' + rptSlot : ''}</p>
                 </div>
@@ -3353,23 +3423,58 @@ export default function KoyambeduAdmin() {
                   {(!rptData.grouped || rptData.grouped.length === 0) && <p className="text-center text-gray-400 py-4">No orders found for the selected date</p>}
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      )}
 
-              {/* PROCUREMENT REPORT — confirmed orders only */}
-              {rptType === 'procurement-confirmed' && (
-                <div>
-                  <div className="flex gap-4 mb-3 text-sm">
-                    <div className="bg-green-50 rounded-xl px-3 py-2 flex-1 text-center">
-                      <p className="text-xs text-gray-500">Confirmed Orders</p>
-                      <p className="font-bold text-green-700">{rptData.orderCount}</p>
-                    </div>
-                    <div className="bg-blue-50 rounded-xl px-3 py-2 flex-1 text-center">
-                      <p className="text-xs text-gray-500">Purchased</p>
-                      <p className="font-bold text-blue-700">{rptData.purchasedCount} / {rptData.totalCount}</p>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-gray-400 mb-3">Only orders confirmed by SuperAdmin are counted here. Check off each item once it's been physically purchased and leave a note if needed.</p>
+      {/* ══════════════════════════════════════════════
+          📦 PROCUREMENT TAB — confirmed orders only.
+          Two views: internal Checklist (purchased + notes) and
+          Share with Supplier (item + qty only, no price/customer data).
+      ══════════════════════════════════════════════ */}
+      {tab === 'procurement' && (
+        <div className="space-y-4 pb-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <input type="date" value={procDate} onChange={e => setProcDate(e.target.value)}
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500" />
+              <button onClick={fetchProcurement} disabled={procLoading}
+                className="bg-green-600 text-white font-bold text-sm px-4 py-2 rounded-xl disabled:opacity-50 active:scale-95 transition">
+                {procLoading ? '...' : '▶ Load'}
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setProcView('checklist')}
+                className={`flex-1 text-xs font-bold py-2 rounded-xl border-2 transition ${procView === 'checklist' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500'}`}>
+                📋 Checklist
+              </button>
+              <button onClick={() => setProcView('share')}
+                className={`flex-1 text-xs font-bold py-2 rounded-xl border-2 transition ${procView === 'share' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 text-gray-500'}`}>
+                📤 Share with Supplier
+              </button>
+            </div>
+          </div>
+
+          {procData && (
+            <>
+              <div className="flex gap-3 text-sm">
+                <div className="bg-green-50 rounded-xl px-3 py-2 flex-1 text-center">
+                  <p className="text-xs text-gray-500">Confirmed Orders</p>
+                  <p className="font-bold text-green-700">{procData.orderCount}</p>
+                </div>
+                <div className="bg-blue-50 rounded-xl px-3 py-2 flex-1 text-center">
+                  <p className="text-xs text-gray-500">Purchased</p>
+                  <p className="font-bold text-blue-700">{procData.purchasedCount} / {procData.totalCount}</p>
+                </div>
+              </div>
+
+              {/* ── CHECKLIST VIEW (internal) ── */}
+              {procView === 'checklist' && (
+                <div className="bg-white rounded-2xl border border-gray-200 p-4">
+                  <p className="text-[11px] text-gray-400 mb-3">Only orders confirmed by SuperAdmin are counted here. Check off each item once it's been physically purchased and leave an internal note if needed.</p>
                   <div className="space-y-2">
-                    {(rptData.products || []).map((p, pi) => (
+                    {(procData.products || []).map((p, pi) => (
                       <div key={pi} className={`border rounded-xl px-3 py-2.5 ${p.purchased ? 'border-green-200 bg-green-50' : 'border-gray-100'}`}>
                         <div className="flex items-start gap-3">
                           <button
@@ -3390,7 +3495,7 @@ export default function KoyambeduAdmin() {
                               value={procCommentDrafts[p.productKey] ?? p.comment ?? ''}
                               onChange={e => setProcCommentDrafts(d => ({ ...d, [p.productKey]: e.target.value }))}
                               onBlur={() => saveProcurementComment(p)}
-                              placeholder="Add a note (e.g. sourced from a different seller, quality issue)…"
+                              placeholder="Internal note (e.g. sourced from a different seller, quality issue)…"
                               rows={1}
                               className="w-full mt-1.5 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-green-500 resize-none"
                             />
@@ -3402,10 +3507,64 @@ export default function KoyambeduAdmin() {
                       </div>
                     ))}
                   </div>
-                  {(!rptData.products || rptData.products.length === 0) && <p className="text-center text-gray-400 py-4">No confirmed orders found for the selected date</p>}
+                  {(!procData.products || procData.products.length === 0) && <p className="text-center text-gray-400 py-4">No confirmed orders found for the selected date</p>}
                 </div>
               )}
-            </div>
+
+              {/* ── SHARE WITH SUPPLIER VIEW (external — no price, no customer data) ── */}
+              {procView === 'share' && (
+                <div className="space-y-3">
+                  <div className={`rounded-2xl p-3 text-xs ${procData.shareStatus?.shared ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50 border border-gray-200'}`}>
+                    {procData.shareStatus?.shared ? (
+                      <p className="font-bold text-amber-700">
+                        ⚠️ Already shared {procData.shareStatus.shareCount > 1 ? `${procData.shareStatus.shareCount} times` : 'once'} — last by {procData.shareStatus.lastSharedByName} on {new Date(procData.shareStatus.lastSharedAt).toLocaleString('en-IN')}
+                      </p>
+                    ) : (
+                      <p className="text-gray-500">Not shared yet for this date.</p>
+                    )}
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-gray-200 p-4">
+                    <p className="text-[11px] text-gray-400 mb-3">This list only shows item names, quantities, and packing instructions — no prices, order values, or customer details are included. Add a packing note per item if you want it split into specific pack sizes (e.g. "2 packs of 25kg").</p>
+                    <div className="space-y-2">
+                      {(procData.products || []).map((p, pi) => (
+                        <div key={pi} className="border border-gray-100 rounded-xl px-3 py-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-bold text-gray-800">{p.productName}{p.gradeName ? ` (${p.gradeName})` : ''}</p>
+                            <p className="text-base font-black text-purple-700 shrink-0">{p.totalQty.toFixed(2)} <span className="text-xs font-normal text-gray-500">{p.unit}</span></p>
+                          </div>
+                          <input
+                            type="text"
+                            value={procPackingDrafts[p.productKey] ?? p.packingNote ?? ''}
+                            onChange={e => setProcPackingDrafts(d => ({ ...d, [p.productKey]: e.target.value }))}
+                            onBlur={() => savePackingNote(p)}
+                            placeholder='Packing note for supplier (e.g. "2 packs of 25kg")'
+                            className="w-full mt-1.5 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-purple-500"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    {(!procData.products || procData.products.length === 0) && <p className="text-center text-gray-400 py-4">No confirmed orders found for the selected date</p>}
+                  </div>
+
+                  {procData.products?.length > 0 && (
+                    <div className="flex gap-2">
+                      <button onClick={shareViaWhatsApp} disabled={procSharing}
+                        className="flex-1 bg-green-600 text-white font-bold text-sm py-3 rounded-xl active:scale-95 transition disabled:opacity-50">
+                        💬 Share via WhatsApp
+                      </button>
+                      <button onClick={copyShareText} disabled={procSharing}
+                        className="flex-1 border-2 border-gray-200 text-gray-700 font-bold text-sm py-3 rounded-xl active:scale-95 transition disabled:opacity-50">
+                        📋 Copy Text
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+          {!procData && !procLoading && (
+            <p className="text-center text-gray-400 py-8">Pick a date and tap Load</p>
           )}
         </div>
       )}
