@@ -1085,6 +1085,12 @@ export default function KoyambeduAdmin() {
   const [procPackingDrafts, setProcPackingDrafts] = useState({}); // productKey -> draft text
   const [procSaving,  setProcSaving]  = useState({}); // productKey -> bool
   const [procSharing, setProcSharing] = useState(false);
+  // Which aggregated product rows to include in the supplier share — lets
+  // admin pick a subset (e.g. only what this particular supplier handles)
+  // rather than always sending every confirmed item. Defaults to "all
+  // selected" on load, since usually the whole list goes out together.
+  const [procSelected,     setProcSelected]     = useState({}); // productKey -> bool
+  const [procSupplierName, setProcSupplierName] = useState('');
 
   const fetchProcurement = async () => {
     setProcLoading(true);
@@ -1093,6 +1099,7 @@ export default function KoyambeduAdmin() {
       setProcData(data);
       setProcCommentDrafts({});
       setProcPackingDrafts({});
+      setProcSelected(Object.fromEntries((data.products || []).map(p => [p.productKey, true])));
     } catch { toast.error('Failed to load procurement list'); }
     finally { setProcLoading(false); }
   };
@@ -1165,17 +1172,28 @@ export default function KoyambeduAdmin() {
     finally { setProcSaving(s => ({ ...s, [row.productKey]: false })); }
   };
 
-  // Builds the supplier-facing plain-text list — item name + total qty/unit
-  // + optional packing note ONLY. No prices, no order counts, no customer
-  // data of any kind.
+  const selectedProcProducts = () => (procData?.products || []).filter(p => procSelected[p.productKey]);
+
+  // Builds the supplier-facing plain-text list — a friendly Eptomart
+  // greeting, then ONLY the selected item names + total qty/unit + optional
+  // packing note. No prices, no order counts, no customer data of any kind.
   const buildSupplierShareText = () => {
     if (!procData) return '';
-    const lines = [`🧺 Procurement List — ${new Date(procDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`, ''];
-    for (const p of procData.products || []) {
+    const items = selectedProcProducts();
+    const dateLabel = new Date(procDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    const greeting = procSupplierName.trim()
+      ? `Hi ${procSupplierName.trim()}, greetings from Eptomart! 🌿`
+      : `Hello, greetings from Eptomart! 🌿`;
+    const lines = [
+      greeting,
+      `Here's what we need for ${dateLabel}:`,
+      '',
+    ];
+    for (const p of items) {
       lines.push(`• ${p.productName}${p.gradeName ? ` (${p.gradeName})` : ''} — ${p.totalQty.toFixed(2)} ${p.unit}`);
       if (p.packingNote?.trim()) lines.push(`   ↳ Pack as: ${p.packingNote.trim()}`);
     }
-    lines.push('', `Total items: ${(procData.products || []).length}`);
+    lines.push('', `Total items: ${items.length}`, '', 'Thank you! 🙏 — Team Eptomart');
     return lines.join('\n');
   };
 
@@ -1187,6 +1205,7 @@ export default function KoyambeduAdmin() {
   };
 
   const shareViaWhatsApp = async () => {
+    if (selectedProcProducts().length === 0) { toast.error('Select at least one item to share'); return; }
     setProcSharing(true);
     try {
       const text = buildSupplierShareText();
@@ -1196,6 +1215,7 @@ export default function KoyambeduAdmin() {
   };
 
   const copyShareText = async () => {
+    if (selectedProcProducts().length === 0) { toast.error('Select at least one item to share'); return; }
     setProcSharing(true);
     try {
       const text = buildSupplierShareText();
@@ -3525,22 +3545,44 @@ export default function KoyambeduAdmin() {
                   </div>
 
                   <div className="bg-white rounded-2xl border border-gray-200 p-4">
-                    <p className="text-[11px] text-gray-400 mb-3">This list only shows item names, quantities, and packing instructions — no prices, order values, or customer details are included. Add a packing note per item if you want it split into specific pack sizes (e.g. "2 packs of 25kg").</p>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Supplier Name (optional — used in the greeting)</label>
+                    <input type="text" value={procSupplierName} onChange={e => setProcSupplierName(e.target.value)}
+                      placeholder="e.g. Murugan Traders"
+                      className="w-full mb-3 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500" />
+
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[11px] text-gray-400 flex-1">Select which items to include for this supplier. Only item names, quantities, and packing instructions are shared — no prices, order values, or customer details.</p>
+                      <button
+                        onClick={() => {
+                          const allSelected = (procData.products || []).every(p => procSelected[p.productKey]);
+                          setProcSelected(Object.fromEntries((procData.products || []).map(p => [p.productKey, !allSelected])));
+                        }}
+                        className="shrink-0 ml-2 text-[11px] font-bold text-purple-600 border border-purple-200 px-2 py-1 rounded-lg">
+                        {(procData.products || []).every(p => procSelected[p.productKey]) ? 'Deselect All' : 'Select All'}
+                      </button>
+                    </div>
                     <div className="space-y-2">
                       {(procData.products || []).map((p, pi) => (
-                        <div key={pi} className="border border-gray-100 rounded-xl px-3 py-2.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-bold text-gray-800">{p.productName}{p.gradeName ? ` (${p.gradeName})` : ''}</p>
-                            <p className="text-base font-black text-purple-700 shrink-0">{p.totalQty.toFixed(2)} <span className="text-xs font-normal text-gray-500">{p.unit}</span></p>
+                        <div key={pi} className={`border rounded-xl px-3 py-2.5 flex gap-3 ${procSelected[p.productKey] ? 'border-purple-200 bg-purple-50' : 'border-gray-100'}`}>
+                          <button
+                            onClick={() => setProcSelected(s => ({ ...s, [p.productKey]: !s[p.productKey] }))}
+                            className={`shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center mt-0.5 transition ${procSelected[p.productKey] ? 'bg-purple-600 border-purple-600 text-white' : 'border-gray-300 text-transparent'}`}>
+                            ✓
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-bold text-gray-800">{p.productName}{p.gradeName ? ` (${p.gradeName})` : ''}</p>
+                              <p className="text-base font-black text-purple-700 shrink-0">{p.totalQty.toFixed(2)} <span className="text-xs font-normal text-gray-500">{p.unit}</span></p>
+                            </div>
+                            <input
+                              type="text"
+                              value={procPackingDrafts[p.productKey] ?? p.packingNote ?? ''}
+                              onChange={e => setProcPackingDrafts(d => ({ ...d, [p.productKey]: e.target.value }))}
+                              onBlur={() => savePackingNote(p)}
+                              placeholder='Packing note for supplier (e.g. "2 packs of 25kg")'
+                              className="w-full mt-1.5 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-purple-500"
+                            />
                           </div>
-                          <input
-                            type="text"
-                            value={procPackingDrafts[p.productKey] ?? p.packingNote ?? ''}
-                            onChange={e => setProcPackingDrafts(d => ({ ...d, [p.productKey]: e.target.value }))}
-                            onBlur={() => savePackingNote(p)}
-                            placeholder='Packing note for supplier (e.g. "2 packs of 25kg")'
-                            className="w-full mt-1.5 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-purple-500"
-                          />
                         </div>
                       ))}
                     </div>
@@ -3548,16 +3590,19 @@ export default function KoyambeduAdmin() {
                   </div>
 
                   {procData.products?.length > 0 && (
-                    <div className="flex gap-2">
-                      <button onClick={shareViaWhatsApp} disabled={procSharing}
-                        className="flex-1 bg-green-600 text-white font-bold text-sm py-3 rounded-xl active:scale-95 transition disabled:opacity-50">
-                        💬 Share via WhatsApp
-                      </button>
-                      <button onClick={copyShareText} disabled={procSharing}
-                        className="flex-1 border-2 border-gray-200 text-gray-700 font-bold text-sm py-3 rounded-xl active:scale-95 transition disabled:opacity-50">
-                        📋 Copy Text
-                      </button>
-                    </div>
+                    <>
+                      <p className="text-[11px] text-gray-400 text-center">{selectedProcProducts().length} of {procData.products.length} items selected</p>
+                      <div className="flex gap-2">
+                        <button onClick={shareViaWhatsApp} disabled={procSharing}
+                          className="flex-1 bg-green-600 text-white font-bold text-sm py-3 rounded-xl active:scale-95 transition disabled:opacity-50">
+                          💬 Share via WhatsApp
+                        </button>
+                        <button onClick={copyShareText} disabled={procSharing}
+                          className="flex-1 border-2 border-gray-200 text-gray-700 font-bold text-sm py-3 rounded-xl active:scale-95 transition disabled:opacity-50">
+                          📋 Copy Text
+                        </button>
+                      </div>
+                    </>
                   )}
                 </div>
               )}
