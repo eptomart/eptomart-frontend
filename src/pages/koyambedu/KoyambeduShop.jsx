@@ -22,6 +22,21 @@ const haversineKm = (lat1, lon1, lat2, lon2) => {
 // No external placeholder — avoids giant "Fresh" text rendering in card
 const IMG_PLACEHOLDER = null;
 
+// ── Back-navigation state cache ─────────────────────────────────
+// Module-scope (survives remounts, cleared on full page reload). Keyed by the
+// active filter combination (search/category/sort). Previously, navigating
+// into a product's detail page and back re-mounted this component, which
+// always re-fetched only page 1 — discarding any extra pages the user had
+// scrolled through and their scroll position. Because groupedProducts groups
+// items by the most frequent shared word ACROSS THE CURRENT DATASET, running
+// that grouping over a smaller page-1-only dataset than before produced a
+// different sort order every time, which looked like the grid was randomly
+// reshuffling. Caching the fetched state (and scroll position) per filter
+// key and restoring it on remount fixes both symptoms without touching the
+// grouping algorithm itself.
+const shopStateCache = new Map(); // key -> { products, total, page, scrollY, savedAt }
+const SHOP_CACHE_TTL_MS = 5 * 60 * 1000; // stale after 5 min — refetch fresh instead
+
 /**
  * Lowest per-unit final price across all variants.
  * Used for "From ₹X/unit" display.
@@ -156,7 +171,46 @@ export default function KoyambeduShop() {
     api.get('/koyambedu/categories').then(r => setCategories(r.data.categories || [])).catch(() => {});
   }, []);
 
-  useEffect(() => { loadProducts(1); }, [search, categoryId, sortBy]);
+  const cacheKey = `${search}|${categoryId}|${sortBy}`;
+
+  // Restore cached results for this exact filter combination instead of
+  // always re-fetching page 1 — see shopStateCache comment above.
+  useEffect(() => {
+    const cached = shopStateCache.get(cacheKey);
+    if (cached && Date.now() - cached.savedAt < SHOP_CACHE_TTL_MS) {
+      setProducts(cached.products);
+      setTotal(cached.total);
+      setPage(cached.page);
+      // Wait for the restored grid to paint before jumping to the saved scroll position
+      requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, cached.scrollY || 0)));
+    } else {
+      loadProducts(1);
+    }
+  }, [search, categoryId, sortBy]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep the cache in sync as more pages load via infinite scroll, so
+  // scrolling down and then navigating away/back restores the full list.
+  useEffect(() => {
+    if (!products.length) return;
+    const prevScrollY = shopStateCache.get(cacheKey)?.scrollY || 0;
+    shopStateCache.set(cacheKey, { products, total, page, scrollY: prevScrollY, savedAt: Date.now() });
+  }, [products, total, page, cacheKey]);
+
+  // Track live scroll position and persist it into the cache when the user
+  // navigates away (e.g. taps a product), so returning restores both the
+  // list AND where they were looking at it.
+  const scrollYRef = useRef(0);
+  useEffect(() => {
+    const onScroll = () => { scrollYRef.current = window.scrollY; };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+  useEffect(() => {
+    return () => {
+      const existing = shopStateCache.get(cacheKey);
+      if (existing) shopStateCache.set(cacheKey, { ...existing, scrollY: scrollYRef.current });
+    };
+  }, [cacheKey]);
 
   // Keep shadow ref in sync so the IntersectionObserver closure is never stale
   useEffect(() => { loadingRef.current = loading; }, [loading]);

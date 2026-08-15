@@ -644,21 +644,66 @@ export default function KoyambeduCheckout() {
   const total = parseFloat((baseTotal - walletAdjustment).toFixed(2));
 
   // ── Coupon ─────────────────────────────────
-  const handleValidateCoupon = async () => {
-    if (!couponCode.trim()) return;
+  // Accepts an optional explicit code (used by the low-weight promo popup's
+  // Apply button) — falls back to whatever's typed in the manual input.
+  const handleValidateCoupon = async (codeOverride) => {
+    const codeToApply = (codeOverride || couponCode).trim();
+    if (!codeToApply) return;
     setCouponLoading(true);
     try {
       const { data } = await api.post('/coupon/validate', {
-        code: couponCode.trim(), orderAmount: subtotal, platform: 'koyambedu',
+        code: codeToApply, orderAmount: subtotal, platform: 'koyambedu',
       });
       if (data.success) {
         setCouponApplied({ code: data.coupon.code, discount: data.discount });
+        setCouponCode(data.coupon.code);
         toast.success(`Coupon applied! ₹${data.discount.toFixed(2)} off`);
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Invalid coupon');
       setCouponApplied(null);
     } finally { setCouponLoading(false); }
+  };
+
+  // ── Low weight order promo ──────────────────
+  // Total gross weight of everything in the cart, in kg. product.weightKg
+  // is "kg per 1 unit" regardless of the unit (kg, piece, bunch, box, etc.)
+  // — same convention used for the admin order weight summary.
+  const cartWeightKg = (cart.items || []).reduce((sum, it) => {
+    const weightPerUnit = it.product?.weightKg ?? 1;
+    return sum + (it.quantity || 0) * weightPerUnit;
+  }, 0);
+
+  const [lowWeightPromo,      setLowWeightPromo]      = useState(null); // { enabled, thresholdKg, couponCode, discountType, discountValue, maxDiscount, description }
+  const [showLowWeightPopup,  setShowLowWeightPopup]  = useState(false);
+  const [lowWeightDismissed,  setLowWeightDismissed]  = useState(false);
+  const [lowWeightApplying,   setLowWeightApplying]   = useState(false);
+
+  useEffect(() => {
+    api.get('/koyambedu/dev-settings/low-weight-promo')
+      .then(r => { if (r.data?.success) setLowWeightPromo(r.data); })
+      .catch(() => {});
+  }, []);
+
+  // Show once, only at the payment step, only while no coupon is already
+  // applied and the user hasn't dismissed it this session — never auto-applies,
+  // just surfaces the offer like Swiggy/Zomato's "available coupons" prompt.
+  useEffect(() => {
+    if (step !== 3) return;
+    if (!lowWeightPromo?.enabled || !lowWeightPromo.couponCode) return;
+    if (couponApplied) return;
+    if (lowWeightDismissed) return;
+    if (cartWeightKg > 0 && cartWeightKg < lowWeightPromo.thresholdKg) {
+      setShowLowWeightPopup(true);
+    }
+  }, [step, lowWeightPromo, cartWeightKg, couponApplied, lowWeightDismissed]);
+
+  const applyLowWeightPromo = async () => {
+    if (!lowWeightPromo?.couponCode) return;
+    setLowWeightApplying(true);
+    await handleValidateCoupon(lowWeightPromo.couponCode);
+    setLowWeightApplying(false);
+    setShowLowWeightPopup(false);
   };
 
   // ── Place order ────────────────────────────
@@ -1638,6 +1683,48 @@ export default function KoyambeduCheckout() {
                   Login to Place Order
                 </button>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Low weight order promo popup — Swiggy/Zomato-style "available offer" prompt.
+             Only ever applies the coupon when the user explicitly taps Apply. ── */}
+        {showLowWeightPopup && lowWeightPromo?.enabled && (
+          <div className="fixed inset-0 z-[9990] flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}
+            onClick={() => { setShowLowWeightPopup(false); setLowWeightDismissed(true); }}>
+            <div className="bg-white rounded-t-3xl w-full max-w-lg p-5 space-y-4"
+              style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🎁</span>
+                  <h3 className="font-black text-gray-800 text-base">Add a little more, save a little extra!</h3>
+                </div>
+                <button onClick={() => { setShowLowWeightPopup(false); setLowWeightDismissed(true); }} className="text-gray-400 p-1">
+                  <FiX size={20} />
+                </button>
+              </div>
+              <p className="text-sm text-gray-500">
+                Your order is under {lowWeightPromo.thresholdKg} kg. Here's a promo you can apply right now:
+              </p>
+              <div className="rounded-2xl p-4 flex items-center justify-between gap-3"
+                style={{ background: '#f0fdf4', border: '2px dashed #16a34a' }}>
+                <div className="min-w-0">
+                  <p className="font-black text-green-700 text-lg tracking-wide">{lowWeightPromo.couponCode}</p>
+                  <p className="text-xs text-gray-600">
+                    {lowWeightPromo.discountType === 'flat' ? `₹${lowWeightPromo.discountValue} off` : `${lowWeightPromo.discountValue}% off${lowWeightPromo.maxDiscount ? ` (up to ₹${lowWeightPromo.maxDiscount})` : ''}`}
+                    {lowWeightPromo.description ? ` — ${lowWeightPromo.description}` : ''}
+                  </p>
+                </div>
+                <button onClick={applyLowWeightPromo} disabled={lowWeightApplying}
+                  className="shrink-0 bg-green-600 text-white font-bold text-sm px-5 py-2.5 rounded-xl active:scale-95 transition disabled:opacity-60">
+                  {lowWeightApplying ? '...' : 'Apply'}
+                </button>
+              </div>
+              <button onClick={() => { setShowLowWeightPopup(false); setLowWeightDismissed(true); }}
+                className="w-full text-gray-400 text-xs font-semibold py-1">
+                Maybe later
+              </button>
             </div>
           </div>
         )}

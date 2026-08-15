@@ -354,6 +354,12 @@ export default function KoyambeduAdmin() {
   const [sameDaySaving,   setSameDaySaving]   = useState(false);
   const [sameDayCutoffInput, setSameDayCutoffInput] = useState('09:00');
 
+  // Dev Settings tab — Low Weight Order Promo
+  const [lowWeightSettings, setLowWeightSettings] = useState(null); // { enabled, couponCode, thresholdKg, updatedByName, updatedAt, couponStatus }
+  const [lowWeightSaving,   setLowWeightSaving]   = useState(false);
+  const [lowWeightCodeInput,      setLowWeightCodeInput]      = useState('');
+  const [lowWeightThresholdInput, setLowWeightThresholdInput] = useState('12');
+
   // Users Cart tab (SuperAdmin) — in-progress customer carts
   const [usersCarts,      setUsersCarts]      = useState([]);
   const [usersCartSearch, setUsersCartSearch] = useState('');
@@ -459,6 +465,10 @@ export default function KoyambeduAdmin() {
         const { data: sdData } = await api.get('/koyambedu/admin/dev-settings/same-day-delivery');
         setSameDaySettings(sdData);
         setSameDayCutoffInput(sdData.cutoffTime || '09:00');
+        const { data: lwData } = await api.get('/koyambedu/admin/dev-settings/low-weight-promo');
+        setLowWeightSettings(lwData);
+        setLowWeightCodeInput(lwData.couponCode || '');
+        setLowWeightThresholdInput(String(lwData.thresholdKg || 12));
       } else if (t === 'users-cart') {
         const params = usersCartSearch.trim() ? `?search=${encodeURIComponent(usersCartSearch.trim())}` : '';
         const { data } = await api.get(`/koyambedu/admin/carts${params}`);
@@ -1401,6 +1411,12 @@ export default function KoyambeduAdmin() {
                               : `₹${order.pricing?.total?.toFixed(2)}`
                             } · {order.items?.length} items
                           </p>
+                          {order.weightSummary && (order.weightSummary.grossWeightKg > 0 || Object.keys(order.weightSummary.unitCounts || {}).length > 0) && (
+                            <p className="text-[10px] text-blue-600 font-medium mt-0.5">
+                              ⚖️ {order.weightSummary.grossWeightKg} kg gross
+                              {Object.entries(order.weightSummary.unitCounts || {}).map(([unit, count]) => ` · ${count} ${unit}${count !== 1 ? 's' : ''}`).join('')}
+                            </p>
+                          )}
                           {(order.calculatedPricing?.declinedRefundAmount || 0) > 0 && (
                             <p className="text-[10px] text-red-500">Refund: ₹{order.calculatedPricing.declinedRefundAmount.toFixed(2)}</p>
                           )}
@@ -3961,6 +3977,110 @@ export default function KoyambeduAdmin() {
                 </button>
               </div>
               <p className="text-[11px] text-gray-400 mt-1">Customers ordering for today after this time will only be able to choose tomorrow's delivery.</p>
+            </div>
+          </div>
+
+          {/* Low Weight Order Promo */}
+          <div className="bg-white rounded-2xl border-2 border-purple-200 p-4 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-purple-50">
+                <span className="text-xl">🏷️</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-black text-gray-800 text-sm">Low Weight Order Promo</h3>
+                <p className="text-xs text-gray-400 mt-0.5 leading-snug">
+                  Shows a promo popup on the checkout payment page when a customer's cart is under
+                  the weight threshold below, suggesting the coupon code to nudge them toward a
+                  bigger order — like the "available offers" prompt on Swiggy/Zomato. The customer
+                  must tap Apply themselves; it's never applied automatically. Create/manage the
+                  coupon's discount value and type in Admin → Coupons first, then reference its
+                  code here.
+                </p>
+              </div>
+              <span className={`shrink-0 text-[10px] font-black px-2 py-1 rounded-full ${
+                lowWeightSettings?.enabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+              }`}>
+                {lowWeightSettings?.enabled ? '🟢 ON' : '🔴 OFF'}
+              </span>
+            </div>
+
+            {lowWeightSettings?.updatedByName && (
+              <p className="text-[11px] text-gray-400">
+                Last changed by {lowWeightSettings.updatedByName}
+                {lowWeightSettings.updatedAt ? ` · ${new Date(lowWeightSettings.updatedAt).toLocaleString('en-IN')}` : ''}
+              </p>
+            )}
+
+            {lowWeightSettings?.couponCode && (
+              <div className={`rounded-xl p-3 text-xs ${lowWeightSettings.couponStatus?.found && lowWeightSettings.couponStatus?.isActive ? 'bg-green-50 border border-green-100' : 'bg-red-50 border border-red-100'}`}>
+                {lowWeightSettings.couponStatus?.found ? (
+                  <>
+                    <p className="font-bold text-gray-700">
+                      {lowWeightSettings.couponStatus.isActive ? '✅' : '⚠️ Inactive —'} {lowWeightSettings.couponCode}: {' '}
+                      {lowWeightSettings.couponStatus.discountType === 'flat' ? `₹${lowWeightSettings.couponStatus.discountValue} off` : `${lowWeightSettings.couponStatus.discountValue}% off`}
+                    </p>
+                    <p className="text-gray-500 mt-0.5">Used {lowWeightSettings.couponStatus.usedCount}/{lowWeightSettings.couponStatus.maxUsage} · Valid till {new Date(lowWeightSettings.couponStatus.validTo).toLocaleDateString('en-IN')}</p>
+                  </>
+                ) : (
+                  <p className="font-bold text-red-600">⚠️ Coupon "{lowWeightSettings.couponCode}" not found — create it in Admin → Coupons</p>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between rounded-xl p-3 bg-gray-50">
+              <div>
+                <p className="text-sm font-bold text-gray-800">Show Promo Popup</p>
+                <p className="text-xs text-gray-400">Off = never shown, regardless of cart weight</p>
+              </div>
+              <button
+                disabled={lowWeightSaving}
+                onClick={async () => {
+                  setLowWeightSaving(true);
+                  try {
+                    const { data } = await api.put('/koyambedu/admin/dev-settings/low-weight-promo', {
+                      enabled: !lowWeightSettings?.enabled,
+                    });
+                    setLowWeightSettings(s => ({ ...s, enabled: data.enabled }));
+                    toast.success(`Low weight promo ${data.enabled ? 'enabled' : 'disabled'}`);
+                  } catch (err) { toast.error(err?.response?.data?.message || 'Failed to update'); }
+                  finally { setLowWeightSaving(false); }
+                }}
+                className={`shrink-0 relative w-12 h-7 rounded-full transition ${lowWeightSettings?.enabled ? 'bg-green-500' : 'bg-gray-300'} disabled:opacity-50`}>
+                <span className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition ${lowWeightSettings?.enabled ? 'left-5' : 'left-0.5'}`} />
+              </button>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Coupon Code (from Admin → Coupons)</label>
+              <input type="text" value={lowWeightCodeInput} onChange={e => setLowWeightCodeInput(e.target.value.toUpperCase())}
+                placeholder="e.g. ADDMORE10"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Weight Threshold (kg)</label>
+              <div className="flex gap-2">
+                <input type="number" min="0.1" step="0.1" value={lowWeightThresholdInput} onChange={e => setLowWeightThresholdInput(e.target.value)}
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500" />
+                <button
+                  disabled={lowWeightSaving || !lowWeightThresholdInput}
+                  onClick={async () => {
+                    setLowWeightSaving(true);
+                    try {
+                      const { data } = await api.put('/koyambedu/admin/dev-settings/low-weight-promo', {
+                        couponCode: lowWeightCodeInput,
+                        thresholdKg: Number(lowWeightThresholdInput),
+                      });
+                      const { data: full } = await api.get('/koyambedu/admin/dev-settings/low-weight-promo');
+                      setLowWeightSettings(full);
+                      toast.success('Low weight promo settings saved');
+                    } catch (err) { toast.error(err?.response?.data?.message || 'Failed to update'); }
+                    finally { setLowWeightSaving(false); }
+                  }}
+                  className="shrink-0 bg-purple-600 text-white font-bold text-xs px-4 py-2 rounded-xl disabled:opacity-50 active:scale-95 transition">
+                  {lowWeightSaving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Orders with total gross weight below this are shown the popup at the payment step.</p>
             </div>
           </div>
 
