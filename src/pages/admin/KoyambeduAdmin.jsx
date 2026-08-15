@@ -1046,7 +1046,6 @@ export default function KoyambeduAdmin() {
   // ── Report fetch ─────────────────────────────────────────────
   const fetchReport = async () => {
     if (!rptDate) { toast.error('Select a delivery date'); return; }
-    if (rptType === 'product-consolidation' && !rptSlot) { toast.error('Select a slot for product consolidation'); return; }
     setRptLoading(true);
     setRptData(null);
     try {
@@ -3111,7 +3110,7 @@ export default function KoyambeduAdmin() {
             <div className="grid grid-cols-1 gap-2">
               {[
                 ['order-report',           '📋 Order Report',            'Delivery date wise — orders grouped by Seller Admin'],
-                ['product-consolidation',  '📦 Product Consolidation',   'Products & quantities to procure for a date + slot'],
+                ['product-consolidation',  '📦 Product Consolidation',   'Products & quantities to procure for a date — optionally one slot'],
                 ['cashflow',               '💰 Cash Flow Report',        'Revenue, procurement, commissions, delivery expenses'],
                 ['destination',            '📍 Area Wise Report',        'Orders grouped by delivery area / pincode'],
                 ['procurement-confirmed',  '✅ Procurement Report',       'Confirmed orders only — mark items purchased + add notes'],
@@ -3135,7 +3134,7 @@ export default function KoyambeduAdmin() {
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-600 mb-1 block">
-                Delivery Slot {rptType === 'product-consolidation' ? '*' : '(optional)'}
+                Delivery Slot (optional)
               </label>
               <select value={rptSlot} onChange={e => setRptSlot(e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500">
