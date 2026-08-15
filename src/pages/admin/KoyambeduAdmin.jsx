@@ -1085,11 +1085,12 @@ export default function KoyambeduAdmin() {
   const [procPackingDrafts, setProcPackingDrafts] = useState({}); // productKey -> draft text
   const [procSaving,  setProcSaving]  = useState({}); // productKey -> bool
   const [procSharing, setProcSharing] = useState(false);
-  // Which aggregated product rows to include in the supplier share — lets
-  // admin pick a subset (e.g. only what this particular supplier handles)
-  // rather than always sending every confirmed item. Defaults to "all
-  // selected" on load, since usually the whole list goes out together.
-  const [procSelected,     setProcSelected]     = useState({}); // productKey -> bool
+  // Which individual ORDER LINES to include in the supplier share — lets
+  // admin pick down to "Radish 10kg = Order A 3kg + Order B 4kg + Order C
+  // 3kg" and deselect just one contributing order, not only whole products.
+  // Shape: { [productKey]: { [orderId]: bool } }. Defaults to "all selected"
+  // on load, since usually the whole list goes out together.
+  const [procSelected,     setProcSelected]     = useState({});
   const [procSupplierName, setProcSupplierName] = useState('');
 
   const fetchProcurement = async () => {
@@ -1099,9 +1100,27 @@ export default function KoyambeduAdmin() {
       setProcData(data);
       setProcCommentDrafts({});
       setProcPackingDrafts({});
-      setProcSelected(Object.fromEntries((data.products || []).map(p => [p.productKey, true])));
+      setProcSelected(Object.fromEntries((data.products || []).map(p =>
+        [p.productKey, Object.fromEntries((p.orders || []).map(o => [o.orderId, true]))]
+      )));
     } catch { toast.error('Failed to load procurement list'); }
     finally { setProcLoading(false); }
+  };
+
+  // ── Category grouping (Vegetables, Fruits, etc.) — used by both the
+  // Checklist and Share views. "Other"/uncategorized always sorts last.
+  const groupProcByCategory = (products) => {
+    const groups = {};
+    for (const p of products || []) {
+      const cat = p.category || 'Other';
+      if (!groups[cat]) groups[cat] = { category: cat, icon: p.categoryIcon || '🌿', items: [] };
+      groups[cat].items.push(p);
+    }
+    return Object.values(groups).sort((a, b) => {
+      if (a.category === 'Other') return 1;
+      if (b.category === 'Other') return -1;
+      return a.category.localeCompare(b.category);
+    });
   };
 
   useEffect(() => { if (tab === 'procurement') fetchProcurement(); }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1172,14 +1191,37 @@ export default function KoyambeduAdmin() {
     finally { setProcSaving(s => ({ ...s, [row.productKey]: false })); }
   };
 
-  const selectedProcProducts = () => (procData?.products || []).filter(p => procSelected[p.productKey]);
+  // Effective quantity for a product = sum of only its SELECTED order lines
+  // (not the full totalQty), so deselecting one contributing order actually
+  // shrinks what's shared for that item.
+  const procSelectedQty = (p) => (p.orders || []).reduce((s, o) => s + (procSelected[p.productKey]?.[o.orderId] ? o.quantity : 0), 0);
+  const procSelectedOrderCount = (p) => (p.orders || []).filter(o => procSelected[p.productKey]?.[o.orderId]).length;
+
+  const toggleProcProductAll = (p) => {
+    const allSelected = procSelectedOrderCount(p) === (p.orders || []).length;
+    setProcSelected(s => ({
+      ...s,
+      [p.productKey]: Object.fromEntries((p.orders || []).map(o => [o.orderId, !allSelected])),
+    }));
+  };
+
+  const toggleProcOrderLine = (p, orderId) => {
+    setProcSelected(s => ({
+      ...s,
+      [p.productKey]: { ...s[p.productKey], [orderId]: !s[p.productKey]?.[orderId] },
+    }));
+  };
+
+  const selectedProcProducts = () => (procData?.products || []).filter(p => procSelectedQty(p) > 0);
 
   // Builds the supplier-facing plain-text list — a friendly Eptomart
-  // greeting, then ONLY the selected item names + total qty/unit + optional
-  // packing note. No prices, no order counts, no customer data of any kind.
+  // greeting, then ONLY the selected item names + selected qty/unit + optional
+  // packing note, grouped by category. No prices, no order counts, no
+  // customer data of any kind.
   const buildSupplierShareText = () => {
     if (!procData) return '';
     const items = selectedProcProducts();
+    const groups = groupProcByCategory(items);
     const dateLabel = new Date(procDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
     const greeting = procSupplierName.trim()
       ? `Hi ${procSupplierName.trim()}, greetings from Eptomart! 🌿`
@@ -1187,11 +1229,13 @@ export default function KoyambeduAdmin() {
     const lines = [
       greeting,
       `Here's what we need for ${dateLabel}:`,
-      '',
     ];
-    for (const p of items) {
-      lines.push(`• ${p.productName}${p.gradeName ? ` (${p.gradeName})` : ''} — ${p.totalQty.toFixed(2)} ${p.unit}`);
-      if (p.packingNote?.trim()) lines.push(`   ↳ Pack as: ${p.packingNote.trim()}`);
+    for (const g of groups) {
+      lines.push('', `${g.icon} *${g.category}*`);
+      for (const p of g.items) {
+        lines.push(`• ${p.productName}${p.gradeName ? ` (${p.gradeName})` : ''} — ${procSelectedQty(p).toFixed(2)} ${p.unit}`);
+        if (p.packingNote?.trim()) lines.push(`   ↳ Pack as: ${p.packingNote.trim()}`);
+      }
     }
     lines.push('', `Total items: ${items.length}`, '', 'Thank you! 🙏 — Team Eptomart');
     return lines.join('\n');
@@ -3491,42 +3535,47 @@ export default function KoyambeduAdmin() {
 
               {/* ── CHECKLIST VIEW (internal) ── */}
               {procView === 'checklist' && (
-                <div className="bg-white rounded-2xl border border-gray-200 p-4">
-                  <p className="text-[11px] text-gray-400 mb-3">Only orders confirmed by SuperAdmin are counted here. Check off each item once it's been physically purchased and leave an internal note if needed.</p>
-                  <div className="space-y-2">
-                    {(procData.products || []).map((p, pi) => (
-                      <div key={pi} className={`border rounded-xl px-3 py-2.5 ${p.purchased ? 'border-green-200 bg-green-50' : 'border-gray-100'}`}>
-                        <div className="flex items-start gap-3">
-                          <button
-                            onClick={() => toggleProcurementPurchased(p)}
-                            disabled={procSaving[p.productKey]}
-                            className={`shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center mt-0.5 transition ${p.purchased ? 'bg-green-600 border-green-600 text-white' : 'border-gray-300 text-transparent'}`}>
-                            ✓
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-bold text-gray-800">{p.productName}{p.gradeName ? ` (${p.gradeName})` : ''}</p>
-                              <div className="text-right shrink-0">
-                                <p className="text-base font-black text-green-700">{p.totalQty.toFixed(2)} <span className="text-xs font-normal text-gray-500">{p.unit}</span></p>
+                <div className="space-y-3">
+                  <p className="text-[11px] text-gray-400 px-1">Only orders confirmed by SuperAdmin are counted here. Check off each item once it's been physically purchased and leave an internal note if needed.</p>
+                  {groupProcByCategory(procData.products).map((g, gi) => (
+                    <div key={gi} className="bg-white rounded-2xl border border-gray-200 p-4">
+                      <p className="text-xs font-bold text-gray-500 uppercase mb-2">{g.icon} {g.category}</p>
+                      <div className="space-y-2">
+                        {g.items.map((p, pi) => (
+                          <div key={pi} className={`border rounded-xl px-3 py-2.5 ${p.purchased ? 'border-green-200 bg-green-50' : 'border-gray-100'}`}>
+                            <div className="flex items-start gap-3">
+                              <button
+                                onClick={() => toggleProcurementPurchased(p)}
+                                disabled={procSaving[p.productKey]}
+                                className={`shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center mt-0.5 transition ${p.purchased ? 'bg-green-600 border-green-600 text-white' : 'border-gray-300 text-transparent'}`}>
+                                ✓
+                              </button>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-sm font-bold text-gray-800">{p.productName}{p.gradeName ? ` (${p.gradeName})` : ''}</p>
+                                  <div className="text-right shrink-0">
+                                    <p className="text-base font-black text-green-700">{p.totalQty.toFixed(2)} <span className="text-xs font-normal text-gray-500">{p.unit}</span></p>
+                                  </div>
+                                </div>
+                                <p className="text-xs text-gray-400">{p.orderCount} orders · ₹{p.totalValue?.toFixed(0)} value{p.purchasedByName ? ` · marked by ${p.purchasedByName}` : ''}</p>
+                                <textarea
+                                  value={procCommentDrafts[p.productKey] ?? p.comment ?? ''}
+                                  onChange={e => setProcCommentDrafts(d => ({ ...d, [p.productKey]: e.target.value }))}
+                                  onBlur={() => saveProcurementComment(p)}
+                                  placeholder="Internal note (e.g. sourced from a different seller, quality issue)…"
+                                  rows={1}
+                                  className="w-full mt-1.5 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-green-500 resize-none"
+                                />
+                                {p.commentByName && p.comment && (
+                                  <p className="text-[10px] text-gray-400 mt-0.5">Last noted by {p.commentByName}{p.commentAt ? ` · ${new Date(p.commentAt).toLocaleString('en-IN')}` : ''}</p>
+                                )}
                               </div>
                             </div>
-                            <p className="text-xs text-gray-400">{p.orderCount} orders · ₹{p.totalValue?.toFixed(0)} value{p.purchasedByName ? ` · marked by ${p.purchasedByName}` : ''}</p>
-                            <textarea
-                              value={procCommentDrafts[p.productKey] ?? p.comment ?? ''}
-                              onChange={e => setProcCommentDrafts(d => ({ ...d, [p.productKey]: e.target.value }))}
-                              onBlur={() => saveProcurementComment(p)}
-                              placeholder="Internal note (e.g. sourced from a different seller, quality issue)…"
-                              rows={1}
-                              className="w-full mt-1.5 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-green-500 resize-none"
-                            />
-                            {p.commentByName && p.comment && (
-                              <p className="text-[10px] text-gray-400 mt-0.5">Last noted by {p.commentByName}{p.commentAt ? ` · ${new Date(p.commentAt).toLocaleString('en-IN')}` : ''}</p>
-                            )}
                           </div>
-                        </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                   {(!procData.products || procData.products.length === 0) && <p className="text-center text-gray-400 py-4">No confirmed orders found for the selected date</p>}
                 </div>
               )}
@@ -3549,45 +3598,80 @@ export default function KoyambeduAdmin() {
                     <input type="text" value={procSupplierName} onChange={e => setProcSupplierName(e.target.value)}
                       placeholder="e.g. Murugan Traders"
                       className="w-full mb-3 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500" />
-
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-[11px] text-gray-400 flex-1">Select which items to include for this supplier. Only item names, quantities, and packing instructions are shared — no prices, order values, or customer details.</p>
-                      <button
-                        onClick={() => {
-                          const allSelected = (procData.products || []).every(p => procSelected[p.productKey]);
-                          setProcSelected(Object.fromEntries((procData.products || []).map(p => [p.productKey, !allSelected])));
-                        }}
-                        className="shrink-0 ml-2 text-[11px] font-bold text-purple-600 border border-purple-200 px-2 py-1 rounded-lg">
-                        {(procData.products || []).every(p => procSelected[p.productKey]) ? 'Deselect All' : 'Select All'}
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      {(procData.products || []).map((p, pi) => (
-                        <div key={pi} className={`border rounded-xl px-3 py-2.5 flex gap-3 ${procSelected[p.productKey] ? 'border-purple-200 bg-purple-50' : 'border-gray-100'}`}>
-                          <button
-                            onClick={() => setProcSelected(s => ({ ...s, [p.productKey]: !s[p.productKey] }))}
-                            className={`shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center mt-0.5 transition ${procSelected[p.productKey] ? 'bg-purple-600 border-purple-600 text-white' : 'border-gray-300 text-transparent'}`}>
-                            ✓
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-bold text-gray-800">{p.productName}{p.gradeName ? ` (${p.gradeName})` : ''}</p>
-                              <p className="text-base font-black text-purple-700 shrink-0">{p.totalQty.toFixed(2)} <span className="text-xs font-normal text-gray-500">{p.unit}</span></p>
-                            </div>
-                            <input
-                              type="text"
-                              value={procPackingDrafts[p.productKey] ?? p.packingNote ?? ''}
-                              onChange={e => setProcPackingDrafts(d => ({ ...d, [p.productKey]: e.target.value }))}
-                              onBlur={() => savePackingNote(p)}
-                              placeholder='Packing note for supplier (e.g. "2 packs of 25kg")'
-                              className="w-full mt-1.5 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-purple-500"
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {(!procData.products || procData.products.length === 0) && <p className="text-center text-gray-400 py-4">No confirmed orders found for the selected date</p>}
+                    <p className="text-[11px] text-gray-400">Select which items — and even which specific orders within an item — go to this supplier. Only item names, quantities, and packing instructions are shared: no prices, order values, or customer details.</p>
                   </div>
+
+                  {groupProcByCategory(procData.products).map((g, gi) => (
+                    <div key={gi} className="bg-white rounded-2xl border border-gray-200 p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-bold text-gray-500 uppercase">{g.icon} {g.category}</p>
+                        <button
+                          onClick={() => {
+                            const allSelected = g.items.every(p => procSelectedOrderCount(p) === (p.orders || []).length);
+                            setProcSelected(s => {
+                              const next = { ...s };
+                              g.items.forEach(p => {
+                                next[p.productKey] = Object.fromEntries((p.orders || []).map(o => [o.orderId, !allSelected]));
+                              });
+                              return next;
+                            });
+                          }}
+                          className="text-[11px] font-bold text-purple-600 border border-purple-200 px-2 py-1 rounded-lg">
+                          {g.items.every(p => procSelectedOrderCount(p) === (p.orders || []).length) ? 'Deselect All' : 'Select All'}
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {g.items.map((p, pi) => {
+                          const selCount = procSelectedOrderCount(p);
+                          const totalLines = (p.orders || []).length;
+                          const fullySelected = selCount === totalLines && totalLines > 0;
+                          const partiallySelected = selCount > 0 && !fullySelected;
+                          return (
+                            <div key={pi} className={`border rounded-xl px-3 py-2.5 ${fullySelected ? 'border-purple-200 bg-purple-50' : partiallySelected ? 'border-purple-100 bg-purple-50/40' : 'border-gray-100'}`}>
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() => toggleProcProductAll(p)}
+                                  className={`shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center mt-0.5 transition ${fullySelected ? 'bg-purple-600 border-purple-600 text-white' : partiallySelected ? 'bg-purple-200 border-purple-400 text-purple-700' : 'border-gray-300 text-transparent'}`}>
+                                  {fullySelected ? '✓' : partiallySelected ? '–' : '✓'}
+                                </button>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-sm font-bold text-gray-800">{p.productName}{p.gradeName ? ` (${p.gradeName})` : ''}</p>
+                                    <p className="text-base font-black text-purple-700 shrink-0">{procSelectedQty(p).toFixed(2)} <span className="text-xs font-normal text-gray-500">/ {p.totalQty.toFixed(2)} {p.unit}</span></p>
+                                  </div>
+
+                                  {/* Sub-checkboxes: per contributing order, e.g. Radish 10kg = Order A 3kg + Order B 4kg + Order C 3kg */}
+                                  {totalLines > 1 && (
+                                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                      {p.orders.map((o, oi) => {
+                                        const checked = !!procSelected[p.productKey]?.[o.orderId];
+                                        return (
+                                          <button key={oi} onClick={() => toggleProcOrderLine(p, o.orderId)}
+                                            className={`text-[10px] font-semibold px-2 py-1 rounded-lg border transition ${checked ? 'bg-purple-600 border-purple-600 text-white' : 'bg-white border-gray-200 text-gray-500'}`}>
+                                            {checked ? '✓ ' : ''}{o.orderId}: {o.quantity.toFixed(2)} {p.unit}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+
+                                  <input
+                                    type="text"
+                                    value={procPackingDrafts[p.productKey] ?? p.packingNote ?? ''}
+                                    onChange={e => setProcPackingDrafts(d => ({ ...d, [p.productKey]: e.target.value }))}
+                                    onBlur={() => savePackingNote(p)}
+                                    placeholder='Packing note for supplier (e.g. "2 packs of 25kg")'
+                                    className="w-full mt-1.5 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-purple-500"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  {(!procData.products || procData.products.length === 0) && <p className="text-center text-gray-400 py-4">No confirmed orders found for the selected date</p>}
 
                   {procData.products?.length > 0 && (
                     <>
