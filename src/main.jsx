@@ -19,7 +19,12 @@ import './index.css';
 // (guarded by sessionStorage so it can never loop) and otherwise falls
 // through to the same ErrorBoundary UI unchanged if the reload doesn't help.
 // ============================================
-const CHUNK_ERROR_PATTERN = /dynamically imported module|loading chunk|failed to fetch/i;
+// Different browsers phrase a stale-chunk failure differently:
+//  - Chrome/Edge/Firefox: "Failed to fetch dynamically imported module" / "Loading chunk ... failed"
+//  - Safari/iOS (incl. PWA/WebKit webview): "'text/html' is not a valid JavaScript MIME type" —
+//    Vercel's catch-all rewrite serves index.html (200, text/html) for a missing hashed chunk
+//    file, and Safari reports that as a MIME-type error rather than a fetch failure.
+const CHUNK_ERROR_PATTERN = /dynamically imported module|loading chunk|failed to fetch|not a valid javascript mime type|mime type|unexpected token '<'/i;
 const CHUNK_RELOAD_FLAG = 'eptomart_chunk_reload_attempted';
 
 function isChunkLoadError(error) {
