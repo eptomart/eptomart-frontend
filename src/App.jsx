@@ -17,6 +17,7 @@ import CompareBar from './components/product/CompareBar';
 import AIAssistant from './components/AIAssistant';
 import WhatsAppFloat from './components/WhatsAppFloat';
 import BottomNav from './components/common/BottomNav';
+import PwaInstallBanner from './components/common/PwaInstallBanner';
 
 // ── Customer pages ───────────────────────────
 const Home           = lazy(() => import('./pages/Home'));
@@ -305,6 +306,12 @@ function AppRoutes() {
       <CompareBar />
       {!useLocation().pathname.startsWith('/koyambedu') && <AIAssistant />}
       <WhatsAppFloat />
+      {/* Was built but never mounted anywhere — meant no one was ever asked
+          for push permission, so no offer/order-update notification could
+          ever reach anyone regardless of anything else being configured
+          correctly. Self-contained: dismissible, session-gated, no-op if
+          push isn't supported. */}
+      <PwaInstallBanner />
     </>
   );
 }

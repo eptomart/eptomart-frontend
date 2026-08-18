@@ -23,6 +23,16 @@ export const usePushNotifications = () => {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       setIsSubscribed(!!sub);
+      // Re-sync an already-existing subscription with the backend on every
+      // app load. Cheap upsert (matched by endpoint) — its real purpose is
+      // backfilling the subscription's `user` field once the visitor is
+      // logged in, in case the browser permission/subscription was created
+      // earlier while logged out (or before this login session). Without
+      // this, admin offer broadcasts targeted at "customers who ordered"
+      // can never match that device's subscription.
+      if (sub) {
+        api.post('/notifications/subscribe', { subscription: sub }).catch(() => {});
+      }
     } catch (_) {}
   };
 

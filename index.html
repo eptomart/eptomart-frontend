@@ -130,14 +130,21 @@
     </script>
     ════════════════════════════════════════════════════════ -->
 
-    <!-- KILL all service workers immediately — runs before anything else -->
+    <!-- Register the service worker (needed for push notifications + PWA
+         install). sw.js itself already deletes any old caches and takes over
+         clients on activate (see public/sw.js install/activate handlers), and
+         its fetch handler is network-first with no caching — so this does NOT
+         reintroduce the stale-asset caching problem the old "kill all service
+         workers" script here was originally added to work around. Without a
+         registered service worker, push notifications can never be received
+         on any platform (Android or iOS), regardless of anything else being
+         configured correctly. -->
     <script>
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(regs) {
-          regs.forEach(function(r) { r.unregister(); });
-        });
-        caches.keys().then(function(keys) {
-          keys.forEach(function(k) { caches.delete(k); });
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js').catch(function(err) {
+            console.warn('[Eptomart] SW registration failed:', err);
+          });
         });
       }
     </script>
