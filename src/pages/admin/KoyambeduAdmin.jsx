@@ -8,7 +8,7 @@ import KoyambeduScheduleAdmin from './KoyambeduScheduleAdmin';
 import KoyambeduDailyPricePanel from '../../components/koyambedu/KoyambeduDailyPricePanel';
 import toast from 'react-hot-toast';
 
-const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'product-approvals', 'daily-price', 'schedule', 'refund-requests', 'wallets', 'users-cart', 'procurement', 'reports', 'whatsapp-inbox', 'dev-settings'];
+const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'product-approvals', 'daily-price', 'schedule', 'refund-requests', 'wallets', 'users-cart', 'procurement', 'offers', 'reports', 'whatsapp-inbox', 'dev-settings'];
 
 const EXPIRY_OPTIONS = [
   { value: 'never', label: 'Never (Manual Disable Only)' },
@@ -1270,6 +1270,79 @@ export default function KoyambeduAdmin() {
     finally { setProcSharing(false); }
   };
 
+  // ── Offers / Push Notifications tab ─────────────────────────────
+  // Lets Super Admin push a promo offer as a mobile web-push notification
+  // (Android + iPhone PWA installs) to a targeted audience, mirroring the
+  // segmented-offer pattern Zomato/Swiggy use, instead of only the
+  // site-wide "broadcast to everyone" tool that already exists elsewhere
+  // in the admin panel (/admin/notifications).
+  const OFFER_SEGMENTS = [
+    { value: 'all_koyambedu',   label: 'All Koyambedu customers',   hint: 'Everyone who has ever ordered' },
+    { value: 'active',          label: 'Active customers',          hint: 'Ordered in the last 30 days' },
+    { value: 'lapsed',          label: 'Lapsed customers',          hint: 'No order in 30+ days — win them back' },
+    { value: 'all_subscribers', label: 'All app users',             hint: 'Every push-enabled device, site-wide' },
+  ];
+  const [offerTitle,    setOfferTitle]    = useState('');
+  const [offerBody,     setOfferBody]     = useState('');
+  const [offerUrl,      setOfferUrl]      = useState('/koyambedu');
+  const [offerSegment,  setOfferSegment]  = useState('all_koyambedu');
+  const [offerArea,     setOfferArea]     = useState('');
+  const [offerAudience, setOfferAudience] = useState(null); // { audienceCount, subscriberCount, label }
+  const [offerChecking, setOfferChecking] = useState(false);
+  const [offerSending,  setOfferSending]  = useState(false);
+  const [offerHistory,  setOfferHistory]  = useState([]);
+  const [offerHistLoading, setOfferHistLoading] = useState(false);
+
+  const fetchOfferHistory = async () => {
+    setOfferHistLoading(true);
+    try {
+      const { data } = await api.get('/koyambedu/admin/notifications/history');
+      setOfferHistory(data.items || []);
+    } catch { /* non-blocking */ }
+    finally { setOfferHistLoading(false); }
+  };
+
+  useEffect(() => { if (tab === 'offers') fetchOfferHistory(); }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const checkOfferAudience = async () => {
+    setOfferChecking(true);
+    setOfferAudience(null);
+    try {
+      const { data } = await api.get('/koyambedu/admin/notifications/audience-count', {
+        params: { segment: offerSegment, area: offerArea.trim() },
+      });
+      setOfferAudience(data);
+    } catch { toast.error('Failed to check audience'); }
+    finally { setOfferChecking(false); }
+  };
+
+  // Re-check audience automatically whenever segment/area changes while the tab is open
+  useEffect(() => {
+    if (tab !== 'offers') return;
+    const t = setTimeout(checkOfferAudience, 400);
+    return () => clearTimeout(t);
+  }, [tab, offerSegment, offerArea]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const sendOffer = async () => {
+    if (!offerTitle.trim() || !offerBody.trim()) { toast.error('Title and message are required'); return; }
+    if (!window.confirm(`Push this offer to ${offerAudience?.subscriberCount ?? '…'} device(s)?`)) return;
+    setOfferSending(true);
+    try {
+      const { data } = await api.post('/koyambedu/admin/notifications/broadcast', {
+        title: offerTitle.trim(),
+        body:  offerBody.trim(),
+        url:   offerUrl.trim() || '/koyambedu',
+        segment: offerSegment,
+        areaFilter: offerArea.trim(),
+      });
+      toast.success(data.message || 'Offer sent!');
+      setOfferTitle(''); setOfferBody('');
+      fetchOfferHistory();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to send offer');
+    } finally { setOfferSending(false); }
+  };
+
   // ── Print/Share report ────────────────────────────────────────
   const shareReport = async () => {
     if (!rptData) return;
@@ -1373,7 +1446,7 @@ export default function KoyambeduAdmin() {
           {TAB_LIST.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white hover:bg-white/30'}`}>
-              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'wallets' ? '💳 Wallets' : t === 'users-cart' ? '🛒 Users Cart' : t === 'procurement' ? '📦 Procurement' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t === 'whatsapp-inbox' ? `💬 WhatsApp${waUnread > 0 ? ` (${waUnread})` : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'wallets' ? '💳 Wallets' : t === 'users-cart' ? '🛒 Users Cart' : t === 'procurement' ? '📦 Procurement' : t === 'offers' ? '📣 Offers' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t === 'whatsapp-inbox' ? `💬 WhatsApp${waUnread > 0 ? ` (${waUnread})` : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -3695,6 +3768,108 @@ export default function KoyambeduAdmin() {
           {!procData && !procLoading && (
             <p className="text-center text-gray-400 py-8">Pick a date and tap Load</p>
           )}
+        </div>
+      )}
+
+      {/* ── Offers / Push Notifications tab ── */}
+      {tab === 'offers' && (
+        <div className="space-y-4 pb-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+            <p className="text-xs font-bold text-gray-500 uppercase">📣 Compose an Offer</p>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Title</label>
+              <input type="text" value={offerTitle} onChange={e => setOfferTitle(e.target.value)}
+                placeholder="e.g. 🎉 Flat ₹100 OFF today!" maxLength={65}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Message</label>
+              <textarea value={offerBody} onChange={e => setOfferBody(e.target.value)} rows={2} maxLength={160}
+                placeholder="Use code FRESH100 on orders above ₹799. Valid till midnight!"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500 resize-none" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Opens to (optional)</label>
+              <input type="text" value={offerUrl} onChange={e => setOfferUrl(e.target.value)}
+                placeholder="/koyambedu"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500" />
+            </div>
+
+            {/* Live preview — mimics an Android/iOS lock-screen notification */}
+            {(offerTitle || offerBody) && (
+              <div className="rounded-2xl p-3 flex items-start gap-2.5" style={{ background: '#f3f4f6', border: '1px solid #e5e7eb' }}>
+                <div className="w-9 h-9 rounded-xl bg-green-600 flex items-center justify-center text-white text-sm font-black shrink-0">E</div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-gray-800 truncate">{offerTitle || 'Notification title'}</p>
+                  <p className="text-xs text-gray-500 line-clamp-2">{offerBody || 'Notification message'}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+            <p className="text-xs font-bold text-gray-500 uppercase">🎯 Who is this offer for?</p>
+            <div className="grid grid-cols-2 gap-2">
+              {OFFER_SEGMENTS.map(s => (
+                <button key={s.value} onClick={() => setOfferSegment(s.value)}
+                  className={`text-left p-3 rounded-xl border-2 transition ${offerSegment === s.value ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
+                  <p className={`text-xs font-bold ${offerSegment === s.value ? 'text-green-700' : 'text-gray-700'}`}>{s.label}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{s.hint}</p>
+                </button>
+              ))}
+            </div>
+            {offerSegment !== 'all_subscribers' && (
+              <div>
+                <label className="text-xs font-semibold text-gray-600 mb-1 block">Narrow by area / pincode (optional)</label>
+                <input type="text" value={offerArea} onChange={e => setOfferArea(e.target.value)}
+                  placeholder="e.g. Anna Nagar or 600040"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-500" />
+              </div>
+            )}
+
+            <div className="bg-blue-50 rounded-xl px-3 py-2.5 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-500">Estimated reach</p>
+                <p className="text-sm font-black text-blue-700">
+                  {offerChecking ? 'Checking…' : offerAudience
+                    ? `${offerAudience.subscriberCount} device${offerAudience.subscriberCount === 1 ? '' : 's'}`
+                    : '—'}
+                </p>
+              </div>
+              {offerAudience && offerAudience.segment !== 'all_subscribers' && (
+                <p className="text-[10px] text-gray-400 text-right">{offerAudience.audienceCount} matching customer{offerAudience.audienceCount === 1 ? '' : 's'}<br/>with push notifications on</p>
+              )}
+            </div>
+          </div>
+
+          <button onClick={sendOffer} disabled={offerSending || !offerTitle.trim() || !offerBody.trim()}
+            className="w-full bg-green-600 text-white font-bold py-3.5 rounded-xl disabled:opacity-50 active:scale-95 transition">
+            {offerSending ? 'Sending…' : '🚀 Push Offer Now'}
+          </button>
+
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+            <p className="text-xs font-bold text-gray-500 uppercase">Recent Offers</p>
+            {offerHistLoading && <p className="text-xs text-gray-400">Loading…</p>}
+            {!offerHistLoading && offerHistory.length === 0 && (
+              <p className="text-xs text-gray-400">No offers sent yet</p>
+            )}
+            {offerHistory.map(h => (
+              <div key={h._id} className="border border-gray-100 rounded-xl px-3 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-gray-800 truncate">{h.title}</p>
+                  <p className="text-[10px] text-gray-400 shrink-0">{new Date(h.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                </div>
+                <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">{h.body}</p>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
+                    {OFFER_SEGMENTS.find(s => s.value === h.segment)?.label || h.segment}
+                  </span>
+                  {h.areaFilter && <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">📍 {h.areaFilter}</span>}
+                  <span className="text-[10px] text-gray-400">Sent to {h.sentCount} device{h.sentCount === 1 ? '' : 's'} · by {h.sentByName || 'Admin'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
