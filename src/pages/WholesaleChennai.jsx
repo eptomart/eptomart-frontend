@@ -25,7 +25,7 @@ const FAQS = [
   },
   {
     q: 'What is the minimum order for wholesale delivery in Chennai?',
-    a: 'Koyambedu Daily orders start from ₹1,500 — suited to hotels, restaurants, caterers, mess kitchens, vegetable shops and large families buying in bulk.',
+    a: 'Koyambedu Daily orders start from ₹799 — suited to hotels, restaurants, caterers, mess kitchens, vegetable shops and large families buying in bulk.',
   },
   {
     q: 'Which areas of Chennai do you deliver to?',

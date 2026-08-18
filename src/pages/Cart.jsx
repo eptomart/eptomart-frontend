@@ -35,7 +35,7 @@ const LIGHT_SHIPPING = 49;
 const HEAVY_SHIPPING = 149;
 
 // ── Koyambedu Daily minimum order value (must match backend MIN_ORDER_VALUE) ─
-const KBD_MIN_ORDER = 1500;
+const KBD_MIN_ORDER = 799;
 
 // ── Vertical configuration registry ─────────────────────
 // displayOrder controls left-to-right tab ordering.
