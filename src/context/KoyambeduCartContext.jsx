@@ -236,11 +236,18 @@ export const KoyambeduCartProvider = ({ children }) => {
   const clearCart = useCallback(async () => {
     clearGuestCart();
     setOptimisticQtys({});
-    if (!isLoggedIn()) { setCart({ items: [] }); return; }
+    // Update local/UI state immediately and unconditionally — by the time this
+    // is called (post-payment), the backend has already cleared the DB cart as
+    // part of order confirmation, so this DELETE call is a best-effort mirror,
+    // not the source of truth. If it fails on a flaky connection, the UI must
+    // still show an empty cart rather than stale items the server no longer has.
+    setCart({ items: [] });
+    if (!isLoggedIn()) return;
     try {
       await api.delete('/koyambedu/cart/clear');
-      setCart({ items: [] });
-    } catch {}
+    } catch (e) {
+      console.error('[KBD Cart] Redundant clear-cart call failed (non-blocking):', e.message);
+    }
   }, []);
 
   // ── Derived values (merge optimistic for logged-in) ─
