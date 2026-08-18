@@ -8,7 +8,7 @@
 // ============================================
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiMapPin, FiCheck, FiArrowLeft, FiSearch, FiX } from 'react-icons/fi';
+import { FiMapPin, FiCheck, FiArrowLeft, FiSearch, FiX, FiHome, FiShoppingBag } from 'react-icons/fi';
 import api from '../../utils/api';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import { useAuth } from '../../context/AuthContext';
@@ -922,6 +922,19 @@ export default function KoyambeduCheckout() {
             <h1 className="text-white font-extrabold text-base leading-tight">Checkout</h1>
             <p className="text-emerald-100 text-[10px] opacity-80">Koyambedu Daily</p>
           </div>
+          {/* Quick exits — cart is preserved either way, nothing is lost by leaving */}
+          <button onClick={() => navigate('/koyambedu/shop')}
+            title="Add more products"
+            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(255,255,255,0.2)' }}>
+            <FiShoppingBag size={15} className="text-white" />
+          </button>
+          <button onClick={() => navigate('/koyambedu')}
+            title="Go to Home"
+            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(255,255,255,0.2)' }}>
+            <FiHome size={16} className="text-white" />
+          </button>
         </div>
 
         {/* Step indicator */}
