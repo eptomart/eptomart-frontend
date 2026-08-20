@@ -27,6 +27,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useKoyambeduCart } from '../context/KoyambeduCartContext';
 import { formatINR } from '../utils/currency';
+import { imgCart } from '../utils/cloudinary';
 import toast from 'react-hot-toast';
 
 // ── Eptomart (main cart) shipping thresholds ────────────
@@ -407,7 +408,7 @@ function KoyambeduTab({
               return (
                 <div key={item._id || i} className="p-4 flex gap-4">
                   <Link to={`/koyambedu/product/${pid}`} className="flex-shrink-0">
-                    <img src={img} alt={item.name}
+                    <img src={imgCart(img)} alt={item.name}
                       className="w-20 h-20 object-cover rounded-xl bg-gray-100" />
                   </Link>
 
@@ -641,7 +642,7 @@ function EptomartTab({
               {group.items.map(item => (
                 <div key={item.cartItemId} className="p-4 flex gap-4">
                   <Link to={`/product/${item.slug}`} className="flex-shrink-0">
-                    <img src={item.image} alt={item.name}
+                    <img src={imgCart(item.image)} alt={item.name}
                       className="w-20 h-20 object-cover rounded-xl bg-gray-100" />
                   </Link>
 

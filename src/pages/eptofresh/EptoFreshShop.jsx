@@ -8,6 +8,7 @@ import api from '../../utils/api';
 import toast from 'react-hot-toast';
 import { FiArrowLeft, FiStar, FiMapPin, FiShoppingCart, FiPlus, FiMinus, FiAlertTriangle, FiClock } from 'react-icons/fi';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
+import { imgThumb } from '../../utils/cloudinary';
 
 const CAT_LABEL = { chicken:'Chicken', mutton:'Mutton', fish:'Fish', seafood:'Seafood', beef:'Beef', pork:'Pork', ready_to_cook:'Ready to Cook' };
 
@@ -18,7 +19,7 @@ function ShopAvatar({ name, image, size = 48 }) {
   const color = colors[initial.charCodeAt(0) % colors.length];
   if (image) {
     return (
-      <img src={image} alt={name}
+      <img src={imgThumb(image)} alt={name}
         className="object-cover rounded-xl"
         style={{ width: size, height: size }} />
     );
@@ -231,7 +232,7 @@ function ProductCard({ product, qty, sellerId, sellerName, onAdd, onUpdate }) {
       {/* Image */}
       <div className="w-[64px] h-[64px] rounded-xl overflow-hidden shrink-0 bg-gray-50 flex items-center justify-center">
         {product.images?.[0]?.url
-          ? <img src={product.images[0].url} alt={product.name} className="w-full h-full object-cover" />
+          ? <img src={imgThumb(product.images[0].url)} alt={product.name} className="w-full h-full object-cover" />
           : <span className="text-3xl select-none">{catEmoji(product.category)}</span>}
       </div>
 

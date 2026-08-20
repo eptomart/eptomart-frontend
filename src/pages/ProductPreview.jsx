@@ -10,6 +10,7 @@ import Navbar from '../components/common/Navbar';
 import api from '../utils/api';
 import { formatINR } from '../utils/currency';
 import { useAuth } from '../context/AuthContext';
+import { imgFull, imgThumb } from '../utils/cloudinary';
 
 const STATUS_COLORS = {
   draft:            'bg-gray-100 text-gray-600',
@@ -94,7 +95,7 @@ export default function ProductPreview() {
           <div>
             <div className="rounded-2xl overflow-hidden bg-gray-100 aspect-square mb-3">
               {imgs.length > 0 ? (
-                <img src={imgs[imgIdx]?.url} alt={product.name} className="w-full h-full object-cover" />
+                <img src={imgFull(imgs[imgIdx]?.url)} alt={product.name} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400">
                   <span className="text-5xl">🖼️</span>
@@ -107,7 +108,7 @@ export default function ProductPreview() {
                   <button key={idx} onClick={() => setImgIdx(idx)}
                     className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all
                       ${imgIdx === idx ? 'border-primary-500' : 'border-gray-200 hover:border-gray-300'}`}>
-                    <img src={img.url} alt="" className="w-full h-full object-cover" />
+                    <img src={imgThumb(img.url)} alt="" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>

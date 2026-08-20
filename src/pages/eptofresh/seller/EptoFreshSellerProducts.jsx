@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
 import { FiArrowLeft, FiPlus, FiEdit2, FiRefreshCw, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
+import { imgThumb } from '../../../utils/cloudinary';
 
 const CATEGORIES = ['chicken','mutton','fish','seafood','beef','pork','ready_to_cook'];
 const CUT_TYPES  = ['whole','curry_cut','boneless','keema','half','quarter','leg','breast','liver','gizzard','other'];
@@ -92,7 +93,7 @@ export default function EptoFreshSellerProducts() {
             <div key={p._id} className="rounded-2xl p-3" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
               <div className="flex items-start gap-3">
                 <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-700 shrink-0 flex items-center justify-center">
-                  {p.images?.[0]?.url ? <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" /> : <span className="text-xl">🥩</span>}
+                  {p.images?.[0]?.url ? <img src={imgThumb(p.images[0].url)} alt={p.name} className="w-full h-full object-cover" /> : <span className="text-xl">🥩</span>}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">

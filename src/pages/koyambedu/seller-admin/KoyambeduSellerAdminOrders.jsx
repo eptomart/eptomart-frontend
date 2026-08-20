@@ -12,6 +12,7 @@ import {
 } from 'react-icons/fi';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
+import { imgThumb } from '../../../utils/cloudinary';
 
 const STATUS_COLOR = {
   placed:                 'bg-blue-100 text-blue-700',
@@ -375,7 +376,7 @@ export default function KoyambeduSellerAdminOrders() {
                         <div key={itemId} className="px-4 py-3">
                           <div className="flex items-start gap-3">
                             {item.product?.images?.[0]?.url
-                              ? <img src={item.product.images[0].url} alt={item.name} className="w-10 h-10 rounded-lg object-cover shrink-0 mt-0.5" />
+                              ? <img src={imgThumb(item.product.images[0].url)} alt={item.name} className="w-10 h-10 rounded-lg object-cover shrink-0 mt-0.5" />
                               : <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center shrink-0 mt-0.5 text-lg">🌿</div>
                             }
                             <div className="flex-1 min-w-0">

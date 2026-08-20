@@ -18,6 +18,7 @@ import { FaLeaf } from 'react-icons/fa';
 import api from '../../utils/api';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import toast from 'react-hot-toast';
+import { imgHero, imgThumb } from '../../utils/cloudinary';
 
 const IMG_PLACEHOLDER = 'https://placehold.co/400x300/dcfce7/166534?text=Fresh';
 
@@ -287,7 +288,7 @@ export default function KoyambeduProductDetail() {
       <div className="bg-white">
         <div className="relative overflow-hidden" style={{ height: 240 }}>
           <img
-            src={images[activeImg]?.url || IMG_PLACEHOLDER}
+            src={imgHero(images[activeImg]?.url) || IMG_PLACEHOLDER}
             alt={product.name}
             className="w-full h-full object-cover"
           />
@@ -317,7 +318,7 @@ export default function KoyambeduProductDetail() {
             {images.map((img, i) => (
               <button key={i} onClick={() => setActiveImg(i)}
                 className={`w-12 h-12 rounded-xl overflow-hidden border-2 shrink-0 transition ${activeImg === i ? 'border-green-500' : 'border-gray-100'}`}>
-                <img src={img.url} alt="" className="w-full h-full object-cover" />
+                <img src={imgThumb(img.url)} alt="" className="w-full h-full object-cover" />
               </button>
             ))}
           </div>

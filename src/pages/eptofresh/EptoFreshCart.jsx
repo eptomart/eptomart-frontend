@@ -4,6 +4,7 @@
 import { useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiTrash2, FiPlus, FiMinus, FiAlertTriangle, FiLogIn, FiShoppingBag } from 'react-icons/fi';
 import { useEptoFreshCart } from '../../context/EptoFreshCartContext';
+import { imgThumb } from '../../utils/cloudinary';
 const isLoggedIn = () => !!localStorage.getItem('eptomart_token');
 
 export default function EptoFreshCart() {
@@ -86,7 +87,7 @@ export default function EptoFreshCart() {
               style={{ boxShadow: '0 1px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
 
               {item.image
-                ? <img src={item.image} alt={item.name} className="w-12 h-12 rounded-xl object-cover shrink-0 bg-gray-100" />
+                ? <img src={imgThumb(item.image)} alt={item.name} className="w-12 h-12 rounded-xl object-cover shrink-0 bg-gray-100" />
                 : <div className="w-12 h-12 rounded-xl shrink-0 flex items-center justify-center" style={{ background: '#fff4e6' }}>
                     <FiShoppingBag size={20} style={{ color: '#f4941c', opacity: 0.6 }} />
                   </div>}

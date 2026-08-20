@@ -7,6 +7,7 @@ import KoyambeduVariantProductForm, { makeEmptyVariantProduct, getVariantOverlap
 import KoyambeduScheduleAdmin from './KoyambeduScheduleAdmin';
 import KoyambeduDailyPricePanel from '../../components/koyambedu/KoyambeduDailyPricePanel';
 import toast from 'react-hot-toast';
+import { imgThumb } from '../../utils/cloudinary';
 
 const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'product-approvals', 'daily-price', 'schedule', 'refund-requests', 'wallets', 'users-cart', 'procurement', 'offers', 'reports', 'whatsapp-inbox', 'dev-settings'];
 
@@ -2480,7 +2481,7 @@ export default function KoyambeduAdmin() {
               {cats.map(cat => (
                 <div key={cat._id} className={`bg-white rounded-2xl border p-3 flex items-center gap-3 ${!cat.isActive ? 'opacity-50' : 'border-gray-200'}`}>
                   {cat.image
-                    ? <img src={cat.image} alt={cat.name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
+                    ? <img src={imgThumb(cat.image)} alt={cat.name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
                     : <span className="text-2xl w-9 text-center flex-shrink-0">{cat.icon || '🌿'}</span>
                   }
                   <div className="flex-1 min-w-0">
@@ -2543,7 +2544,7 @@ export default function KoyambeduAdmin() {
                 <div key={p._id} className={`bg-white rounded-2xl border p-3 ${!p.isAvailable ? 'opacity-60 border-gray-100' : 'border-gray-200'}`}>
                   <div className="flex items-start gap-3">
                     {p.images?.[0]?.url && (
-                      <img src={p.images[0].url} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+                      <img src={imgThumb(p.images[0].url)} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
@@ -2694,7 +2695,7 @@ export default function KoyambeduAdmin() {
               <label className="block text-xs font-semibold text-gray-700 mb-1">Category Image</label>
               {catForm.image ? (
                 <div className="relative w-full h-28 rounded-xl overflow-hidden border border-gray-200">
-                  <img src={catForm.image} alt="" className="w-full h-full object-cover" />
+                  <img src={imgThumb(catForm.image)} alt="" className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => setCatForm(f => ({ ...f, image: '' }))}
@@ -3095,7 +3096,7 @@ export default function KoyambeduAdmin() {
                 {pendingNewProducts.map(p => (
                   <div key={p._id} className="bg-white rounded-2xl border border-yellow-200 p-4 shadow-sm">
                     <div className="flex gap-3 items-start">
-                      {p.images?.[0] && <img src={p.images[0].url} alt="" className="w-14 h-14 rounded-xl object-cover border border-gray-100 shrink-0" />}
+                      {p.images?.[0] && <img src={imgThumb(p.images[0].url)} alt="" className="w-14 h-14 rounded-xl object-cover border border-gray-100 shrink-0" />}
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-gray-800">{p.name}</p>
                         {p.nameTamil && <p className="text-xs text-gray-400">{p.nameTamil}</p>}
@@ -3181,7 +3182,7 @@ export default function KoyambeduAdmin() {
                   return (
                     <div key={p._id} className="bg-white rounded-2xl border border-orange-200 p-4 shadow-sm">
                       <div className="flex gap-3 items-start mb-3">
-                        {p.images?.[0] && <img src={p.images[0].url} alt="" className="w-12 h-12 rounded-xl object-cover border border-gray-100 shrink-0" />}
+                        {p.images?.[0] && <img src={imgThumb(p.images[0].url)} alt="" className="w-12 h-12 rounded-xl object-cover border border-gray-100 shrink-0" />}
                         <div className="flex-1">
                           <p className="font-bold text-gray-800">{p.name}</p>
                           <p className="text-xs text-gray-500">{p.seller?.businessName} · {p.category?.icon} {p.category?.name}</p>

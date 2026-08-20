@@ -4,6 +4,7 @@ import api from '../../../utils/api';
 import toast from 'react-hot-toast';
 import KoyambeduImageUploader from '../../../components/koyambedu/KoyambeduImageUploader';
 import KoyambeduVariantProductForm, { makeEmptyVariantProduct, getVariantOverlapError } from '../../../components/koyambedu/KoyambeduVariantProductForm';
+import { imgThumb } from '../../../utils/cloudinary';
 
 // ── AI helpers ───────────────────────────────
 const useAI = () => {
@@ -574,7 +575,7 @@ export default function KoyambeduSellerAdminDashboard() {
                 <div key={p._id} className="bg-white rounded-2xl border border-green-100 p-4">
                   <div className="flex gap-3">
                     {p.images?.[0]?.url && (
-                      <img src={p.images[0].url} alt={p.name} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+                      <img src={imgThumb(p.images[0].url)} alt={p.name} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-800 text-sm">{p.name}</p>
@@ -701,7 +702,7 @@ export default function KoyambeduSellerAdminDashboard() {
               <label className="text-xs text-gray-500 font-medium">Category Image</label>
               {catForm.image ? (
                 <div className="relative w-full h-28 rounded-xl overflow-hidden border border-gray-200 mt-1">
-                  <img src={catForm.image} alt="" className="w-full h-full object-cover" />
+                  <img src={imgThumb(catForm.image)} alt="" className="w-full h-full object-cover" />
                   <button type="button" onClick={() => setCatForm(f => ({ ...f, image: '' }))}
                     className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg">Remove</button>
                 </div>

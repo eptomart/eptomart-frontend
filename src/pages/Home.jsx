@@ -20,6 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import api from '../utils/api';
+import { imgCard, imgThumb } from '../utils/cloudinary';
 
 // ── Recently viewed (localStorage) ────────────────────────────
 const RV_KEY = 'eptomart_rv';
@@ -101,7 +102,7 @@ function ProductGridCard({ product: p, accent = '#f4941c', index = 0 }) {
     >
       <Link to={href} className="img-frame relative bg-gray-50 block overflow-hidden" style={{ aspectRatio: '5/4' }}>
         {img
-          ? <img src={img} alt={p.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.07]" />
+          ? <img src={imgCard(img)} alt={p.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.07]" />
           : <div className="w-full h-full flex items-center justify-center"><FiPackage size={30} className="text-gray-200" /></div>}
         {pct >= 5 && (
           <div className="absolute top-1.5 left-1.5 text-white text-center leading-none font-black rounded-md px-1 py-0.5"
@@ -584,7 +585,7 @@ function MobileCategoryStrip() {
                 }}
               >
                 {c.img ? (
-                  <img src={c.img} alt={c.label} className="w-full h-full object-cover" loading="lazy" />
+                  <img src={imgThumb(c.img)} alt={c.label} className="w-full h-full object-cover" loading="lazy" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center"
                     style={{ background: `linear-gradient(145deg, ${c.color}cc, ${c.color})` }}>
@@ -662,7 +663,7 @@ function ContinueShopping() {
               <div className="w-[64px] h-[64px] rounded-2xl overflow-hidden bg-gray-100 border border-gray-100"
                 style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.07)' }}>
                 {img
-                  ? <img src={img} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
+                  ? <img src={imgThumb(img)} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
                   : <div className="w-full h-full flex items-center justify-center"><FiPackage size={24} className="text-gray-300" /></div>}
               </div>
               <p className="text-[10px] font-semibold text-gray-700 text-center leading-tight line-clamp-2">{p.name}</p>
@@ -972,7 +973,7 @@ function MobileSearchBar() {
                           <button key={p._id} onClick={() => { setOpen(false); navigate(`/koyambedu/product/${p._id}`); }}
                             className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-green-50 transition-colors text-left group">
                             <div className="w-9 h-9 rounded-xl overflow-hidden bg-green-50 flex-shrink-0">
-                              {img ? <img src={img} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-green-200">🌿</div>}
+                              {img ? <img src={imgThumb(img)} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-green-200">🌿</div>}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-semibold text-gray-800 line-clamp-1 group-hover:text-green-700">{p.name}</p>
@@ -997,7 +998,7 @@ function MobileSearchBar() {
                         <button key={p._id} onClick={() => { setOpen(false); navigate(`/product/${p.slug || p._id}`); }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 transition-colors text-left group">
                           <div className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
-                            {p.images?.[0]?.url ? <img src={p.images[0].url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><FiPackage size={18} className="text-gray-400" /></div>}
+                            {p.images?.[0]?.url ? <img src={imgThumb(p.images[0].url)} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><FiPackage size={18} className="text-gray-400" /></div>}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-gray-800 line-clamp-1 group-hover:text-orange-600">{p.name}</p>
@@ -1091,7 +1092,7 @@ function KbdProductCard({ product: p, index = 0, visible = true }) {
     >
       <Link to={href} className="img-frame relative bg-gray-50 block overflow-hidden" style={{ aspectRatio: '1/1' }}>
         {img ? (
-          <img src={img} alt={p.name} loading="lazy"
+          <img src={imgCard(img)} alt={p.name} loading="lazy"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.08]" />
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={{ background: '#f0fdf4' }}>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
 import KoyambeduImageUploader from '../../../components/koyambedu/KoyambeduImageUploader';
+import { imgThumb } from '../../../utils/cloudinary';
 
 // ── AI helpers ───────────────────────────────
 const useAI = () => {
@@ -153,7 +154,7 @@ export default function KoyambeduSellerProducts() {
         {products.map(p => (
           <div key={p._id} className="bg-white rounded-2xl shadow-sm border border-green-100 p-4 flex gap-3">
             {p.images?.[0] && (
-              <img src={p.images[0].url} alt={p.name}
+              <img src={imgThumb(p.images[0].url)} alt={p.name}
                 className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
             )}
             <div className="flex-1 min-w-0">

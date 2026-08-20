@@ -12,6 +12,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, 
 import Loader from '../../components/common/Loader';
 import { formatINR, formatDate } from '../../utils/currency';
 import api from '../../utils/api';
+import { imgThumb } from '../../utils/cloudinary';
 
 const StatCard = ({ icon: Icon, label, value, sub, color, href }) => (
   <Link to={href || '#'} className={`card p-5 hover:shadow-md transition-shadow border-l-4 ${color}`}>
@@ -145,7 +146,7 @@ export default function Dashboard() {
                 <div key={product._id} className="flex items-center gap-3 text-sm">
                   <span className="text-lg font-bold text-gray-300 w-5 text-center">{i + 1}</span>
                   <img
-                    src={product.images?.[0]?.url}
+                    src={imgThumb(product.images?.[0]?.url)}
                     alt={product.name}
                     className="w-9 h-9 object-cover rounded-lg"
                   />

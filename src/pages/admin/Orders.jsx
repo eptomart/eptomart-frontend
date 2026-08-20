@@ -8,6 +8,7 @@ import Loader from '../../components/common/Loader';
 import { formatINR, formatDate } from '../../utils/currency';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
+import { imgCard, imgThumb } from '../../utils/cloudinary';
 
 const ORDER_STATUSES   = ['placed', 'confirmed', 'processing', 'shipped', 'partially_delivered', 'delivered', 'cancelled', 'returned'];
 const PAYMENT_STATUSES = ['pending', 'paid', 'partially_paid', 'failed', 'refunded'];
@@ -161,7 +162,7 @@ function PackagingReviewPanel({ order, onDone }) {
                         className="flex-1 relative group"
                       >
                         <img
-                          src={img.url}
+                          src={imgCard(img.url)}
                           alt={`${label} side`}
                           className="w-full aspect-[4/3] object-cover"
                         />
@@ -1241,7 +1242,7 @@ export default function AdminOrders() {
                             return (
                               <div key={item._id || i}
                                 className={`flex items-start gap-3 px-4 py-3 text-sm ${i > 0 ? 'border-t border-gray-50' : ''}`}>
-                                <img src={item.image || item.product?.images?.[0]?.url}
+                                <img src={imgThumb(item.image || item.product?.images?.[0]?.url)}
                                   alt={item.name}
                                   className="w-11 h-11 object-cover rounded-lg flex-shrink-0 bg-gray-100 mt-0.5" />
                                 <div className="flex-1 min-w-0">

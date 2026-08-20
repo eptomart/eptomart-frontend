@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
 import toast from 'react-hot-toast';
+import { imgThumb } from '../../utils/cloudinary';
 
 // ── Promo Request Section ─────────────────────────────────
 function PromoRequestSection() {
@@ -287,7 +288,7 @@ export default function SellerDashboard() {
           <div className="divide-y divide-gray-50">
             {products.map(p => (
               <div key={p._id} className="p-4 flex items-center gap-3">
-                <img src={p.images?.[0]?.url} alt={p.name} className="w-12 h-12 object-cover rounded-xl bg-gray-100" />
+                <img src={imgThumb(p.images?.[0]?.url)} alt={p.name} className="w-12 h-12 object-cover rounded-xl bg-gray-100" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
                   <p className="text-xs text-gray-500">{formatINR(p.discountPrice || p.price)} · GST {p.gstRate}%</p>

@@ -4,6 +4,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiAlertCircle, FiCheckCircle, FiClock, FiXCi
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
 import toast from 'react-hot-toast';
+import { imgThumb } from '../../utils/cloudinary';
 
 const STATUS_MAP = {
   approved:         { label: 'Live',      bg: 'bg-green-100 text-green-700',   icon: FiCheckCircle },
@@ -402,7 +403,7 @@ EPT-002,,Product B (no SKU),0,100
                   <React.Fragment key={p._id}>
                     <tr className={`hover:bg-gray-50 transition-colors ${needsAction ? 'bg-orange-50/40' : ''}`}>
                       <td className="p-4 flex items-center gap-3">
-                        <img src={p.images?.[0]?.url} alt={p.name} className="w-10 h-10 object-cover rounded-lg bg-gray-100 flex-shrink-0" />
+                        <img src={imgThumb(p.images?.[0]?.url)} alt={p.name} className="w-10 h-10 object-cover rounded-lg bg-gray-100 flex-shrink-0" />
                         <div className="min-w-0">
                           <p className="font-medium text-gray-800 truncate max-w-[180px]">{p.name}</p>
                           {p.productCode && (

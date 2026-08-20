@@ -6,6 +6,7 @@ import {
 } from 'react-icons/fi';
 import { FaLeaf } from 'react-icons/fa';
 import api from '../../utils/api';
+import { imgCard } from '../../utils/cloudinary';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import BottomNav from '../../components/common/BottomNav';
 import toast from 'react-hot-toast';
@@ -75,7 +76,7 @@ const ProductCard = ({ product }) => {
       <Link to={`/koyambedu/product/${product._id}`}>
         <div className="relative">
           {img
-            ? <img src={img} alt={product.name} className="w-full h-[72px] object-cover" />
+            ? <img src={imgCard(img)} alt={product.name} className="w-full h-[72px] object-cover" />
             : <div className="w-full h-[72px] bg-green-50 flex items-center justify-center">
                 <FaLeaf size={20} className="text-green-200" />
               </div>}

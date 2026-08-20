@@ -10,6 +10,7 @@ import { formatINR } from '../../utils/currency';
 import { extractBasePrice, GST_SLABS } from '../../utils/gst';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
+import { imgThumb } from '../../utils/cloudinary';
 
 export default function AdminProducts() {
   const [products, setProducts] = useState([]);
@@ -430,7 +431,7 @@ export default function AdminProducts() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           {product.images?.[0]?.url ? (
-                            <img src={product.images[0].url} alt={product.name} className="w-10 h-10 object-cover rounded-lg" />
+                            <img src={imgThumb(product.images[0].url)} alt={product.name} className="w-10 h-10 object-cover rounded-lg" />
                           ) : (
                             <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
                               <FiImage className="text-gray-400" />
@@ -742,7 +743,7 @@ export default function AdminProducts() {
                     <div className="flex flex-wrap gap-2 mb-2">
                       {existingImages.map((img, idx) => (
                         <div key={img._id || idx} className="relative group w-16 h-16">
-                          <img src={img.url} alt="" className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                          <img src={imgThumb(img.url)} alt="" className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
                           {/* Main badge */}
                           {img.isDefault && (
                             <span className="absolute bottom-0 left-0 right-0 text-center text-[8px] bg-primary-500 text-white rounded-b-lg">Main</span>

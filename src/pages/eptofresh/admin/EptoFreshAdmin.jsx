@@ -7,6 +7,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
 import { FiGrid, FiUsers, FiPackage, FiShoppingBag, FiDollarSign, FiTag, FiCheck, FiX, FiCamera, FiBarChart2, FiSettings, FiPlus, FiMapPin, FiArrowLeft, FiEdit2, FiSave, FiSearch, FiTrash2 } from 'react-icons/fi';
+import { imgThumb } from '../../../utils/cloudinary';
 
 export default function EptoFreshAdmin() {
   const navigate  = useNavigate();
@@ -1216,7 +1217,7 @@ function ProductsTab() {
             <div className="flex gap-3">
               <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-700 shrink-0 flex items-center justify-center">
                 {p.images?.[0]?.url
-                  ? <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" />
+                  ? <img src={imgThumb(p.images[0].url)} alt={p.name} className="w-full h-full object-cover" />
                   : <FiPackage size={24} className="text-gray-400" />}
               </div>
               <div className="flex-1 min-w-0">
@@ -1345,7 +1346,7 @@ function OrdersTab() {
                 <div className="flex gap-2 flex-wrap">
                   {(o.packedPhotos || []).map((ph, i) => (
                     <a key={i} href={ph.url} target="_blank" rel="noopener noreferrer">
-                      <img src={ph.url} alt="packed" className="w-16 h-16 rounded-xl object-cover" style={{ border: '1px solid rgba(255,255,255,0.1)' }} />
+                      <img src={imgThumb(ph.url)} alt="packed" className="w-16 h-16 rounded-xl object-cover" style={{ border: '1px solid rgba(255,255,255,0.1)' }} />
                     </a>
                   ))}
                   {!o.packedPhotos?.length && <p className="text-gray-600 text-xs">No photos uploaded</p>}

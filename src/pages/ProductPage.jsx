@@ -23,6 +23,7 @@ import { formatINR, getDiscountPercent, formatDate } from '../utils/currency';
 import { extractBasePrice } from '../utils/gst';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { imgFull, imgThumb } from '../utils/cloudinary';
 
 export default function ProductPage() {
   const { slug }  = useParams();
@@ -252,7 +253,7 @@ export default function ProductPage() {
             <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden mb-3 relative border border-gray-100 shadow-card group">
               <img
                 key={selectedImage}
-                src={product.images?.[selectedImage]?.url || 'https://via.placeholder.com/500'}
+                src={imgFull(product.images?.[selectedImage]?.url) || 'https://via.placeholder.com/500'}
                 alt={product.name}
                 className="w-full h-full object-cover animate-fade-in md:group-hover:scale-105 transition-transform duration-500"
               />
@@ -268,7 +269,7 @@ export default function ProductPage() {
                   <button key={i} onClick={() => setSelectedImage(i)}
                     className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all
                       ${selectedImage === i ? 'border-primary-500 ring-2 ring-primary-200 scale-[1.03]' : 'border-gray-200 hover:border-primary-300 opacity-80 hover:opacity-100'}`}>
-                    <img src={img.url} alt="" className="w-full h-full object-cover" />
+                    <img src={imgThumb(img.url)} alt="" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
