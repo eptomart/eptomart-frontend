@@ -235,6 +235,23 @@
           splash.style.display = 'none';
         }, delay);
       };
+      // Now that the service worker is properly registered (needed for push
+      // notifications — see the registration script in <head>), mobile
+      // browsers can restore this page instantly from the back-forward
+      // cache instead of doing a full reload when the user reopens the tab
+      // — great for speed, but it restores the exact DOM state from when
+      // they left (splash already hidden), so the splash silently stops
+      // appearing on repeat opens. `pageshow` with `event.persisted` is the
+      // standard way to detect that restore and replay the splash so it
+      // still shows every time the app is opened, same as before.
+      window.addEventListener('pageshow', function(e) {
+        if (!e.persisted) return;
+        var splash = document.getElementById('app-splash');
+        if (!splash) return;
+        window.__splashStart = Date.now();
+        splash.style.display = 'flex';
+        window.__hideSplash();
+      });
     </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
