@@ -547,13 +547,29 @@ export default function KoyambeduOrderDetail() {
           )}
           <PayRow label="Confirmed Items Total" value={fmt(effective.confirmedItemsTotal || pricing.subtotal)} />
           {(effective.platformFee || pricing.platformFee || 0) > 0 && (
-            <PayRow label="Platform Fee" value={fmt(effective.platformFee || pricing.platformFee)} />
+            <PayRow
+              label="Platform Fee"
+              value={pricing.originalPlatformFee ? (
+                <>
+                  <span style={{ color: '#9ca3af', textDecoration: 'line-through', marginRight: 6 }}>{fmt(pricing.originalPlatformFee)}</span>
+                  {fmt(effective.platformFee || pricing.platformFee)}
+                </>
+              ) : fmt(effective.platformFee || pricing.platformFee)}
+            />
           )}
-          {(effective.packingLogisticsFee || 0) > 0 && (
-            <PayRow label="Packing & Logistics Fee" value={fmt(effective.packingLogisticsFee)} />
+          {(effective.packingLogisticsFee || pricing.packingLogisticsFee || 0) > 0 && (
+            <PayRow label="Packing & Logistics Fee" value={fmt(effective.packingLogisticsFee || pricing.packingLogisticsFee)} />
           )}
           {(effective.deliveryCharge || pricing.deliveryCharge || 0) > 0 && (
-            <PayRow label="Delivery Charge" value={fmt(effective.deliveryCharge || pricing.deliveryCharge)} />
+            <PayRow
+              label="Delivery Charge"
+              value={pricing.originalDeliveryCharge ? (
+                <>
+                  <span style={{ color: '#9ca3af', textDecoration: 'line-through', marginRight: 6 }}>{fmt(pricing.originalDeliveryCharge)}</span>
+                  {fmt(effective.deliveryCharge || pricing.deliveryCharge)}
+                </>
+              ) : fmt(effective.deliveryCharge || pricing.deliveryCharge)}
+            />
           )}
           <PayRow label="GST" value="0% (Exempt)" />
           {(effective.couponDiscount || pricing.discount || 0) > 0 && (

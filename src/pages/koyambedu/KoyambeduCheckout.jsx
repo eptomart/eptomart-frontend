@@ -263,7 +263,12 @@ const EmbeddedMapPicker = forwardRef(function EmbeddedMapPicker({ initialCenter,
         lat:          center.lat,
         lng:          center.lng,
         areaName:     shortAddr,
-        deliveryCharge: data.deliveryCharge ?? 149,
+        deliveryCharge:         data.deliveryCharge ?? 149,
+        originalDeliveryCharge: data.originalDeliveryCharge ?? null,
+        platformFee:            data.platformFee ?? 75,
+        originalPlatformFee:    data.originalPlatformFee ?? null,
+        packingCharge:          data.packingCharge ?? 0,
+        isSmallOrder:           data.isSmallOrder ?? false,
         distanceKm:   data.distanceKm ?? distKm,
       });
     } catch (err) {
@@ -470,7 +475,16 @@ export default function KoyambeduCheckout() {
         // Refresh delivery charge silently in the background.
         api.post('/koyambedu/check-delivery', { lat: userLocation.lat, lng: userLocation.lng })
           .then(({ data }) => {
-            if (data.available) setLocationData(ld => ({ ...ld, deliveryCharge: data.deliveryCharge ?? 149, distanceKm: data.distanceKm }));
+            if (data.available) setLocationData(ld => ({
+              ...ld,
+              deliveryCharge:         data.deliveryCharge ?? 149,
+              originalDeliveryCharge: data.originalDeliveryCharge ?? null,
+              platformFee:            data.platformFee ?? 75,
+              originalPlatformFee:    data.originalPlatformFee ?? null,
+              packingCharge:          data.packingCharge ?? 0,
+              isSmallOrder:           data.isSmallOrder ?? false,
+              distanceKm:             data.distanceKm,
+            }));
           })
           .catch(() => {});
         setStep(2);
@@ -625,11 +639,15 @@ export default function KoyambeduCheckout() {
       .catch(() => {});
   }, []);
 
-  const deliveryCharge = locationData?.deliveryCharge ?? 249;
+  const deliveryCharge         = locationData?.deliveryCharge ?? 249;
+  const originalDeliveryCharge = locationData?.originalDeliveryCharge ?? null;
   const distanceKm     = locationData?.distanceKm ?? null;
-  const platformFee    = 75; // ₹75 incl. 18% GST (SAC 9985)
+  const platformFee    = locationData?.platformFee ?? 75; // ₹75 incl. 18% GST (SAC 9985), or ₹25 for small orders
+  const originalPlatformFee = locationData?.originalPlatformFee ?? null;
+  const packingCharge  = locationData?.packingCharge ?? 0; // flat ₹35 for small orders only
+  const isSmallOrder   = locationData?.isSmallOrder ?? false;
   const couponDiscount = couponApplied?.discount || 0;
-  const baseTotal      = parseFloat((subtotal + deliveryCharge + platformFee - couponDiscount).toFixed(2));
+  const baseTotal      = parseFloat((subtotal + deliveryCharge + platformFee + packingCharge - couponDiscount).toFixed(2));
 
   // Mirror backend wallet logic: positive = discount, negative = extra charge
   // Only AVAILABLE balance (total − reserved) can be applied at checkout.
@@ -1566,10 +1584,29 @@ export default function KoyambeduCheckout() {
                         {distanceKm} km
                       </span>
                     )}
+                    {isSmallOrder && (
+                      <span className="text-[10px] bg-orange-50 text-orange-500 font-bold px-1.5 py-0.5 rounded-full">Small order deal</span>
+                    )}
                   </span>
-                  <span>₹{deliveryCharge}</span>
+                  <span>
+                    {originalDeliveryCharge != null && (
+                      <span className="text-gray-400 line-through mr-1.5">₹{originalDeliveryCharge}</span>
+                    )}
+                    <span className={originalDeliveryCharge != null ? 'text-green-600 font-bold' : ''}>₹{deliveryCharge}</span>
+                  </span>
                 </div>
-                <div className="flex justify-between text-gray-700 font-medium"><span>Platform Fee</span><span>₹{platformFee}</span></div>
+                <div className="flex justify-between text-gray-700 font-medium">
+                  <span>Platform Fee</span>
+                  <span>
+                    {originalPlatformFee != null && (
+                      <span className="text-gray-400 line-through mr-1.5">₹{originalPlatformFee}</span>
+                    )}
+                    <span className={originalPlatformFee != null ? 'text-green-600 font-bold' : ''}>₹{platformFee}</span>
+                  </span>
+                </div>
+                {packingCharge > 0 && (
+                  <div className="flex justify-between text-gray-700 font-medium"><span>Packing Charge</span><span>₹{packingCharge}</span></div>
+                )}
                 {couponDiscount > 0 && (
                   <div className="flex justify-between font-semibold text-green-600">
                     <span>Promo ({couponApplied?.code})</span><span>−₹{couponDiscount.toFixed(2)}</span>
