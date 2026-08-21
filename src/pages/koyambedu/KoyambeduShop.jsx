@@ -140,6 +140,11 @@ export default function KoyambeduShop() {
   // category/sort should never overwrite the newer results, and should
   // never be treated as a "duplicate" of the current request.
   const requestIdRef = useRef(0);
+  // Frozen grouping state for groupedProducts — see comment there. Reset
+  // whenever the active filter combination changes (new search/category/sort
+  // means a genuinely new product set, so grouping should recompute fresh).
+  const freqRef = useRef(null);
+  const groupKeyCacheRef = useRef(new Map());
 
   const search       = searchParams.get('search')   || '';
   const categoryId   = searchParams.get('category') || '';
@@ -177,6 +182,11 @@ export default function KoyambeduShop() {
   // Restore cached results for this exact filter combination instead of
   // always re-fetching page 1 — see shopStateCache comment above.
   useEffect(() => {
+    // New filter combination → the grouping computed for the old product
+    // set no longer applies; let groupedProducts rebuild it from scratch.
+    freqRef.current = null;
+    groupKeyCacheRef.current = new Map();
+
     const cached = shopStateCache.get(cacheKey);
     if (cached && Date.now() - cached.savedAt < SHOP_CACHE_TTL_MS) {
       setProducts(cached.products);
@@ -278,17 +288,35 @@ export default function KoyambeduShop() {
   // The word with the highest frequency in a product's name is its "category key"
   // (e.g. "apple" from "Pink Lady Apple", "Fuji Apple", "Gala Apple" all share "apple").
   // Sort by that key → all apples together, all grapes together, etc.
+  //
+  // Why items used to reshuffle while browsing: this used to rebuild the
+  // word-frequency map from `products` on every render of this memo, and
+  // `products` grows on every infinite-scroll page load. Adding a new page
+  // changes word frequencies (e.g. page 2 adds ten more "tomato" products),
+  // which changes the *group key* — and therefore the sort position — of
+  // products that were already on screen. The grid visibly reordered itself
+  // every time the user scrolled far enough to trigger the next page.
+  //
+  // Fix: freeze the frequency map after it's built from the first batch, and
+  // cache each product's resolved group key by _id the first time it's seen.
+  // Later batches are grouped using that same frozen table, so a product's
+  // position, once assigned, never changes again for this filter/search/sort
+  // combination. The refs are reset whenever the active filters change (see
+  // effect below) since a new product set should get a fresh grouping.
   const groupedProducts = useMemo(() => {
     if (!products.length) return products;
 
-    // Build word-frequency map across all product names
-    const freq = {};
-    for (const p of products) {
-      const words = p.name.toLowerCase()
-        .split(/[\s\-/]+/)
-        .filter(w => w.length > 2 && !IGNORE_WORDS.has(w));
-      for (const w of new Set(words)) freq[w] = (freq[w] || 0) + 1;
+    if (freqRef.current === null) {
+      const freq = {};
+      for (const p of products) {
+        const words = p.name.toLowerCase()
+          .split(/[\s\-/]+/)
+          .filter(w => w.length > 2 && !IGNORE_WORDS.has(w));
+        for (const w of new Set(words)) freq[w] = (freq[w] || 0) + 1;
+      }
+      freqRef.current = freq;
     }
+    const freq = freqRef.current;
 
     // Pick the most-shared word in a name as the group key
     const groupKey = (name) => {
@@ -300,9 +328,15 @@ export default function KoyambeduShop() {
         (freq[w] || 0) > (freq[best] || 0) ? w : best, words[0]);
     };
 
+    for (const p of products) {
+      if (!groupKeyCacheRef.current.has(p._id)) {
+        groupKeyCacheRef.current.set(p._id, groupKey(p.name));
+      }
+    }
+
     return [...products].sort((a, b) => {
-      const ka = groupKey(a.name);
-      const kb = groupKey(b.name);
+      const ka = groupKeyCacheRef.current.get(a._id);
+      const kb = groupKeyCacheRef.current.get(b._id);
       if (ka !== kb) return ka.localeCompare(kb);
       return a.name.localeCompare(b.name);
     });
