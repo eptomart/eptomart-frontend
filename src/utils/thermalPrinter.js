@@ -1,0 +1,274 @@
+// ============================================
+// THERMAL PRINTER UTILITY — Koyambedu Daily admin "Printer" tab
+// ============================================
+// New, standalone module. Not imported anywhere except the new PrinterTab —
+// touching nothing else in the app.
+//
+// Two independent ways to get a packing slip onto paper:
+//   1. Direct Bluetooth (Web Bluetooth + hand-rolled ESC/POS bytes) — one
+//      tap, no OS print dialog, but only works in Chrome/Edge on Android,
+//      Windows, macOS, ChromeOS, Linux. NOT supported in Safari/iOS at all
+//      (Apple has never implemented Web Bluetooth in WebKit) — that's a
+//      platform limitation, not a bug here.
+//   2. System print dialog fallback — formats the same content as a 58mm-
+//      wide HTML slip and sends it through the browser's normal Print
+//      dialog. Works everywhere (any device/browser), as long as the
+//      thermal printer is set up as a system printer (its usual USB/
+//      Bluetooth driver, one-time setup on that device).
+//
+// Whether the direct-Bluetooth path actually pairs with a given printer
+// depends on the printer speaking Bluetooth LOW ENERGY (BLE/GATT) rather
+// than classic Bluetooth SPP — Web Bluetooth can only talk to BLE devices.
+// Cheap "mini portable" printers sold with their own phone app (like the
+// Seznik line) sometimes use classic SPP, which no website can reach; if
+// that's the case here, path 2 above always still works as a safety net.
+
+// ── ESC/POS byte-level primitives ─────────────────────────────
+const ESC = 0x1b, GS = 0x1d, LF = 0x0a;
+
+const encoder = new TextEncoder(); // UTF-8 — most modern thermal-printer
+// firmware (including generic Chinese ESC/POS clones) accepts UTF-8 fine for
+// plain ASCII text; non-ASCII characters (e.g. ₹) are replaced before
+// encoding since older firmware/codepages can mangle them (see asciiSafe()).
+
+const asciiSafe = (s = '') => String(s).replace(/₹/g, 'Rs.').replace(/[^\x00-\x7F]/g, '');
+
+const bytesInit        = () => new Uint8Array([ESC, 0x40]); // ESC @ — initialize printer
+const bytesBoldOn       = () => new Uint8Array([ESC, 0x45, 1]);
+const bytesBoldOff      = () => new Uint8Array([ESC, 0x45, 0]);
+const bytesAlignLeft    = () => new Uint8Array([ESC, 0x61, 0]);
+const bytesAlignCenter  = () => new Uint8Array([ESC, 0x61, 1]);
+const bytesDoubleOn     = () => new Uint8Array([GS, 0x21, 0x11]);  // double width+height
+const bytesDoubleOff    = () => new Uint8Array([GS, 0x21, 0x00]);
+const bytesFeed         = (lines = 1) => new Uint8Array(Array(lines).fill(LF));
+const bytesText         = (s) => encoder.encode(asciiSafe(s));
+
+const concatBytes = (chunks) => {
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) { out.set(c, offset); offset += c.length; }
+  return out;
+};
+
+const LINE_WIDTH = 32; // characters per line on a 58mm printer (approx, Font A)
+
+/** Pad/truncate a name + qty into one aligned line, like "Tomato .... 3 kg" */
+const itemLine = (name, qtyUnit) => {
+  const left  = String(name).slice(0, LINE_WIDTH - qtyUnit.length - 1);
+  const dots  = '.'.repeat(Math.max(1, LINE_WIDTH - left.length - qtyUnit.length));
+  return `${left}${dots}${qtyUnit}`;
+};
+
+/**
+ * Build the raw ESC/POS byte stream for one order's packing slip.
+ * @param {object} order - { orderId, placedAt, customerName, customerPhone, deliverySlot, items }
+ * @param {object} [opts] - { itemsOnly: array of item names to restrict to (pack label mode) }
+ */
+function buildEscPosSlip(order, opts = {}) {
+  const items = opts.itemsOnly
+    ? order.items.filter(it => opts.itemsOnly.includes(it.name))
+    : order.items;
+  const isLabel = !!opts.itemsOnly;
+
+  const chunks = [bytesInit(), bytesAlignCenter(), bytesDoubleOn(), bytesBoldOn()];
+  chunks.push(bytesText('EPTOMART\n'));
+  chunks.push(bytesDoubleOff());
+  chunks.push(bytesText(isLabel ? 'PACK LABEL\n' : 'PACKING SLIP\n'));
+  chunks.push(bytesBoldOff(), bytesAlignLeft());
+  chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
+  chunks.push(bytesText(`Order: ${order.orderId}\n`));
+  chunks.push(bytesText(`Date: ${new Date(order.placedAt).toLocaleDateString('en-IN')}\n`));
+  if (order.deliverySlot) chunks.push(bytesText(`Slot: ${order.deliverySlot}\n`));
+  chunks.push(bytesBoldOn());
+  chunks.push(bytesText(`Customer: ${order.customerName}\n`));
+  chunks.push(bytesBoldOff());
+  if (order.customerPhone) chunks.push(bytesText(`Phone: ${order.customerPhone}\n`));
+  chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
+
+  if (isLabel) {
+    chunks.push(bytesText(`Items in this pack (${items.length}):\n\n`));
+  }
+
+  items.forEach((it, i) => {
+    const qtyUnit = `${it.qty}${it.unit ? ' ' + it.unit : ''}`;
+    chunks.push(bytesText(`${i + 1}. ${itemLine(it.name, qtyUnit)}\n`));
+    if (it.gradeName) chunks.push(bytesText(`   Grade: ${it.gradeName}\n`));
+  });
+
+  chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
+
+  if (!isLabel) {
+    // Hand-tick boxes for the packer — plain ASCII brackets, not unicode
+    // checkbox glyphs, so it renders correctly on every printer regardless
+    // of codepage (unicode ☐ often prints as "?" on cheap ESC/POS firmware).
+    chunks.push(bytesText('\n[   ] PACKED\n\n[   ] DELIVERY CHECKED\n'));
+  }
+
+  chunks.push(bytesFeed(4)); // leave room to tear the paper by hand (no auto-cutter assumed)
+  return concatBytes(chunks);
+}
+
+// ── Web Bluetooth connection ──────────────────────────────────
+// Best-effort: cheap ESC/POS-over-BLE printers use several different vendor
+// service/characteristic UUIDs depending on the internal Bluetooth module.
+// We list the common ones as optionalServices and pick whichever writable
+// characteristic the paired device actually exposes.
+const CANDIDATE_SERVICE_UUIDS = [
+  '000018f0-0000-1000-8000-00805f9b34fb', // common generic printer service
+  '49535343-fe7d-4ae5-8fa9-9fafd205e455', // Microchip RN4870/BM70-based modules (common in clone printers)
+  '0000ffe0-0000-1000-8000-00805f9b34fb', // HM-10-style BLE serial module
+  '0000ff00-0000-1000-8000-00805f9b34fb', // another common clone-printer service
+];
+
+let connectedDevice = null;
+let writeCharacteristic = null;
+
+function isBluetoothSupported() {
+  return typeof navigator !== 'undefined' && !!navigator.bluetooth;
+}
+
+/**
+ * Opens the browser's Bluetooth device picker and connects to whichever
+ * writable GATT characteristic it can find. Throws if unsupported, if the
+ * user cancels the picker, or if no writable characteristic is found (most
+ * likely meaning the printer only speaks classic Bluetooth SPP, which Web
+ * Bluetooth cannot reach — use the print-dialog fallback in that case).
+ */
+async function connectPrinter() {
+  if (!isBluetoothSupported()) {
+    throw new Error('Web Bluetooth is not supported in this browser. Use the "Print via System Dialog" option instead.');
+  }
+
+  const device = await navigator.bluetooth.requestDevice({
+    acceptAllDevices: true,
+    optionalServices: CANDIDATE_SERVICE_UUIDS,
+  });
+
+  const server = await device.gatt.connect();
+  let found = null;
+  for (const uuid of CANDIDATE_SERVICE_UUIDS) {
+    try {
+      const service = await server.getPrimaryService(uuid);
+      const characteristics = await service.getCharacteristics();
+      found = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse) || null;
+      if (found) break;
+    } catch { /* this service isn't present on this device — try the next one */ }
+  }
+
+  if (!found) {
+    device.gatt.disconnect();
+    throw new Error('Connected, but no printable Bluetooth service was found on this device. It may use classic Bluetooth (not supported by browsers) — use "Print via System Dialog" instead.');
+  }
+
+  connectedDevice = device;
+  writeCharacteristic = found;
+  device.addEventListener('gattserverdisconnected', () => {
+    connectedDevice = null;
+    writeCharacteristic = null;
+  });
+
+  return { name: device.name || 'Thermal Printer' };
+}
+
+function disconnectPrinter() {
+  if (connectedDevice?.gatt?.connected) connectedDevice.gatt.disconnect();
+  connectedDevice = null;
+  writeCharacteristic = null;
+}
+
+function isPrinterConnected() {
+  return !!(connectedDevice?.gatt?.connected && writeCharacteristic);
+}
+
+/** Writes bytes in small chunks — most BLE printers reject large single writes. */
+async function writeBytesChunked(bytes, chunkSize = 100) {
+  if (!isPrinterConnected()) throw new Error('Printer not connected');
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.slice(i, i + chunkSize);
+    if (writeCharacteristic.properties.writeWithoutResponse) {
+      await writeCharacteristic.writeValueWithoutResponse(chunk);
+    } else {
+      await writeCharacteristic.writeValue(chunk);
+    }
+    await new Promise(r => setTimeout(r, 20)); // let the printer's small buffer drain
+  }
+}
+
+/** Print a full order slip or (if itemsOnly is given) a pack label over Bluetooth. */
+async function printViaBluetooth(order, opts = {}) {
+  const bytes = buildEscPosSlip(order, opts);
+  await writeBytesChunked(bytes);
+}
+
+// ── System print-dialog fallback (works on any device/browser) ─
+function buildPrintHtml(order, opts = {}) {
+  const items = opts.itemsOnly
+    ? order.items.filter(it => opts.itemsOnly.includes(it.name))
+    : order.items;
+  const isLabel = !!opts.itemsOnly;
+
+  const rows = items.map((it, i) => `
+    <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px dashed #ccc">
+      <span>${i + 1}. ${it.name}${it.gradeName ? ` (${it.gradeName})` : ''}</span>
+      <span>${it.qty}${it.unit ? ' ' + it.unit : ''}</span>
+    </div>`).join('');
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  @page { size: 58mm auto; margin: 2mm; }
+  body { font-family: 'Courier New', monospace; font-size: 12px; width: 54mm; margin: 0; }
+  .center { text-align: center; }
+  hr { border: none; border-top: 1px dashed #000; }
+</style></head><body>
+  <div class="center"><strong style="font-size:16px">EPTOMART</strong><br>${isLabel ? 'PACK LABEL' : 'PACKING SLIP'}</div>
+  <hr>
+  <div>Order: ${order.orderId}</div>
+  <div>Date: ${new Date(order.placedAt).toLocaleDateString('en-IN')}</div>
+  ${order.deliverySlot ? `<div>Slot: ${order.deliverySlot}</div>` : ''}
+  <div><strong>Customer: ${order.customerName}</strong></div>
+  ${order.customerPhone ? `<div>Phone: ${order.customerPhone}</div>` : ''}
+  <hr>
+  ${isLabel ? `<div>Items in this pack (${items.length}):</div><br>` : ''}
+  ${rows}
+  <hr>
+  ${!isLabel ? `
+    <div style="margin-top:10px">[&nbsp;&nbsp;&nbsp;] PACKED</div>
+    <div style="margin-top:8px">[&nbsp;&nbsp;&nbsp;] DELIVERY CHECKED</div>
+  ` : ''}
+</body></html>`;
+}
+
+/**
+ * Prints via the browser's normal Print dialog using a hidden iframe (never
+ * navigates away from the admin page). Works on any device/browser as long
+ * as the thermal printer is available as a system printer.
+ */
+function printViaDialog(order, opts = {}) {
+  const html = buildPrintHtml(order, opts);
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+  iframe.onload = () => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    setTimeout(() => document.body.removeChild(iframe), 1000);
+  };
+}
+
+export {
+  isBluetoothSupported,
+  connectPrinter,
+  disconnectPrinter,
+  isPrinterConnected,
+  printViaBluetooth,
+  printViaDialog,
+};
