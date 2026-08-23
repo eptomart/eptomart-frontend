@@ -36,7 +36,17 @@ const IMG_PLACEHOLDER = null;
 // key and restoring it on remount fixes both symptoms without touching the
 // grouping algorithm itself.
 const shopStateCache = new Map(); // key -> { products, total, page, scrollY, savedAt }
-const SHOP_CACHE_TTL_MS = 5 * 60 * 1000; // stale after 5 min — refetch fresh instead
+// No TTL: the cache is only ever invalidated by an actual filter change (see
+// the effect below) or a full page reload (which clears this module-scope
+// Map naturally). A 5-minute expiry used to live here, so returning from a
+// product's detail page after spending "too long" reading it would silently
+// discard the cache, re-fetch only page 1, and re-run the grouping over a
+// smaller/different product set — which reshuffled the grid into a
+// different order than the one the customer had just been browsing. Since
+// browsing a product page for a few minutes is completely normal, this
+// caused the exact "comes back to a different row" complaint. The cache is
+// cheap (just the already-fetched product list) and always reflects exactly
+// what the customer was looking at, so there's no good reason to expire it.
 
 /**
  * Lowest per-unit final price across all variants.
@@ -194,7 +204,7 @@ export default function KoyambeduShop() {
     groupKeyCacheRef.current = new Map();
 
     const cached = shopStateCache.get(cacheKey);
-    if (cached && Date.now() - cached.savedAt < SHOP_CACHE_TTL_MS) {
+    if (cached) {
       setProducts(cached.products);
       setTotal(cached.total);
       setPage(cached.page);
