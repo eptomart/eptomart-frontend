@@ -318,11 +318,27 @@ const PayRow = ({ label, value, bold, color, divider }) => (
   </div>
 );
 
+// Pull the actual invoice markup out of buildInvoiceHtml's full standalone
+// document (used as-is for the downloaded/printed file) and drop the
+// "Print / Close" toolbar, which doesn't make sense inside the in-app modal
+// (the modal has its own Back/Download buttons; window.close() from inside
+// an iframe/inline content wouldn't close the modal anyway).
+const extractInvoiceBody = (fullHtml) => {
+  const match = fullHtml.match(/<body>([\s\S]*)<\/body>/i);
+  let inner = match ? match[1] : fullHtml;
+  inner = inner.replace(/<div class="no-print"[\s\S]*?<\/div>\s*/i, '');
+  return inner;
+};
+
 // ── In-app invoice viewer ─────────────────────
-// Renders the invoice HTML in an <iframe srcDoc>, entirely inside the
-// current page — no window.open, no new browsing context, so it works the
-// same whether the app is open in a normal browser tab or installed as a
-// home-screen PWA on iOS/Android (where window.open is unreliable).
+// Renders the invoice content directly in the page's own DOM (plain
+// scrollable div, no iframe) — no window.open, no new browsing context, and
+// no iframe at all. iOS standalone home-screen PWAs (WKWebView) are known to
+// collapse iframes to zero height inside flex/fixed-position containers and
+// can restrict nested browsing contexts, which made the previous iframe-based
+// viewer work in a normal browser tab (e.g. Chrome) but show blank inside the
+// installed "app". Plain DOM content has no such height/context dependency —
+// it just grows naturally and scrolls like the rest of the page.
 const InvoiceViewerModal = ({ view, onClose }) => {
   if (!view) return null;
 
@@ -339,8 +355,9 @@ const InvoiceViewerModal = ({ view, onClose }) => {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#fff', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#fff', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
       <div style={{
+        position: 'sticky', top: 0, zIndex: 1, background: '#fff',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '10px 14px', borderBottom: '1px solid #e5e7eb',
         paddingTop: 'max(10px, env(safe-area-inset-top))',
@@ -352,7 +369,10 @@ const InvoiceViewerModal = ({ view, onClose }) => {
           <FiDownload size={14} /> Download
         </button>
       </div>
-      <iframe title="Invoice" srcDoc={view.html} style={{ flex: 1, border: 0, width: '100%' }} />
+      <div
+        style={{ fontFamily: 'Arial, sans-serif', fontSize: 13, color: '#111', padding: '16px 12px 48px', maxWidth: 860, margin: '0 auto' }}
+        dangerouslySetInnerHTML={{ __html: extractInvoiceBody(view.html) }}
+      />
     </div>
   );
 };
