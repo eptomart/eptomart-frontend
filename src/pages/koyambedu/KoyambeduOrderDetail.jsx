@@ -286,8 +286,30 @@ ${disclaimer}
 
 const openInvoice = (order, type) => {
   const html = buildInvoiceHtml(order, type);
-  const blob = new Blob([html], { type: 'text/html' });
-  window.open(URL.createObjectURL(blob), '_blank');
+  // Why some phones couldn't open/download the invoice: this used to do
+  // window.open(URL.createObjectURL(blob), '_blank'). Blob URLs are scoped
+  // to the document that created them — on iOS Safari (and many in-app
+  // browsers like the WhatsApp/Instagram webview, plus several Android
+  // WebView-based browsers) that scope doesn't reliably carry over into the
+  // brand-new top-level browsing context window.open() creates, so the new
+  // tab just showed a blank/failed page with nothing to save.
+  //
+  // Fix: open the window synchronously first (required anyway to dodge
+  // popup blockers, since window.open must happen directly inside the click
+  // handler before any async work), then write the HTML straight into that
+  // window's own document — no blob URL, no cross-context handoff.
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  } else {
+    // Popup blocked outright (some locked-down Android browsers) — fall
+    // back to navigating the current tab to a blob URL so the invoice is
+    // still reachable; the user can use "Share"/"Print > Save as PDF" from there.
+    const blob = new Blob([html], { type: 'text/html' });
+    window.location.href = URL.createObjectURL(blob);
+  }
 };
 
 const shareInvoice = async (order, type) => {
