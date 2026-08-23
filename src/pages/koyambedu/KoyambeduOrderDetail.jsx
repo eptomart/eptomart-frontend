@@ -284,42 +284,21 @@ ${disclaimer}
 </body></html>`;
 };
 
-const openInvoice = (order, type) => {
-  const html = buildInvoiceHtml(order, type);
-  // Why some phones couldn't open/download the invoice: this used to do
-  // window.open(URL.createObjectURL(blob), '_blank'). Blob URLs are scoped
-  // to the document that created them — on iOS Safari (and many in-app
-  // browsers like the WhatsApp/Instagram webview, plus several Android
-  // WebView-based browsers) that scope doesn't reliably carry over into the
-  // brand-new top-level browsing context window.open() creates, so the new
-  // tab just showed a blank/failed page with nothing to save.
-  //
-  // Fix: open the window synchronously first (required anyway to dodge
-  // popup blockers, since window.open must happen directly inside the click
-  // handler before any async work), then write the HTML straight into that
-  // window's own document — no blob URL, no cross-context handoff.
-  const win = window.open('', '_blank');
-  if (win) {
-    win.document.open();
-    win.document.write(html);
-    win.document.close();
-  } else {
-    // Popup blocked outright (some locked-down Android browsers) — fall
-    // back to navigating the current tab to a blob URL so the invoice is
-    // still reachable; the user can use "Share"/"Print > Save as PDF" from there.
-    const blob = new Blob([html], { type: 'text/html' });
-    window.location.href = URL.createObjectURL(blob);
-  }
-};
-
-const shareInvoice = async (order, type) => {
-  const html = buildInvoiceHtml(order, type);
-  if (navigator.share) {
-    const file = new File([new Blob([html], { type: 'text/html' })], `Invoice-${order.orderId}.html`, { type: 'text/html' });
-    try { await navigator.share({ files: [file], title: `Invoice ${order.orderId}` }); return; } catch {}
-  }
-  openInvoice(order, type);
-};
+// Why some phones still couldn't see the invoice after the previous fix
+// (window.open('', '_blank') + document.write): that still relies on the
+// browser creating a brand-new top-level browsing context/tab. Koyambedu
+// Daily is installed by many customers as a home-screen PWA, and standalone
+// installed web apps on BOTH iOS Safari and Android Chrome/WebView are known
+// to silently fail (or no-op) on window.open — there's no tab UI for a
+// standalone app to open a new tab into, so the call either returns null or
+// returns a "phantom" window object that never actually displays anything.
+// This affects installed-app users on any platform, not just iPhone.
+//
+// Fix: never open a new window/tab at all. Show the invoice inside the app
+// itself (a full-screen in-app viewer, see InvoiceViewerModal below) — this
+// works identically everywhere because it never needs a separate browsing
+// context. "Download" is a real anchor-download action (also works without a
+// new window), and "Share" still tries the native share sheet first.
 
 // ── Reusable card ─────────────────────────────
 const Card = ({ title, titleColor = '#065f46', badge, children }) => (
@@ -339,6 +318,45 @@ const PayRow = ({ label, value, bold, color, divider }) => (
   </div>
 );
 
+// ── In-app invoice viewer ─────────────────────
+// Renders the invoice HTML in an <iframe srcDoc>, entirely inside the
+// current page — no window.open, no new browsing context, so it works the
+// same whether the app is open in a normal browser tab or installed as a
+// home-screen PWA on iOS/Android (where window.open is unreliable).
+const InvoiceViewerModal = ({ view, onClose }) => {
+  if (!view) return null;
+
+  const download = () => {
+    const blob = new Blob([view.html], { type: 'text/html' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `Invoice-${view.orderId}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#fff', display: 'flex', flexDirection: 'column' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 14px', borderBottom: '1px solid #e5e7eb',
+        paddingTop: 'max(10px, env(safe-area-inset-top))',
+      }}>
+        <button onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#374151', fontWeight: 600, fontSize: 14 }}>
+          <FiArrowLeft size={18} /> Back
+        </button>
+        <button onClick={download} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f4941c', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontWeight: 700, fontSize: 13 }}>
+          <FiDownload size={14} /> Download
+        </button>
+      </div>
+      <iframe title="Invoice" srcDoc={view.html} style={{ flex: 1, border: 0, width: '100%' }} />
+    </div>
+  );
+};
+
 export default function KoyambeduOrderDetail() {
   const { orderId } = useParams();
   const navigate    = useNavigate();
@@ -349,6 +367,25 @@ export default function KoyambeduOrderDetail() {
   const [timeline,     setTimeline]     = useState(null); // null = not loaded yet
   const [loading,      setLoading]      = useState(true);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [invoiceView,  setInvoiceView]  = useState(null); // { html, orderId } — see InvoiceViewerModal
+
+  const viewInvoice = (ord, type) => {
+    setInvoiceView({ html: buildInvoiceHtml(ord, type), orderId: ord.orderId });
+  };
+
+  const shareInvoice = async (ord, type) => {
+    const html = buildInvoiceHtml(ord, type);
+    if (navigator.share) {
+      const file = new File([new Blob([html], { type: 'text/html' })], `Invoice-${ord.orderId}.html`, { type: 'text/html' });
+      try {
+        if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: `Invoice ${ord.orderId}` });
+          return;
+        }
+      } catch { /* user cancelled or share failed — fall through to in-app viewer */ }
+    }
+    viewInvoice(ord, type);
+  };
 
   const isAdmin   = location.pathname.includes('koyambedu-admin') || location.pathname.includes('admin');
   const isSA      = location.pathname.includes('seller-admin');
@@ -636,7 +673,7 @@ export default function KoyambeduOrderDetail() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 
             {/* Proforma — always available */}
-            <button onClick={() => openInvoice(order, 'proforma')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, cursor: 'pointer', width: '100%' }}>
+            <button onClick={() => viewInvoice(order, 'proforma')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, cursor: 'pointer', width: '100%' }}>
               <FiFileText size={18} style={{ color: '#3b82f6' }} />
               <div style={{ flex: 1, textAlign: 'left' }}>
                 <p style={{ fontSize: 13, fontWeight: 600, color: '#1d4ed8', margin: 0 }}>Proforma Invoice</p>
@@ -647,7 +684,7 @@ export default function KoyambeduOrderDetail() {
 
             {/* Order Confirmation — after Super Admin approval */}
             {order.invoices?.confirmation?.isAvailable && (
-              <button onClick={() => openInvoice(order, 'confirmation')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, cursor: 'pointer', width: '100%' }}>
+              <button onClick={() => viewInvoice(order, 'confirmation')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, cursor: 'pointer', width: '100%' }}>
                 <FiCheckCircle size={18} style={{ color: '#16a34a' }} />
                 <div style={{ flex: 1, textAlign: 'left' }}>
                   <p style={{ fontSize: 13, fontWeight: 600, color: '#065f46', margin: 0 }}>Order Confirmation</p>
@@ -659,7 +696,7 @@ export default function KoyambeduOrderDetail() {
 
             {/* Final Tax Invoice — only after delivery */}
             {order.invoices?.tax?.isAvailable && isDelivered && (
-              <button onClick={() => openInvoice(order, 'tax')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', width: '100%' }}>
+              <button onClick={() => viewInvoice(order, 'tax')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', width: '100%' }}>
                 <FiFileText size={18} style={{ color: '#065f46' }} />
                 <div style={{ flex: 1, textAlign: 'left' }}>
                   <p style={{ fontSize: 13, fontWeight: 600, color: '#065f46', margin: 0 }}>Final Tax Invoice</p>
@@ -852,6 +889,8 @@ export default function KoyambeduOrderDetail() {
         </Card>
 
       </div>
+
+      <InvoiceViewerModal view={invoiceView} onClose={() => setInvoiceView(null)} />
     </div>
   );
 }
