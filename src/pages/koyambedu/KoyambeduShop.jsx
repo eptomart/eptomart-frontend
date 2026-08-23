@@ -28,9 +28,10 @@ const IMG_PLACEHOLDER = null;
 // active filter combination (search/category/sort). Previously, navigating
 // into a product's detail page and back re-mounted this component, which
 // always re-fetched only page 1 — discarding any extra pages the user had
-// scrolled through and their scroll position. Because groupedProducts groups
-// items by the most frequent shared word ACROSS THE CURRENT DATASET, running
-// that grouping over a smaller page-1-only dataset than before produced a
+// scrolled through and their scroll position. Because the "same-type
+// produce together" grouping (see processBatch below) depends on the whole
+// dataset seen so far, running it over a smaller page-1-only dataset than
+// before produced a
 // different sort order every time, which looked like the grid was randomly
 // reshuffling. Caching the fetched state (and scroll position) per filter
 // key and restoring it on remount fixes both symptoms without touching the
@@ -143,7 +144,7 @@ export default function KoyambeduShop() {
   // Near-matches from the main Eptomart marketplace for the current search —
   // shown as a small strip so searching "wherever" in the app covers the
   // whole Eptomart ecosystem, not just Koyambedu Daily. Never touches the
-  // Koyambedu grid's own pagination/sort order (see groupedProducts above).
+  // Koyambedu grid's own pagination/sort order (see processBatch below).
   const [alsoOnEptomart, setAlsoOnEptomart] = useState([]);
 
   // Infinite scroll — use callback ref so observer attaches when sentinel mounts
@@ -155,15 +156,72 @@ export default function KoyambeduShop() {
   // category/sort should never overwrite the newer results, and should
   // never be treated as a "duplicate" of the current request.
   const requestIdRef = useRef(0);
-  // Frozen grouping state for groupedProducts — see comment there. Reset
-  // whenever the active filter combination changes (new search/category/sort
-  // means a genuinely new product set, so grouping should recompute fresh).
-  const freqRef = useRef(null);
+  // Grouping state for "same-type produce together" — see processBatch()
+  // below. freq is cumulative across every page loaded for the current
+  // filter combination; groupKeyCache permanently remembers each product's
+  // assigned group key by _id once set, and seenIds dedupes across pages.
+  // Reset whenever the active filter combination changes (a genuinely new
+  // product set) or the cache is restored (see effect below).
+  const freqRef = useRef({});
   const groupKeyCacheRef = useRef(new Map());
+  const seenIdsRef = useRef(new Set());
 
   const search       = searchParams.get('search')   || '';
   const categoryId   = searchParams.get('category') || '';
   const sortBy       = searchParams.get('sort')      || 'default';
+
+  // Words to ignore when finding the category keyword (colours, sizes, common adjectives)
+  const IGNORE_WORDS = useMemo(() => new Set([
+    'red','green','yellow','white','black','blue','purple','pink','brown','golden','dark','light',
+    'big','small','large','medium','mini','baby','giant',
+    'fresh','organic','raw','dry','dried','ripe','sweet','sour','tender',
+    'local','country','hybrid','imported','village',
+    'new','old','the','and','or','of','in','on','at',
+  ]), []);
+
+  const nameWords = (name) => name.toLowerCase()
+    .split(/[\s\-/]+/)
+    .filter(w => w.length > 2 && !IGNORE_WORDS.has(w));
+
+  // Group same-type produce together regardless of where the type word
+  // appears in the name (e.g. "apple" from "Pink Lady Apple", "Fuji Apple").
+  //
+  // Why items used to jump during infinite scroll: this used to re-sort the
+  // FULL accumulated product list every time a new page loaded. A new page's
+  // items get inserted wherever their group key alphabetically belongs —
+  // almost always somewhere in the MIDDLE of the list, not the end — which
+  // pushed already-visible items into different rows every time the user
+  // scrolled far enough to trigger the next page load.
+  //
+  // Fix: never re-sort products that are already on screen. Each new batch
+  // is sorted ONLY among itself (using the cumulative word-frequency table
+  // so far) and appended after everything already shown — existing items'
+  // positions are permanently fixed the moment they're first rendered.
+  const processBatch = (items) => {
+    if (!items.length) return items;
+    for (const p of items) {
+      for (const w of new Set(nameWords(p.name))) {
+        freqRef.current[w] = (freqRef.current[w] || 0) + 1;
+      }
+    }
+    const groupKey = (name) => {
+      const words = nameWords(name);
+      if (!words.length) return name.toLowerCase();
+      return words.reduce((best, w) =>
+        (freqRef.current[w] || 0) > (freqRef.current[best] || 0) ? w : best, words[0]);
+    };
+    for (const p of items) {
+      if (!groupKeyCacheRef.current.has(p._id)) {
+        groupKeyCacheRef.current.set(p._id, groupKey(p.name));
+      }
+    }
+    return [...items].sort((a, b) => {
+      const ka = groupKeyCacheRef.current.get(a._id);
+      const kb = groupKeyCacheRef.current.get(b._id);
+      if (ka !== kb) return ka.localeCompare(kb);
+      return a.name.localeCompare(b.name);
+    });
+  };
 
   const loadProducts = useCallback(async (pg = 1) => {
     const reqId = ++requestIdRef.current;
@@ -174,10 +232,17 @@ export default function KoyambeduShop() {
       if (categoryId) params.set('category', categoryId);
       const { data } = await api.get(`/koyambedu/products?${params}`);
       if (reqId !== requestIdRef.current) return; // superseded by a newer request — ignore stale response
-      setProducts(pg === 1 ? data.products : prev => {
-        const seen = new Set(prev.map(p => p._id));
-        return [...prev, ...data.products.filter(p => !seen.has(p._id))];
-      });
+
+      if (pg === 1) {
+        seenIdsRef.current = new Set();
+        freqRef.current = {};
+        groupKeyCacheRef.current = new Map();
+      }
+      const freshItems = data.products.filter(p => !seenIdsRef.current.has(p._id));
+      freshItems.forEach(p => seenIdsRef.current.add(p._id));
+      const sortedBatch = processBatch(freshItems); // mutates freq/groupKey refs, returns items sorted among themselves only
+
+      setProducts(prev => pg === 1 ? sortedBatch : [...prev, ...sortedBatch]);
       setTotal(data.total);
       setPage(pg);
       if (pg === 1) setAlsoOnEptomart(data.alsoOnEptomart || []);
@@ -186,7 +251,7 @@ export default function KoyambeduShop() {
     } finally {
       if (reqId === requestIdRef.current) setLoading(false);
     }
-  }, [search, categoryId, sortBy]);
+  }, [search, categoryId, sortBy]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchCart();
@@ -199,12 +264,18 @@ export default function KoyambeduShop() {
   // always re-fetching page 1 — see shopStateCache comment above.
   useEffect(() => {
     // New filter combination → the grouping computed for the old product
-    // set no longer applies; let groupedProducts rebuild it from scratch.
-    freqRef.current = null;
+    // set no longer applies; let processBatch rebuild it from scratch.
+    freqRef.current = {};
     groupKeyCacheRef.current = new Map();
 
     const cached = shopStateCache.get(cacheKey);
     if (cached) {
+      // Cached products are already in their final, fixed display order —
+      // restore as-is (no re-sort) so nothing jumps. seenIds is repopulated
+      // so any further infinite-scroll pages correctly dedupe against them;
+      // freq/groupKeyCache start fresh and only affect NEW items loaded
+      // from here on, never the already-placed ones.
+      seenIdsRef.current = new Set(cached.products.map(p => p._id));
       setProducts(cached.products);
       setTotal(cached.total);
       setPage(cached.page);
@@ -212,6 +283,7 @@ export default function KoyambeduShop() {
       // Wait for the restored grid to paint before jumping to the saved scroll position
       requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, cached.scrollY || 0)));
     } else {
+      seenIdsRef.current = new Set();
       setAlsoOnEptomart([]);
       loadProducts(1);
     }
@@ -291,74 +363,6 @@ export default function KoyambeduShop() {
   };
 
   const activeCategory = categories.find(c => c._id === categoryId);
-
-  // Words to ignore when finding the category keyword (colours, sizes, common adjectives)
-  const IGNORE_WORDS = useMemo(() => new Set([
-    'red','green','yellow','white','black','blue','purple','pink','brown','golden','dark','light',
-    'big','small','large','medium','mini','baby','giant',
-    'fresh','organic','raw','dry','dried','ripe','sweet','sour','tender',
-    'local','country','hybrid','imported','village',
-    'new','old','the','and','or','of','in','on','at',
-  ]), []);
-
-  // Group same-type produce together regardless of where the type word appears in the name.
-  // Strategy: count how often each word appears across all product names.
-  // The word with the highest frequency in a product's name is its "category key"
-  // (e.g. "apple" from "Pink Lady Apple", "Fuji Apple", "Gala Apple" all share "apple").
-  // Sort by that key → all apples together, all grapes together, etc.
-  //
-  // Why items used to reshuffle while browsing: this used to rebuild the
-  // word-frequency map from `products` on every render of this memo, and
-  // `products` grows on every infinite-scroll page load. Adding a new page
-  // changes word frequencies (e.g. page 2 adds ten more "tomato" products),
-  // which changes the *group key* — and therefore the sort position — of
-  // products that were already on screen. The grid visibly reordered itself
-  // every time the user scrolled far enough to trigger the next page.
-  //
-  // Fix: freeze the frequency map after it's built from the first batch, and
-  // cache each product's resolved group key by _id the first time it's seen.
-  // Later batches are grouped using that same frozen table, so a product's
-  // position, once assigned, never changes again for this filter/search/sort
-  // combination. The refs are reset whenever the active filters change (see
-  // effect below) since a new product set should get a fresh grouping.
-  const groupedProducts = useMemo(() => {
-    if (!products.length) return products;
-
-    if (freqRef.current === null) {
-      const freq = {};
-      for (const p of products) {
-        const words = p.name.toLowerCase()
-          .split(/[\s\-/]+/)
-          .filter(w => w.length > 2 && !IGNORE_WORDS.has(w));
-        for (const w of new Set(words)) freq[w] = (freq[w] || 0) + 1;
-      }
-      freqRef.current = freq;
-    }
-    const freq = freqRef.current;
-
-    // Pick the most-shared word in a name as the group key
-    const groupKey = (name) => {
-      const words = name.toLowerCase()
-        .split(/[\s\-/]+/)
-        .filter(w => w.length > 2 && !IGNORE_WORDS.has(w));
-      if (!words.length) return name.toLowerCase();
-      return words.reduce((best, w) =>
-        (freq[w] || 0) > (freq[best] || 0) ? w : best, words[0]);
-    };
-
-    for (const p of products) {
-      if (!groupKeyCacheRef.current.has(p._id)) {
-        groupKeyCacheRef.current.set(p._id, groupKey(p.name));
-      }
-    }
-
-    return [...products].sort((a, b) => {
-      const ka = groupKeyCacheRef.current.get(a._id);
-      const kb = groupKeyCacheRef.current.get(b._id);
-      if (ka !== kb) return ka.localeCompare(kb);
-      return a.name.localeCompare(b.name);
-    });
-  }, [products, IGNORE_WORDS]);
 
   return (
     <div className="min-h-screen bg-[#f5f5f7]" style={{ paddingBottom: itemCount > 0 ? 160 : 100 }}>
@@ -500,7 +504,7 @@ export default function KoyambeduShop() {
                Products sorted so same-type produce groups together
                (all Apples adjacent, all Grapes adjacent, etc.) */}
           <div className="px-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {groupedProducts.map(p => <ProductCard key={p._id} product={p} />)}
+            {products.map(p => <ProductCard key={p._id} product={p} />)}
           </div>
 
           {!loading && products.length === 0 && (
