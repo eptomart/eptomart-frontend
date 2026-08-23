@@ -130,6 +130,11 @@ export default function KoyambeduShop() {
   const [loading,    setLoading]    = useState(false);
   const [total,      setTotal]      = useState(0);
   const [page,       setPage]       = useState(1);
+  // Near-matches from the main Eptomart marketplace for the current search —
+  // shown as a small strip so searching "wherever" in the app covers the
+  // whole Eptomart ecosystem, not just Koyambedu Daily. Never touches the
+  // Koyambedu grid's own pagination/sort order (see groupedProducts above).
+  const [alsoOnEptomart, setAlsoOnEptomart] = useState([]);
 
   // Infinite scroll — use callback ref so observer attaches when sentinel mounts
   const sentinelRef  = useRef(null);
@@ -165,6 +170,7 @@ export default function KoyambeduShop() {
       });
       setTotal(data.total);
       setPage(pg);
+      if (pg === 1) setAlsoOnEptomart(data.alsoOnEptomart || []);
     } catch {
       if (reqId === requestIdRef.current) toast.error('Failed to load products');
     } finally {
@@ -192,9 +198,11 @@ export default function KoyambeduShop() {
       setProducts(cached.products);
       setTotal(cached.total);
       setPage(cached.page);
+      setAlsoOnEptomart(cached.alsoOnEptomart || []);
       // Wait for the restored grid to paint before jumping to the saved scroll position
       requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, cached.scrollY || 0)));
     } else {
+      setAlsoOnEptomart([]);
       loadProducts(1);
     }
   }, [search, categoryId, sortBy]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -204,8 +212,8 @@ export default function KoyambeduShop() {
   useEffect(() => {
     if (!products.length) return;
     const prevScrollY = shopStateCache.get(cacheKey)?.scrollY || 0;
-    shopStateCache.set(cacheKey, { products, total, page, scrollY: prevScrollY, savedAt: Date.now() });
-  }, [products, total, page, cacheKey]);
+    shopStateCache.set(cacheKey, { products, total, page, alsoOnEptomart, scrollY: prevScrollY, savedAt: Date.now() });
+  }, [products, total, page, alsoOnEptomart, cacheKey]);
 
   // Track live scroll position and persist it into the cache when the user
   // navigates away (e.g. taps a product), so returning restores both the
@@ -450,6 +458,33 @@ export default function KoyambeduShop() {
           <p className="px-4 text-xs text-gray-500 mb-3">
             {loading ? 'Loading...' : `${total} product${total !== 1 ? 's' : ''} found`}
           </p>
+
+          {/* ── Also on Eptomart — ecosystem-wide search results ──
+               Searching here also checks the main Eptomart marketplace, since
+               a customer typing "vegetables" or a brand name shouldn't have
+               to know which vertical stocks it. Kept as a separate row so it
+               never disturbs Koyambedu's own grid/pagination/sort order. */}
+          {!loading && search && alsoOnEptomart.length > 0 && (
+            <div className="px-4 mb-4">
+              <p className="text-[11px] font-bold text-orange-600 mb-2">🛒 Also on Eptomart</p>
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                {alsoOnEptomart.map(p => (
+                  <button key={p._id} onClick={() => navigate(p.link)}
+                    className="flex-shrink-0 w-28 bg-white rounded-xl border border-orange-100 overflow-hidden text-left">
+                    <div className="w-full h-20 bg-gray-100">
+                      {p.image
+                        ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>}
+                    </div>
+                    <div className="p-1.5">
+                      <p className="text-[11px] font-semibold text-gray-800 line-clamp-1">{p.name}</p>
+                      {p.price ? <p className="text-[11px] font-bold text-orange-500">₹{p.price}</p> : null}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── Product grid ──
                Products sorted so same-type produce groups together

@@ -51,18 +51,20 @@ function MobileSearchOverlay({ onClose }) {
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
+  // Single unified, ecosystem-wide search call — near-match/typo-tolerant,
+  // spans the main Eptomart marketplace + Koyambedu Daily (see
+  // GET /api/search). Split its results by `vertical` so the rest of this
+  // component (rendering, submit routing, "notify team" logic) is unchanged.
   useEffect(() => {
     clearTimeout(debounce.current);
     if (query.trim().length < 3) { setEptResults([]); setKbdResults([]); setLoading(false); return; }
     setLoading(true);
     debounce.current = setTimeout(async () => {
       try {
-        const [eptRes, kbdRes] = await Promise.allSettled([
-          api.get(`/products/search?q=${encodeURIComponent(query)}&limit=6`),
-          api.get(`/koyambedu/products?search=${encodeURIComponent(query)}&limit=5&page=1&context=navbar`),
-        ]);
-        setEptResults(eptRes.status === 'fulfilled' ? eptRes.value.data.products || [] : []);
-        setKbdResults(kbdRes.status === 'fulfilled' ? kbdRes.value.data.products || [] : []);
+        const { data } = await api.get(`/search?q=${encodeURIComponent(query)}&limit=11`);
+        const all = data.results || [];
+        setEptResults(all.filter(r => r.vertical === 'main').slice(0, 6));
+        setKbdResults(all.filter(r => r.vertical === 'koyambedu').slice(0, 5));
       } catch { setEptResults([]); setKbdResults([]); } finally { setLoading(false); }
     }, 300);
   }, [query]);
@@ -84,18 +86,13 @@ function MobileSearchOverlay({ onClose }) {
     // emails for products (e.g. "onion") that do exist but just hadn't
     // finished loading in the dropdown at submit time.
     try {
-      const [eptRes, kbdRes] = await Promise.allSettled([
-        api.get(`/products/search?q=${encodeURIComponent(v)}&limit=1`),
-        api.get(`/koyambedu/products?search=${encodeURIComponent(v)}&limit=1&page=1&context=navbar`),
-      ]);
-      const eptOk = eptRes.status === 'fulfilled';
-      const kbdOk = kbdRes.status === 'fulfilled';
-      const eptCount = eptOk ? (eptRes.value.data.products || []).length : 0;
-      const kbdCount = kbdOk ? (kbdRes.value.data.products || []).length : 0;
-      // Only notify if BOTH searches actually completed and BOTH found nothing —
-      // if either request failed, treat it as "unknown" rather than "not found"
-      // so a network blip doesn't also trigger a false email.
-      if (eptOk && kbdOk && eptCount === 0 && kbdCount === 0) {
+      const res = await api.get(`/search?q=${encodeURIComponent(v)}&limit=1`);
+      const count = (res.data.results || []).length;
+      // Only notify if the request actually completed and found nothing at
+      // all (not even a fuzzy near-match) — if it failed, treat it as
+      // "unknown" rather than "not found" so a network blip doesn't also
+      // trigger a false email.
+      if (count === 0) {
         await api.post('/settings/product-inquiry', { query: v, name: user?.name || '', email: user?.email || '' });
       }
     } catch {}
@@ -159,24 +156,20 @@ function MobileSearchOverlay({ onClose }) {
                 <div className="px-4 py-2 bg-green-50 border-b border-green-100">
                   <p className="text-[11px] font-bold text-green-700">🥬 Koyambedu Daily</p>
                 </div>
-                {kbdResults.map(p => {
-                  const img   = p.images?.find(i => i.isPrimary)?.url || p.images?.[0]?.url;
-                  const price = p.lowestUnitPrice ?? p.currentPrice;
-                  return (
-                    <button key={p._id} onClick={() => { onClose(); navigate(`/koyambedu/product/${p._id}`); }}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-green-50 active:bg-green-100 transition-colors text-left"
-                      style={{ borderBottom: '1px solid #f0fdf4' }}>
-                      <div className="w-11 h-11 rounded-2xl overflow-hidden bg-green-50 flex-shrink-0">
-                        {img ? <img src={img} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-2xl">🌿</div>}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 line-clamp-1">{p.name}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{p.category?.name || 'Koyambedu Daily'}</p>
-                      </div>
-                      {price ? <span className="text-sm font-bold text-green-600 flex-shrink-0">₹{price}</span> : null}
-                    </button>
-                  );
-                })}
+                {kbdResults.map(p => (
+                  <button key={p._id} onClick={() => { onClose(); navigate(p.link); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-green-50 active:bg-green-100 transition-colors text-left"
+                    style={{ borderBottom: '1px solid #f0fdf4' }}>
+                    <div className="w-11 h-11 rounded-2xl overflow-hidden bg-green-50 flex-shrink-0">
+                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-2xl">🌿</div>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 line-clamp-1">{p.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">Koyambedu Daily</p>
+                    </div>
+                    {p.price ? <span className="text-sm font-bold text-green-600 flex-shrink-0">₹{p.price}</span> : null}
+                  </button>
+                ))}
                 <button onClick={() => submit(query, 'koyambedu')}
                   className="w-full flex items-center gap-2 px-4 py-3 text-sm font-bold border-b border-gray-100"
                   style={{ color: '#16a34a', background: '#f0fdf4' }}>
@@ -194,21 +187,20 @@ function MobileSearchOverlay({ onClose }) {
                   </div>
                 )}
                 {eptResults.map(p => (
-                  <button key={p._id} onClick={() => { onClose(); navigate(`/product/${p.slug || p._id}`); }}
+                  <button key={p._id} onClick={() => { onClose(); navigate(p.link); }}
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
                     style={{ borderBottom: '1px solid #f9fafb' }}>
                     <div className="w-12 h-12 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0">
-                      {p.images?.[0]?.url
-                        ? <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" />
+                      {p.image
+                        ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
                         : <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>
                       }
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-800 line-clamp-1">{p.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{p.category?.name || ''}</p>
                     </div>
                     <span className="text-sm font-bold flex-shrink-0" style={{ color: '#f4941c' }}>
-                      ₹{(p.discountPrice || p.price)?.toLocaleString('en-IN')}
+                      ₹{p.price?.toLocaleString('en-IN')}
                     </span>
                   </button>
                 ))}
@@ -294,18 +286,17 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  // Desktop live search — min 3 chars, searches both Eptomart + Koyambedu
+  // Desktop live search — unified, ecosystem-wide, near-match search (see
+  // GET /api/search) split by vertical, same as the mobile overlay above.
   useEffect(() => {
     if (query.trim().length < 3) { setResults([]); setKbdResults([]); return; }
     clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(async () => {
       try {
-        const [eptRes, kbdRes] = await Promise.allSettled([
-          api.get(`/products/search?q=${encodeURIComponent(query)}&limit=5`),
-          api.get(`/koyambedu/products?search=${encodeURIComponent(query)}&limit=4&page=1&context=navbar`),
-        ]);
-        const ept = eptRes.status === 'fulfilled' ? eptRes.value.data.products || [] : [];
-        const kbd = kbdRes.status === 'fulfilled' ? kbdRes.value.data.products || [] : [];
+        const { data } = await api.get(`/search?q=${encodeURIComponent(query)}&limit=9`);
+        const all = data.results || [];
+        const ept = all.filter(r => r.vertical === 'main').slice(0, 5);
+        const kbd = all.filter(r => r.vertical === 'koyambedu').slice(0, 4);
         setResults(ept);
         setKbdResults(kbd);
         if (ept.length > 0 || kbd.length > 0) setDropOpen(true);
@@ -405,24 +396,20 @@ export default function Navbar() {
                       <div className="px-3 py-1.5 bg-green-50 border-b border-green-100 flex items-center justify-between">
                         <p className="text-[10px] font-bold text-green-700">🥬 Koyambedu Daily</p>
                       </div>
-                      {kbdResults.map(p => {
-                        const img   = p.images?.find(i => i.isPrimary)?.url || p.images?.[0]?.url;
-                        const price = p.lowestUnitPrice ?? p.currentPrice;
-                        return (
-                          <button key={p._id}
-                            onClick={() => { setQuery(''); setResults([]); setKbdResults([]); setDropOpen(false); navigate(`/koyambedu/product/${p._id}`); }}
-                            className="w-full flex items-center gap-3 px-4 py-2 hover:bg-green-50 transition-colors border-b border-gray-50 text-left">
-                            <div className="w-9 h-9 rounded-xl overflow-hidden bg-green-50 flex-shrink-0">
-                              {img ? <img src={img} alt="" className="w-full h-full object-cover" /> : <span className="flex items-center justify-center w-full h-full text-green-200">🌿</span>}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-gray-800 line-clamp-1">{p.name}</p>
-                              <p className="text-[10px] text-gray-400">{p.category?.name || 'Koyambedu Daily'}</p>
-                            </div>
-                            {price ? <span className="text-xs font-bold text-green-600 flex-shrink-0">₹{price}</span> : null}
-                          </button>
-                        );
-                      })}
+                      {kbdResults.map(p => (
+                        <button key={p._id}
+                          onClick={() => { setQuery(''); setResults([]); setKbdResults([]); setDropOpen(false); navigate(p.link); }}
+                          className="w-full flex items-center gap-3 px-4 py-2 hover:bg-green-50 transition-colors border-b border-gray-50 text-left">
+                          <div className="w-9 h-9 rounded-xl overflow-hidden bg-green-50 flex-shrink-0">
+                            {p.image ? <img src={p.image} alt="" className="w-full h-full object-cover" /> : <span className="flex items-center justify-center w-full h-full text-green-200">🌿</span>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-gray-800 line-clamp-1">{p.name}</p>
+                            <p className="text-[10px] text-gray-400">Koyambedu Daily</p>
+                          </div>
+                          {p.price ? <span className="text-xs font-bold text-green-600 flex-shrink-0">₹{p.price}</span> : null}
+                        </button>
+                      ))}
                       <button onClick={() => submit(query, 'koyambedu')}
                         className="w-full px-4 py-1.5 text-[10px] font-bold text-green-600 bg-green-50 border-b border-gray-100 flex items-center gap-2">
                         <FiSearch size={10} /> All Koyambedu results for "{query}"
@@ -438,15 +425,15 @@ export default function Navbar() {
                         </div>
                       )}
                       {results.map(p => (
-                        <Link key={p._id} to={`/product/${p.slug || p._id}`}
+                        <Link key={p._id} to={p.link}
                           className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 transition-colors border-b border-gray-50 last:border-0"
                           onClick={() => { setQuery(''); setResults([]); setKbdResults([]); setDropOpen(false); }}>
                           <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
-                            {p.images?.[0]?.url ? <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl">📦</div>}
+                            {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl">📦</div>}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-800 line-clamp-1">{p.name}</p>
-                            <p className="text-xs font-bold" style={{ color: '#f4941c' }}>₹{(p.discountPrice || p.price)?.toLocaleString('en-IN')}</p>
+                            <p className="text-xs font-bold" style={{ color: '#f4941c' }}>₹{p.price?.toLocaleString('en-IN')}</p>
                           </div>
                         </Link>
                       ))}

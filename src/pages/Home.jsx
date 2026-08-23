@@ -870,12 +870,12 @@ function MobileSearchBar() {
     debounce.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const [kbdRes, eptRes] = await Promise.allSettled([
-          api.get(`/koyambedu/products?search=${encodeURIComponent(query)}&limit=5&page=1`),
-          api.get(`/products/search?q=${encodeURIComponent(query)}&limit=5`),
-        ]);
-        const kbd = kbdRes.status === 'fulfilled' ? kbdRes.value.data.products || [] : [];
-        const ept = eptRes.status === 'fulfilled' ? eptRes.value.data.products || [] : [];
+        // Single unified, ecosystem-wide search call — near-match/typo-tolerant,
+        // spans the main Eptomart marketplace + Koyambedu Daily (see GET /api/search).
+        const { data } = await api.get(`/search?q=${encodeURIComponent(query)}&limit=10`);
+        const all = data.results || [];
+        const kbd = all.filter(r => r.vertical === 'koyambedu').slice(0, 5);
+        const ept = all.filter(r => r.vertical === 'main').slice(0, 5);
         setKbdResults(kbd);
         setEptResults(ept);
         setOpen(kbd.length > 0 || ept.length > 0 || query.length >= 3);
@@ -911,18 +911,13 @@ function MobileSearchBar() {
     // Trusting stale state here was firing false "not found" emails for
     // products (e.g. "onion") that do exist but hadn't finished loading yet.
     try {
-      const [kbdRes, eptRes] = await Promise.allSettled([
-        api.get(`/koyambedu/products?search=${encodeURIComponent(v)}&limit=1&page=1`),
-        api.get(`/products/search?q=${encodeURIComponent(v)}&limit=1`),
-      ]);
-      const kbdOk = kbdRes.status === 'fulfilled';
-      const eptOk = eptRes.status === 'fulfilled';
-      const kbdCount = kbdOk ? (kbdRes.value.data.products || []).length : 0;
-      const eptCount = eptOk ? (eptRes.value.data.products || []).length : 0;
-      // Only notify if BOTH searches actually completed and BOTH found nothing —
-      // a failed request is treated as "unknown", not "not found", so a
-      // network blip doesn't also trigger a false email.
-      if (kbdOk && eptOk && kbdCount === 0 && eptCount === 0) {
+      const res = await api.get(`/search?q=${encodeURIComponent(v)}&limit=1`);
+      const count = (res.data.results || []).length;
+      // Only notify if the request actually completed and found nothing at
+      // all (not even a fuzzy near-match) — a failed request is treated as
+      // "unknown", not "not found", so a network blip doesn't also trigger
+      // a false email.
+      if (count === 0) {
         await api.post('/settings/product-inquiry', { query: v, name: user?.name || '', email: user?.email || '', phone: user?.phone || '' });
         toast.success(`We've noted your search for "${v}" — we'll source it soon! 🙌`, { duration: 4500, icon: '📬' });
       }
@@ -966,23 +961,19 @@ function MobileSearchBar() {
                       <div className="px-4 py-1.5 bg-green-50 border-b border-green-100">
                         <p className="text-[10px] font-bold text-green-700">🥬 Koyambedu Daily</p>
                       </div>
-                      {kbdResults.map(p => {
-                        const img = p.images?.find(i => i.isPrimary)?.url || p.images?.[0]?.url;
-                        const price = p.lowestUnitPrice ?? p.currentPrice;
-                        return (
-                          <button key={p._id} onClick={() => { setOpen(false); navigate(`/koyambedu/product/${p._id}`); }}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-green-50 transition-colors text-left group">
-                            <div className="w-9 h-9 rounded-xl overflow-hidden bg-green-50 flex-shrink-0">
-                              {img ? <img src={imgThumb(img)} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-green-200">🌿</div>}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-gray-800 line-clamp-1 group-hover:text-green-700">{p.name}</p>
-                              <p className="text-[10px] text-gray-500">{p.category?.name || 'Koyambedu Daily'}</p>
-                            </div>
-                            {price ? <span className="text-xs font-bold text-green-600 flex-shrink-0">₹{price}</span> : null}
-                          </button>
-                        );
-                      })}
+                      {kbdResults.map(p => (
+                        <button key={p._id} onClick={() => { setOpen(false); navigate(p.link); }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-green-50 transition-colors text-left group">
+                          <div className="w-9 h-9 rounded-xl overflow-hidden bg-green-50 flex-shrink-0">
+                            {p.image ? <img src={imgThumb(p.image)} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-green-200">🌿</div>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-gray-800 line-clamp-1 group-hover:text-green-700">{p.name}</p>
+                            <p className="text-[10px] text-gray-500">Koyambedu Daily</p>
+                          </div>
+                          {p.price ? <span className="text-xs font-bold text-green-600 flex-shrink-0">₹{p.price}</span> : null}
+                        </button>
+                      ))}
                       <button onClick={() => submit(query, 'koyambedu')} className="w-full px-4 py-2 text-xs font-bold text-green-600 border-b border-gray-100 hover:bg-green-50 transition-colors text-left flex items-center gap-2">
                         <FiSearch size={12} /> See all Koyambedu results for "{query}"
                       </button>
@@ -995,16 +986,15 @@ function MobileSearchBar() {
                         <p className="text-[10px] font-bold text-orange-600">🛒 Eptomart</p>
                       </div>
                       {eptResults.map(p => (
-                        <button key={p._id} onClick={() => { setOpen(false); navigate(`/product/${p.slug || p._id}`); }}
+                        <button key={p._id} onClick={() => { setOpen(false); navigate(p.link); }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 transition-colors text-left group">
                           <div className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
-                            {p.images?.[0]?.url ? <img src={imgThumb(p.images[0].url)} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><FiPackage size={18} className="text-gray-400" /></div>}
+                            {p.image ? <img src={imgThumb(p.image)} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><FiPackage size={18} className="text-gray-400" /></div>}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-gray-800 line-clamp-1 group-hover:text-orange-600">{p.name}</p>
-                            <p className="text-[10px] text-gray-500">{p.category?.name || ''}</p>
                           </div>
-                          <span className="text-xs font-bold text-orange-500 flex-shrink-0">₹{(p.discountPrice || p.price)?.toLocaleString('en-IN')}</span>
+                          <span className="text-xs font-bold text-orange-500 flex-shrink-0">₹{p.price?.toLocaleString('en-IN')}</span>
                         </button>
                       ))}
                       <button onClick={() => submit(query, 'eptomart')} className="w-full px-4 py-2.5 text-xs font-bold text-orange-500 border-t border-gray-100 hover:bg-orange-50 transition-colors text-left flex items-center gap-2">

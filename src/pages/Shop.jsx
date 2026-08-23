@@ -32,6 +32,9 @@ export default function Shop() {
   const [categoryId,   setCategoryId]   = useState('');
   const [activeCat,    setActiveCat]    = useState(null); // full category object
   const [showFilters,  setShowFilters]  = useState(false);
+  // Near-matches from Koyambedu Daily for the current search — searching here
+  // covers the whole Eptomart ecosystem, not just this marketplace catalog.
+  const [alsoOnKoyambedu, setAlsoOnKoyambedu] = useState([]);
 
   const subCatFilter = searchParams.get('sub') || '';
 
@@ -97,6 +100,7 @@ export default function Shop() {
         setProducts(data.products || []);
         setTotal(data.total || 0);
         setTotalPages(data.totalPages || 1);
+        setAlsoOnKoyambedu(data.alsoOnKoyambedu || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -344,6 +348,33 @@ export default function Shop() {
                     <button onClick={() => setFilters(f => ({ ...f, inStock: '' }))}><FiX size={11} /></button>
                   </span>
                 )}
+              </div>
+            )}
+
+            {/* ── Also on Koyambedu Daily — ecosystem-wide search results ──
+                 Searching here also checks Koyambedu Daily, since a customer
+                 typing "tomato" or "vegetables" shouldn't have to know which
+                 vertical stocks it. Kept as a separate row so it never
+                 disturbs this page's own grid/pagination/sort order. */}
+            {!loading && searchQuery && alsoOnKoyambedu.length > 0 && (
+              <div className="mb-4">
+                <p className="text-[11px] font-bold text-green-700 mb-2">🥬 Also on Koyambedu Daily</p>
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                  {alsoOnKoyambedu.map(p => (
+                    <Link key={p._id} to={p.link}
+                      className="flex-shrink-0 w-28 bg-white rounded-xl border border-green-100 overflow-hidden text-left">
+                      <div className="w-full h-20 bg-gray-100">
+                        {p.image
+                          ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                          : <div className="w-full h-full flex items-center justify-center text-2xl">🌿</div>}
+                      </div>
+                      <div className="p-1.5">
+                        <p className="text-[11px] font-semibold text-gray-800 line-clamp-1">{p.name}</p>
+                        {p.price ? <p className="text-[11px] font-bold text-green-600">₹{p.price}</p> : null}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
 
