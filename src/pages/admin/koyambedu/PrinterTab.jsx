@@ -67,7 +67,10 @@ function OrderRow({ order, onPrintFull, onPrintSelected, onReset }) {
         style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
       >
         <div>
-          <div style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>{order.orderId} — {order.customerName}</div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>
+            {order.orderId} — {order.customerName}
+            {order.customerArea && <span style={{ fontWeight: 500, color: '#6b7280' }}> ({order.customerArea})</span>}
+          </div>
           <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
             {new Date(order.placedAt).toLocaleString('en-IN')} · {order.items.length} item{order.items.length !== 1 ? 's' : ''} · {order.orderStatus}
             {allPacked && <span style={{ color: '#065f46', fontWeight: 700 }}> · All packed ✓</span>}
