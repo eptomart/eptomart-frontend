@@ -53,12 +53,30 @@ const concatBytes = (chunks) => {
 
 const LINE_WIDTH = 32; // characters per line on a 58mm printer (approx, Font A)
 
-/** Pad/truncate a name + qty into one aligned line, like "Tomato .... 3 kg" */
-const itemLine = (name, qtyUnit) => {
-  const left  = String(name).slice(0, LINE_WIDTH - qtyUnit.length - 1);
-  const dots  = '.'.repeat(Math.max(1, LINE_WIDTH - left.length - qtyUnit.length));
-  return `${left}${dots}${qtyUnit}`;
+/**
+ * Build one exactly-LINE_WIDTH-character item line: "1. Tomato ....... 3 kg".
+ * The previous version measured the name/qty against LINE_WIDTH but then
+ * printed it with a separate "1. " / "12. " prefix tacked on afterwards —
+ * once the prefix was included the real line length went past the
+ * printer's physical character width, so the terminal wrapped mid-line and
+ * the unit (e.g. "kg") landed on its own line instead of staying aligned
+ * next to the quantity. Folding the prefix into the same width budget here
+ * fixes that for any item, including double-digit numbering (10., 11.…).
+ */
+const itemLine = (index, name, qtyUnit) => {
+  const prefix = `${index + 1}. `;
+  const maxNameLen = Math.max(3, LINE_WIDTH - prefix.length - qtyUnit.length - 1);
+  const truncated = String(name).length > maxNameLen
+    ? String(name).slice(0, maxNameLen - 1) + '.'
+    : String(name);
+  const dots = '.'.repeat(Math.max(1, LINE_WIDTH - prefix.length - truncated.length - qtyUnit.length));
+  return `${prefix}${truncated}${dots}${qtyUnit}`;
 };
+
+// Per-item checklist row — plain ASCII brackets, not unicode checkbox
+// glyphs, so it renders correctly on every printer regardless of codepage
+// (unicode ☐ often prints as "?" on cheap ESC/POS firmware).
+const ITEM_CHECKBOX_ROW = '   [ ] Packed   [ ] Delivered';
 
 /**
  * Build the raw ESC/POS byte stream for one order's packing slip.
@@ -92,19 +110,18 @@ function buildEscPosSlip(order, opts = {}) {
 
   items.forEach((it, i) => {
     const qtyUnit = `${it.qty}${it.unit ? ' ' + it.unit : ''}`;
-    chunks.push(bytesText(`${i + 1}. ${itemLine(it.name, qtyUnit)}\n`));
+    chunks.push(bytesText(`${itemLine(i, it.name, qtyUnit)}\n`));
     if (it.gradeName) chunks.push(bytesText(`   Grade: ${it.gradeName}\n`));
+    // Packed/Delivered checkboxes per item (not just once at the end) — the
+    // packer ticks each item off individually while packing, and again when
+    // it's checked out for delivery, rather than one checkbox covering the
+    // whole order. Pack labels (isLabel) skip these — they're stuck on a
+    // pack for identification, not used as a packing checklist.
+    if (!isLabel) chunks.push(bytesText(`${ITEM_CHECKBOX_ROW}\n`));
+    chunks.push(bytesText('\n'));
   });
 
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
-
-  if (!isLabel) {
-    // Hand-tick boxes for the packer — plain ASCII brackets, not unicode
-    // checkbox glyphs, so it renders correctly on every printer regardless
-    // of codepage (unicode ☐ often prints as "?" on cheap ESC/POS firmware).
-    chunks.push(bytesText('\n[   ] PACKED\n\n[   ] DELIVERY CHECKED\n'));
-  }
-
   chunks.push(bytesFeed(4)); // leave room to tear the paper by hand (no auto-cutter assumed)
   return concatBytes(chunks);
 }
@@ -208,10 +225,17 @@ function buildPrintHtml(order, opts = {}) {
     : order.items;
   const isLabel = !!opts.itemsOnly;
 
+  // flex-shrink:0 + white-space:nowrap on the qty column keeps quantity+unit
+  // on the same line as the name (never wraps to its own line); the name
+  // column truncates with an ellipsis instead of wrapping and pushing the
+  // qty/unit out of alignment on the narrow receipt width.
   const rows = items.map((it, i) => `
-    <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px dashed #ccc">
-      <span>${i + 1}. ${it.name}${it.gradeName ? ` (${it.gradeName})` : ''}</span>
-      <span>${it.qty}${it.unit ? ' ' + it.unit : ''}</span>
+    <div style="padding:2px 0;border-bottom:1px dashed #ccc">
+      <div style="display:flex;justify-content:space-between;font-size:12px">
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:6px">${i + 1}. ${it.name}${it.gradeName ? ` (${it.gradeName})` : ''}</span>
+        <span style="flex-shrink:0;white-space:nowrap">${it.qty}${it.unit ? ' ' + it.unit : ''}</span>
+      </div>
+      ${!isLabel ? '<div style="font-size:11px;margin:3px 0 1px 8px">[&nbsp;&nbsp;] Packed&nbsp;&nbsp;&nbsp;[&nbsp;&nbsp;] Delivered</div>' : ''}
     </div>`).join('');
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8">
@@ -232,10 +256,6 @@ function buildPrintHtml(order, opts = {}) {
   ${isLabel ? `<div>Items in this pack (${items.length}):</div><br>` : ''}
   ${rows}
   <hr>
-  ${!isLabel ? `
-    <div style="margin-top:10px">[&nbsp;&nbsp;&nbsp;] PACKED</div>
-    <div style="margin-top:8px">[&nbsp;&nbsp;&nbsp;] DELIVERY CHECKED</div>
-  ` : ''}
 </body></html>`;
 }
 
