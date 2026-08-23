@@ -80,7 +80,7 @@ const ITEM_CHECKBOX_ROW = '   [ ] Packed   [ ] Delivered';
 
 /**
  * Build the raw ESC/POS byte stream for one order's packing slip.
- * @param {object} order - { orderId, placedAt, customerName, customerPhone, customerArea, deliverySlot, items }
+ * @param {object} order - { orderId, placedAt, customerName, customerPhone, customerArea, customerAddress, deliverySlot, items }
  * @param {object} [opts] - { itemsOnly: array of item names to restrict to (pack label mode) }
  */
 function buildEscPosSlip(order, opts = {}) {
@@ -102,9 +102,14 @@ function buildEscPosSlip(order, opts = {}) {
   chunks.push(bytesText(`Customer: ${order.customerName}\n`));
   chunks.push(bytesBoldOff());
   if (order.customerPhone) chunks.push(bytesText(`Phone: ${order.customerPhone}\n`));
-  // Area/locality only — never the full private street address, which
-  // packers don't need on a slip that may pass through several hands.
-  if (order.customerArea) chunks.push(bytesText(`Location: ${order.customerArea}\n`));
+  // Full slip (stays with the order): print the full delivery address.
+  // Pack label (may be handled loosely, stuck on a single pack): print just
+  // the area/locality, not the full private street address.
+  if (!isLabel && order.customerAddress) {
+    chunks.push(bytesText(`Address: ${order.customerAddress}\n`)); // printer auto-wraps long lines
+  } else if (isLabel && order.customerArea) {
+    chunks.push(bytesText(`Location: ${order.customerArea}\n`));
+  }
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
 
   if (isLabel) {
@@ -255,7 +260,8 @@ function buildPrintHtml(order, opts = {}) {
   ${order.deliverySlot ? `<div>Slot: ${order.deliverySlot}</div>` : ''}
   <div><strong>Customer: ${order.customerName}</strong></div>
   ${order.customerPhone ? `<div>Phone: ${order.customerPhone}</div>` : ''}
-  ${order.customerArea ? `<div>Location: ${order.customerArea}</div>` : ''}
+  ${!isLabel && order.customerAddress ? `<div>Address: ${order.customerAddress}</div>` : ''}
+  ${isLabel && order.customerArea ? `<div>Location: ${order.customerArea}</div>` : ''}
   <hr>
   ${isLabel ? `<div>Items in this pack (${items.length}):</div><br>` : ''}
   ${rows}
