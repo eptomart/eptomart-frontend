@@ -96,7 +96,11 @@ function buildEscPosSlip(order, opts = {}) {
   chunks.push(bytesBoldOff(), bytesAlignLeft());
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
   chunks.push(bytesText(`Order: ${order.orderId}\n`));
-  chunks.push(bytesText(`Date: ${new Date(order.placedAt).toLocaleDateString('en-IN')}\n`));
+  // order.timeLabel is optional and only ever set by the Custom Print panel
+  // (a manually-entered date/time isn't a full timestamp worth trusting for
+  // display precision the way a real order's placedAt is) — real orders
+  // never set it, so their printed slips are completely unchanged.
+  chunks.push(bytesText(`Date: ${new Date(order.placedAt).toLocaleDateString('en-IN')}${order.timeLabel ? ' ' + order.timeLabel : ''}\n`));
   if (order.deliverySlot) chunks.push(bytesText(`Slot: ${order.deliverySlot}\n`));
   chunks.push(bytesBoldOn());
   chunks.push(bytesText(`Customer: ${order.customerName}\n`));
@@ -256,7 +260,7 @@ function buildPrintHtml(order, opts = {}) {
   <div class="center"><strong style="font-size:16px">EPTOMART</strong><br>${isLabel ? 'PACK LABEL' : 'PACKING SLIP'}</div>
   <hr>
   <div>Order: ${order.orderId}</div>
-  <div>Date: ${new Date(order.placedAt).toLocaleDateString('en-IN')}</div>
+  <div>Date: ${new Date(order.placedAt).toLocaleDateString('en-IN')}${order.timeLabel ? ' ' + order.timeLabel : ''}</div>
   ${order.deliverySlot ? `<div>Slot: ${order.deliverySlot}</div>` : ''}
   <div><strong>Customer: ${order.customerName}</strong></div>
   ${order.customerPhone ? `<div>Phone: ${order.customerPhone}</div>` : ''}

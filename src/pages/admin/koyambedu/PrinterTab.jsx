@@ -12,6 +12,7 @@ import {
   isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected,
   printViaBluetooth, printViaDialog,
 } from '../../../utils/thermalPrinter';
+import CustomPrintPanel from './CustomPrintPanel';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -276,6 +277,8 @@ export default function PrinterTab() {
               </button>
         )}
       </div>
+
+      <CustomPrintPanel doPrint={doPrint} />
 
       {/* Filters */}
       <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 14, marginBottom: 16 }}>
