@@ -104,10 +104,15 @@ export default function CustomPrintPanel({ doPrint }) {
   };
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, marginBottom: 16, overflow: 'hidden' }}>
+    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, marginBottom: 16 }}>
+      {/* No overflow:hidden on the outer card — it was clipping the
+          absolutely-positioned, scrollable product search dropdown below,
+          making the results list unscrollable/uninteractable. The header
+          button gets its own top corner radius instead, so the card still
+          looks correctly rounded without clipping the dropdown. */}
       <button
         onClick={() => setOpen(o => !o)}
-        style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+        style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: 'none', border: 'none', borderRadius: '12px 12px 0 0', cursor: 'pointer', textAlign: 'left' }}
       >
         <span style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>+ Custom Print</span>
         {open ? <FiChevronUp /> : <FiChevronDown />}
