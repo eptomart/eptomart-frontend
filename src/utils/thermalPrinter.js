@@ -367,6 +367,38 @@ const wrapItemLines = (index, name, qtyUnit) => {
 };
 
 /**
+ * Word-wraps a plain "Label: value" line so a long value (e.g. a full
+ * address like "Valasaravakkam, Chennai") never gets cut mid-word by the
+ * printer's own hardware auto-wrap — continuation lines are indented under
+ * the value so the label still reads cleanly.
+ */
+const wrapLabeled = (label, value, width = LINE_WIDTH) => {
+  const prefix = label ? `${label}: ` : '';
+  const indent = ' '.repeat(prefix.length);
+  const words = String(value).split(/\s+/).filter(Boolean);
+
+  const lines = [];
+  let current = prefix;
+  for (const word of words) {
+    const isEmpty = current === prefix || current === indent;
+    let candidate = isEmpty ? current + word : `${current} ${word}`;
+    if (candidate.length > width) {
+      if (!isEmpty) lines.push(current);
+      let rest = word;
+      while (rest.length > width - indent.length) {
+        lines.push(indent + rest.slice(0, width - indent.length));
+        rest = rest.slice(width - indent.length);
+      }
+      current = indent + rest;
+    } else {
+      current = candidate;
+    }
+  }
+  lines.push(current);
+  return lines;
+};
+
+/**
  * @param {object} bill - { billNo, dateStr, timeLabel, customerName, customerArea, items: [{name, unit, qty, price}] }
  */
 function buildCustomBillEscPos(bill) {
@@ -378,12 +410,17 @@ function buildCustomBillEscPos(bill) {
   chunks.push(bytesText('Koyambedu Daily\n'));
   chunks.push(bytesAlignLeft());
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
-  chunks.push(bytesText(`Bill No: ${bill.billNo}\n`));
-  chunks.push(bytesText(`Date: ${bill.dateStr}${bill.timeLabel ? ' ' + bill.timeLabel : ''}\n`));
+  for (const line of wrapLabeled('Bill No', bill.billNo)) chunks.push(bytesText(`${line}\n`));
+  for (const line of wrapLabeled('Date', `${bill.dateStr}${bill.timeLabel ? ' ' + bill.timeLabel : ''}`)) chunks.push(bytesText(`${line}\n`));
   chunks.push(bytesBoldOn());
-  chunks.push(bytesText(`Customer: ${bill.customerName}\n`));
+  for (const line of wrapLabeled('Customer', bill.customerName)) chunks.push(bytesText(`${line}\n`));
   chunks.push(bytesBoldOff());
-  if (bill.customerArea) chunks.push(bytesText(`Location: ${bill.customerArea}\n`));
+  // Address/area text is free-form and can easily run past one line — wrap
+  // on word boundaries instead of letting the printer hardware auto-wrap
+  // mid-word (that's what was cutting "Chennai" into "Chenna"/"i").
+  if (bill.customerArea) {
+    for (const line of wrapLabeled('Location', bill.customerArea)) chunks.push(bytesText(`${line}\n`));
+  }
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
 
   bill.items.forEach((it, i) => {
@@ -396,9 +433,12 @@ function buildCustomBillEscPos(bill) {
   });
 
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
-  chunks.push(bytesDoubleOn(), bytesBoldOn());
+  // Bold only (no double-width) for the total — double-width halves the
+  // usable characters per physical line, which was silently wrapping
+  // "TOTAL: Rs.1869.00" mid-number into "...1869.0" / "0" on this printer.
+  chunks.push(bytesBoldOn());
   chunks.push(bytesText(`TOTAL: ${fmtRs(grandTotal)}\n`));
-  chunks.push(bytesDoubleOff(), bytesBoldOff());
+  chunks.push(bytesBoldOff());
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
   chunks.push(bytesAlignCenter());
   chunks.push(bytesText('Thank you for your purchase!\n'));
