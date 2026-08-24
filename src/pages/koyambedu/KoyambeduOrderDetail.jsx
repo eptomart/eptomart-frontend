@@ -4,7 +4,7 @@
 // Shows: Items Ordered → Items Declined → Items Confirmed
 //        Payment Summary (from backend) → Timeline → Invoices
 // ============================================
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   FiArrowLeft, FiPackage, FiCheckCircle, FiClock, FiAlertTriangle,
@@ -41,6 +41,7 @@ const TIMELINE_LABELS = {
   dispatched:             '🚚 Out for Delivery',
   delivered:              '🏠 Delivered',
   order_cancelled:        '❌ Order Cancelled',
+  order_amended:          '➕ Items Added',
 };
 
 const fmt     = n => `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -377,6 +378,208 @@ const InvoiceViewerModal = ({ view, onClose }) => {
   );
 };
 
+// ── "Add More Items" — customer can top up an already-paid order with new
+// items or MORE of an item already on it (never fewer, never removed), paid
+// via a separate Razorpay charge for just what's added, up until the same
+// same-day cutoff used at checkout. Entirely additive to the order — see
+// koyambeduController.js's createAmendmentPayment/verifyAmendmentPayment,
+// which never touch an existing items/itemsOrdered row.
+function AddMoreItemsPanel({ order, onAdded }) {
+  const [eligibility, setEligibility] = useState(null); // null = still checking
+  const [open,        setOpen]        = useState(false);
+  const [query,       setQuery]       = useState('');
+  const [results,     setResults]     = useState([]);
+  const [searching,   setSearching]   = useState(false);
+  const [items,       setItems]       = useState([]); // { productId, name, unit, gradeKey, gradeName, qty, currentQty, minQty }
+  const [paying,      setPaying]      = useState(false);
+  const debounce = useRef(null);
+
+  useEffect(() => {
+    api.get(`/koyambedu/orders/${order._id}/amend/eligibility`)
+      .then(({ data }) => setEligibility(data))
+      .catch(() => setEligibility({ allowed: false, reason: 'Could not check eligibility' }));
+  }, [order._id]);
+
+  // Qty already on the order per product+grade (declined rows were refunded
+  // and don't block re-adding).
+  const currentQtyMap = useMemo(() => {
+    const m = new Map();
+    for (const it of order.items || []) {
+      if (it.itemStatus === 'declined') continue;
+      const pid = it.product?._id || it.product;
+      const key = `${pid}__${it.gradeKey || ''}`;
+      m.set(key, (m.get(key) || 0) + Number(it.confirmedQty ?? it.quantity ?? 0));
+    }
+    return m;
+  }, [order.items]);
+
+  const searchProducts = (q) => {
+    setQuery(q);
+    clearTimeout(debounce.current);
+    if (!q.trim() || q.trim().length < 2) { setResults([]); return; }
+    debounce.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const { data } = await api.get(`/koyambedu/products?search=${encodeURIComponent(q.trim())}&limit=8`);
+        setResults(data.products || []);
+      } catch { setResults([]); }
+      finally { setSearching(false); }
+    }, 250);
+  };
+
+  const addProduct = (p) => {
+    const gradeKey  = p.gradesEnabled ? (p.grades?.find(g => g.isActive)?.gradeKey || 'premium') : null;
+    const gradeName = p.gradesEnabled ? (p.grades?.find(g => g.gradeKey === gradeKey)?.gradeName || gradeKey) : null;
+    if (items.some(it => it.productId === p._id && it.gradeKey === gradeKey)) {
+      toast.error(`${p.name} is already in your list`);
+      return;
+    }
+    const currentQty = currentQtyMap.get(`${p._id}__${gradeKey || ''}`) || 0;
+    const step = currentQty === 0 && p.minQty ? p.minQty : 1;
+    setItems(prev => [...prev, {
+      productId: p._id, name: p.name, unit: p.unit, gradeKey, gradeName,
+      currentQty, minQty: p.minQty || 0, qty: currentQty + step,
+    }]);
+    setQuery(''); setResults([]);
+  };
+
+  const removeItem = (productId, gradeKey) =>
+    setItems(prev => prev.filter(it => !(it.productId === productId && it.gradeKey === gradeKey)));
+
+  const updateQty = (productId, gradeKey, qty) => {
+    setItems(prev => prev.map(it => {
+      if (it.productId !== productId || it.gradeKey !== gradeKey) return it;
+      // Increase-only, enforced here too — the server is the real gate.
+      const floor = it.currentQty > 0 ? it.currentQty + 1 : (it.minQty || 1);
+      return { ...it, qty: Math.max(floor, Number(qty) || floor) };
+    }));
+  };
+
+  const handlePay = async () => {
+    if (!items.length) { toast.error('Add at least one item'); return; }
+    setPaying(true);
+    try {
+      const payload = { items: items.map(it => ({ productId: it.productId, gradeKey: it.gradeKey, qty: it.qty })) };
+      const { data: rzp } = await api.post(`/koyambedu/orders/${order._id}/amend/checkout`, payload);
+
+      const launch = () => {
+        const rzpModal = new window.Razorpay({
+          key: rzp.keyId, amount: rzp.amount * 100, currency: 'INR',
+          name: 'Koyambedu Daily', description: `Add items to order #${order.orderId}`,
+          order_id: rzp.rzpOrderId,
+          handler: async (resp) => {
+            try {
+              await api.post(`/koyambedu/orders/${order._id}/amend/verify`, {
+                razorpayOrderId:   resp.razorpay_order_id,
+                razorpayPaymentId: resp.razorpay_payment_id,
+                razorpaySignature: resp.razorpay_signature,
+              });
+              toast.success('Items added to your order!');
+              setItems([]); setOpen(false);
+              onAdded?.();
+            } catch {
+              toast.error('Payment verification failed. Please contact support if the amount was deducted.');
+            } finally { setPaying(false); }
+          },
+          modal: { ondismiss: () => { toast('Payment cancelled', { icon: '💳' }); setPaying(false); } },
+          theme: { color: '#16a34a' },
+        });
+        rzpModal.open();
+      };
+      if (!window.Razorpay) {
+        const s = document.createElement('script');
+        s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        s.onload = launch;
+        document.body.appendChild(s);
+      } else launch();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to start payment');
+      setPaying(false);
+    }
+  };
+
+  if (eligibility === null || !eligibility.allowed) return null; // hide entirely rather than show a dead-end button
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, marginBottom: 14 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+      >
+        <div>
+          <p style={{ fontWeight: 700, fontSize: 14, color: '#111', margin: 0 }}>+ Add More Items</p>
+          <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>
+            {eligibility.cutoffTime ? `Add items or increase quantity until ${eligibility.cutoffTime} today` : 'Add items or increase quantity to this order'}
+          </p>
+        </div>
+        {open ? <FiChevronUp /> : <FiChevronDown />}
+      </button>
+
+      {open && (
+        <div style={{ padding: '0 16px 16px' }}>
+          <div style={{ position: 'relative', marginBottom: 10 }}>
+            <input
+              value={query}
+              onChange={e => searchProducts(e.target.value)}
+              placeholder="Search Koyambedu Daily products…"
+              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 13, boxSizing: 'border-box' }}
+            />
+            {(searching || results.length > 0) && query.trim().length >= 2 && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, marginTop: 4, zIndex: 10, maxHeight: 220, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+                {searching && <div style={{ padding: 10, fontSize: 12, color: '#9ca3af' }}>Searching…</div>}
+                {!searching && results.map(p => (
+                  <button key={p._id} onClick={() => addProduct(p)}
+                    style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: 'none', border: 'none', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', textAlign: 'left' }}>
+                    <span style={{ fontSize: 13 }}>{p.name}</span>
+                    <span style={{ fontSize: 11, color: '#065f46', fontWeight: 700 }}>{fmt(p.currentPrice)}/{p.unit}</span>
+                  </button>
+                ))}
+                {!searching && results.length === 0 && <div style={{ padding: 10, fontSize: 12, color: '#9ca3af' }}>No products found</div>}
+              </div>
+            )}
+          </div>
+
+          {items.length > 0 && (
+            <div style={{ border: '1px solid #f3f4f6', borderRadius: 8, marginBottom: 10 }}>
+              {items.map(it => (
+                <div key={`${it.productId}__${it.gradeKey || ''}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderBottom: '1px solid #f3f4f6' }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 13, margin: 0 }}>{it.name}{it.gradeName ? ` (${it.gradeName})` : ''}</p>
+                    {it.currentQty > 0 && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>Already on order: {it.currentQty} {it.unit}</p>}
+                  </div>
+                  <input
+                    type="number" step="any"
+                    min={it.currentQty > 0 ? it.currentQty + 1 : (it.minQty || 1)}
+                    value={it.qty}
+                    onChange={e => updateQty(it.productId, it.gradeKey, e.target.value)}
+                    style={{ width: 65, padding: '4px 6px', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: 12, textAlign: 'right' }}
+                  />
+                  <span style={{ fontSize: 11, color: '#6b7280', width: 28 }}>{it.unit}</span>
+                  <button onClick={() => removeItem(it.productId, it.gradeKey)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 2 }}>
+                    <FiXCircle size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 10px' }}>
+            You can only add new items or increase quantity — items already on the order can't be removed or reduced. You'll pay only for what you add now, as a separate payment.
+          </p>
+
+          <button
+            onClick={handlePay}
+            disabled={!items.length || paying}
+            style={{ width: '100%', padding: '11px', borderRadius: 10, border: 'none', background: items.length ? '#065f46' : '#f3f4f6', color: items.length ? '#fff' : '#9ca3af', fontWeight: 700, fontSize: 13.5, cursor: items.length ? 'pointer' : 'not-allowed' }}
+          >
+            {paying ? 'Processing…' : 'Pay & Add Items'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function KoyambeduOrderDetail() {
   const { orderId } = useParams();
   const navigate    = useNavigate();
@@ -523,20 +726,28 @@ export default function KoyambeduOrderDetail() {
           )}
         </Card>
 
-        {/* ── SECTION 1: Items Ordered (immutable original) ── */}
+        {/* ── "Add More Items" — customer-only, hidden entirely once ineligible ── */}
+        {isCustomer && (
+          <AddMoreItemsPanel order={order} onAdded={() => { loadOrder(); loadCalc(); }} />
+        )}
+
+        {/* ── SECTION 1: Items Ordered (original order + any paid amendments) ── */}
         <Card
           title="Items Ordered"
           titleColor="#1d4ed8"
           badge={{ label: `${itemsOrdered.length} item${itemsOrdered.length !== 1 ? 's' : ''}`, bg: '#eff6ff', color: '#3b82f6' }}
         >
-          <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 10px' }}>Your original order — this record never changes.</p>
+          <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 10px' }}>Your original order — never edited or removed, only ever added to via "Add More Items".</p>
           {itemsOrdered.map((it, i) => {
             const qty   = it.orderedQty || it.quantity || 0;
             const price = it.unitPrice || it.orderedPrice || it.finalPrice || 0;
             return (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '8px 0', borderBottom: i < itemsOrdered.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#111', margin: 0 }}>{it.name}</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#111', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {it.name}
+                    {it.isAmendment && <span style={{ fontSize: 9.5, fontWeight: 700, color: '#065f46', background: '#f0fdf4', padding: '1px 6px', borderRadius: 99 }}>ADDED</span>}
+                  </p>
                   {it.gradeKey && <p style={{ fontSize: 11, color: '#6b7280', fontStyle: 'italic', margin: '1px 0 0' }}>Grade: {it.gradeName || it.gradeKey}</p>}
                   <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>{qty} {it.unit} × {fmt(price)}</p>
                 </div>
