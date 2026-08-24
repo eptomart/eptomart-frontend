@@ -321,6 +321,52 @@ function printViaDialog(order, opts = {}) {
 const fmtRs = (n) => `Rs.${(Math.round(Number(n) * 100) / 100).toFixed(2)}`;
 
 /**
+ * Word-wraps a long item name across as many lines as needed (never
+ * truncates/cuts a word with "…") and puts the qty on the same line as the
+ * last name-line if it fits, otherwise on its own right-aligned line. Used
+ * only by the Custom Print bill — real order slips keep using itemLine()
+ * (fixed single-line-with-truncation), which is untouched.
+ */
+const wrapItemLines = (index, name, qtyUnit) => {
+  const prefix = `${index + 1}. `;
+  const indent = ' '.repeat(prefix.length);
+  const words = String(name).split(/\s+/).filter(Boolean);
+
+  const lines = [];
+  let current = prefix;
+  for (const word of words) {
+    const isFirstWordOnLine = current === prefix || current === indent;
+    let candidate = isFirstWordOnLine ? current + word : `${current} ${word}`;
+    if (candidate.length > LINE_WIDTH && word.length > LINE_WIDTH - indent.length) {
+      // Single word longer than the whole line width — hard-break by chars.
+      if (!isFirstWordOnLine) lines.push(current);
+      let rest = word;
+      while (rest.length > LINE_WIDTH - indent.length) {
+        lines.push(indent + rest.slice(0, LINE_WIDTH - indent.length));
+        rest = rest.slice(LINE_WIDTH - indent.length);
+      }
+      current = indent + rest;
+      continue;
+    }
+    if (candidate.length > LINE_WIDTH) {
+      lines.push(current);
+      current = indent + word;
+    } else {
+      current = candidate;
+    }
+  }
+  lines.push(current);
+
+  const lastLine = lines[lines.length - 1];
+  if (lastLine.length + 1 + qtyUnit.length <= LINE_WIDTH) {
+    lines[lines.length - 1] = lastLine + ' '.repeat(LINE_WIDTH - lastLine.length - qtyUnit.length) + qtyUnit;
+  } else {
+    lines.push(' '.repeat(Math.max(0, LINE_WIDTH - qtyUnit.length)) + qtyUnit);
+  }
+  return lines;
+};
+
+/**
  * @param {object} bill - { billNo, dateStr, timeLabel, customerName, customerArea, items: [{name, unit, qty, price}] }
  */
 function buildCustomBillEscPos(bill) {
@@ -342,7 +388,9 @@ function buildCustomBillEscPos(bill) {
 
   bill.items.forEach((it, i) => {
     const qtyUnit = `${it.qty}${it.unit ? ' ' + it.unit : ''}`;
-    chunks.push(bytesText(`${itemLine(i, it.name, qtyUnit)}\n`));
+    for (const line of wrapItemLines(i, it.name, qtyUnit)) {
+      chunks.push(bytesText(`${line}\n`));
+    }
     const lineTotal = (Number(it.qty) || 0) * (Number(it.price) || 0);
     chunks.push(bytesText(`   Rate: ${fmtRs(it.price)}   Amt: ${fmtRs(lineTotal)}\n`));
   });
@@ -367,8 +415,8 @@ function buildCustomBillHtml(bill) {
     const lineTotal = (Number(it.qty) || 0) * (Number(it.price) || 0);
     return `
     <div style="padding:3px 0;border-bottom:1px dashed #ccc">
-      <div style="display:flex;justify-content:space-between;font-size:12px">
-        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:6px">${i + 1}. ${it.name}</span>
+      <div style="display:flex;justify-content:space-between;gap:6px;font-size:12px">
+        <span style="flex:1;min-width:0;word-break:break-word;overflow-wrap:break-word">${i + 1}. ${it.name}</span>
         <span style="flex-shrink:0;white-space:nowrap">${it.qty}${it.unit ? ' ' + it.unit : ''}</span>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:11px;color:#444">
