@@ -70,7 +70,7 @@ export default function KoyambeduAddMoreItems({ order, onAdded }) {
     quoteDebounce.current = setTimeout(async () => {
       setQuoting(true);
       try {
-        const payload = { items: items.map(it => ({ productId: it.productId, gradeKey: it.gradeKey, qty: it.qty })) };
+        const payload = { items: items.map(it => ({ productId: it.productId, gradeKey: it.gradeKey, qty: Number(it.qty) || 0 })) };
         const { data } = await api.post(`/koyambedu/orders/${order.id}/amend/quote`, payload);
         setQuote(data);
       } catch (err) {
@@ -104,11 +104,16 @@ export default function KoyambeduAddMoreItems({ order, onAdded }) {
       return;
     }
     const currentQty = currentQtyMap.get(`${p._id}__${gradeKey || ''}`) || 0;
-    // No minQty floor — that's a fresh-cart-checkout rule, not applicable
-    // when topping up an order that already cleared the minimum once.
+    const minQty = Number(p.minQty) || 1;
+    // Default quantity is always the product's minimum order quantity —
+    // for a brand-new item that's just minQty; for one already on the
+    // order it's current + minQty (a full minimum-sized top-up). Fully
+    // editable afterwards — this is only the starting suggestion, not an
+    // enforced floor (minQty is a fresh-cart-checkout rule, not applicable
+    // when topping up an order that already cleared the minimum once).
     setItems(prev => [...prev, {
       productId: p._id, name: p.name, image: imgOf(p), unit: p.unit, gradeKey, gradeName,
-      price, currentQty, qty: currentQty + 1,
+      price, currentQty, minQty, qtyStep: p.qtyStep || null, qty: currentQty + minQty,
     }]);
     setQuery(''); setResults([]); setGradePicker(null);
   };
@@ -126,12 +131,23 @@ export default function KoyambeduAddMoreItems({ order, onAdded }) {
   const removeItem = (productId, gradeKey) =>
     setItems(prev => prev.filter(it => !(it.productId === productId && it.gradeKey === gradeKey)));
 
-  const updateQty = (productId, gradeKey, qty) => {
+  // Keep whatever the customer types, raw, while they're typing — clamping
+  // on every keystroke (e.g. snapping back to a floor the instant the field
+  // is cleared) made the box feel broken/uneditable, especially when the
+  // target value has fewer digits than the floor. The increase-only floor
+  // is enforced on blur instead (and for real, server-side, on submit).
+  const updateQty = (productId, gradeKey, rawValue) => {
+    setItems(prev => prev.map(it => (
+      it.productId === productId && it.gradeKey === gradeKey ? { ...it, qty: rawValue } : it
+    )));
+  };
+
+  const blurQty = (productId, gradeKey) => {
     setItems(prev => prev.map(it => {
       if (it.productId !== productId || it.gradeKey !== gradeKey) return it;
-      // Increase-only, enforced here too — the server is the real gate.
-      const floor = it.currentQty > 0 ? it.currentQty + 1 : 1;
-      return { ...it, qty: Math.max(floor, Number(qty) || floor) };
+      const floor = it.currentQty > 0 ? it.currentQty + 1 : (it.minQty || 1);
+      const n = Number(it.qty);
+      return { ...it, qty: (!n || n < floor) ? floor : n };
     }));
   };
 
@@ -139,7 +155,7 @@ export default function KoyambeduAddMoreItems({ order, onAdded }) {
     if (!items.length) { toast.error('Add at least one item'); return; }
     setPaying(true);
     try {
-      const payload = { items: items.map(it => ({ productId: it.productId, gradeKey: it.gradeKey, qty: it.qty })) };
+      const payload = { items: items.map(it => ({ productId: it.productId, gradeKey: it.gradeKey, qty: Number(it.qty) || 0 })) };
       const { data: rzp } = await api.post(`/koyambedu/orders/${order.id}/amend/checkout`, payload);
 
       const launch = () => {
@@ -268,10 +284,11 @@ export default function KoyambeduAddMoreItems({ order, onAdded }) {
                     </p>
                   </div>
                   <input
-                    type="number" step="any"
-                    min={it.currentQty > 0 ? it.currentQty + 1 : 1}
+                    type="number" step={it.qtyStep || 'any'}
+                    min={it.currentQty > 0 ? it.currentQty + 1 : (it.minQty || 1)}
                     value={it.qty}
                     onChange={e => updateQty(it.productId, it.gradeKey, e.target.value)}
+                    onBlur={() => blurQty(it.productId, it.gradeKey)}
                     className="w-16 px-1.5 py-1.5 rounded border border-gray-200 text-xs text-right"
                   />
                   <span className="text-[11px] text-gray-500 w-7">{it.unit}</span>
