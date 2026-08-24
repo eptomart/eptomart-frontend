@@ -319,18 +319,27 @@ function printViaDialog(order, opts = {}) {
 // ══════════════════════════════════════════════════════════════
 
 const fmtRs = (n) => `Rs.${(Math.round(Number(n) * 100) / 100).toFixed(2)}`;
+// Compact number format for the per-item line (no "Rs." prefix, no ".00" on
+// whole numbers) — keeps name + qty + rate + amount fitting on one line as
+// often as possible on a narrow 32-char thermal line.
+const fmtCompact = (n) => {
+  const v = Math.round(Number(n) * 100) / 100;
+  return Number.isInteger(v) ? String(v) : v.toFixed(2);
+};
 
 /**
- * Word-wraps a long item name across as many lines as needed (never
- * truncates/cuts a word with "…") and puts the qty on the same line as the
- * last name-line if it fits, otherwise on its own right-aligned line. Used
- * only by the Custom Print bill — real order slips keep using itemLine()
- * (fixed single-line-with-truncation), which is untouched.
+ * Builds one item's print lines as "N. Name qty @rate=amt" on a single line
+ * whenever it fits; if the name is too long for that, wraps word-by-word
+ * (never cutting a word in half) with the qty/rate/amt trailing onto the
+ * wrapped line if they fit there, or their own indented line otherwise.
+ * Used only by the Custom Print bill — real order slips keep using
+ * itemLine() (fixed single-line-with-truncation), which is untouched.
  */
-const wrapItemLines = (index, name, qtyUnit) => {
+const wrapItemLines = (index, name, qtyUnit, rate, amt) => {
   const prefix = `${index + 1}. `;
   const indent = ' '.repeat(prefix.length);
-  const words = String(name).split(/\s+/).filter(Boolean);
+  const tail = `@${fmtCompact(rate)}=${fmtCompact(amt)}`;
+  const words = [...String(name).split(/\s+/).filter(Boolean), qtyUnit, tail];
 
   const lines = [];
   let current = prefix;
@@ -338,7 +347,7 @@ const wrapItemLines = (index, name, qtyUnit) => {
     const isFirstWordOnLine = current === prefix || current === indent;
     let candidate = isFirstWordOnLine ? current + word : `${current} ${word}`;
     if (candidate.length > LINE_WIDTH && word.length > LINE_WIDTH - indent.length) {
-      // Single word longer than the whole line width — hard-break by chars.
+      // Single token longer than the whole line width — hard-break by chars.
       if (!isFirstWordOnLine) lines.push(current);
       let rest = word;
       while (rest.length > LINE_WIDTH - indent.length) {
@@ -356,13 +365,6 @@ const wrapItemLines = (index, name, qtyUnit) => {
     }
   }
   lines.push(current);
-
-  const lastLine = lines[lines.length - 1];
-  if (lastLine.length + 1 + qtyUnit.length <= LINE_WIDTH) {
-    lines[lines.length - 1] = lastLine + ' '.repeat(LINE_WIDTH - lastLine.length - qtyUnit.length) + qtyUnit;
-  } else {
-    lines.push(' '.repeat(Math.max(0, LINE_WIDTH - qtyUnit.length)) + qtyUnit);
-  }
   return lines;
 };
 
@@ -425,11 +427,10 @@ function buildCustomBillEscPos(bill) {
 
   bill.items.forEach((it, i) => {
     const qtyUnit = `${it.qty}${it.unit ? ' ' + it.unit : ''}`;
-    for (const line of wrapItemLines(i, it.name, qtyUnit)) {
+    const lineTotal = (Number(it.qty) || 0) * (Number(it.price) || 0);
+    for (const line of wrapItemLines(i, it.name, qtyUnit, it.price, lineTotal)) {
       chunks.push(bytesText(`${line}\n`));
     }
-    const lineTotal = (Number(it.qty) || 0) * (Number(it.price) || 0);
-    chunks.push(bytesText(`   Rate: ${fmtRs(it.price)}   Amt: ${fmtRs(lineTotal)}\n`));
   });
 
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
@@ -451,18 +452,15 @@ function buildCustomBillEscPos(bill) {
 function buildCustomBillHtml(bill) {
   const grandTotal = bill.items.reduce((sum, it) => sum + (Number(it.qty) || 0) * (Number(it.price) || 0), 0);
 
+  // Name, qty, rate and amount all sit in one wrapping row — on a short
+  // name they land on a single visual line; a long name simply wraps onto
+  // a second line (word-by-word, never mid-word) instead of forcing rate/
+  // amount onto a separate line every time.
   const rows = bill.items.map((it, i) => {
     const lineTotal = (Number(it.qty) || 0) * (Number(it.price) || 0);
     return `
-    <div style="padding:3px 0;border-bottom:1px dashed #ccc">
-      <div style="display:flex;justify-content:space-between;gap:6px;font-size:12px">
-        <span style="flex:1;min-width:0;word-break:break-word;overflow-wrap:break-word">${i + 1}. ${it.name}</span>
-        <span style="flex-shrink:0;white-space:nowrap">${it.qty}${it.unit ? ' ' + it.unit : ''}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:#444">
-        <span>Rate: ${fmtRs(it.price)}</span>
-        <span>Amt: ${fmtRs(lineTotal)}</span>
-      </div>
+    <div style="padding:3px 0;border-bottom:1px dashed #ccc;font-size:12px;line-height:1.4;word-break:break-word;overflow-wrap:break-word">
+      <span>${i + 1}. ${it.name} — ${it.qty}${it.unit ? ' ' + it.unit : ''} @${fmtRs(it.price)} = ${fmtRs(lineTotal)}</span>
     </div>`;
   }).join('');
 
