@@ -278,7 +278,7 @@ export default function PrinterTab() {
         )}
       </div>
 
-      <CustomPrintPanel doPrint={doPrint} />
+      <CustomPrintPanel connected={connected} />
 
       {/* Filters */}
       <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 14, marginBottom: 16 }}>

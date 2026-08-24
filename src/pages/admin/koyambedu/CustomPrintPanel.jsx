@@ -11,6 +11,7 @@ import { useState, useRef } from 'react';
 import { FiPlus, FiX, FiPrinter, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
+import { isPrinterConnected, printCustomBillViaBluetooth, printCustomBillViaDialog } from '../../../utils/thermalPrinter';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const nowTimeStr = () => {
@@ -18,7 +19,11 @@ const nowTimeStr = () => {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-export default function CustomPrintPanel({ doPrint }) {
+// Bill number that never mentions "custom" — same visual family as real
+// order IDs (EPT prefix) so the printed receipt reads like a normal sale.
+const genBillNo = () => `EPT${Date.now().toString(36).toUpperCase()}`;
+
+export default function CustomPrintPanel({ connected }) {
   const [open, setOpen] = useState(false);
 
   const [customerName, setCustomerName] = useState('');
@@ -30,7 +35,7 @@ export default function CustomPrintPanel({ doPrint }) {
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const debounce = useRef(null);
-  const [items, setItems] = useState([]); // { name, unit, qty, gradeName }
+  const [items, setItems] = useState([]); // { name, unit, qty, gradeName, price }
 
   const searchProducts = (q) => {
     setQuery(q);
@@ -54,13 +59,19 @@ export default function CustomPrintPanel({ doPrint }) {
       toast.error(`${p.name} is already in the list`);
       return;
     }
-    setItems(prev => [...prev, { name: p.name, unit: p.unit || '', qty: 1, gradeName: null }]);
+    // Pre-fill price from the product's current price if available, so the
+    // admin usually only needs to adjust quantity — price stays editable.
+    const defaultPrice = p.currentPrice ?? p.price ?? '';
+    setItems(prev => [...prev, { name: p.name, unit: p.unit || '', qty: 1, gradeName: null, price: defaultPrice }]);
     setQuery('');
     setResults([]);
   };
 
   const removeItem = (name) => setItems(prev => prev.filter(it => it.name !== name));
   const updateQty = (name, qty) => setItems(prev => prev.map(it => it.name === name ? { ...it, qty } : it));
+  const updatePrice = (name, price) => setItems(prev => prev.map(it => it.name === name ? { ...it, price } : it));
+
+  const grandTotal = items.reduce((sum, it) => sum + (Number(it.qty) || 0) * (Number(it.price) || 0), 0);
 
   const reset = () => {
     setCustomerName('');
@@ -75,6 +86,7 @@ export default function CustomPrintPanel({ doPrint }) {
   const handlePrint = async () => {
     if (!customerName.trim()) { toast.error('Enter a customer name'); return; }
     if (!items.length) { toast.error('Add at least one product'); return; }
+    if (items.some(it => !it.price && it.price !== 0)) { toast.error('Enter a price for every item'); return; }
 
     const timeLabel = (() => {
       const [h, m] = time.split(':').map(Number);
@@ -83,20 +95,29 @@ export default function CustomPrintPanel({ doPrint }) {
       return `${h12}:${String(m).padStart(2, '0')} ${suffix}`;
     })();
 
-    const order = {
-      orderId: `CUSTOM-${Date.now().toString(36).toUpperCase()}`,
-      placedAt: `${date}T${time || '00:00'}:00`,
-      timeLabel, // additive-only field — real order slips never set this, so their printed format is unchanged
+    const dateStr = new Date(`${date}T00:00:00`).toLocaleDateString('en-IN');
+
+    // Uses the dedicated custom-bill print pipeline (buildCustomBillEscPos/
+    // buildCustomBillHtml in thermalPrinter.js) — separate from the real
+    // order-slip pipeline, includes pricing/total/thank-you/quote, and the
+    // bill number never contains the word "custom" (EPT-prefixed, same
+    // family as real order IDs) per the requirement that this reads like a
+    // normal receipt.
+    const bill = {
+      billNo: genBillNo(),
+      dateStr,
+      timeLabel,
       customerName: customerName.trim(),
-      customerPhone: '',
       customerArea: location.trim(),
-      customerAddress: location.trim(),
-      deliverySlot: null,
-      items: items.map(it => ({ name: it.name, unit: it.unit, qty: it.qty, gradeName: it.gradeName })),
+      items: items.map(it => ({ name: it.name, unit: it.unit, qty: it.qty, price: it.price })),
     };
 
     try {
-      await doPrint(order);
+      if (connected && isPrinterConnected()) {
+        await printCustomBillViaBluetooth(bill);
+      } else {
+        printCustomBillViaDialog(bill);
+      }
       toast.success('Sent to printer');
     } catch (err) {
       toast.error(err.message || 'Print failed');
@@ -174,23 +195,43 @@ export default function CustomPrintPanel({ doPrint }) {
 
           {items.length > 0 && (
             <div style={{ border: '1px solid #f3f4f6', borderRadius: 8, marginBottom: 10 }}>
-              {items.map(it => (
-                <div key={it.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderBottom: '1px solid #f3f4f6' }}>
-                  <span style={{ fontSize: 13, flex: 1 }}>{it.name}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={it.qty}
-                    onChange={e => updateQty(it.name, Number(e.target.value))}
-                    style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: 12, textAlign: 'right' }}
-                  />
-                  <span style={{ fontSize: 12, color: '#6b7280', width: 32 }}>{it.unit}</span>
-                  <button onClick={() => removeItem(it.name)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 2 }}>
-                    <FiX size={15} />
-                  </button>
-                </div>
-              ))}
+              {items.map(it => {
+                const lineTotal = (Number(it.qty) || 0) * (Number(it.price) || 0);
+                return (
+                  <div key={it.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderBottom: '1px solid #f3f4f6' }}>
+                    <span style={{ fontSize: 13, flex: 1 }}>{it.name}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={it.qty}
+                      onChange={e => updateQty(it.name, Number(e.target.value))}
+                      title="Quantity"
+                      style={{ width: 55, padding: '4px 6px', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: 12, textAlign: 'right' }}
+                    />
+                    <span style={{ fontSize: 12, color: '#6b7280', width: 28 }}>{it.unit}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={it.price}
+                      onChange={e => updatePrice(it.name, e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="Price"
+                      title="Price per unit"
+                      style={{ width: 65, padding: '4px 6px', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: 12, textAlign: 'right' }}
+                    />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#111', width: 65, textAlign: 'right' }}>
+                      {'₹'}{lineTotal.toFixed(2)}
+                    </span>
+                    <button onClick={() => removeItem(it.name)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 2 }}>
+                      <FiX size={15} />
+                    </button>
+                  </div>
+                );
+              })}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 10px', fontSize: 13, fontWeight: 700, color: '#065f46' }}>
+                Total: {'₹'}{grandTotal.toFixed(2)}
+              </div>
             </div>
           )}
 

@@ -274,12 +274,11 @@ function buildPrintHtml(order, opts = {}) {
 }
 
 /**
- * Prints via the browser's normal Print dialog using a hidden iframe (never
- * navigates away from the admin page). Works on any device/browser as long
- * as the thermal printer is available as a system printer.
+ * Sends HTML through the browser's normal Print dialog using a hidden
+ * iframe (never navigates away from the admin page). Shared by the regular
+ * order slip printing and the Custom Print bill below.
  */
-function printViaDialog(order, opts = {}) {
-  const html = buildPrintHtml(order, opts);
+function printHtmlViaDialog(html) {
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
   iframe.style.right = '0';
@@ -298,6 +297,134 @@ function printViaDialog(order, opts = {}) {
   };
 }
 
+/**
+ * Prints via the browser's normal Print dialog. Works on any device/browser
+ * as long as the thermal printer is available as a system printer.
+ */
+function printViaDialog(order, opts = {}) {
+  printHtmlViaDialog(buildPrintHtml(order, opts));
+}
+
+// ══════════════════════════════════════════════════════════════
+// CUSTOM PRINT BILL — separate, standalone print format used only by the
+// Custom Print panel (a walk-in/manual sale that isn't a real order). Shows
+// price + quantity + line total + grand total, a thank-you note, and a
+// rotating fruit/veg quote — deliberately doesn't say "custom" anywhere on
+// the printed bill, so it reads like a normal receipt. Completely separate
+// from buildEscPosSlip/buildPrintHtml above — printing a real order's
+// packing slip or pack label is entirely untouched by any of this.
+// ══════════════════════════════════════════════════════════════
+
+const FRUIT_VEG_QUOTES = [
+  'An apple a day keeps the doctor away — eat fresh, live well!',
+  'Fresh vegetables today, a healthier you tomorrow.',
+  'Nature\'s candy: fresh fruit, straight from the farm to you.',
+  'Eat the rainbow — colourful veggies, a colourful life!',
+  'Fresh is best — thank you for choosing farm-fresh produce.',
+  'A basket of veggies a day keeps the worries away.',
+  'Good food, good mood — enjoy your fresh picks!',
+  'From the market to your table, freshness you can taste.',
+  'Healthy eating starts with fresh choices — well done today!',
+  'Fruits and veggies: nature\'s way of saying "take care of yourself".',
+];
+const pickQuote = () => FRUIT_VEG_QUOTES[Math.floor(Math.random() * FRUIT_VEG_QUOTES.length)];
+
+const fmtRs = (n) => `Rs.${(Math.round(Number(n) * 100) / 100).toFixed(2)}`;
+
+/**
+ * @param {object} bill - { billNo, dateStr, timeLabel, customerName, customerArea, items: [{name, unit, qty, price}] }
+ */
+function buildCustomBillEscPos(bill) {
+  const grandTotal = bill.items.reduce((sum, it) => sum + (Number(it.qty) || 0) * (Number(it.price) || 0), 0);
+  const quote = pickQuote();
+
+  const chunks = [bytesInit(), bytesAlignCenter(), bytesDoubleOn(), bytesBoldOn()];
+  chunks.push(bytesText('EPTOMART\n'));
+  chunks.push(bytesDoubleOff(), bytesBoldOff());
+  chunks.push(bytesText('Koyambedu Daily\n'));
+  chunks.push(bytesAlignLeft());
+  chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
+  chunks.push(bytesText(`Bill No: ${bill.billNo}\n`));
+  chunks.push(bytesText(`Date: ${bill.dateStr}${bill.timeLabel ? ' ' + bill.timeLabel : ''}\n`));
+  chunks.push(bytesBoldOn());
+  chunks.push(bytesText(`Customer: ${bill.customerName}\n`));
+  chunks.push(bytesBoldOff());
+  if (bill.customerArea) chunks.push(bytesText(`Location: ${bill.customerArea}\n`));
+  chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
+
+  bill.items.forEach((it, i) => {
+    const qtyUnit = `${it.qty}${it.unit ? ' ' + it.unit : ''}`;
+    chunks.push(bytesText(`${itemLine(i, it.name, qtyUnit)}\n`));
+    const lineTotal = (Number(it.qty) || 0) * (Number(it.price) || 0);
+    chunks.push(bytesText(`   @ ${fmtRs(it.price)}  =  ${fmtRs(lineTotal)}\n`));
+  });
+
+  chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
+  chunks.push(bytesDoubleOn(), bytesBoldOn());
+  chunks.push(bytesText(`TOTAL: ${fmtRs(grandTotal)}\n`));
+  chunks.push(bytesDoubleOff(), bytesBoldOff());
+  chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
+  chunks.push(bytesAlignCenter());
+  chunks.push(bytesText('Thank you for your purchase!\n\n'));
+  chunks.push(bytesText(`${quote}\n`)); // printer auto-wraps long lines
+  chunks.push(bytesAlignLeft());
+
+  chunks.push(bytesFeed(4));
+  return concatBytes(chunks);
+}
+
+function buildCustomBillHtml(bill) {
+  const grandTotal = bill.items.reduce((sum, it) => sum + (Number(it.qty) || 0) * (Number(it.price) || 0), 0);
+  const quote = pickQuote();
+
+  const rows = bill.items.map((it, i) => {
+    const lineTotal = (Number(it.qty) || 0) * (Number(it.price) || 0);
+    return `
+    <div style="padding:3px 0;border-bottom:1px dashed #ccc">
+      <div style="display:flex;justify-content:space-between;font-size:12px">
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:6px">${i + 1}. ${it.name}</span>
+        <span style="flex-shrink:0;white-space:nowrap">${it.qty}${it.unit ? ' ' + it.unit : ''}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#444">
+        <span>@ ${fmtRs(it.price)}</span>
+        <span>${fmtRs(lineTotal)}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  @page { size: 58mm auto; margin: 2mm; }
+  body { font-family: 'Courier New', monospace; font-size: 12px; width: 54mm; margin: 0; }
+  .center { text-align: center; }
+  hr { border: none; border-top: 1px dashed #000; }
+</style></head><body>
+  <div class="center"><strong style="font-size:16px">EPTOMART</strong><br>Koyambedu Daily</div>
+  <hr>
+  <div>Bill No: ${bill.billNo}</div>
+  <div>Date: ${bill.dateStr}${bill.timeLabel ? ' ' + bill.timeLabel : ''}</div>
+  <div><strong>Customer: ${bill.customerName}</strong></div>
+  ${bill.customerArea ? `<div>Location: ${bill.customerArea}</div>` : ''}
+  <hr>
+  ${rows}
+  <hr>
+  <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;margin:4px 0">
+    <span>TOTAL</span><span>${fmtRs(grandTotal)}</span>
+  </div>
+  <hr>
+  <div class="center" style="margin-top:8px">Thank you for your purchase!</div>
+  <div class="center" style="font-size:10px;color:#555;margin-top:4px">${quote}</div>
+</body></html>`;
+}
+
+async function printCustomBillViaBluetooth(bill) {
+  await writeBytesChunked(buildCustomBillEscPos(bill));
+}
+
+function printCustomBillViaDialog(bill) {
+  printHtmlViaDialog(buildCustomBillHtml(bill));
+}
+
 export {
   isBluetoothSupported,
   connectPrinter,
@@ -305,4 +432,6 @@ export {
   isPrinterConnected,
   printViaBluetooth,
   printViaDialog,
+  printCustomBillViaBluetooth,
+  printCustomBillViaDialog,
 };
