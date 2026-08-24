@@ -435,10 +435,13 @@ function AddMoreItemsPanel({ order, onAdded }) {
       return;
     }
     const currentQty = currentQtyMap.get(`${p._id}__${gradeKey || ''}`) || 0;
-    const step = currentQty === 0 && p.minQty ? p.minQty : 1;
+    // No minQty floor here — that's a fresh-cart-checkout rule (see
+    // placeOrder). This order already cleared the minimum order value once;
+    // adding a small amount more, or a small amount of something new,
+    // shouldn't be blocked by the from-scratch per-product minimum.
     setItems(prev => [...prev, {
       productId: p._id, name: p.name, unit: p.unit, gradeKey, gradeName,
-      currentQty, minQty: p.minQty || 0, qty: currentQty + step,
+      currentQty, qty: currentQty + 1,
     }]);
     setQuery(''); setResults([]);
   };
@@ -450,7 +453,7 @@ function AddMoreItemsPanel({ order, onAdded }) {
     setItems(prev => prev.map(it => {
       if (it.productId !== productId || it.gradeKey !== gradeKey) return it;
       // Increase-only, enforced here too — the server is the real gate.
-      const floor = it.currentQty > 0 ? it.currentQty + 1 : (it.minQty || 1);
+      const floor = it.currentQty > 0 ? it.currentQty + 1 : 1;
       return { ...it, qty: Math.max(floor, Number(qty) || floor) };
     }));
   };
@@ -549,7 +552,7 @@ function AddMoreItemsPanel({ order, onAdded }) {
                   </div>
                   <input
                     type="number" step="any"
-                    min={it.currentQty > 0 ? it.currentQty + 1 : (it.minQty || 1)}
+                    min={it.currentQty > 0 ? it.currentQty + 1 : 1}
                     value={it.qty}
                     onChange={e => updateQty(it.productId, it.gradeKey, e.target.value)}
                     style={{ width: 65, padding: '4px 6px', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: 12, textAlign: 'right' }}
