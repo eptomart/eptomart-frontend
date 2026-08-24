@@ -18,6 +18,7 @@ import {
   DocumentsSection, SupportSection, DeliveryAckSection,
 } from '../../components/orders/OrderSections';
 import ReorderButton from '../../components/orders/ReorderButton';
+import KoyambeduAddMoreItems from '../../components/orders/KoyambeduAddMoreItems';
 import { formatINR, formatDate } from '../../utils/currency';
 import api from '../../utils/api';
 
@@ -151,6 +152,11 @@ export default function UnifiedOrderDetail() {
 
         {/* ── Delivery acknowledgement (post-delivery) ── */}
         <DeliveryAckSection order={order} onDone={loadOrder} />
+
+        {/* ── Add More Items (Koyambedu Daily only) ── */}
+        {order.vertical === 'koyambedu' && (
+          <KoyambeduAddMoreItems order={order} onAdded={loadOrder} />
+        )}
 
         {/* ── Timeline ── */}
         <OrderTimeline timeline={order.timeline} />
