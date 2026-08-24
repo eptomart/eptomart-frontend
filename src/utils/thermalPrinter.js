@@ -308,26 +308,15 @@ function printViaDialog(order, opts = {}) {
 // ══════════════════════════════════════════════════════════════
 // CUSTOM PRINT BILL — separate, standalone print format used only by the
 // Custom Print panel (a walk-in/manual sale that isn't a real order). Shows
-// price + quantity + line total + grand total, a thank-you note, and a
-// rotating fruit/veg quote — deliberately doesn't say "custom" anywhere on
-// the printed bill, so it reads like a normal receipt. Completely separate
-// from buildEscPosSlip/buildPrintHtml above — printing a real order's
-// packing slip or pack label is entirely untouched by any of this.
+// price + quantity + line total + grand total + a thank-you note —
+// deliberately doesn't say "custom" anywhere on the printed bill, so it
+// reads like a normal receipt. Completely separate from
+// buildEscPosSlip/buildPrintHtml above — printing a real order's packing
+// slip or pack label is entirely untouched by any of this.
+// (No rotating quote — dropped per feedback; every item's unit price and
+// line total are printed directly under its name/qty, and the grand total
+// sits right after, all on the same single-page receipt.)
 // ══════════════════════════════════════════════════════════════
-
-const FRUIT_VEG_QUOTES = [
-  'An apple a day keeps the doctor away — eat fresh, live well!',
-  'Fresh vegetables today, a healthier you tomorrow.',
-  'Nature\'s candy: fresh fruit, straight from the farm to you.',
-  'Eat the rainbow — colourful veggies, a colourful life!',
-  'Fresh is best — thank you for choosing farm-fresh produce.',
-  'A basket of veggies a day keeps the worries away.',
-  'Good food, good mood — enjoy your fresh picks!',
-  'From the market to your table, freshness you can taste.',
-  'Healthy eating starts with fresh choices — well done today!',
-  'Fruits and veggies: nature\'s way of saying "take care of yourself".',
-];
-const pickQuote = () => FRUIT_VEG_QUOTES[Math.floor(Math.random() * FRUIT_VEG_QUOTES.length)];
 
 const fmtRs = (n) => `Rs.${(Math.round(Number(n) * 100) / 100).toFixed(2)}`;
 
@@ -336,7 +325,6 @@ const fmtRs = (n) => `Rs.${(Math.round(Number(n) * 100) / 100).toFixed(2)}`;
  */
 function buildCustomBillEscPos(bill) {
   const grandTotal = bill.items.reduce((sum, it) => sum + (Number(it.qty) || 0) * (Number(it.price) || 0), 0);
-  const quote = pickQuote();
 
   const chunks = [bytesInit(), bytesAlignCenter(), bytesDoubleOn(), bytesBoldOn()];
   chunks.push(bytesText('EPTOMART\n'));
@@ -356,7 +344,7 @@ function buildCustomBillEscPos(bill) {
     const qtyUnit = `${it.qty}${it.unit ? ' ' + it.unit : ''}`;
     chunks.push(bytesText(`${itemLine(i, it.name, qtyUnit)}\n`));
     const lineTotal = (Number(it.qty) || 0) * (Number(it.price) || 0);
-    chunks.push(bytesText(`   @ ${fmtRs(it.price)}  =  ${fmtRs(lineTotal)}\n`));
+    chunks.push(bytesText(`   Rate: ${fmtRs(it.price)}   Amt: ${fmtRs(lineTotal)}\n`));
   });
 
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
@@ -365,8 +353,7 @@ function buildCustomBillEscPos(bill) {
   chunks.push(bytesDoubleOff(), bytesBoldOff());
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
   chunks.push(bytesAlignCenter());
-  chunks.push(bytesText('Thank you for your purchase!\n\n'));
-  chunks.push(bytesText(`${quote}\n`)); // printer auto-wraps long lines
+  chunks.push(bytesText('Thank you for your purchase!\n'));
   chunks.push(bytesAlignLeft());
 
   chunks.push(bytesFeed(4));
@@ -375,7 +362,6 @@ function buildCustomBillEscPos(bill) {
 
 function buildCustomBillHtml(bill) {
   const grandTotal = bill.items.reduce((sum, it) => sum + (Number(it.qty) || 0) * (Number(it.price) || 0), 0);
-  const quote = pickQuote();
 
   const rows = bill.items.map((it, i) => {
     const lineTotal = (Number(it.qty) || 0) * (Number(it.price) || 0);
@@ -386,8 +372,8 @@ function buildCustomBillHtml(bill) {
         <span style="flex-shrink:0;white-space:nowrap">${it.qty}${it.unit ? ' ' + it.unit : ''}</span>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:11px;color:#444">
-        <span>@ ${fmtRs(it.price)}</span>
-        <span>${fmtRs(lineTotal)}</span>
+        <span>Rate: ${fmtRs(it.price)}</span>
+        <span>Amt: ${fmtRs(lineTotal)}</span>
       </div>
     </div>`;
   }).join('');
@@ -413,7 +399,6 @@ function buildCustomBillHtml(bill) {
   </div>
   <hr>
   <div class="center" style="margin-top:8px">Thank you for your purchase!</div>
-  <div class="center" style="font-size:10px;color:#555;margin-top:4px">${quote}</div>
 </body></html>`;
 }
 
