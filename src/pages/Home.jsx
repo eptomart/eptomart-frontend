@@ -361,55 +361,116 @@ function ShopBySource() {
         </div>
       </Link>
 
-      {/* Farmer Fresh + Proteins — "Coming Soon" tiles */}
+      {/* Farmer Fresh + Proteins — HIDDEN FOR NOW per request. Left the
+          original "Coming Soon" tiles here, commented out, so they can be
+          restored exactly as they were whenever these verticals launch.
       <div className="grid grid-cols-2 gap-2">
-        {/* Farmer Fresh */}
         <Link to="/uzhavar"
           className="glow-float tease relative overflow-hidden rounded-xl active:scale-[0.96] transition-transform block"
           style={{ aspectRatio: '2/1', maxHeight: 100, boxShadow: '0 4px 16px rgba(13,148,136,0.35)' }}>
           <img src="/categories/uzhavar.jpg" alt="Farmer Fresh"
             className="absolute inset-0 w-full h-full object-cover" />
-          {/* Stronger overlay to dim image for "coming soon" feel */}
           <div className="absolute inset-0"
             style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 55%, rgba(0,0,0,0.20) 100%)' }} />
-          {/* Coming Soon badge — top right */}
           <div className="absolute top-1.5 right-1.5">
             <span className="tease-badge text-white font-black tracking-wide px-1.5 py-0.5 rounded-md"
               style={{ background: 'rgba(13,148,136,0.85)', fontSize: 7, backdropFilter: 'blur(4px)' }}>
               COMING SOON
             </span>
           </div>
-          {/* Bottom text */}
           <div className="absolute bottom-0 left-0 right-0 px-2.5 py-2">
             <p className="text-white font-black text-[13px] leading-tight drop-shadow-sm">Farmer Fresh</p>
             <p className="text-[10px] font-bold"><span className="tease-sub" style={{ color: '#5eead4' }}>🌱 Coming Soon to Serve You</span></p>
           </div>
         </Link>
-
-        {/* Proteins */}
         <Link to="/eptofresh"
           className="glow-float tease relative overflow-hidden rounded-xl active:scale-[0.96] transition-transform block"
           style={{ aspectRatio: '2/1', maxHeight: 100, boxShadow: '0 4px 16px rgba(234,88,12,0.35)' }}>
           <img src="/categories/proteins.jpg" alt="Proteins"
             className="absolute inset-0 w-full h-full object-cover" />
-          {/* Stronger overlay */}
           <div className="absolute inset-0"
             style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 55%, rgba(0,0,0,0.20) 100%)' }} />
-          {/* Coming Soon badge — top right */}
           <div className="absolute top-1.5 right-1.5">
             <span className="tease-badge text-white font-black tracking-wide px-1.5 py-0.5 rounded-md"
               style={{ background: 'rgba(194,65,12,0.85)', fontSize: 7, backdropFilter: 'blur(4px)' }}>
               COMING SOON
             </span>
           </div>
-          {/* Bottom text */}
           <div className="absolute bottom-0 left-0 right-0 px-2.5 py-2">
             <p className="text-white font-black text-[13px] leading-tight drop-shadow-sm">Proteins</p>
             <p className="text-[10px] font-bold"><span className="tease-sub" style={{ color: '#fdba74' }}>🥩 Coming Soon to Serve You</span></p>
           </div>
         </Link>
       </div>
+      */}
+
+      <SmallOrderBanner />
     </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// SMALL ORDER BANNER — promotes Koyambedu Daily's small-order pricing
+// (discounted delivery + platform fee on light orders, see
+// computeKoyambeduCharges on the backend) so buyers who'd otherwise
+// hesitate over a big minimum order know they can order light and pay
+// less for delivery. Currently sits where the Farmer Fresh/Proteins
+// tiles used to be on mobile, and between the hero and promo grid on
+// desktop — see ShopBySource / DesktopHero usage below.
+// ══════════════════════════════════════════════════════════════
+function SmallOrderBanner() {
+  return (
+    <Link to="/koyambedu"
+      className="tap-ripple relative overflow-hidden rounded-2xl active:scale-[0.98] transition-transform block"
+      style={{
+        background: 'linear-gradient(120deg, #0b3d2e 0%, #0f5132 35%, #b45309 100%)',
+        boxShadow: '0 10px 28px rgba(11,61,46,0.35)',
+      }}>
+      {/* Decorative glow orbs */}
+      <div className="absolute -right-8 -top-10 w-36 h-36 rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.28) 0%, transparent 70%)' }} />
+      <div className="absolute -left-6 -bottom-10 w-32 h-32 rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(52,211,153,0.25) 0%, transparent 70%)' }} />
+
+      <div className="relative z-10 px-4 py-3.5 md:px-6 md:py-5 flex items-center gap-3 md:gap-5">
+        <div className="w-11 h-11 md:w-14 md:h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+          style={{ background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.25)' }}>
+          <FiPackage size={20} className="md:hidden text-amber-300" />
+          <FiPackage size={26} className="hidden md:block text-amber-300" />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <span className="inline-flex items-center gap-1 bg-amber-400/90 text-amber-900 text-[9px] md:text-[10px] font-black tracking-widest uppercase px-2 py-0.5 rounded-full">
+            <FiZap size={9} /> New · Small Order Friendly
+          </span>
+          <p className="text-white font-black text-[15px] md:text-lg leading-tight mt-1.5"
+            style={{ textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
+            Ordering just a little? Pay less for it.
+          </p>
+          <p className="text-emerald-100 text-[11px] md:text-xs mt-1 leading-snug hidden sm:block">
+            Light Koyambedu Daily orders now get discounted delivery &amp; platform fees — no need to fill a big cart.
+          </p>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {[
+              [FiTruck, 'Delivery from ₹49'],
+              [FiTag,   'Lower Platform Fee'],
+            ].map(([Icon, label]) => (
+              <div key={label} className="flex items-center gap-1 bg-white/15 rounded-lg px-2 py-1 border border-white/20">
+                <Icon size={10} className="text-emerald-200" />
+                <span className="text-white text-[9.5px] md:text-[10.5px] font-bold">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex-shrink-0 hidden xs:block">
+          <span className="bg-white font-black text-[11px] md:text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-lg"
+            style={{ color: '#0f5132' }}>
+            Shop Now <FiArrowRight size={12} />
+          </span>
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -751,20 +812,22 @@ const HERO_SLIDES = [
     sub: 'Vegetables · Fruits · Flowers · Temple',
     cta: 'Order Now', to: '/koyambedu',
   },
-  {
-    gradient: 'linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #2dd4bf 100%)',
-    tag: 'Farm-to-Door · No Middlemen',
-    title: 'Farmer Fresh\nஉழவர் சந்தை',
-    sub: 'Farm direct · Pure & Natural · Tamil Nadu',
-    cta: 'Explore', to: '/uzhavar',
-  },
-  {
-    gradient: 'linear-gradient(135deg, #1a0a00 0%, #7c2d12 40%, #c2410c 75%, #f97316 100%)',
-    tag: 'Hyperlocal · GPS-Based · Fresh Daily',
-    title: 'EptoFresh\nProteins',
-    sub: 'Chicken · Mutton · Fish · Seafood',
-    cta: 'Order Now', to: '/eptofresh',
-  },
+  // Farmer Fresh / Proteins slides — HIDDEN FOR NOW per request. Left here,
+  // commented out, so they can be restored exactly as-is at launch.
+  // {
+  //   gradient: 'linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #2dd4bf 100%)',
+  //   tag: 'Farm-to-Door · No Middlemen',
+  //   title: 'Farmer Fresh\nஉழவர் சந்தை',
+  //   sub: 'Farm direct · Pure & Natural · Tamil Nadu',
+  //   cta: 'Explore', to: '/uzhavar',
+  // },
+  // {
+  //   gradient: 'linear-gradient(135deg, #1a0a00 0%, #7c2d12 40%, #c2410c 75%, #f97316 100%)',
+  //   tag: 'Hyperlocal · GPS-Based · Fresh Daily',
+  //   title: 'EptoFresh\nProteins',
+  //   sub: 'Chicken · Mutton · Fish · Seafood',
+  //   cta: 'Order Now', to: '/eptofresh',
+  // },
 ];
 
 function DesktopHero() {
@@ -821,13 +884,16 @@ function DesktopPromoGrid({ onScrollTo }) {
   const navigate = useNavigate();
   const banners = [
     { gradient: 'linear-gradient(135deg,#14532d,#16a34a,#4ade80)', tag: 'MARKET FRESH',  Icon: FaCarrot,        title: 'Koyambedu Daily',    sub: 'Fresh Veggies · Fruits · Flowers', cta: 'Order Now', action: () => navigate('/koyambedu') },
-    { gradient: 'linear-gradient(135deg,#134e4a,#0f766e,#2dd4bf)', tag: 'FARM DIRECT',  Icon: FaTractor,        title: 'Farmer Fresh',       sub: 'உழவர் சந்தை · No middlemen',     cta: 'Explore',   action: () => navigate('/uzhavar') },
-    { gradient: 'linear-gradient(135deg,#1a0a00,#7c2d12,#f97316)', tag: 'GPS · NEARBY', Icon: FaDrumstickBite,  title: 'Proteins',           sub: 'Chicken · Mutton · Fish · Seafood', cta: 'Order Now', action: () => navigate('/eptofresh') },
+    // Farmer Fresh / Proteins tiles — HIDDEN FOR NOW per request. Left here,
+    // commented out, so they can be restored exactly as-is at launch.
+    // { gradient: 'linear-gradient(135deg,#134e4a,#0f766e,#2dd4bf)', tag: 'FARM DIRECT',  Icon: FaTractor,        title: 'Farmer Fresh',       sub: 'உழவர் சந்தை · No middlemen',     cta: 'Explore',   action: () => navigate('/uzhavar') },
+    // { gradient: 'linear-gradient(135deg,#1a0a00,#7c2d12,#f97316)', tag: 'GPS · NEARBY', Icon: FaDrumstickBite,  title: 'Proteins',           sub: 'Chicken · Mutton · Fish · Seafood', cta: 'Order Now', action: () => navigate('/eptofresh') },
+    { gradient: 'linear-gradient(135deg,#0b3d2e,#0f5132,#b45309)', tag: 'SMALL ORDER OK', Icon: FiPackage,      title: 'Small Orders',       sub: 'Discounted delivery on light orders', cta: 'Shop Now', action: () => navigate('/koyambedu') },
     { gradient: 'linear-gradient(135deg,#7f1d1d,#dc2626,#fb923c)', tag: 'ENDS SOON',   Icon: FiZap,             title: 'Flash Deals',        sub: 'Up to 60% off · Today only',       cta: 'Grab Now',  action: () => onScrollTo('section-flash') },
     { gradient: 'linear-gradient(135deg,#312e81,#4f46e5,#818cf8)', tag: 'HANDPICKED',  Icon: FiStar,            title: 'Featured Products',  sub: 'Curated · Premium Quality',         cta: 'Shop Now',  action: () => onScrollTo('section-featured') },
   ];
   return (
-    <div className="grid grid-cols-5 gap-3 mb-4">
+    <div className="grid grid-cols-4 gap-3 mb-4">
       {banners.map(b => (
         <button key={b.title} onClick={b.action}
           className="relative flex flex-col justify-between rounded-2xl p-4 overflow-hidden text-left active:scale-95 transition-all hover:shadow-lg hover:-translate-y-0.5 group"
@@ -1566,6 +1632,7 @@ export default function Home() {
         ══════════════════════════════════════════ */}
         <div className="hidden md:block max-w-7xl mx-auto px-4 pt-4">
           <DesktopHero />
+          <div className="mb-4"><SmallOrderBanner /></div>
           <DesktopPromoGrid onScrollTo={(id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })} />
           {/* Desktop trust strip */}
           <div className="flex items-center justify-between gap-2 bg-white rounded-2xl px-5 py-2.5 border border-gray-100 shadow-sm mb-4">
