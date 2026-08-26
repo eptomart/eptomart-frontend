@@ -9,11 +9,12 @@ import EptoSEO from '../components/common/EptoSEO';
 import {
   FiArrowRight, FiSearch, FiZap, FiChevronRight, FiMic, FiX,
   FiStar, FiClock, FiTruck, FiShield, FiCheckCircle, FiRefreshCw,
-  FiTag, FiPhone, FiPackage, FiMapPin, FiGrid, FiEye,
+  FiTag, FiPhone, FiPackage, FiMapPin, FiGrid, FiEye, FiTrendingDown,
 } from 'react-icons/fi';
 import {
   FaShoppingBasket, FaPepperHot, FaCookieBite, FaSeedling, FaWineBottle,
   FaLemon, FaBreadSlice, FaLeaf, FaCarrot, FaTractor, FaDrumstickBite,
+  FaWeightHanging,
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -411,63 +412,75 @@ function ShopBySource() {
 
 // ══════════════════════════════════════════════════════════════
 // SMALL ORDER BANNER — promotes Koyambedu Daily's small-order pricing
-// (discounted delivery + platform fee on light orders, see
-// computeKoyambeduCharges on the backend) so buyers who'd otherwise
-// hesitate over a big minimum order know they can order light and pay
-// less for delivery. Currently sits where the Farmer Fresh/Proteins
-// tiles used to be on mobile, and between the hero and promo grid on
-// desktop — see ShopBySource / DesktopHero usage below.
+// (discounted delivery + platform fee on light orders under ~5kg /
+// ≤10 bunches, see computeKoyambeduCharges on the backend) so buyers
+// who'd otherwise hesitate over a big minimum order know they can
+// order light and pay less for delivery. Currently sits where the
+// Farmer Fresh/Proteins tiles used to be on mobile, and between the
+// hero and promo grid on desktop — see ShopBySource / DesktopHero
+// usage below. Styled as a premium, heavily-animated marquee tile
+// (sob-* classes defined in index.css) to draw the eye and push
+// conversion — see the "SMALL ORDER BANNER" CSS block.
 // ══════════════════════════════════════════════════════════════
 function SmallOrderBanner() {
   return (
-    <Link to="/koyambedu"
-      className="tap-ripple relative overflow-hidden rounded-2xl active:scale-[0.98] transition-transform block"
-      style={{
-        background: 'linear-gradient(120deg, #0b3d2e 0%, #0f5132 35%, #b45309 100%)',
-        boxShadow: '0 10px 28px rgba(11,61,46,0.35)',
-      }}>
-      {/* Decorative glow orbs */}
-      <div className="absolute -right-8 -top-10 w-36 h-36 rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.28) 0%, transparent 70%)' }} />
-      <div className="absolute -left-6 -bottom-10 w-32 h-32 rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(52,211,153,0.25) 0%, transparent 70%)' }} />
+    <Link to="/koyambedu" className="sob-wrap tap-ripple block active:scale-[0.98] transition-transform">
+      <div className="sob-border">
+        <div className="sob-inner relative overflow-hidden rounded-[15px]"
+          style={{ background: 'linear-gradient(120deg, #0a3d2c 0%, #0f5f3f 32%, #157a4a 58%, #b45309 100%)' }}>
 
-      <div className="relative z-10 px-4 py-3.5 md:px-6 md:py-5 flex items-center gap-3 md:gap-5">
-        <div className="w-11 h-11 md:w-14 md:h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-          style={{ background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.25)' }}>
-          <FiPackage size={20} className="md:hidden text-amber-300" />
-          <FiPackage size={26} className="hidden md:block text-amber-300" />
-        </div>
+          {/* Drifting glow orbs */}
+          <div className="sob-orb sob-orb-a" />
+          <div className="sob-orb sob-orb-b" />
+          <div className="sob-orb sob-orb-c" />
 
-        <div className="flex-1 min-w-0">
-          <span className="inline-flex items-center gap-1 bg-amber-400/90 text-amber-900 text-[9px] md:text-[10px] font-black tracking-widest uppercase px-2 py-0.5 rounded-full">
-            <FiZap size={9} /> New · Small Order Friendly
-          </span>
-          <p className="text-white font-black text-[15px] md:text-lg leading-tight mt-1.5"
-            style={{ textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-            Ordering just a little? Pay less for it.
-          </p>
-          <p className="text-emerald-100 text-[11px] md:text-xs mt-1 leading-snug hidden sm:block">
-            Light Koyambedu Daily orders now get discounted delivery &amp; platform fees — no need to fill a big cart.
-          </p>
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {[
-              [FiTruck, 'Delivery from ₹49'],
-              [FiTag,   'Lower Platform Fee'],
-            ].map(([Icon, label]) => (
-              <div key={label} className="flex items-center gap-1 bg-white/15 rounded-lg px-2 py-1 border border-white/20">
-                <Icon size={10} className="text-emerald-200" />
-                <span className="text-white text-[9.5px] md:text-[10.5px] font-bold">{label}</span>
+          {/* Diagonal light sweep */}
+          <div className="sob-sweep" />
+
+          {/* Fine dot-grid texture for a premium finish */}
+          <div className="sob-grid" />
+
+          <div className="relative z-10 px-4 py-4 md:px-6 md:py-5 flex items-center gap-3 md:gap-5">
+            <div className="sob-icon-badge w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center flex-shrink-0 relative"
+              style={{ background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.3)' }}>
+              <span className="sob-icon-ring" />
+              <FaWeightHanging size={20} className="sob-weight-icon md:hidden text-amber-300" />
+              <FaWeightHanging size={26} className="sob-weight-icon hidden md:block text-amber-300" />
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <span className="sob-badge inline-flex items-center gap-1 bg-amber-400 text-amber-900 text-[9px] md:text-[10px] font-black tracking-widest uppercase px-2 py-0.5 rounded-full">
+                <FiZap size={9} className="sob-zap" /> New · Small Order Perk
+              </span>
+              <p className="text-white font-black text-[16px] md:text-xl leading-tight mt-1.5"
+                style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
+                Under 5kg? <span className="sob-highlight">Delivery from just ₹49.</span>
+              </p>
+              <p className="text-emerald-100 text-[11px] md:text-xs mt-1 leading-snug hidden sm:block">
+                Light Koyambedu Daily orders (up to ~5kg or 10 bunches) unlock discounted delivery &amp; a lower platform fee — no need to fill a big cart.
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {[
+                  [FaWeightHanging, 'Under 5kg Orders'],
+                  [FiTruck,         'Delivery from ₹49'],
+                  [FiTrendingDown,  'Lower Platform Fee'],
+                ].map(([Icon, label], i) => (
+                  <div key={label} className="sob-chip flex items-center gap-1 bg-white/15 rounded-lg px-2 py-1 border border-white/20"
+                    style={{ animationDelay: `${i * 0.25}s` }}>
+                    <Icon size={10} className="text-emerald-200" />
+                    <span className="text-white text-[9.5px] md:text-[10.5px] font-bold">{label}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        <div className="flex-shrink-0 hidden xs:block">
-          <span className="bg-white font-black text-[11px] md:text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-lg"
-            style={{ color: '#0f5132' }}>
-            Shop Now <FiArrowRight size={12} />
-          </span>
+            <div className="flex-shrink-0 hidden xs:block">
+              <span className="sob-cta bg-white font-black text-[11px] md:text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-lg"
+                style={{ color: '#0f5132' }}>
+                Shop Now <FiArrowRight size={12} className="sob-cta-arrow" />
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </Link>
