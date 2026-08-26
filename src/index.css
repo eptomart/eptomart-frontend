@@ -476,6 +476,10 @@
   0%, 100% { transform: rotate(-8deg); }
   50%      { transform: rotate(8deg); }
 }
+@keyframes sob-medallion-spin {
+  0%, 100% { transform: rotate(-4deg) scale(1); }
+  50%      { transform: rotate(4deg) scale(1.05); }
+}
 @keyframes sob-ring-pulse {
   0%   { transform: scale(0.85); opacity: 0.7; }
   70%  { transform: scale(1.5);  opacity: 0; }
@@ -564,9 +568,9 @@
   }
 
   .sob-icon-badge { animation: w-levitate 3.2s ease-in-out infinite; }
-  .sob-weight-icon { display: inline-block; animation: sob-scale-tilt 2.4s ease-in-out infinite; transform-origin: 50% 15%; }
+  .sob-medallion { display: block; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3)); animation: sob-medallion-spin 7s linear infinite; }
   .sob-icon-ring {
-    position: absolute; inset: -4px; border-radius: inherit;
+    position: absolute; inset: -5px; border-radius: 50%;
     border: 1.5px solid rgba(251,191,36,0.7);
     animation: sob-ring-pulse 2.4s ease-out infinite;
   }

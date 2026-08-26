@@ -410,29 +410,59 @@ function ShopBySource() {
   );
 }
 
+// ── Premium inline SVG badge for the Small Order Banner ─────────
+// A gradient "kg" weight medallion with a glass highlight + orbiting
+// spark, drawn as real vector art (not an icon font) so it stays crisp
+// at any density and reads as a designed graphic rather than a generic
+// icon. Purely decorative — animation lives in CSS (.sob-* classes).
+function SmallOrderBadgeSVG({ size = 40 }) {
+  const uid = 'sobg'; // stable gradient ids (single instance per page)
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" className="sob-medallion" aria-hidden="true">
+      <defs>
+        <linearGradient id={`${uid}-ring`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#fde68a" />
+          <stop offset="50%" stopColor="#fbbf24" />
+          <stop offset="100%" stopColor="#d97706" />
+        </linearGradient>
+        <linearGradient id={`${uid}-fill`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.32" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.06" />
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="29" fill={`url(#${uid}-fill)`} stroke={`url(#${uid}-ring)`} strokeWidth="2.5" />
+      <circle cx="32" cy="32" r="29" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="0.75" />
+      {/* glass highlight arc */}
+      <path d="M10 20 A24 24 0 0 1 44 8" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" />
+      {/* "kg" text */}
+      <text x="32" y="38" textAnchor="middle" fontSize="19" fontWeight="900"
+        fontFamily="Arial, sans-serif" fill={`url(#${uid}-ring)`}>kg</text>
+    </svg>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════
 // SMALL ORDER BANNER — promotes Koyambedu Daily's small-order pricing
-// (discounted delivery + platform fee on light orders under ~5kg /
-// ≤10 bunches, see computeKoyambeduCharges on the backend) so buyers
-// who'd otherwise hesitate over a big minimum order know they can
+// (discounted delivery + platform fee on light orders up to 12kg,
+// see computeKoyambeduCharges on the backend) so buyers who'd
+// otherwise hesitate over the standard minimum order know they can
 // order light and pay less for delivery. Currently sits where the
 // Farmer Fresh/Proteins tiles used to be on mobile, and between the
 // hero and promo grid on desktop — see ShopBySource / DesktopHero
-// usage below. Styled as a premium, heavily-animated marquee tile
-// (sob-* classes defined in index.css) to draw the eye and push
-// conversion — see the "SMALL ORDER BANNER" CSS block.
+// usage below. Kept intentionally compact — a slim premium strip
+// with a vector medallion graphic, not a bulky hero block — with all
+// motion in sob-* classes defined in index.css.
 // ══════════════════════════════════════════════════════════════
 function SmallOrderBanner() {
   return (
     <Link to="/koyambedu" className="sob-wrap tap-ripple block active:scale-[0.98] transition-transform">
       <div className="sob-border">
-        <div className="sob-inner relative overflow-hidden rounded-[15px]"
-          style={{ background: 'linear-gradient(120deg, #0a3d2c 0%, #0f5f3f 32%, #157a4a 58%, #b45309 100%)' }}>
+        <div className="sob-inner relative overflow-hidden rounded-[13px]"
+          style={{ background: 'linear-gradient(120deg, #0a3d2c 0%, #0f5f3f 40%, #157a4a 65%, #b45309 100%)' }}>
 
           {/* Drifting glow orbs */}
           <div className="sob-orb sob-orb-a" />
           <div className="sob-orb sob-orb-b" />
-          <div className="sob-orb sob-orb-c" />
 
           {/* Diagonal light sweep */}
           <div className="sob-sweep" />
@@ -440,44 +470,43 @@ function SmallOrderBanner() {
           {/* Fine dot-grid texture for a premium finish */}
           <div className="sob-grid" />
 
-          <div className="relative z-10 px-4 py-4 md:px-6 md:py-5 flex items-center gap-3 md:gap-5">
-            <div className="sob-icon-badge w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center flex-shrink-0 relative"
-              style={{ background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.3)' }}>
+          <div className="relative z-10 px-3 py-2.5 md:px-5 md:py-3 flex items-center gap-2.5 md:gap-4">
+            <div className="sob-icon-badge flex-shrink-0 relative flex items-center justify-center">
               <span className="sob-icon-ring" />
-              <FaWeightHanging size={20} className="sob-weight-icon md:hidden text-amber-300" />
-              <FaWeightHanging size={26} className="sob-weight-icon hidden md:block text-amber-300" />
+              <SmallOrderBadgeSVG size={38} />
             </div>
 
             <div className="flex-1 min-w-0">
-              <span className="sob-badge inline-flex items-center gap-1 bg-amber-400 text-amber-900 text-[9px] md:text-[10px] font-black tracking-widest uppercase px-2 py-0.5 rounded-full">
-                <FiZap size={9} className="sob-zap" /> New · Small Order Perk
-              </span>
-              <p className="text-white font-black text-[16px] md:text-xl leading-tight mt-1.5"
-                style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
-                Under 5kg? <span className="sob-highlight">Delivery from just ₹49.</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="sob-badge inline-flex items-center gap-1 bg-amber-400 text-amber-900 text-[8px] md:text-[9px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full">
+                  <FiZap size={8} className="sob-zap" /> New
+                </span>
+                <p className="text-white font-black text-[13px] md:text-base leading-tight"
+                  style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
+                  Up to 12kg? <span className="sob-highlight">Delivery from ₹49</span>
+                </p>
+              </div>
+              <p className="text-emerald-100/90 text-[10px] md:text-xs mt-0.5 leading-snug hidden sm:block truncate">
+                Lighter Koyambedu Daily orders get discounted delivery &amp; a lower platform fee.
               </p>
-              <p className="text-emerald-100 text-[11px] md:text-xs mt-1 leading-snug hidden sm:block">
-                Light Koyambedu Daily orders (up to ~5kg or 10 bunches) unlock discounted delivery &amp; a lower platform fee — no need to fill a big cart.
-              </p>
-              <div className="flex flex-wrap gap-1.5 mt-2">
+              <div className="flex flex-wrap gap-1 mt-1.5 md:hidden">
                 {[
-                  [FaWeightHanging, 'Under 5kg Orders'],
-                  [FiTruck,         'Delivery from ₹49'],
-                  [FiTrendingDown,  'Lower Platform Fee'],
+                  [FiTruck,        '₹49 Delivery'],
+                  [FiTrendingDown, 'Lower Fees'],
                 ].map(([Icon, label], i) => (
-                  <div key={label} className="sob-chip flex items-center gap-1 bg-white/15 rounded-lg px-2 py-1 border border-white/20"
+                  <div key={label} className="sob-chip flex items-center gap-1 bg-white/15 rounded-md px-1.5 py-0.5 border border-white/20"
                     style={{ animationDelay: `${i * 0.25}s` }}>
-                    <Icon size={10} className="text-emerald-200" />
-                    <span className="text-white text-[9.5px] md:text-[10.5px] font-bold">{label}</span>
+                    <Icon size={9} className="text-emerald-200" />
+                    <span className="text-white text-[9px] font-bold">{label}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="flex-shrink-0 hidden xs:block">
-              <span className="sob-cta bg-white font-black text-[11px] md:text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-lg"
+            <div className="flex-shrink-0">
+              <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 md:py-2 rounded-lg flex items-center gap-1 shadow-lg"
                 style={{ color: '#0f5132' }}>
-                Shop Now <FiArrowRight size={12} className="sob-cta-arrow" />
+                Shop <FiArrowRight size={11} className="sob-cta-arrow" />
               </span>
             </div>
           </div>
