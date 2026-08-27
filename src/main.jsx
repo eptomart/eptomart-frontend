@@ -36,6 +36,24 @@ function tryAutoReloadOnce() {
   try {
     if (sessionStorage.getItem(CHUNK_RELOAD_FLAG)) return false; // already tried this session
     sessionStorage.setItem(CHUNK_RELOAD_FLAG, '1');
+
+    // Don't just reload — if a stale service worker (from before this app's
+    // caching fixes) is what's actually serving the broken chunk, a plain
+    // reload re-requests through that SAME worker and gets the SAME stale
+    // response forever. Unregister any SW and wipe its caches first so the
+    // reload below is guaranteed to be a real, uncontrolled network fetch.
+    // Best-effort and non-blocking: fire the reload immediately regardless
+    // of whether this cleanup finishes, so a hung/unsupported API can never
+    // delay recovery.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations()
+        .then(regs => Promise.all(regs.map(r => r.unregister())))
+        .catch(() => {});
+    }
+    if ('caches' in window) {
+      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(() => {});
+    }
+
     window.location.reload();
     return true;
   } catch {
@@ -49,6 +67,37 @@ window.addEventListener('vite:preloadError', (event) => {
   console.warn('[Eptomart] vite:preloadError — attempting one automatic reload', event.payload);
   if (tryAutoReloadOnce()) event.preventDefault();
 });
+
+// ============================================
+// STALE SERVICE-WORKER AUTO-UPDATE
+// This project previously shipped service workers with a cache-first
+// strategy. Any device that installed/opened the app while one of those was
+// active can be stuck forever: the old SW intercepts EVERY request —
+// including the reload triggered above — and keeps serving its own cached
+// (now-broken) index.html + JS chunks, regardless of what's actually
+// deployed. A plain reload does nothing for these users because it never
+// leaves the old SW's cache.
+//
+// The current public/sw.js (v3+) is network-first and self-cleaning on
+// install/activate, but that only helps once the browser actually swaps
+// the OLD worker out for it. This forces that check on every load and,
+// the moment a new worker takes control, does exactly one reload so the
+// tab picks up current code instead of the user being stuck on the "App
+// Error" card indefinitely.
+// ============================================
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations()
+    .then(regs => regs.forEach(reg => reg.update().catch(() => {})))
+    .catch(() => {});
+
+  let swControllerChanged = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (swControllerChanged) return; // never loop
+    swControllerChanged = true;
+    console.warn('[Eptomart] New service worker took control — reloading to pick up current build');
+    window.location.reload();
+  });
+}
 
 // ============================================
 // ERROR BOUNDARY — catches ALL React crashes
