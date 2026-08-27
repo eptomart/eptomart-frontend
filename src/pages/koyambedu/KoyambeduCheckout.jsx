@@ -556,8 +556,28 @@ export default function KoyambeduCheckout() {
       .then(r => { if (r.data?.success) setSameDaySettings({ enabled: r.data.enabled, cutoffTime: r.data.cutoffTime }); })
       .catch(() => {});
   }, []);
+
+  // ── Combo / Flash Sale (Super Admin controlled) ──────────────────────
+  // Combos are NOT a separate checkout — they ride the same cart/checkout
+  // as every other Koyambedu Daily item. This only swaps in the combo-
+  // specific same-day cutoff + slots (fetched below) when BOTH the feature
+  // toggle is on AND the cart actually contains a combo item; otherwise
+  // every value below falls back to the normal sameDaySettings/slots exactly
+  // as before.
+  const [comboStatus, setComboStatus] = useState(null);
+  useEffect(() => {
+    api.get('/koyambedu/combos/status')
+      .then(r => { if (r.data?.success) setComboStatus(r.data); })
+      .catch(() => {});
+  }, []);
+  const cartHasCombo = !!cart?.items?.some(it => it.product?.isCombo);
+  const comboActive  = !!(comboStatus?.featureEnabled && cartHasCombo);
+  const effectiveSameDay = comboActive
+    ? { enabled: comboStatus.sameDayDelivery?.enabled !== false, cutoffTime: comboStatus.sameDayDelivery?.cutoffTime || '14:00' }
+    : sameDaySettings;
+
   const cutoffHourDecimal = (() => {
-    const [h, m] = (sameDaySettings.cutoffTime || '09:00').split(':').map(Number);
+    const [h, m] = (effectiveSameDay.cutoffTime || '09:00').split(':').map(Number);
     return h + (m || 0) / 60;
   })();
 
@@ -565,7 +585,7 @@ export default function KoyambeduCheckout() {
   const istNow        = getISTDate();
   const istHour       = getISTHour();
   const istHourExact  = istHour + istNow.getMinutes() / 60;
-  const todayDisabled = !sameDaySettings.enabled || istHourExact >= cutoffHourDecimal;
+  const todayDisabled = !effectiveSameDay.enabled || istHourExact >= cutoffHourDecimal;
 
   // Date values
   const todayIST    = new Date(istNow); todayIST.setHours(0,0,0,0);
@@ -602,8 +622,22 @@ export default function KoyambeduCheckout() {
   // Derive the delivery date from the active tab
   const selectedDate = deliveryTab === 'today' ? todayValue : tomorrowValue;
 
-  // Fetch available slots from backend whenever date tab changes
+  // Fetch available slots from backend whenever date tab changes.
+  // When a combo is active, use the Super-Admin-managed combo slot list
+  // instead of the general Koyambedu schedule — no network call needed
+  // since comboStatus was already fetched on mount.
   useEffect(() => {
+    if (comboActive) {
+      const comboSlots = (comboStatus.deliverySlots || []).map(s => ({
+        key: s.key, label: s.label, display: s.label,
+      }));
+      setAvailableSlots(comboSlots);
+      setScheduleStatus('open');
+      if (selectedSlot && !comboSlots.find(s => s.key === selectedSlot)) {
+        setSelectedSlot(null);
+      }
+      return;
+    }
     const fetchSlots = async () => {
       setSlotsLoading(true);
       try {
@@ -624,7 +658,7 @@ export default function KoyambeduCheckout() {
     };
     fetchSlots();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate]);
+  }, [selectedDate, comboActive, comboStatus]);
 
   // Slots to render — from API response (which already filters by enabled + capacity + time)
   const visibleSlots = availableSlots || [];
@@ -1204,11 +1238,11 @@ export default function KoyambeduCheckout() {
             </div>
 
             {/* Market hours notice */}
-            {sameDaySettings.enabled && (
+            {effectiveSameDay.enabled && (
               <div className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2">
                 <span className="text-amber-500 text-sm shrink-0">🕘</span>
                 <p className="text-amber-700 text-[11px] leading-snug">
-                  Orders for the current day must be placed before <strong>{fmtCutoffDisplay(sameDaySettings.cutoffTime)}</strong> — Koyambedu wholesale market closes early.
+                  Orders for the current day must be placed before <strong>{fmtCutoffDisplay(effectiveSameDay.cutoffTime)}</strong> — Koyambedu wholesale market closes early.
                 </p>
               </div>
             )}
@@ -1218,10 +1252,10 @@ export default function KoyambeduCheckout() {
               style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
               <h2 className="font-bold text-gray-800 text-sm">Choose Delivery Date & Slot</h2>
               <p className="text-xs text-gray-400 mt-0.5">
-                {!sameDaySettings.enabled
+                {!effectiveSameDay.enabled
                   ? 'Same-day delivery is currently unavailable. Showing tomorrow\'s slots.'
                   : todayDisabled
-                  ? `Same-day booking closed (after ${fmtCutoffDisplay(sameDaySettings.cutoffTime)}). Showing tomorrow's slots.`
+                  ? `Same-day booking closed (after ${fmtCutoffDisplay(effectiveSameDay.cutoffTime)}). Showing tomorrow's slots.`
                   : 'Select a delivery date and time slot.'}
               </p>
             </div>
@@ -1231,7 +1265,7 @@ export default function KoyambeduCheckout() {
               style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
               <div className="flex">
                 {/* Today tab — hidden entirely when same-day delivery is globally off */}
-                {sameDaySettings.enabled && (
+                {effectiveSameDay.enabled && (
                 <button
                   disabled={todayDisabled}
                   onClick={() => handleTabChange('today')}
@@ -1257,7 +1291,7 @@ export default function KoyambeduCheckout() {
                 )}
 
                 {/* Divider */}
-                {sameDaySettings.enabled && <div className="w-px bg-gray-100 self-stretch" />}
+                {effectiveSameDay.enabled && <div className="w-px bg-gray-100 self-stretch" />}
 
                 {/* Tomorrow tab */}
                 <button

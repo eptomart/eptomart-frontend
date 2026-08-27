@@ -73,6 +73,8 @@ export const makeEmptyVariantProduct = () => ({
   isAvailable: true,
   badges: [],
   images: [],
+  isCombo: false,
+  comboContents: [],
 });
 // Keep the named constant for backward-compat import paths
 export const EMPTY_VARIANT_PRODUCT = makeEmptyVariantProduct();
@@ -688,6 +690,51 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
             <span className="text-xs text-gray-700 font-medium">{label}</span>
           </label>
         ))}
+      </div>
+
+      {/* ── Combo / Flash Sale (Super Admin) ──
+          A combo is otherwise a normal product — sold through the same
+          shop/cart/checkout. This just tags it + lets admin list what's
+          inside (e.g. "500 gm tamarind", "250 gm garlic"). Combo-specific
+          same-day cutoff/slots/delivery/min-order come from the separate
+          Combos settings panel and only apply when that feature is ON. */}
+      <div className="bg-purple-50 border border-purple-100 rounded-xl px-3 py-3">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={!!form.isCombo}
+            onChange={e => setField('isCombo', e.target.checked)}
+            className="w-4 h-4 accent-purple-600" />
+          <span className="text-xs text-purple-800 font-semibold">Mark as Combo / Flash Sale item</span>
+        </label>
+
+        {form.isCombo && (
+          <div className="mt-3 space-y-2">
+            <label className="block text-xs font-semibold text-gray-700">What's Inside (addons)</label>
+            {(form.comboContents || []).map((c, i) => (
+              <div key={i} className="flex gap-2">
+                <input type="text" placeholder="Item (e.g. Tamarind)" value={c.item || ''}
+                  onChange={e => {
+                    const next = [...(form.comboContents || [])];
+                    next[i] = { ...next[i], item: e.target.value };
+                    setField('comboContents', next);
+                  }}
+                  className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none" />
+                <input type="text" placeholder="Qty (e.g. 500 gm)" value={c.qty || ''}
+                  onChange={e => {
+                    const next = [...(form.comboContents || [])];
+                    next[i] = { ...next[i], qty: e.target.value };
+                    setField('comboContents', next);
+                  }}
+                  className="w-32 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none" />
+                <button type="button"
+                  onClick={() => setField('comboContents', (form.comboContents || []).filter((_, idx) => idx !== i))}
+                  className="text-red-500 text-xs px-2 hover:bg-red-50 rounded-lg">✕</button>
+              </div>
+            ))}
+            <button type="button"
+              onClick={() => setField('comboContents', [...(form.comboContents || []), { item: '', qty: '' }])}
+              className="text-xs font-semibold text-purple-700 hover:text-purple-900">+ Add item</button>
+          </div>
+        )}
       </div>
 
       {/* ── Images ── */}

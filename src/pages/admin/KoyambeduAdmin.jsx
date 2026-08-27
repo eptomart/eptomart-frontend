@@ -9,8 +9,9 @@ import PrinterTab from './koyambedu/PrinterTab';
 import KoyambeduDailyPricePanel from '../../components/koyambedu/KoyambeduDailyPricePanel';
 import toast from 'react-hot-toast';
 import { imgThumb } from '../../utils/cloudinary';
+import { FiToggleLeft, FiToggleRight, FiClock, FiTruck, FiX } from 'react-icons/fi';
 
-const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'product-approvals', 'daily-price', 'schedule', 'printer', 'refund-requests', 'wallets', 'users-cart', 'procurement', 'offers', 'reports', 'whatsapp-inbox', 'dev-settings'];
+const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'combos', 'product-approvals', 'daily-price', 'schedule', 'printer', 'refund-requests', 'wallets', 'users-cart', 'procurement', 'offers', 'reports', 'whatsapp-inbox', 'dev-settings'];
 
 const EXPIRY_OPTIONS = [
   { value: 'never', label: 'Never (Manual Disable Only)' },
@@ -63,6 +64,199 @@ function generateReportHtml(title, subtitle, content) {
   <script>window.onload=()=>window.print();</script>
 </body>
 </html>`;
+}
+
+// ── Combos / Flash Sale settings panel ────────
+// Combo PRODUCTS are ordinary Koyambedu products (isCombo flag, edited via
+// the normal Products tab's Add/Edit form). This panel only controls the
+// combo-specific feature toggle + same-day cutoff + slots + delivery
+// pricing + minimum order value — mirrors FruitBasketAdmin's SettingsTab
+// (see that file), repointed at /koyambedu/combos/admin/settings/*.
+// When featureEnabled is OFF, or the cart has no combo item, checkout falls
+// back 100% to normal Koyambedu Daily slots/charges — nothing here changes
+// any existing Koyambedu behaviour by itself.
+function CombosSettingsTab() {
+  const [settings, setSettings] = useState(null);
+  const [saving, setSaving]     = useState(false);
+
+  const load = () => api.get('/koyambedu/combos/admin/settings').then(r => setSettings(r.data.settings)).catch(() => toast.error('Failed to load combo settings'));
+  useEffect(() => { load(); }, []);
+
+  if (!settings) return <p className="text-sm text-gray-400">Loading…</p>;
+
+  const toggleFeature = async () => {
+    setSaving(true);
+    try {
+      const { data } = await api.patch('/koyambedu/combos/admin/settings/feature', { enabled: !settings.featureEnabled });
+      setSettings(data.settings);
+      toast.success(data.settings.featureEnabled ? 'Combos & Flash Sale is now LIVE' : 'Combos & Flash Sale turned OFF');
+    } catch { toast.error('Failed to update'); }
+    finally { setSaving(false); }
+  };
+
+  const saveSameDayDelivery = async () => {
+    setSaving(true);
+    try {
+      const { data } = await api.put('/koyambedu/combos/admin/settings/same-day-delivery', {
+        enabled: settings.sameDayDelivery.enabled, cutoffTime: settings.sameDayDelivery.cutoffTime,
+      });
+      setSettings(s => ({ ...s, sameDayDelivery: data.sameDayDelivery }));
+      toast.success('Same-day delivery settings saved');
+    } catch { toast.error('Save failed'); }
+    finally { setSaving(false); }
+  };
+
+  const saveSlots = async () => {
+    setSaving(true);
+    try {
+      const { data } = await api.put('/koyambedu/combos/admin/settings/delivery-slots', { slots: settings.deliverySlots });
+      setSettings(s => ({ ...s, deliverySlots: data.deliverySlots }));
+      toast.success('Delivery slots saved');
+    } catch { toast.error('Save failed'); }
+    finally { setSaving(false); }
+  };
+
+  const saveDeliveryCharges = async () => {
+    setSaving(true);
+    try {
+      const { data } = await api.put('/koyambedu/combos/admin/settings/delivery-charges', settings.delivery);
+      setSettings(s => ({ ...s, delivery: data.delivery }));
+      toast.success('Delivery pricing saved');
+    } catch { toast.error('Save failed'); }
+    finally { setSaving(false); }
+  };
+
+  const saveMinOrder = async () => {
+    setSaving(true);
+    try {
+      const { data } = await api.put('/koyambedu/combos/admin/settings/min-order', { value: settings.minOrderValue?.value ?? 0 });
+      setSettings(s => ({ ...s, minOrderValue: data.minOrderValue }));
+      toast.success('Minimum order value saved');
+    } catch { toast.error('Save failed'); }
+    finally { setSaving(false); }
+  };
+
+  const updateSlot = (i, field, val) => setSettings(s => {
+    const slots = [...s.deliverySlots]; slots[i] = { ...slots[i], [field]: val }; return { ...s, deliverySlots: slots };
+  });
+  const addSlot = () => setSettings(s => ({ ...s, deliverySlots: [...s.deliverySlots, { key: `slot${Date.now()}`, label: '', startTime: '09:00', endTime: '12:00', enabled: true }] }));
+  const removeSlot = (i) => setSettings(s => ({ ...s, deliverySlots: s.deliverySlots.filter((_, idx) => idx !== i) }));
+
+  return (
+    <div className="space-y-5 max-w-2xl">
+      {/* Master toggle */}
+      <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between" style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+        <div>
+          <p className="font-bold text-gray-800 text-sm">Combos & Flash Sale — Master Switch</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            When OFF, combo items behave like any other Koyambedu product (usual slots/charges).
+            When ON, a cart containing a combo item uses the same-day cutoff, slots, delivery pricing
+            and minimum order set below instead.
+          </p>
+        </div>
+        <button onClick={toggleFeature} disabled={saving} className="flex-shrink-0">
+          {settings.featureEnabled
+            ? <FiToggleRight size={34} className="text-purple-600" />
+            : <FiToggleLeft size={34} className="text-gray-300" />}
+        </button>
+      </div>
+
+      {/* Same-day cutoff */}
+      <div className="bg-white border border-gray-100 rounded-xl p-4" style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+        <p className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-1.5"><FiClock size={14} /> Same-Day Delivery Cutoff (combo orders)</p>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-sm">
+            <input type="checkbox" checked={settings.sameDayDelivery.enabled}
+              onChange={e => setSettings(s => ({ ...s, sameDayDelivery: { ...s.sameDayDelivery, enabled: e.target.checked } }))} />
+            Enabled
+          </label>
+          <input type="time" value={settings.sameDayDelivery.cutoffTime}
+            onChange={e => setSettings(s => ({ ...s, sameDayDelivery: { ...s.sameDayDelivery, cutoffTime: e.target.value } }))}
+            className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm" />
+          <button onClick={saveSameDayDelivery} disabled={saving} className="ml-auto text-xs font-bold bg-purple-600 text-white px-3 py-1.5 rounded-lg">Save</button>
+        </div>
+      </div>
+
+      {/* Delivery slots */}
+      <div className="bg-white border border-gray-100 rounded-xl p-4" style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+        <div className="flex items-center justify-between mb-3">
+          <p className="font-bold text-gray-800 text-sm flex items-center gap-1.5"><FiTruck size={14} /> Delivery Slots (combo orders)</p>
+          <button onClick={addSlot} className="text-xs text-purple-600 font-bold">+ Add slot</button>
+        </div>
+        <div className="space-y-2">
+          {settings.deliverySlots.map((s, i) => (
+            <div key={s.key} className="flex items-center gap-2">
+              <input type="checkbox" checked={s.enabled} onChange={e => updateSlot(i, 'enabled', e.target.checked)} />
+              <input value={s.label} onChange={e => updateSlot(i, 'label', e.target.value)} placeholder="Label"
+                className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs" />
+              <input type="time" value={s.startTime} onChange={e => updateSlot(i, 'startTime', e.target.value)} className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs" />
+              <input type="time" value={s.endTime} onChange={e => updateSlot(i, 'endTime', e.target.value)} className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs" />
+              <button onClick={() => removeSlot(i)} className="text-red-400"><FiX size={15} /></button>
+            </div>
+          ))}
+        </div>
+        <button onClick={saveSlots} disabled={saving} className="mt-3 text-xs font-bold bg-purple-600 text-white px-3 py-1.5 rounded-lg">Save Slots</button>
+      </div>
+
+      {/* Delivery charges */}
+      <div className="bg-white border border-gray-100 rounded-xl p-4" style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+        <p className="font-bold text-gray-800 text-sm mb-1 flex items-center gap-1.5"><FiTruck size={14} /> Delivery Charges (combo orders, distance-based)</p>
+        <p className="text-xs text-gray-500 mb-3">Free delivery within the radius below; beyond that, a charge applies per extra block of distance.</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[11px] text-gray-500 font-semibold">Free delivery radius (km)</label>
+            <input type="number" value={settings.delivery.freeRadiusKm}
+              onChange={e => setSettings(s => ({ ...s, delivery: { ...s.delivery, freeRadiusKm: e.target.value } }))}
+              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm mt-1" />
+          </div>
+          <div>
+            <label className="text-[11px] text-gray-500 font-semibold">Charge block size (km)</label>
+            <input type="number" value={settings.delivery.blockSizeKm}
+              onChange={e => setSettings(s => ({ ...s, delivery: { ...s.delivery, blockSizeKm: e.target.value } }))}
+              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm mt-1" />
+          </div>
+          <div>
+            <label className="text-[11px] text-gray-500 font-semibold">Charge per block (₹)</label>
+            <input type="number" value={settings.delivery.chargePerBlock}
+              onChange={e => setSettings(s => ({ ...s, delivery: { ...s.delivery, chargePerBlock: e.target.value } }))}
+              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm mt-1" />
+          </div>
+          <div>
+            <label className="text-[11px] text-gray-500 font-semibold">Max delivery distance (km)</label>
+            <input type="number" value={settings.delivery.maxDeliveryKm}
+              onChange={e => setSettings(s => ({ ...s, delivery: { ...s.delivery, maxDeliveryKm: e.target.value } }))}
+              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm mt-1" />
+          </div>
+        </div>
+        <p className="text-[11px] text-gray-400 mt-2">
+          Example: free for the first {settings.delivery.freeRadiusKm || 5} km, then ₹{settings.delivery.chargePerBlock || 40} for every additional {settings.delivery.blockSizeKm || 5} km.
+        </p>
+        <button onClick={saveDeliveryCharges} disabled={saving} className="mt-3 text-xs font-bold bg-purple-600 text-white px-3 py-1.5 rounded-lg">Save Pricing</button>
+      </div>
+
+      {/* Minimum order value */}
+      <div className="bg-white border border-gray-100 rounded-xl p-4" style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+        <p className="font-bold text-gray-800 text-sm mb-1">Minimum Order Value (combo orders)</p>
+        <p className="text-xs text-gray-500 mb-3">Applies only when a combo item is in the cart and the feature above is ON. Set 0 for no minimum.</p>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">₹</span>
+          <input type="number" min="0" value={settings.minOrderValue?.value ?? 0}
+            onChange={e => setSettings(s => ({ ...s, minOrderValue: { ...s.minOrderValue, value: e.target.value } }))}
+            className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm w-32" />
+          <button onClick={saveMinOrder} disabled={saving} className="ml-auto text-xs font-bold bg-purple-600 text-white px-3 py-1.5 rounded-lg">Save</button>
+        </div>
+      </div>
+
+      <div className="bg-purple-50 border border-purple-100 rounded-xl p-4">
+        <p className="text-xs text-purple-800">
+          To create a combo: go to the <strong>Products</strong> tab → <strong>Add Product</strong> for any seller →
+          check <strong>"Mark as Combo / Flash Sale item"</strong> → list its addons (e.g. "500 gm Tamarind", "250 gm Garlic").
+          It will then show up here with a purple <strong>Combo</strong> badge and stays in the same shop/cart/checkout as every
+          other Koyambedu Daily product.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 // ── Danger Zone component ─────────────────────
@@ -454,6 +648,11 @@ export default function KoyambeduAdmin() {
         if (prodSearch) params.set('search', prodSearch);
         if (prodAvail)  params.set('available', prodAvail);
         const { data } = await api.get(`/koyambedu/admin/products?${params}`);
+        setProducts(data.products || []);
+      } else if (t === 'combos') {
+        // Reuses the same product list as the Products tab, filtered client-side
+        // by isCombo in the render below — keeps this additive, no new endpoint.
+        const { data } = await api.get('/koyambedu/admin/products');
         setProducts(data.products || []);
       } else if (t === 'product-approvals') {
         const { data } = await api.get('/koyambedu/admin/products/pending');
@@ -897,6 +1096,8 @@ export default function KoyambeduAdmin() {
       isNextDay:                p.isNextDay   ?? true,
       badges:                   p.badges || [],
       images:                   p.images || [],
+      isCombo:                  !!p.isCombo,
+      comboContents:            p.comboContents || [],
       procurementChargePercent: p.procurementChargePercent ?? 0,
       platformChargePercent:    p.platformChargePercent    ?? 0,
       logisticsChargePercent:   p.logisticsChargePercent   ?? 0,
@@ -1448,7 +1649,7 @@ export default function KoyambeduAdmin() {
           {TAB_LIST.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white hover:bg-white/30'}`}>
-              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'wallets' ? '💳 Wallets' : t === 'users-cart' ? '🛒 Users Cart' : t === 'procurement' ? '📦 Procurement' : t === 'offers' ? '📣 Offers' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'printer' ? '🖨️ Printer' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t === 'whatsapp-inbox' ? `💬 WhatsApp${waUnread > 0 ? ` (${waUnread})` : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'wallets' ? '💳 Wallets' : t === 'users-cart' ? '🛒 Users Cart' : t === 'procurement' ? '📦 Procurement' : t === 'offers' ? '📣 Offers' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'printer' ? '🖨️ Printer' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'combos' ? '🧺 Combos' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t === 'whatsapp-inbox' ? `💬 WhatsApp${waUnread > 0 ? ` (${waUnread})` : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -2566,6 +2767,11 @@ export default function KoyambeduAdmin() {
                             {p.category?.icon} {p.category?.name} · {p.seller?.businessName}
                           </p>
                         </div>
+                        {p.isCombo && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 bg-purple-100 text-purple-700">
+                            Combo
+                          </span>
+                        )}
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${p.isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                           {p.isAvailable ? 'Available' : 'Off'}
                         </span>
@@ -2597,6 +2803,65 @@ export default function KoyambeduAdmin() {
                 </div>
               ))}
               {products.length === 0 && <p className="text-center text-gray-500 py-8">No products found</p>}
+            </div>
+          </div>
+        )}
+
+        {/* ── Combos / Flash Sale tab ── settings + a filtered read-only view of
+            combo products (created via Products tab's Add/Edit form, isCombo checkbox) */}
+        {tab === 'combos' && !loading && (
+          <div className="space-y-6">
+            <CombosSettingsTab />
+            <div>
+              <p className="font-bold text-gray-800 text-sm mb-3">🧺 Combo / Flash Sale Products</p>
+              <div className="space-y-3">
+                {products.filter(p => p.isCombo).map(p => (
+                  <div key={p._id} className={`bg-white rounded-2xl border p-3 ${!p.isAvailable ? 'opacity-60 border-gray-100' : 'border-purple-200'}`}>
+                    <div className="flex items-start gap-3">
+                      {p.images?.[0]?.url && (
+                        <img src={imgThumb(p.images[0].url)} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-bold text-gray-800 text-sm leading-tight">{p.name}</p>
+                            <p className="text-[11px] text-gray-500 mt-0.5">
+                              {p.category?.icon} {p.category?.name} · {p.seller?.businessName}
+                            </p>
+                            {p.comboContents?.length > 0 && (
+                              <p className="text-[11px] text-purple-700 mt-1">
+                                + {p.comboContents.map(c => `${c.qty} ${c.item}`).join(', ')}
+                              </p>
+                            )}
+                          </div>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${p.isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {p.isAvailable ? 'Available' : 'Off'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-600">
+                          <span className="font-black text-gray-800">₹{p.currentPrice}</span>
+                          <span>/{p.unit}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-2.5">
+                      <button onClick={() => openEditProduct(p)}
+                        className="flex-1 border border-blue-200 text-blue-600 text-xs font-bold py-1.5 rounded-xl hover:bg-blue-50">
+                        ✏️ Edit
+                      </button>
+                      <button onClick={() => toggleProduct(p._id)}
+                        className={`flex-1 text-xs font-bold py-1.5 rounded-xl border ${p.isAvailable ? 'border-orange-200 text-orange-600 hover:bg-orange-50' : 'border-green-200 text-green-600 hover:bg-green-50'}`}>
+                        {p.isAvailable ? 'Disable' : 'Enable'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {products.filter(p => p.isCombo).length === 0 && (
+                  <p className="text-center text-gray-500 py-8 text-sm">
+                    No combos yet. Go to the Products tab → Add Product → check "Mark as Combo / Flash Sale item".
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         )}

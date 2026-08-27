@@ -91,9 +91,14 @@ const ProductCard = ({ product }) => {
             : <div className="w-full h-[72px] bg-green-50 flex items-center justify-center">
                 <FaLeaf size={20} className="text-green-200" />
               </div>}
-          {product.badges?.includes('fresh_arrival') && (
-            <span className="absolute top-1.5 left-1.5 bg-green-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">Fresh</span>
-          )}
+          <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 items-start">
+            {product.badges?.includes('fresh_arrival') && (
+              <span className="bg-green-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">Fresh</span>
+            )}
+            {product.isCombo && (
+              <span className="bg-purple-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full tracking-wide">⚡ COMBO</span>
+            )}
+          </div>
           {hasGrades && (
             <span className="absolute top-1.5 right-1.5 bg-purple-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full tracking-wide">GRADES</span>
           )}

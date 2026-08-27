@@ -406,7 +406,7 @@ function ShopBySource() {
       */}
 
       <SmallOrderBanner />
-      <FruitBasketBanner />
+      <PromoBannersRow />
     </div>
   );
 }
@@ -528,13 +528,14 @@ function SmallOrderBanner() {
 // index.css for SmallOrderBanner, so this stays visually consistent
 // without duplicating that whole animation layer under a new prefix.
 // ══════════════════════════════════════════════════════════════
-function FruitBasketBanner() {
+function FruitBasketBanner({ onReady }) {
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
     api.get('/fruitbaskets/status')
-      .then(r => setEnabled(!!r.data?.featureEnabled))
-      .catch(() => setEnabled(false));
+      .then(r => { const v = !!r.data?.featureEnabled; setEnabled(v); onReady?.(v); })
+      .catch(() => { setEnabled(false); onReady?.(false); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!enabled) return null;
@@ -582,6 +583,97 @@ function FruitBasketBanner() {
         </div>
       </div>
     </Link>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// COMBO / FLASH SALE BANNER — promotes Koyambedu Daily's new Combos &
+// Flash Sale category (vegetable/fruit combo packs with addons, managed
+// by Koyambedu's Super Admin — see KoyambeduComboSettings.js). Combos are
+// NOT a separate vertical — this links straight into the existing
+// Koyambedu Daily shop where combo items sit alongside everything else in
+// the same cart/checkout. Feature-flag gated on /koyambedu/combos/status;
+// renders nothing when Super Admin has the feature off. Sits side-by-side
+// with FruitBasketBanner via PromoBannersRow below, per request ("first
+// half" combos/flash sale, "rest half" fruit baskets & hampers).
+// ══════════════════════════════════════════════════════════════
+function ComboBanner({ onReady }) {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    api.get('/koyambedu/combos/status')
+      .then(r => { const v = !!r.data?.featureEnabled; setEnabled(v); onReady?.(v); })
+      .catch(() => { setEnabled(false); onReady?.(false); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!enabled) return null;
+
+  return (
+    <Link to="/koyambedu" className="sob-wrap tap-ripple block active:scale-[0.98] transition-transform">
+      <div className="sob-border">
+        <div className="sob-inner relative overflow-hidden rounded-[13px]"
+          style={{ background: 'linear-gradient(120deg, #581c87 0%, #9333ea 45%, #166534 100%)' }}>
+
+          <div className="sob-orb sob-orb-a" />
+          <div className="sob-orb sob-orb-b" />
+          <div className="sob-sweep" />
+          <div className="sob-grid" />
+
+          <div className="relative z-10 px-3 py-2.5 md:px-5 md:py-3 flex items-center gap-2.5 md:gap-4">
+            <div className="sob-icon-badge flex-shrink-0 relative flex items-center justify-center w-9 h-9 md:w-11 md:h-11 rounded-full"
+              style={{ background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.3)' }}>
+              <span className="sob-icon-ring" />
+              <FiZap size={17} className="text-amber-200" />
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="sob-badge inline-flex items-center gap-1 bg-amber-400 text-amber-900 text-[8px] md:text-[9px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full">
+                  <FiZap size={8} className="sob-zap" /> Flash Sale
+                </span>
+                <p className="text-white font-black text-[13px] md:text-base leading-tight"
+                  style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
+                  <span className="sob-highlight">Veg &amp; Fruit Combos</span>
+                </p>
+              </div>
+              <p className="text-purple-100/90 text-[10px] md:text-xs mt-0.5 leading-snug hidden sm:block truncate">
+                Combo packs with free addons — added straight to your Koyambedu Daily cart.
+              </p>
+            </div>
+
+            <div className="flex-shrink-0">
+              <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 md:py-2 rounded-lg flex items-center gap-1 shadow-lg"
+                style={{ color: '#581c87' }}>
+                Shop <FiArrowRight size={11} className="sob-cta-arrow" />
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// PROMO BANNERS ROW — places ComboBanner and FruitBasketBanner side by
+// side, each taking half the row ("first half" combos/flash sale, "rest
+// half" fruit baskets & hampers per request). If only one of the two
+// features is currently enabled by its Super Admin, that banner expands to
+// the full row instead of leaving blank space next to it.
+// ══════════════════════════════════════════════════════════════
+function PromoBannersRow() {
+  const [comboOn, setComboOn] = useState(null); // null = still loading
+  const [fbOn,    setFbOn]    = useState(null);
+
+  const comboCls = comboOn === false ? 'hidden' : (fbOn === true ? 'flex-1 min-w-0' : 'w-full');
+  const fbCls    = fbOn === false ? 'hidden' : (comboOn === true ? 'flex-1 min-w-0' : 'w-full');
+
+  return (
+    <div className="flex gap-2">
+      <div className={comboCls}><ComboBanner onReady={setComboOn} /></div>
+      <div className={fbCls}><FruitBasketBanner onReady={setFbOn} /></div>
+    </div>
   );
 }
 
@@ -1744,7 +1836,7 @@ export default function Home() {
         <div className="hidden md:block max-w-7xl mx-auto px-4 pt-4">
           <DesktopHero />
           <div className="mb-4"><SmallOrderBanner /></div>
-          <div className="mb-4"><FruitBasketBanner /></div>
+          <div className="mb-4"><PromoBannersRow /></div>
           <DesktopPromoGrid onScrollTo={(id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })} />
           {/* Desktop trust strip */}
           <div className="flex items-center justify-between gap-2 bg-white rounded-2xl px-5 py-2.5 border border-gray-100 shadow-sm mb-4">
