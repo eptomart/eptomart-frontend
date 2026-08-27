@@ -514,6 +514,68 @@
   50%      { transform: scale(1.008); }
 }
 
+/* ── PROMO CARD (Fruit Baskets / Combos) ──────────────────────────
+   Shared fixed-size vertical card so both banners match in height
+   regardless of copy length, riding on the same sob-wrap/sob-border/
+   sob-inner marquee frame as the Small Order Banner. Each vertical gets
+   its own decorative animation (below) so the two don't feel like the
+   same reskinned template. */
+@keyframes promo-float {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50%      { transform: translateY(-5px) rotate(4deg); }
+}
+@keyframes promo-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(251,191,36,0); }
+  50%      { box-shadow: 0 0 16px 3px rgba(251,191,36,0.45); }
+}
+@keyframes promo-tag-swing {
+  0%, 100% { transform: rotate(-9deg) scale(1); }
+  50%      { transform: rotate(9deg) scale(1.08); }
+}
+@keyframes promo-spark-pop {
+  0%, 100% { opacity: 0.25; transform: scale(0.6); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+@keyframes promo-shine-sweep {
+  0%   { transform: translateX(-140%) rotate(22deg); }
+  60%, 100% { transform: translateX(220%) rotate(22deg); }
+}
+@keyframes promo-ribbon-shimmer {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+
+.promo-card {
+  min-height: 122px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.promo-title { min-height: 2.5em; }
+.promo-icon-wrap { position: relative; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Fruit Baskets — warm, gentle "gift" motion */
+  .promo-icon-fruit { animation: promo-float 3.2s ease-in-out infinite; }
+  .promo-icon-fruit-badge { animation: promo-glow-pulse 2.6s ease-in-out infinite; }
+  .promo-ribbon { animation: promo-ribbon-shimmer 2.2s ease-in-out infinite; }
+
+  /* Combos / Flash Sale — sharp, electric "deal" motion */
+  .promo-icon-combo { animation: promo-tag-swing 1.9s ease-in-out infinite; }
+  .promo-spark { position: absolute; border-radius: 9999px; pointer-events: none; }
+  .promo-spark-1 { animation: promo-spark-pop 1.3s ease-in-out infinite; }
+  .promo-spark-2 { animation: promo-spark-pop 1.3s ease-in-out infinite 0.5s; }
+  .promo-shine {
+    position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  }
+  .promo-shine::after {
+    content: '';
+    position: absolute; top: -20%; bottom: -20%; left: 0; width: 22%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+    animation: promo-shine-sweep 2.6s ease-in-out infinite;
+  }
+}
+
 .sob-wrap {
   --sob-angle: 0deg;
   position: relative;

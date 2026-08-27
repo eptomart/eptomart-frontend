@@ -541,44 +541,44 @@ function FruitBasketBanner({ onReady }) {
   if (!enabled) return null;
 
   return (
-    <Link to="/fruitbaskets" className="sob-wrap tap-ripple block active:scale-[0.98] transition-transform">
-      <div className="sob-border">
-        <div className="sob-inner relative overflow-hidden rounded-[13px]"
-          style={{ background: 'linear-gradient(120deg, #7c2d12 0%, #b45309 45%, #166534 100%)' }}>
+    <Link to="/fruitbaskets" className="sob-wrap tap-ripple block h-full active:scale-[0.98] transition-transform">
+      <div className="sob-border h-full">
+        <div className="sob-inner promo-card relative overflow-hidden rounded-[13px] h-full px-3 py-2.5 md:px-4 md:py-3"
+          style={{ background: 'linear-gradient(145deg, #7c2d12 0%, #b45309 55%, #92400e 100%)' }}>
 
           <div className="sob-orb sob-orb-a" />
           <div className="sob-orb sob-orb-b" />
-          <div className="sob-sweep" />
           <div className="sob-grid" />
+          {/* Diagonal ribbon shimmer — a gift-wrap ribbon, not a generic sweep */}
+          <div className="promo-ribbon absolute -right-8 top-2 w-24 h-4 rotate-45"
+            style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)' }} />
 
-          <div className="relative z-10 px-3 py-2.5 md:px-5 md:py-3 flex items-center gap-2.5 md:gap-4">
-            <div className="sob-icon-badge flex-shrink-0 relative flex items-center justify-center w-9 h-9 md:w-11 md:h-11 rounded-full"
-              style={{ background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.3)' }}>
-              <span className="sob-icon-ring" />
-              <FiGift size={17} className="text-amber-200" />
+          <div className="relative z-10 flex items-center justify-between gap-2">
+            <div className="promo-icon-wrap promo-icon-fruit flex-shrink-0 flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-2xl"
+              style={{ background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.35)' }}>
+              <span className="promo-icon-fruit-badge absolute inset-0 rounded-2xl" />
+              <FiGift size={16} className="text-amber-100" />
             </div>
+            <span className="bg-amber-400 text-amber-900 text-[8px] md:text-[9px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full flex-shrink-0">
+              New
+            </span>
+          </div>
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="sob-badge inline-flex items-center gap-1 bg-amber-400 text-amber-900 text-[8px] md:text-[9px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full">
-                  <FiZap size={8} className="sob-zap" /> New
-                </span>
-                <p className="text-white font-black text-[13px] md:text-base leading-tight"
-                  style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
-                  <span className="sob-highlight">Fruit Baskets & Hampers</span> are here
-                </p>
-              </div>
-              <p className="text-amber-100/90 text-[10px] md:text-xs mt-0.5 leading-snug hidden sm:block truncate">
-                Curated gift baskets, delivered to your door — pick your slot at checkout.
-              </p>
-            </div>
+          <div className="relative z-10 promo-title mt-1.5">
+            <p className="text-white font-black text-[13px] md:text-[15px] leading-tight line-clamp-2"
+              style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
+              Fruit Baskets &amp; Hampers
+            </p>
+            <p className="text-amber-100/85 text-[10px] md:text-[11px] mt-0.5 leading-snug hidden sm:block line-clamp-1">
+              Curated gift baskets, delivered to your door.
+            </p>
+          </div>
 
-            <div className="flex-shrink-0">
-              <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 md:py-2 rounded-lg flex items-center gap-1 shadow-lg"
-                style={{ color: '#7c2d12' }}>
-                Shop <FiArrowRight size={11} className="sob-cta-arrow" />
-              </span>
-            </div>
+          <div className="relative z-10 flex justify-end mt-1.5">
+            <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg"
+              style={{ color: '#7c2d12' }}>
+              Shop <FiArrowRight size={11} className="sob-cta-arrow" />
+            </span>
           </div>
         </div>
       </div>
@@ -610,44 +610,44 @@ function ComboBanner({ onReady }) {
   if (!enabled) return null;
 
   return (
-    <Link to="/koyambedu" className="sob-wrap tap-ripple block active:scale-[0.98] transition-transform">
-      <div className="sob-border">
-        <div className="sob-inner relative overflow-hidden rounded-[13px]"
-          style={{ background: 'linear-gradient(120deg, #581c87 0%, #9333ea 45%, #166534 100%)' }}>
+    <Link to="/koyambedu" className="sob-wrap tap-ripple block h-full active:scale-[0.98] transition-transform">
+      <div className="sob-border h-full">
+        <div className="sob-inner promo-card relative overflow-hidden rounded-[13px] h-full px-3 py-2.5 md:px-4 md:py-3"
+          style={{ background: 'linear-gradient(145deg, #581c87 0%, #9333ea 55%, #6b21a8 100%)' }}>
 
           <div className="sob-orb sob-orb-a" />
           <div className="sob-orb sob-orb-b" />
-          <div className="sob-sweep" />
           <div className="sob-grid" />
+          {/* Electric shine sweep + sparks — distinct "flash deal" motion */}
+          <div className="promo-shine" />
+          <span className="promo-spark promo-spark-1 w-1.5 h-1.5 bg-amber-300" style={{ right: '18%', top: '22%' }} />
+          <span className="promo-spark promo-spark-2 w-1 h-1 bg-white" style={{ right: '30%', top: '55%' }} />
 
-          <div className="relative z-10 px-3 py-2.5 md:px-5 md:py-3 flex items-center gap-2.5 md:gap-4">
-            <div className="sob-icon-badge flex-shrink-0 relative flex items-center justify-center w-9 h-9 md:w-11 md:h-11 rounded-full"
-              style={{ background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.3)' }}>
-              <span className="sob-icon-ring" />
-              <FiZap size={17} className="text-amber-200" />
+          <div className="relative z-10 flex items-center justify-between gap-2">
+            <div className="promo-icon-wrap promo-icon-combo flex-shrink-0 flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-2xl"
+              style={{ background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.35)' }}>
+              <FiZap size={16} className="text-amber-200" />
             </div>
+            <span className="bg-amber-400 text-amber-900 text-[8px] md:text-[9px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full flex-shrink-0">
+              Flash Sale
+            </span>
+          </div>
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="sob-badge inline-flex items-center gap-1 bg-amber-400 text-amber-900 text-[8px] md:text-[9px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full">
-                  <FiZap size={8} className="sob-zap" /> Flash Sale
-                </span>
-                <p className="text-white font-black text-[13px] md:text-base leading-tight"
-                  style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
-                  <span className="sob-highlight">Veg &amp; Fruit Combos</span>
-                </p>
-              </div>
-              <p className="text-purple-100/90 text-[10px] md:text-xs mt-0.5 leading-snug hidden sm:block truncate">
-                Combo packs with free addons — added straight to your Koyambedu Daily cart.
-              </p>
-            </div>
+          <div className="relative z-10 promo-title mt-1.5">
+            <p className="text-white font-black text-[13px] md:text-[15px] leading-tight line-clamp-2"
+              style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
+              Veg &amp; Fruit Combos
+            </p>
+            <p className="text-purple-100/85 text-[10px] md:text-[11px] mt-0.5 leading-snug hidden sm:block line-clamp-1">
+              Combo packs with free addons, in your Koyambedu cart.
+            </p>
+          </div>
 
-            <div className="flex-shrink-0">
-              <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 md:py-2 rounded-lg flex items-center gap-1 shadow-lg"
-                style={{ color: '#581c87' }}>
-                Shop <FiArrowRight size={11} className="sob-cta-arrow" />
-              </span>
-            </div>
+          <div className="relative z-10 flex justify-end mt-1.5">
+            <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg"
+              style={{ color: '#581c87' }}>
+              Shop <FiArrowRight size={11} className="sob-cta-arrow" />
+            </span>
           </div>
         </div>
       </div>
@@ -670,7 +670,7 @@ function PromoBannersRow() {
   const fbCls    = fbOn === false ? 'hidden' : (comboOn === true ? 'flex-1 min-w-0' : 'w-full');
 
   return (
-    <div className="flex gap-2">
+    <div className="flex items-stretch gap-2">
       <div className={comboCls}><ComboBanner onReady={setComboOn} /></div>
       <div className={fbCls}><FruitBasketBanner onReady={setFbOn} /></div>
     </div>
