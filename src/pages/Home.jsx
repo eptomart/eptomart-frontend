@@ -9,7 +9,7 @@ import EptoSEO from '../components/common/EptoSEO';
 import {
   FiArrowRight, FiSearch, FiZap, FiChevronRight, FiMic, FiX,
   FiStar, FiClock, FiTruck, FiShield, FiCheckCircle, FiRefreshCw,
-  FiTag, FiPhone, FiPackage, FiMapPin, FiGrid, FiEye, FiTrendingDown,
+  FiTag, FiPhone, FiPackage, FiMapPin, FiGrid, FiEye, FiTrendingDown, FiGift,
 } from 'react-icons/fi';
 import {
   FaShoppingBasket, FaPepperHot, FaCookieBite, FaSeedling, FaWineBottle,
@@ -406,6 +406,7 @@ function ShopBySource() {
       */}
 
       <SmallOrderBanner />
+      <FruitBasketBanner />
     </div>
   );
 }
@@ -506,6 +507,74 @@ function SmallOrderBanner() {
             <div className="flex-shrink-0">
               <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 md:py-2 rounded-lg flex items-center gap-1 shadow-lg"
                 style={{ color: '#0f5132' }}>
+                Shop <FiArrowRight size={11} className="sob-cta-arrow" />
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// FRUIT BASKET BANNER — promotes the new Fruit Baskets & Hampers vertical.
+// Feature-flag gated: fetches /fruitbaskets/status and renders nothing at
+// all (not even a "coming soon" placeholder) when Super Admin has the
+// vertical turned off — see FruitBasketAdmin.jsx's master switch. Placed
+// directly below SmallOrderBanner on both mobile and desktop per request.
+// Reuses the sob-* premium animation classes (spinning gradient border,
+// drifting orbs, light sweep, pulsing badge/CTA) already defined in
+// index.css for SmallOrderBanner, so this stays visually consistent
+// without duplicating that whole animation layer under a new prefix.
+// ══════════════════════════════════════════════════════════════
+function FruitBasketBanner() {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    api.get('/fruitbaskets/status')
+      .then(r => setEnabled(!!r.data?.featureEnabled))
+      .catch(() => setEnabled(false));
+  }, []);
+
+  if (!enabled) return null;
+
+  return (
+    <Link to="/fruitbaskets" className="sob-wrap tap-ripple block active:scale-[0.98] transition-transform">
+      <div className="sob-border">
+        <div className="sob-inner relative overflow-hidden rounded-[13px]"
+          style={{ background: 'linear-gradient(120deg, #7c2d12 0%, #b45309 45%, #166534 100%)' }}>
+
+          <div className="sob-orb sob-orb-a" />
+          <div className="sob-orb sob-orb-b" />
+          <div className="sob-sweep" />
+          <div className="sob-grid" />
+
+          <div className="relative z-10 px-3 py-2.5 md:px-5 md:py-3 flex items-center gap-2.5 md:gap-4">
+            <div className="sob-icon-badge flex-shrink-0 relative flex items-center justify-center w-9 h-9 md:w-11 md:h-11 rounded-full"
+              style={{ background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.3)' }}>
+              <span className="sob-icon-ring" />
+              <FiGift size={17} className="text-amber-200" />
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="sob-badge inline-flex items-center gap-1 bg-amber-400 text-amber-900 text-[8px] md:text-[9px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full">
+                  <FiZap size={8} className="sob-zap" /> New
+                </span>
+                <p className="text-white font-black text-[13px] md:text-base leading-tight"
+                  style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
+                  <span className="sob-highlight">Fruit Baskets & Hampers</span> are here
+                </p>
+              </div>
+              <p className="text-amber-100/90 text-[10px] md:text-xs mt-0.5 leading-snug hidden sm:block truncate">
+                Curated gift baskets, delivered to your door — pick your slot at checkout.
+              </p>
+            </div>
+
+            <div className="flex-shrink-0">
+              <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 md:py-2 rounded-lg flex items-center gap-1 shadow-lg"
+                style={{ color: '#7c2d12' }}>
                 Shop <FiArrowRight size={11} className="sob-cta-arrow" />
               </span>
             </div>
@@ -1675,6 +1744,7 @@ export default function Home() {
         <div className="hidden md:block max-w-7xl mx-auto px-4 pt-4">
           <DesktopHero />
           <div className="mb-4"><SmallOrderBanner /></div>
+          <div className="mb-4"><FruitBasketBanner /></div>
           <DesktopPromoGrid onScrollTo={(id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })} />
           {/* Desktop trust strip */}
           <div className="flex items-center justify-between gap-2 bg-white rounded-2xl px-5 py-2.5 border border-gray-100 shadow-sm mb-4">

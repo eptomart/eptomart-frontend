@@ -69,6 +69,7 @@ const AdminMessages     = lazy(() => import('./pages/admin/Messages'));
 const AdminUzhavar      = lazy(() => import('./pages/admin/UzhavarAdmin'));
 const AdminKoyambedu    = lazy(() => import('./pages/admin/KoyambeduAdmin'));
 const AdminKoyambeduInventory = lazy(() => import('./pages/admin/KoyambeduInventory'));
+const AdminFruitBaskets       = lazy(() => import('./pages/admin/FruitBasketAdmin'));
 const AdminCoupons         = lazy(() => import('./pages/admin/Coupons'));
 const AdminWhatsAppInbox   = lazy(() => import('./pages/admin/WhatsAppInbox'));
 
@@ -90,6 +91,13 @@ const KoyambeduSellerAdminOrders   = lazy(() => import('./pages/koyambedu/seller
 const KoyambeduDailyPrice          = lazy(() => import('./pages/koyambedu/seller-admin/KoyambeduDailyPrice'));
 const KoyambeduReports             = lazy(() => import('./pages/koyambedu/seller-admin/KoyambeduReports'));
 const KoyambeduSpecialRequests     = lazy(() => import('./pages/koyambedu/seller-admin/KoyambeduSpecialRequests'));
+
+// ── Fruit Baskets & Hampers pages ─────────────
+// Standalone vertical: own catalog, own checkout, own orders list — no
+// shared cart/checkout with Koyambedu or any other vertical.
+const FruitBasketShop      = lazy(() => import('./pages/fruitbaskets/FruitBasketShop'));
+const FruitBasketCheckout  = lazy(() => import('./pages/fruitbaskets/FruitBasketCheckout'));
+const FruitBasketMyOrders  = lazy(() => import('./pages/fruitbaskets/FruitBasketMyOrders'));
 
 // ── Farmer Fresh pages ───────────────────────
 const UzhavarHome       = lazy(() => import('./pages/uzhavar/UzhavarHome'));
@@ -243,6 +251,7 @@ function AppRoutes() {
             <Route path="uzhavar"          element={<AdminUzhavar />} />
             <Route path="koyambedu"        element={<AdminKoyambedu />} />
             <Route path="koyambedu/inventory" element={<AdminKoyambeduInventory />} />
+            <Route path="fruitbaskets"     element={<AdminFruitBaskets />} />
             <Route path="coupons"          element={<AdminCoupons />} />
             <Route path="whatsapp-inbox"   element={<AdminWhatsAppInbox />} />
           </Route>
@@ -267,6 +276,11 @@ function AppRoutes() {
           <Route path="/koyambedu/seller-admin/daily-price"        element={<ProtectedRoute><KoyambeduDailyPrice /></ProtectedRoute>} />
           <Route path="/koyambedu/seller-admin/reports"            element={<ProtectedRoute><KoyambeduReports /></ProtectedRoute>} />
           <Route path="/koyambedu/seller-admin/special-requests"   element={<ProtectedRoute><KoyambeduSpecialRequests /></ProtectedRoute>} />
+
+          {/* ── Fruit Baskets & Hampers — standalone vertical ─────── */}
+          <Route path="/fruitbaskets"           element={<FruitBasketShop />} />
+          <Route path="/fruitbaskets/checkout"  element={<ProtectedRoute><FruitBasketCheckout /></ProtectedRoute>} />
+          <Route path="/fruitbaskets/my-orders" element={<ProtectedRoute><FruitBasketMyOrders /></ProtectedRoute>} />
 
           {/* ── Farmer Fresh ───────────────────── */}
           <Route path="/uzhavar"                    element={<UzhavarHome />} />
