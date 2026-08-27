@@ -1603,7 +1603,12 @@ export default function KoyambeduAdmin() {
                     <div className="p-4">
                       <div className="flex items-start justify-between mb-2">
                         <div>
-                          <p className="font-bold text-gray-800 text-sm">{order.orderId}</p>
+                          <p className="font-bold text-gray-800 text-sm flex items-center gap-1.5">
+                            {order.orderId}
+                            {order.isDemoOrder && (
+                              <span className="text-[9px] font-black tracking-wide bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">DEMO</span>
+                            )}
+                          </p>
                           <p className="text-xs text-gray-500">{order.buyer?.name} · {order.buyer?.phone}</p>
                           {order.deliveryDate && (
                             <p className="text-xs text-blue-600">📅 {new Date(order.deliveryDate).toLocaleDateString('en-IN',{day:'numeric',month:'short'})} · {order.deliverySlot}</p>

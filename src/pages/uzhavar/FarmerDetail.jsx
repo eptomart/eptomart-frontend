@@ -264,7 +264,28 @@ export default function FarmerDetail() {
       const order = orderRes.data.order;
 
       const payRes = await api.post('/uzhavar/orders/payment', { uzhavarOrderId: order._id });
-      const { rzpOrderId, amount, currency } = payRes.data;
+      const { rzpOrderId, amount, currency, demoMode } = payRes.data;
+
+      // Demo/review account — backend already marked this order paid on a
+      // fake gateway id (see uzhavarController.createPaymentOrder). Skip
+      // the real widget and confirm it the same way the handler below does.
+      if (demoMode) {
+        try {
+          await api.post('/uzhavar/orders/verify-payment', {
+            uzhavarOrderId: order._id, razorpayOrderId: rzpOrderId,
+            razorpayPaymentId: `demo_pay_${Date.now()}`, razorpaySignature: 'demo',
+          });
+          toast.success(
+            `✅ Booking confirmed! Paid ₹${bookingFeeTotal.toFixed(2)}. Pay ₹${subtotal.toFixed(2)} to farmer at delivery.`,
+            { duration: 7000 }
+          );
+          navigate('/uzhavar/my-orders');
+        } catch {
+          toast.error('Demo payment confirmation failed');
+        }
+        setPlacing(false);
+        return;
+      }
 
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,

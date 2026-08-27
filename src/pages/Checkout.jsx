@@ -212,13 +212,32 @@ export default function Checkout() {
 
   // ── Razorpay flow ────────────────────────────────────────
   const handleRazorpayPayment = async (orderId) => {
+    const { data } = await api.post('/payment/razorpay/create-order', { orderId });
+
+    // Demo/review account (see backend paymentController.createRazorpayOrder) —
+    // server already marked the order paid on a fake gateway id; skip the
+    // real widget entirely and just confirm it the same way the handler
+    // callback below would, so all downstream success behavior is identical.
+    if (data.demoMode) {
+      try {
+        const verifyRes = await api.post('/payment/razorpay/verify', {
+          razorpay_order_id: data.razorpayOrderId,
+          razorpay_payment_id: `demo_pay_${Date.now()}`,
+          razorpay_signature: 'demo',
+          orderId: data.orderId,
+        });
+        return !!verifyRes.data.success;
+      } catch {
+        toast.error('Demo payment confirmation failed');
+        return false;
+      }
+    }
+
     const loaded = await loadRazorpay();
     if (!loaded) {
       toast.error('Failed to load payment gateway. Please try again.');
       return false;
     }
-
-    const { data } = await api.post('/payment/razorpay/create-order', { orderId });
 
     return new Promise((resolve) => {
       let handlerCalled = false; // prevent ondismiss from overriding a successful payment

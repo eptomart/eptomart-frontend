@@ -789,6 +789,28 @@ export default function KoyambeduCheckout() {
       // ── Razorpay flow ───────────────────────────────────────────────────────
       const { data: rzp } = await api.post('/koyambedu/orders/create-razorpay', { orderId: data.order._id });
       const pendingOrderId = data.order._id;
+
+      // Demo/review account — backend already marked this order paid on a
+      // fake gateway id (see koyambeduController.createRazorpayOrder). Skip
+      // the real widget and confirm it the same way the handler below does.
+      if (rzp.demoMode) {
+        try {
+          await api.post('/koyambedu/orders/verify-payment', {
+            orderId: pendingOrderId,
+            razorpayOrderId: rzp.rzpOrderId,
+            razorpayPaymentId: `demo_pay_${Date.now()}`,
+            razorpaySignature: 'demo',
+          });
+          await clearCart();
+          setPlaced(data.order);
+          toast.success('Payment confirmed!');
+        } catch {
+          toast.error('Demo payment confirmation failed');
+          setLoading(false);
+        }
+        return;
+      }
+
       const launch = () => {
         const rzpModal = new window.Razorpay({
           key:      rzp.keyId,

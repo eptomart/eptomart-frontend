@@ -148,6 +148,29 @@ export default function EptoFreshCheckout() {
         return;
       }
 
+      // Demo/review account — backend already marked this order paid on a
+      // fake gateway id (see eptoFreshController.placeOrder). Skip the real
+      // widget and confirm it the same way the handler below would.
+      if (data.demoMode) {
+        try {
+          const verRes = await api.post('/eptofresh/orders/verify-payment', {
+            razorpay_order_id: data.razorpayOrderId,
+            razorpay_payment_id: `demo_pay_${Date.now()}`,
+            razorpay_signature: 'demo',
+            orderId: data.orderId,
+          });
+          if (verRes.data.success) {
+            toast.success('Payment successful! Order placed.');
+            clearCart();
+            navigate(`/eptofresh/orders/${data.orderId}`);
+          }
+        } catch {
+          toast.error('Demo payment confirmation failed');
+        }
+        setPlacing(false);
+        return;
+      }
+
       // Razorpay
       const loaded = await loadRazorpay();
       if (!loaded) throw new Error('Payment gateway failed to load');

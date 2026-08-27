@@ -69,7 +69,21 @@ export default function UzhavarSubscribe() {
       }
 
       const res = await api.post('/uzhavar/subscription', { plan: selected });
-      const { subscriptionId, rzpOrderId, amount } = res.data;
+      const { subscriptionId, rzpOrderId, amount, demoMode } = res.data;
+
+      // Demo/review account — backend already created this subscription
+      // marked isDemoOrder (see uzhavarController.createSubscription). Skip
+      // the real widget and confirm it the same way the handler below does.
+      if (demoMode) {
+        await api.post('/uzhavar/subscription/verify', {
+          subscriptionId, razorpayOrderId: rzpOrderId,
+          razorpayPaymentId: `demo_pay_${Date.now()}`, razorpaySignature: 'demo',
+        });
+        toast.success('Subscription activated! 🎉');
+        navigate('/uzhavar');
+        setLoading(false);
+        return;
+      }
 
       const options = {
         key:      import.meta.env.VITE_RAZORPAY_KEY_ID,

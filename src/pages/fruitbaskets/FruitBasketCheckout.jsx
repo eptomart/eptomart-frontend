@@ -151,6 +151,25 @@ export default function FruitBasketCheckout() {
       });
       if (!data.success) { toast.error(data.message || 'Failed to start checkout'); setPlacing(false); return; }
 
+      // Demo/review account — backend already marked this order paid on a
+      // fake gateway id (see fruitBasketController.createRazorpayOrder).
+      // Skip the real widget and confirm it the same way the handler below does.
+      if (data.demoMode) {
+        try {
+          await api.post('/fruitbaskets/orders/verify-payment', {
+            orderId: data.orderId, razorpayOrderId: data.rzpOrderId,
+            razorpayPaymentId: `demo_pay_${Date.now()}`, razorpaySignature: 'demo',
+          });
+          sessionStorage.removeItem(CART_KEY);
+          toast.success('Order placed! 🎁');
+          navigate('/fruitbaskets/my-orders');
+        } catch {
+          toast.error('Demo payment confirmation failed');
+        }
+        setPlacing(false);
+        return;
+      }
+
       await loadRazorpayScript();
       const rzp = new window.Razorpay({
         key: data.keyId, amount: Math.round(data.amount * 100), currency: data.currency,

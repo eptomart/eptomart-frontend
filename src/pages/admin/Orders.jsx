@@ -1169,7 +1169,12 @@ export default function AdminOrders() {
                       {/* Left: order id + date + customer */}
                       <div className="flex items-start gap-4 flex-wrap">
                         <div className="min-w-[90px]">
-                          <p className="font-mono font-bold text-sm text-gray-900">#{order.orderId}</p>
+                          <p className="font-mono font-bold text-sm text-gray-900 flex items-center gap-1.5">
+                            #{order.orderId}
+                            {order.isDemoOrder && (
+                              <span className="text-[9px] font-black tracking-wide bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">DEMO</span>
+                            )}
+                          </p>
                           <p className="text-xs text-gray-400 mt-0.5">{formatDate(order.createdAt)}</p>
                         </div>
 
