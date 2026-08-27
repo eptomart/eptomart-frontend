@@ -615,39 +615,50 @@ function ComboBanner({ onReady }) {
         <div className="sob-inner promo-card relative overflow-hidden rounded-[13px] h-full px-3 py-2.5 md:px-4 md:py-3"
           style={{ background: 'linear-gradient(145deg, #581c87 0%, #9333ea 55%, #6b21a8 100%)' }}>
 
+          {/* Real veg & fruit photo, bleeding in from the right edge and
+              fading into the gradient via a mask — content below is kept to
+              the left ~60% so text never sits on top of the busy photo. */}
+          <img src="/images/combo-veg-fruit-box.jpg" alt="" aria-hidden="true"
+            className="absolute inset-y-0 right-0 h-full w-[62%] md:w-[56%] object-cover object-center opacity-90"
+            style={{
+              maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 28%, black 55%)',
+              WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 28%, black 55%)',
+            }} />
+          {/* Extra top/bottom fade so the photo blends into the rounded card edges */}
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(88,28,135,0.25), transparent 30%, transparent 70%, rgba(88,28,135,0.35))' }} />
+
           <div className="sob-orb sob-orb-a" />
-          <div className="sob-orb sob-orb-b" />
-          <div className="sob-grid" />
-          {/* Electric shine sweep + sparks — distinct "flash deal" motion */}
           <div className="promo-shine" />
-          <span className="promo-spark promo-spark-1 w-1.5 h-1.5 bg-amber-300" style={{ right: '18%', top: '22%' }} />
-          <span className="promo-spark promo-spark-2 w-1 h-1 bg-white" style={{ right: '30%', top: '55%' }} />
+          <span className="promo-spark promo-spark-1 w-1.5 h-1.5 bg-amber-300" style={{ right: '10%', top: '18%' }} />
+          <span className="promo-spark promo-spark-2 w-1 h-1 bg-white" style={{ right: '16%', top: '60%' }} />
 
-          <div className="relative z-10 flex items-center justify-between gap-2">
-            <div className="promo-icon-wrap promo-icon-combo flex-shrink-0 flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-2xl"
-              style={{ background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.35)' }}>
-              <FiZap size={16} className="text-amber-200" />
+          <div className="relative z-10 flex flex-col h-full pr-[46%] md:pr-[40%]">
+            <div className="flex items-center justify-between gap-2">
+              <div className="promo-icon-wrap promo-icon-combo flex-shrink-0 flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-2xl"
+                style={{ background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.35)' }}>
+                <FiZap size={16} className="text-amber-200" />
+              </div>
+              <span className="bg-amber-400 text-amber-900 text-[8px] md:text-[9px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full flex-shrink-0">
+                Flash Sale
+              </span>
             </div>
-            <span className="bg-amber-400 text-amber-900 text-[8px] md:text-[9px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full flex-shrink-0">
-              Flash Sale
-            </span>
-          </div>
 
-          <div className="relative z-10 promo-title mt-1.5">
-            <p className="text-white font-black text-[13px] md:text-[15px] leading-tight line-clamp-2"
-              style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
-              Veg &amp; Fruit Combos
-            </p>
-            <p className="text-purple-100/85 text-[10px] md:text-[11px] mt-0.5 leading-snug hidden sm:block line-clamp-1">
-              Combo packs with free addons, in your Koyambedu cart.
-            </p>
-          </div>
+            <div className="promo-title mt-1.5 flex-1">
+              <p className="text-white font-black text-[13px] md:text-[15px] leading-tight line-clamp-2"
+                style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
+                Veg &amp; Fruit Combos
+              </p>
+              <p className="text-purple-100/85 text-[10px] md:text-[11px] mt-0.5 leading-snug hidden sm:block line-clamp-1">
+                Combo packs with free addons, in your Koyambedu cart.
+              </p>
+            </div>
 
-          <div className="relative z-10 flex justify-end mt-1.5">
-            <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg"
-              style={{ color: '#581c87' }}>
-              Shop <FiArrowRight size={11} className="sob-cta-arrow" />
-            </span>
+            <div className="flex justify-start mt-1.5">
+              <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg"
+                style={{ color: '#581c87' }}>
+                Shop <FiArrowRight size={11} className="sob-cta-arrow" />
+              </span>
+            </div>
           </div>
         </div>
       </div>
