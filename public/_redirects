@@ -1,1 +1,12 @@
+# A real asset that exists (e.g. current /assets/*.js) is always served
+# directly by Cloudflare Pages BEFORE these rules ever run. This rule only
+# fires for a JS/CSS chunk that no longer exists in the current deployment
+# (e.g. a browser tab still holding an old index.html after a redeploy) —
+# without it, that request falls through to the catch-all below and gets
+# index.html back with a 200, which browsers then reject with "'text/html'
+# is not a valid JavaScript MIME type" because they asked for a script.
+# Forcing a real 404 here lets the app's existing chunk-load-error recovery
+# (see src/main.jsx) catch it as a normal failed fetch and self-heal.
+/assets/*  /assets/:splat  404
+
 /* /index.html 200
