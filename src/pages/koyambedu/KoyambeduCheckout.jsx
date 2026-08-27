@@ -581,6 +581,24 @@ export default function KoyambeduCheckout() {
   const [scheduleStatus,    setScheduleStatus]    = useState('open');
   const [slotsLoading,      setSlotsLoading]      = useState(false);
 
+  // sameDaySettings loads async (see fetch above) — it starts with a
+  // same-day-enabled default so nothing flashes before the real value
+  // arrives, which means deliveryTab's initial useState can be computed
+  // BEFORE we know same-day is actually disabled. If that fetch later
+  // reveals same-day is closed while the tab is still stuck on 'today',
+  // force it over to 'tomorrow' so the heading, the date card, and the
+  // actual slot-fetch (selectedDate below) all agree — otherwise the
+  // page fetches/shows TODAY's slots while every other label on screen
+  // says "tomorrow".
+  useEffect(() => {
+    if (todayDisabled && deliveryTab === 'today') {
+      setDeliveryTab('tomorrow');
+      setSelectedSlot(null);
+      setAvailableSlots(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayDisabled]);
+
   // Derive the delivery date from the active tab
   const selectedDate = deliveryTab === 'today' ? todayValue : tomorrowValue;
 
