@@ -136,6 +136,30 @@ function CombosSettingsTab() {
     finally { setSaving(false); }
   };
 
+  const togglePlatformFeeDiscount = async () => {
+    setSaving(true);
+    try {
+      const nextEnabled = !settings.platformFeeDiscount?.enabled;
+      const { data } = await api.put('/koyambedu/combos/admin/settings/platform-fee-discount', { enabled: nextEnabled });
+      setSettings(s => ({ ...s, platformFeeDiscount: data.platformFeeDiscount }));
+      toast.success(`Platform fee discount ${nextEnabled ? 'enabled' : 'disabled'}`);
+    } catch { toast.error('Save failed'); }
+    finally { setSaving(false); }
+  };
+
+  const savePlatformFeeDiscountValue = async () => {
+    setSaving(true);
+    try {
+      const { data } = await api.put('/koyambedu/combos/admin/settings/platform-fee-discount', {
+        type: settings.platformFeeDiscount?.type || 'flat',
+        value: Number(settings.platformFeeDiscount?.value ?? 0),
+      });
+      setSettings(s => ({ ...s, platformFeeDiscount: data.platformFeeDiscount }));
+      toast.success('Platform fee discount saved');
+    } catch { toast.error('Save failed'); }
+    finally { setSaving(false); }
+  };
+
   const updateSlot = (i, field, val) => setSettings(s => {
     const slots = [...s.deliverySlots]; slots[i] = { ...slots[i], [field]: val }; return { ...s, deliverySlots: slots };
   });
@@ -244,6 +268,34 @@ function CombosSettingsTab() {
             onChange={e => setSettings(s => ({ ...s, minOrderValue: { ...s.minOrderValue, value: e.target.value } }))}
             className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm w-32" />
           <button onClick={saveMinOrder} disabled={saving} className="ml-auto text-xs font-bold bg-purple-600 text-white px-3 py-1.5 rounded-lg">Save</button>
+        </div>
+      </div>
+
+      {/* Platform fee discount — reward for meeting the combo minimum above.
+          Independent from the normal-cart discount in Dev Settings. */}
+      <div className="bg-white border border-gray-100 rounded-xl p-4" style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="font-bold text-gray-800 text-sm">Platform Fee Discount (combo orders)</p>
+            <p className="text-xs text-gray-500 mt-0.5">Applied automatically once the combo minimum above is met — no coupon needed.</p>
+          </div>
+          <button onClick={togglePlatformFeeDiscount} disabled={saving} className="flex-shrink-0">
+            {settings.platformFeeDiscount?.enabled
+              ? <FiToggleRight size={30} className="text-purple-600" />
+              : <FiToggleLeft size={30} className="text-gray-300" />}
+          </button>
+        </div>
+        <div className="flex gap-2">
+          <select value={settings.platformFeeDiscount?.type || 'flat'}
+            onChange={e => setSettings(s => ({ ...s, platformFeeDiscount: { ...s.platformFeeDiscount, type: e.target.value } }))}
+            className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm">
+            <option value="flat">₹ Flat off</option>
+            <option value="percent">% Off</option>
+          </select>
+          <input type="number" min="0" value={settings.platformFeeDiscount?.value ?? 0}
+            onChange={e => setSettings(s => ({ ...s, platformFeeDiscount: { ...s.platformFeeDiscount, value: e.target.value } }))}
+            className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm" />
+          <button onClick={savePlatformFeeDiscountValue} disabled={saving} className="shrink-0 text-xs font-bold bg-purple-600 text-white px-3 py-1.5 rounded-lg">Save</button>
         </div>
       </div>
 
@@ -556,6 +608,12 @@ export default function KoyambeduAdmin() {
   const [lowWeightCodeInput,      setLowWeightCodeInput]      = useState('');
   const [lowWeightThresholdInput, setLowWeightThresholdInput] = useState('12');
 
+  // Dev Settings tab — Normal-Products Minimum Order + Platform Fee Discount
+  // (combo carts have their own independent minimum + discount — see the
+  // "Combos" tab / CombosSettingsTab instead)
+  const [orderMinSettings, setOrderMinSettings] = useState(null); // { value, platformFeeDiscount: {enabled,type,value}, updatedByName, updatedAt }
+  const [orderMinSaving,   setOrderMinSaving]   = useState(false);
+
   // Users Cart tab (SuperAdmin) — in-progress customer carts
   const [usersCarts,      setUsersCarts]      = useState([]);
   const [usersCartSearch, setUsersCartSearch] = useState('');
@@ -670,6 +728,8 @@ export default function KoyambeduAdmin() {
         setLowWeightSettings(lwData);
         setLowWeightCodeInput(lwData.couponCode || '');
         setLowWeightThresholdInput(String(lwData.thresholdKg || 12));
+        const { data: omData } = await api.get('/koyambedu/admin/dev-settings/order-minimum');
+        setOrderMinSettings(omData);
       } else if (t === 'users-cart') {
         const params = usersCartSearch.trim() ? `?search=${encodeURIComponent(usersCartSearch.trim())}` : '';
         const { data } = await api.get(`/koyambedu/admin/carts${params}`);
@@ -4822,6 +4882,124 @@ export default function KoyambeduAdmin() {
               </div>
               <p className="text-[11px] text-gray-400 mt-1">Orders with total gross weight below this are shown the popup at the payment step.</p>
             </div>
+          </div>
+
+          {/* Normal Products — Minimum Order Value + Platform Fee Discount.
+              Combo carts have their own independent minimum + discount,
+              managed in the "Combos" tab instead (KoyambeduComboSettings). */}
+          <div className="bg-white rounded-2xl border-2 border-emerald-200 p-4 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-emerald-50">
+                <span className="text-xl">💰</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-black text-gray-800 text-sm">Minimum Order Value — Normal Products</h3>
+                <p className="text-xs text-gray-400 mt-0.5 leading-snug">
+                  The minimum cart value required to check out on regular (non-combo) Koyambedu
+                  Daily orders. Once a cart reaches this value it can be ordered — you can also
+                  reward that with an automatic platform fee discount below. Combo carts (any item
+                  marked "Combo") use their own separate minimum in the Combos tab, not this one.
+                </p>
+              </div>
+            </div>
+
+            {orderMinSettings?.updatedByName && (
+              <p className="text-[11px] text-gray-400">
+                Last changed by {orderMinSettings.updatedByName}
+                {orderMinSettings.updatedAt ? ` · ${new Date(orderMinSettings.updatedAt).toLocaleString('en-IN')}` : ''}
+              </p>
+            )}
+
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Minimum Order Value (₹)</label>
+              <div className="flex gap-2">
+                <input type="number" min="0" step="1"
+                  value={orderMinSettings?.value ?? ''}
+                  onChange={e => setOrderMinSettings(s => ({ ...s, value: e.target.value }))}
+                  placeholder="799"
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
+                <button
+                  disabled={orderMinSaving}
+                  onClick={async () => {
+                    setOrderMinSaving(true);
+                    try {
+                      await api.put('/koyambedu/admin/dev-settings/order-minimum', {
+                        value: Number(orderMinSettings?.value ?? 799),
+                      });
+                      const { data } = await api.get('/koyambedu/admin/dev-settings/order-minimum');
+                      setOrderMinSettings(data);
+                      toast.success('Minimum order value saved');
+                    } catch (err) { toast.error(err?.response?.data?.message || 'Failed to update'); }
+                    finally { setOrderMinSaving(false); }
+                  }}
+                  className="shrink-0 bg-emerald-600 text-white font-bold text-xs px-4 py-2 rounded-xl disabled:opacity-50 active:scale-95 transition">
+                  {orderMinSaving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl p-3 bg-gray-50">
+              <div>
+                <p className="text-sm font-bold text-gray-800">Platform Fee Discount</p>
+                <p className="text-xs text-gray-400">Reward applied automatically once the minimum above is met</p>
+              </div>
+              <button
+                disabled={orderMinSaving}
+                onClick={async () => {
+                  setOrderMinSaving(true);
+                  try {
+                    const nextEnabled = !orderMinSettings?.platformFeeDiscount?.enabled;
+                    await api.put('/koyambedu/admin/dev-settings/order-minimum', {
+                      platformFeeDiscount: { enabled: nextEnabled },
+                    });
+                    setOrderMinSettings(s => ({ ...s, platformFeeDiscount: { ...s.platformFeeDiscount, enabled: nextEnabled } }));
+                    toast.success(`Platform fee discount ${nextEnabled ? 'enabled' : 'disabled'}`);
+                  } catch (err) { toast.error(err?.response?.data?.message || 'Failed to update'); }
+                  finally { setOrderMinSaving(false); }
+                }}
+                className={`shrink-0 relative w-12 h-7 rounded-full transition ${orderMinSettings?.platformFeeDiscount?.enabled ? 'bg-green-500' : 'bg-gray-300'} disabled:opacity-50`}>
+                <span className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition ${orderMinSettings?.platformFeeDiscount?.enabled ? 'left-5' : 'left-0.5'}`} />
+              </button>
+            </div>
+
+            <div className="flex gap-2">
+              <select value={orderMinSettings?.platformFeeDiscount?.type || 'flat'}
+                onChange={e => setOrderMinSettings(s => ({ ...s, platformFeeDiscount: { ...s.platformFeeDiscount, type: e.target.value } }))}
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                <option value="flat">₹ Flat off</option>
+                <option value="percent">% Off</option>
+              </select>
+              <input type="number" min="0" step="1"
+                value={orderMinSettings?.platformFeeDiscount?.value ?? ''}
+                onChange={e => setOrderMinSettings(s => ({ ...s, platformFeeDiscount: { ...s.platformFeeDiscount, value: e.target.value } }))}
+                placeholder={orderMinSettings?.platformFeeDiscount?.type === 'percent' ? 'e.g. 20' : 'e.g. 15'}
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
+              <button
+                disabled={orderMinSaving}
+                onClick={async () => {
+                  setOrderMinSaving(true);
+                  try {
+                    await api.put('/koyambedu/admin/dev-settings/order-minimum', {
+                      platformFeeDiscount: {
+                        type:  orderMinSettings?.platformFeeDiscount?.type || 'flat',
+                        value: Number(orderMinSettings?.platformFeeDiscount?.value ?? 0),
+                      },
+                    });
+                    const { data } = await api.get('/koyambedu/admin/dev-settings/order-minimum');
+                    setOrderMinSettings(data);
+                    toast.success('Platform fee discount saved');
+                  } catch (err) { toast.error(err?.response?.data?.message || 'Failed to update'); }
+                  finally { setOrderMinSaving(false); }
+                }}
+                className="shrink-0 bg-emerald-600 text-white font-bold text-xs px-4 py-2 rounded-xl disabled:opacity-50 active:scale-95 transition">
+                {orderMinSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-400">
+              Example: {orderMinSettings?.platformFeeDiscount?.type === 'percent'
+                ? `${orderMinSettings?.platformFeeDiscount?.value || 0}% off the platform fee`
+                : `₹${orderMinSettings?.platformFeeDiscount?.value || 0} off the platform fee`} once the cart reaches ₹{orderMinSettings?.value ?? 799} — applies automatically at checkout, no coupon code needed.
+            </p>
           </div>
 
           {/* Audit Log */}
