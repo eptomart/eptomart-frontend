@@ -7,7 +7,16 @@ import { FiDownload, FiPrinter, FiRefreshCw } from 'react-icons/fi';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
 
-const today = () => new Date().toISOString().slice(0, 10);
+// IST-aware "today" — NOT new Date().toISOString(), which is UTC and rolls
+// over 5.5 hours after IST midnight. Between 00:00–05:29 IST that UTC-based
+// version still returns YESTERDAY's date, silently defaulting every report
+// below to the wrong cutoffCycle right when an admin checking just after
+// midnight would expect "today". Procurement/reports are grouped by
+// delivery-date cutoffCycle (IST), so the default picked here must match.
+const today = () => {
+  const IST_OFFSET_MS = (5.5 * 60 * 60 * 1000);
+  return new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
+};
 const fmt   = (n) => `₹${Number(n || 0).toFixed(2)}`;
 
 // ── Export helpers ─────────────────────────────

@@ -1340,7 +1340,12 @@ export default function KoyambeduAdmin() {
   };
 
   // ── Procurement tab (dedicated, separate from Reports) ──────────
-  const [procDate,    setProcDate]    = useState(() => new Date().toISOString().slice(0, 10));
+  // IST-aware default date — NOT new Date().toISOString(), which is UTC and
+  // rolls over 5.5 hours after IST midnight. Between 00:00-05:29 IST that
+  // UTC-based version silently defaults this tab to YESTERDAY's cutoffCycle
+  // (procurement is grouped by delivery-date cutoffCycle, IST) right when an
+  // admin checking just after midnight would expect "today"'s orders.
+  const [procDate,    setProcDate]    = useState(() => new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10));
   const [procData,    setProcData]    = useState(null);
   const [procLoading, setProcLoading] = useState(false);
   const [procView,    setProcView]    = useState('checklist'); // 'checklist' | 'share'
