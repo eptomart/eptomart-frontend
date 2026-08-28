@@ -1349,6 +1349,7 @@ export default function KoyambeduAdmin() {
   const [procData,    setProcData]    = useState(null);
   const [procLoading, setProcLoading] = useState(false);
   const [procView,    setProcView]    = useState('checklist'); // 'checklist' | 'share'
+  const [procFixing,  setProcFixing]  = useState(false); // one-time cutoffCycle repair button
   const [procCommentDrafts, setProcCommentDrafts] = useState({}); // productKey -> draft text
   const [procPackingDrafts, setProcPackingDrafts] = useState({}); // productKey -> draft text
   const [procSaving,  setProcSaving]  = useState({}); // productKey -> bool
@@ -3914,6 +3915,29 @@ export default function KoyambeduAdmin() {
       ══════════════════════════════════════════════ */}
       {tab === 'procurement' && (
         <div className="space-y-4 pb-6">
+          {isSuperAdmin && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-amber-800">One-time fix: old orders showing under the wrong date?</p>
+                <p className="text-[11px] text-amber-700 mt-0.5">Orders placed before the delivery-date fix may still be grouped by their order date. Run this once to correct them — safe to run more than once.</p>
+              </div>
+              <button
+                disabled={procFixing}
+                onClick={async () => {
+                  if (!window.confirm('Recompute procurement dates for all existing orders based on their delivery date? This is safe and can be run more than once.')) return;
+                  setProcFixing(true);
+                  try {
+                    const { data } = await api.post('/koyambedu/admin/fix-cutoff-cycle');
+                    toast.success(data.message || `Fixed ${data.fixed} orders`);
+                    fetchProcurement();
+                  } catch (err) { toast.error(err?.response?.data?.message || 'Fix failed'); }
+                  finally { setProcFixing(false); }
+                }}
+                className="shrink-0 bg-amber-600 text-white font-bold text-xs px-3 py-2 rounded-xl disabled:opacity-50 active:scale-95 transition whitespace-nowrap">
+                {procFixing ? 'Fixing…' : '🔧 Fix Dates'}
+              </button>
+            </div>
+          )}
           <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
             <div className="flex items-center gap-2">
               <input type="date" value={procDate} onChange={e => setProcDate(e.target.value)}
