@@ -273,6 +273,23 @@ function GradeSection({ grade, gradeDef, proc, plat, log, unit, onChange, onTogg
 }
 
 export default function KoyambeduVariantProductForm({ form, onChange, categories }) {
+  // ── Combo contents — search & select an existing product ──
+  const [comboQuery,   setComboQuery]   = useState('');
+  const [comboResults, setComboResults] = useState([]);
+  const [comboSearching, setComboSearching] = useState(false);
+
+  useEffect(() => {
+    const q = comboQuery.trim();
+    if (q.length < 2) { setComboResults([]); return; }
+    setComboSearching(true);
+    const t = setTimeout(() => {
+      api.get('/koyambedu/admin/products', { params: { search: q } })
+        .then(r => setComboResults((r.data.products || []).slice(0, 8)))
+        .catch(() => setComboResults([]))
+        .finally(() => setComboSearching(false));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [comboQuery]);
   const { procurementChargePercent: proc, platformChargePercent: plat, logisticsChargePercent: log } = form;
 
   // Recompute all variant final prices whenever charge percentages change
@@ -694,8 +711,10 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
 
       {/* ── Combo / Flash Sale (Super Admin) ──
           A combo is otherwise a normal product — sold through the same
-          shop/cart/checkout. This just tags it + lets admin list what's
-          inside (e.g. "500 gm tamarind", "250 gm garlic"). Combo-specific
+          shop/cart/checkout. Contents link to REAL Koyambedu products +
+          numeric quantity (e.g. 250 g of Drumstick), so Procurement can
+          roll up actual raw-material needs across combo orders — no price
+          is attached, this is informational/procurement-only. Combo-specific
           same-day cutoff/slots/delivery/min-order come from the separate
           Combos settings panel and only apply when that feature is ON. */}
       <div className="bg-purple-50 border border-purple-100 rounded-xl px-3 py-3">
@@ -708,31 +727,53 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
 
         {form.isCombo && (
           <div className="mt-3 space-y-2">
-            <label className="block text-xs font-semibold text-gray-700">What's Inside (addons)</label>
+            <label className="block text-xs font-semibold text-gray-700">What's Inside (for procurement — no price needed)</label>
+
             {(form.comboContents || []).map((c, i) => (
-              <div key={i} className="flex gap-2">
-                <input type="text" placeholder="Item (e.g. Tamarind)" value={c.item || ''}
-                  onChange={e => {
-                    const next = [...(form.comboContents || [])];
-                    next[i] = { ...next[i], item: e.target.value };
-                    setField('comboContents', next);
-                  }}
-                  className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none" />
-                <input type="text" placeholder="Qty (e.g. 500 gm)" value={c.qty || ''}
+              <div key={c.product || i} className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
+                <span className="flex-1 text-xs font-medium text-gray-700 truncate">{c.name || c.item || 'Item'}</span>
+                <input type="number" min="0" step="any" placeholder="Qty" value={c.qty ?? ''}
                   onChange={e => {
                     const next = [...(form.comboContents || [])];
                     next[i] = { ...next[i], qty: e.target.value };
                     setField('comboContents', next);
                   }}
-                  className="w-32 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none" />
+                  className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none" />
+                <span className="text-[11px] text-gray-400 w-10">{c.unit}</span>
                 <button type="button"
                   onClick={() => setField('comboContents', (form.comboContents || []).filter((_, idx) => idx !== i))}
-                  className="text-red-500 text-xs px-2 hover:bg-red-50 rounded-lg">✕</button>
+                  className="text-red-500 text-xs px-1 hover:bg-red-50 rounded-lg">✕</button>
               </div>
             ))}
-            <button type="button"
-              onClick={() => setField('comboContents', [...(form.comboContents || []), { item: '', qty: '' }])}
-              className="text-xs font-semibold text-purple-700 hover:text-purple-900">+ Add item</button>
+
+            {/* Search & add a product */}
+            <div className="relative">
+              <input type="text" value={comboQuery} onChange={e => setComboQuery(e.target.value)}
+                placeholder="Search products to add (e.g. Drumstick)…"
+                className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-300" />
+              {comboQuery.trim().length >= 2 && (
+                <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {comboSearching ? (
+                    <p className="px-3 py-2 text-xs text-gray-400">Searching…</p>
+                  ) : comboResults.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-gray-400">No products found</p>
+                  ) : comboResults.map(p => (
+                    <button key={p._id} type="button"
+                      onClick={() => {
+                        const already = (form.comboContents || []).some(c => c.product === p._id);
+                        if (already) { toast.error('Already added'); return; }
+                        setField('comboContents', [...(form.comboContents || []), { product: p._id, name: p.name, unit: p.unit || 'kg', qty: '' }]);
+                        setComboQuery('');
+                        setComboResults([]);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 flex items-center justify-between gap-2">
+                      <span className="truncate">{p.name}</span>
+                      <span className="text-gray-400 flex-shrink-0">{p.unit}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

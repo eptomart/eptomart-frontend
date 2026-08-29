@@ -111,6 +111,11 @@ const ProductCard = ({ product }) => {
         <Link to={`/koyambedu/product/${product._id}`}>
           <p className="text-xs font-semibold text-gray-800 line-clamp-1">{product.name}</p>
           {product.nameTamil && <p className="text-[10px] text-gray-400 leading-tight">{product.nameTamil}</p>}
+          {product.isCombo && product.comboContents?.length > 0 && (
+            <p className="text-[9px] text-purple-500 leading-tight line-clamp-1 mt-0.5">
+              Includes: {product.comboContents.map(c => `${c.name} ${c.qty}${c.unit || ''}`).join(', ')}
+            </p>
+          )}
         </Link>
         <div className="mt-1.5">
           {lowestUnitPrice ? (

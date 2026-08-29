@@ -2926,7 +2926,7 @@ export default function KoyambeduAdmin() {
                             </p>
                             {p.comboContents?.length > 0 && (
                               <p className="text-[11px] text-purple-700 mt-1">
-                                + {p.comboContents.map(c => `${c.qty} ${c.item}`).join(', ')}
+                                Contents: {p.comboContents.map(c => `${c.name || c.item} — ${c.qty}${c.unit || ''}`).join(', ')}
                               </p>
                             )}
                           </div>
@@ -4063,6 +4063,9 @@ export default function KoyambeduAdmin() {
                                   </div>
                                 </div>
                                 <p className="text-xs text-gray-400">{p.orderCount} orders · ₹{p.totalValue?.toFixed(0)} value{p.purchasedByName ? ` · marked by ${p.purchasedByName}` : ''}</p>
+                                {p.fromCombo > 0 && (
+                                  <p className="text-[10px] text-purple-600 font-semibold mt-0.5">🧺 includes {p.fromCombo.toFixed(2)} {p.unit} for combos</p>
+                                )}
                                 <textarea
                                   value={procCommentDrafts[p.productKey] ?? p.comment ?? ''}
                                   onChange={e => setProcCommentDrafts(d => ({ ...d, [p.productKey]: e.target.value }))}
