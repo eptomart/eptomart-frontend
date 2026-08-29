@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import { FiMapPin, FiCheck, FiGift, FiArrowLeft, FiCrosshair } from 'react-icons/fi';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
+import SavedAddressPicker from '../../components/common/SavedAddressPicker';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { useFruitBasketCart } from '../../context/FruitBasketCartContext';
@@ -72,20 +73,54 @@ export default function FruitBasketCheckout() {
   }, [cartChecked, cartItems.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Address form ──
+  // Saved addresses reuse the same shared User.addresses book as Koyambedu/
+  // Eptomart checkout (fullName/addressLine1/addressLine2), while Fruit
+  // Basket's own order payload uses simpler name/addressLine fields — this
+  // helper translates one saved address into Fruit Basket's shape.
+  const fromSavedAddress = (a) => ({
+    name: a.fullName || '', phone: a.phone || '',
+    addressLine: [a.addressLine1, a.addressLine2].filter(Boolean).join(', '),
+    city: a.city || '', pincode: a.pincode || '', label: a.label || 'Home',
+  });
+
   const [addr, setAddr] = useState({ name: user?.name || '', phone: user?.phone || '', addressLine: '', city: '', pincode: '', label: 'Home' });
+  const [selectedAddressId, setSelectedAddressId] = useState(undefined); // undefined = not yet initialized, null = "new address"
+  const [saveNewAddress, setSaveNewAddress] = useState(true);
   const [coords, setCoords] = useState(null); // { lat, lng }
   const [locating, setLocating] = useState(false);
   const [deliveryPreview, setDeliveryPreview] = useState(null); // { distanceKm, available, deliveryCharge }
 
-  const useMyLocation = () => {
-    if (!navigator.geolocation) { toast.error('Location not supported on this device'); return; }
+  // Existing customer → auto-pick their default (or most recent) saved
+  // address on load instead of making them retype it every time. They can
+  // still switch to another saved address or "+ New Address" above the form.
+  useEffect(() => {
+    if (selectedAddressId !== undefined) return; // already initialized (or user has since changed selection)
+    const saved = user?.addresses || [];
+    if (saved.length === 0) { setSelectedAddressId(null); return; }
+    const def = saved.find(a => a.isDefault) || saved[saved.length - 1];
+    setSelectedAddressId(String(def._id));
+    setAddr(fromSavedAddress(def));
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const useMyLocation = (silent = false) => {
+    if (!navigator.geolocation) { if (!silent) toast.error('Location not supported on this device'); return; }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => { setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocating(false); toast.success('Location captured'); },
-      () => { toast.error('Could not get your location — you can still place the order, delivery charge will be confirmed by our team'); setLocating(false); },
+      (pos) => { setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocating(false); if (!silent) toast.success('Location captured'); },
+      () => { setLocating(false); if (!silent) toast.error('Could not get your location — you can still place the order, delivery charge will be confirmed by our team'); },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
+
+  // If the browser already has geolocation permission granted from a past
+  // visit, fetch it silently on load — a returning customer with a saved
+  // address shouldn't have to tap "Use my location" again either.
+  useEffect(() => {
+    if (!navigator.permissions?.query) return;
+    navigator.permissions.query({ name: 'geolocation' })
+      .then(status => { if (status.state === 'granted') useMyLocation(true); })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!coords) { setDeliveryPreview(null); return; }
@@ -152,6 +187,17 @@ export default function FruitBasketCheckout() {
     if (!quote?.success) { toast.error('Please wait for the price to be calculated'); return; }
 
     setPlacing(true);
+
+    // New (unsaved) address + user opted in → persist to the shared address
+    // book so it shows up as a saved-address card next time, same as
+    // Koyambedu/Eptomart checkout. Best-effort: never blocks order placement.
+    if (selectedAddressId === null && saveNewAddress) {
+      api.post('/auth/add-address', {
+        label: addr.label || 'Home', fullName: addr.name, phone: addr.phone,
+        addressLine1: addr.addressLine, city: addr.city, pincode: addr.pincode,
+      }).catch(() => {});
+    }
+
     try {
       const { data } = await api.post('/fruitbaskets/orders/create-razorpay', {
         items: cartItems.map(it => ({ productId: it.productId, quantity: it.quantity })),
@@ -249,6 +295,17 @@ export default function FruitBasketCheckout() {
         {/* Address */}
         <div className="bg-white rounded-2xl p-4 mb-3" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
           <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-3">Delivery Address</p>
+
+          <SavedAddressPicker
+            addresses={user?.addresses || []}
+            selectedId={selectedAddressId}
+            onSelect={(a) => { setSelectedAddressId(String(a._id)); setAddr(fromSavedAddress(a)); }}
+            onNewAddress={() => {
+              setSelectedAddressId(null);
+              setAddr({ name: user?.name || '', phone: user?.phone || '', addressLine: '', city: '', pincode: '', label: 'Home' });
+            }}
+          />
+
           <div className="space-y-2">
             <input value={addr.name} onChange={e => setAddr({ ...addr, name: e.target.value })} placeholder="Full name"
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
@@ -262,8 +319,14 @@ export default function FruitBasketCheckout() {
               <input value={addr.pincode} onChange={e => setAddr({ ...addr, pincode: e.target.value })} placeholder="Pincode"
                 className="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
             </div>
+            {selectedAddressId === null && (
+              <label className="flex items-center gap-2 text-xs text-gray-500 pt-1">
+                <input type="checkbox" checked={saveNewAddress} onChange={e => setSaveNewAddress(e.target.checked)} />
+                Save this address for next time
+              </label>
+            )}
           </div>
-          <button onClick={useMyLocation} disabled={locating}
+          <button onClick={() => useMyLocation(false)} disabled={locating}
             className="mt-3 w-full flex items-center justify-center gap-2 border-2 border-dashed border-emerald-300 text-emerald-700 rounded-lg py-2.5 text-sm font-bold">
             <FiCrosshair size={14} /> {locating ? 'Locating…' : coords ? 'Location captured — tap to update' : 'Use my current location'}
           </button>
