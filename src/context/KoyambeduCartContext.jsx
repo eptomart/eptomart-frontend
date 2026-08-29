@@ -45,7 +45,7 @@ const guestToCart = (guestMap) => ({
       const { pid, gradeKey } = parseKey(key);
       return {
         _id:          'local_' + key,
-        product:      { _id: pid, name: e.name, images: e.images || [], weightKg: e.weightKg || 1, qtyStep: e.qtyStep || 1 },
+        product:      { _id: pid, name: e.name, images: e.images || [], weightKg: e.weightKg || 1, qtyStep: e.qtyStep || 1, isCombo: !!e.isCombo },
         name:         e.name         || 'Product',
         quantity:     e.qty,
         unitPrice:    e.unitPrice    || 0,
@@ -180,6 +180,11 @@ export const KoyambeduCartProvider = ({ children }) => {
           images:      productData?.images       || guestMap[key]?.images      || [],
           weightKg:    productData?.weightKg     || guestMap[key]?.weightKg    || 1,
           qtyStep:     productData?.qtyStep      || guestMap[key]?.qtyStep     || 1,
+          // Carried through so a combo item added before login still gets the
+          // combo's own minimum-order treatment in the cart summary — without
+          // this, guest-cart items always looked like non-combo products and
+          // silently fell back to the normal ₹799 minimum.
+          isCombo:     productData?.isCombo != null ? !!productData.isCombo : (guestMap[key]?.isCombo || false),
         };
       }
       writeGuestCart(guestMap);
