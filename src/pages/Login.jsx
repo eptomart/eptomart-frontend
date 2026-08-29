@@ -36,6 +36,16 @@ const detectType = (val) => {
 
 const STEPS = { CONTACT: 1, OTP: 2, PROFILE: 3 };
 
+// App-store / QA demo phone account — mirrors authController.js's DEMO_PHONE
+// + DEMO_PHONE_OTP exactly. Real phone numbers always go through Firebase
+// (RecaptchaVerifier + signInWithPhoneNumber, which sends a real SMS); this
+// number is not a real, reachable phone, so Firebase would either fail to
+// deliver anything or reject it outright. Skip Firebase entirely for this
+// one number and go straight through the backend's own send-otp/verify-otp
+// (fixed OTP, no SMS) — the same generic path already used for email login.
+const DEMO_PHONE     = '9999999999';
+const DEMO_PHONE_OTP = '000000';
+
 // ── Reusable styled input ────────────────────────────────────────────────────
 function DarkInput({ style = {}, ...props }) {
   const [focused, setFocused] = React.useState(false);
@@ -154,7 +164,16 @@ export default function Login() {
     if (!type) return toast.error('Enter a valid email or 10-digit phone number');
     setLoading(true);
     try {
-      if (type === 'phone') {
+      if (type === 'phone' && contact.trim() === DEMO_PHONE) {
+        // Demo account — no Firebase, no real SMS. Backend stores a fixed,
+        // reusable OTP for this exact number (see authController.js sendOtp).
+        const res = await sendOtp(contact.trim(), 'phone');
+        if (res.success) {
+          setOtp(DEMO_PHONE_OTP);
+          toast.success('OTP sent');
+          setStep(STEPS.OTP);
+        }
+      } else if (type === 'phone') {
         const { RecaptchaVerifier, signInWithPhoneNumber } = await import('firebase/auth');
         const { auth } = await import('../utils/firebase');
         if (recaptchaRef.current) { try { recaptchaRef.current.clear(); } catch (_) {} }
@@ -188,7 +207,15 @@ export default function Login() {
     const type = detectType(contact);
     setLoading(true);
     try {
-      if (type === 'phone') {
+      if (type === 'phone' && contact.trim() === DEMO_PHONE) {
+        // Demo account — verify against the backend's own OTP record, same
+        // generic /auth/verify-otp path email login uses, no Firebase involved.
+        const res = await verifyOtp(contact.trim(), otp, 'phone');
+        if (res.success) {
+          if (res.needsProfile && res.user?.role === 'user') { setStep(STEPS.PROFILE); return; }
+          navigate(from, { replace: true });
+        }
+      } else if (type === 'phone') {
         if (!confirmRef.current) return toast.error('Please request OTP again');
         const result  = await confirmRef.current.confirm(otp);
         const idToken = await result.user.getIdToken();
