@@ -131,11 +131,11 @@ export default function FruitBasketShop() {
           </div>
 
           <div className="relative flex-1 min-w-0">
-            <p className="flex items-center gap-1 text-[9px] font-black tracking-widest uppercase mb-0.5" style={{ color: FB_THEME.goldLight }}>
-              <FiEdit3 size={10} /> Custom baskets <span style={{ color: 'rgba(245,213,118,0.5)' }}>·</span> <FiZap size={10} /> Express orders
+            <p className="flex items-center gap-1 text-[8px] md:text-[9px] font-black tracking-widest uppercase mb-0.5 truncate" style={{ color: FB_THEME.goldLight }}>
+              <FiEdit3 size={10} className="flex-shrink-0" /> Custom <span style={{ color: 'rgba(245,213,118,0.5)' }}>·</span> <FiZap size={10} className="flex-shrink-0" /> Express
             </p>
-            <p className="text-white font-bold text-xs md:text-sm leading-snug line-clamp-1">
-              Your choice of fruits, custom printing, or express delivery
+            <p className="text-white font-bold text-[11px] md:text-sm leading-snug">
+              Custom fruits, printing &amp; express delivery
             </p>
           </div>
 

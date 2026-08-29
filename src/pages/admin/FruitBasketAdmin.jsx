@@ -10,7 +10,7 @@ import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   FiGift, FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight,
-  FiSave, FiPackage, FiClock, FiTruck, FiX,
+  FiSave, FiPackage, FiClock, FiTruck, FiX, FiZap,
 } from 'react-icons/fi';
 import api from '../../utils/api';
 import { FB_THEME } from '../../utils/fruitBasketTheme';
@@ -130,8 +130,25 @@ function BasketEditorModal({ product, onClose, onSaved }) {
     stock: product.stock ?? '', images: product.images || [],
     contents: product.contents || [],
   });
+  // Short note is only used to prompt the AI description generator below —
+  // it's never saved to the product itself.
+  const [shortNote, setShortNote] = useState('');
+  const [generatingDesc, setGeneratingDesc] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving]       = useState(false);
+
+  const generateDescription = async () => {
+    if (!form.name && !shortNote) { toast.error('Enter a basket name or a short note first'); return; }
+    setGeneratingDesc(true);
+    try {
+      const { data } = await api.post('/fruitbaskets/admin/generate-description', {
+        name: form.name, shortNote, occasion: form.occasion, contents: form.contents,
+      });
+      if (data.success) setForm(f => ({ ...f, description: data.description }));
+      else toast.error(data.message || 'Could not generate description');
+    } catch (err) { toast.error(err?.response?.data?.message || 'Could not generate description'); }
+    finally { setGeneratingDesc(false); }
+  };
 
   const uploadImage = async (file) => {
     setUploading(true);
@@ -179,7 +196,20 @@ function BasketEditorModal({ product, onClose, onSaved }) {
         <div className="space-y-3">
           <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Basket name"
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-          <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Description" rows={2}
+
+          {/* Short note → AI expands this (+ name/occasion/contents) into a full description */}
+          <div className="flex gap-2">
+            <input value={shortNote} onChange={e => setShortNote(e.target.value)}
+              placeholder="Short note for AI, e.g. 'premium mixed fruits with red roses, for anniversaries'"
+              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+            <button type="button" onClick={generateDescription} disabled={generatingDesc}
+              className="flex-shrink-0 flex items-center gap-1.5 text-xs font-bold text-white px-3 py-2 rounded-lg disabled:opacity-50 whitespace-nowrap"
+              style={{ background: FB_THEME.gradientGold, color: FB_THEME.purple900 }}>
+              <FiZap size={13} /> {generatingDesc ? 'Writing…' : 'Generate with AI'}
+            </button>
+          </div>
+
+          <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Description (or generate it above)" rows={3}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none" />
           <div className="grid grid-cols-2 gap-2">
             <input type="number" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} placeholder="Price (₹)"
