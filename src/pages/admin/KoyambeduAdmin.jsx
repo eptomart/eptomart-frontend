@@ -421,6 +421,12 @@ export default function KoyambeduAdmin() {
   const [adminNotes,   setAdminNotes]  = useState('');
   const [updating,     setUpdating]    = useState(false);
 
+  // Reschedule delivery date/slot modal (Super Admin only)
+  const [rescheduleModal, setRescheduleModal] = useState(null); // order object
+  const [rescheduleDate,  setRescheduleDate]  = useState('');
+  const [rescheduleSlot,  setRescheduleSlot]  = useState('slot2');
+  const [rescheduling,    setRescheduling]    = useState(false);
+
   // SellerAdmin create modal
   const [showSaCreate, setShowSaCreate] = useState(false);
   const [saForm, setSaForm] = useState({ userId:'', name:'', businessName:'', contactPhone:'', contactEmail:'' });
@@ -762,6 +768,20 @@ export default function KoyambeduAdmin() {
       loadTab('orders');
     } catch { toast.error('Update failed'); }
     finally { setUpdating(false); }
+  };
+
+  const submitReschedule = async () => {
+    if (!rescheduleDate) { toast.error('Pick a delivery date'); return; }
+    setRescheduling(true);
+    try {
+      await api.patch(`/koyambedu/admin/orders/${rescheduleModal._id}/reschedule`, {
+        deliveryDate: rescheduleDate, deliverySlotKey: rescheduleSlot,
+      });
+      toast.success('Delivery rescheduled');
+      setRescheduleModal(null);
+      loadTab('orders');
+    } catch (err) { toast.error(err?.response?.data?.message || 'Reschedule failed'); }
+    finally { setRescheduling(false); }
   };
 
   const handleEditQty = async () => {
@@ -1941,6 +1961,16 @@ export default function KoyambeduAdmin() {
                               ✕ Cancel
                             </button>
                           )}
+                          {isSuperAdmin && !['delivered','cancelled','closed','refund_initiated'].includes(order.orderStatus) && (
+                            <button onClick={() => {
+                              setRescheduleModal(order);
+                              setRescheduleDate(order.deliveryDate ? new Date(order.deliveryDate).toISOString().slice(0, 10) : '');
+                              setRescheduleSlot(order.deliverySlotKey || 'slot2');
+                            }}
+                              className="text-xs text-indigo-700 font-bold border border-indigo-200 px-2 py-1 rounded-lg">
+                              📅 Reschedule
+                            </button>
+                          )}
                           <button onClick={() => { setUpdateModal(order); setNewStatus(order.orderStatus); setDelivPartner(order.deliveryPartner || ''); setAdminNotes(order.adminNotes || ''); }}
                             className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-green-700">
                             Update
@@ -3002,6 +3032,42 @@ export default function KoyambeduAdmin() {
               <button onClick={updateOrderStatus} disabled={updating}
                 className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-60">
                 {updating ? 'Saving...' : 'Update Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rescheduleModal && (
+        <div className="fixed inset-0 bg-black/50 z-[9995] flex items-end justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-3">
+            <h3 className="font-bold text-gray-800">Reschedule Delivery — {rescheduleModal.orderId}</h3>
+            <p className="text-xs text-gray-500">
+              Current: {rescheduleModal.deliveryDate ? new Date(rescheduleModal.deliveryDate).toLocaleDateString('en-IN') : '—'}, {rescheduleModal.deliverySlot || '—'}
+            </p>
+            <div>
+              <label className="text-xs text-gray-500 font-medium">New Delivery Date</label>
+              <input type="date" value={rescheduleDate} onChange={e => setRescheduleDate(e.target.value)}
+                className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-medium">New Delivery Slot</label>
+              <select value={rescheduleSlot} onChange={e => setRescheduleSlot(e.target.value)}
+                className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                <option value="slot1">7 AM – 9 AM</option>
+                <option value="slot2">9 AM – 12 PM</option>
+                <option value="slot3">12 PM – 2 PM</option>
+                <option value="slot4">2 PM – 4 PM</option>
+              </select>
+            </div>
+            <p className="text-[11px] text-gray-400">
+              The customer will see the updated date/slot in their order and be notified. Procurement grouping updates automatically to match the new date.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setRescheduleModal(null)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
+              <button onClick={submitReschedule} disabled={rescheduling}
+                className="flex-1 bg-indigo-600 text-white font-bold py-2.5 rounded-xl hover:bg-indigo-700 disabled:opacity-60">
+                {rescheduling ? 'Saving...' : 'Reschedule'}
               </button>
             </div>
           </div>
