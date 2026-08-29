@@ -79,12 +79,12 @@ const VERTICAL_CONFIG = {
     id:                  'fruitBaskets',
     label:               'Fruit Baskets & Hampers',
     iconEl:              <FiGift size={13} />,
-    accent:              '#b45309',
-    accentLight:         '#fff7ed',
-    accentText:          '#92400e',
-    headerGradient:      'linear-gradient(135deg,#0a3d2c,#b45309)',
-    btnGradient:         'linear-gradient(135deg,#0a3d2c,#b45309)',
-    btnShadow:           '0 4px 16px rgba(180,83,9,0.35)',
+    accent:              '#6d28d9',
+    accentLight:         '#f5f3ff',
+    accentText:          '#4c1d95',
+    headerGradient:      'linear-gradient(135deg,#2e1065,#6d28d9)',
+    btnGradient:         'linear-gradient(135deg,#2e1065,#6d28d9)',
+    btnShadow:           '0 4px 16px rgba(76,29,149,0.35)',
     checkoutPath:        '/fruitbaskets/checkout',
     checkoutLabel:       'Proceed to Fruit Basket Checkout →',
     continuePath:        '/fruitbaskets',
@@ -670,11 +670,11 @@ function FruitBasketTab({ fbCart, fbItemCount, fbSubtotal, fbUpdateItem, navigat
       <div className="lg:col-span-2 space-y-4">
 
         <div className="card overflow-hidden">
-          <div className="px-4 py-2.5 border-b" style={{ background: vertical.headerGradient }}>
+          <div className="px-4 py-2.5 border-b" style={{ background: vertical.headerGradient, borderColor: 'rgba(212,175,55,0.3)' }}>
             <p className="text-sm font-bold text-white flex items-center gap-2">
-              <span className="text-amber-200">{vertical.iconEl}</span>
+              <span style={{ color: '#f5d576' }}>{vertical.iconEl}</span>
               {vertical.label}
-              <span className="ml-auto text-amber-100 text-xs font-normal">
+              <span className="ml-auto text-xs font-normal" style={{ color: '#ede9fe' }}>
                 {fbItemCount} item{fbItemCount !== 1 ? 's' : ''}
               </span>
             </p>
@@ -684,7 +684,7 @@ function FruitBasketTab({ fbCart, fbItemCount, fbSubtotal, fbUpdateItem, navigat
             {fbCart.items?.map((item, i) => {
               const pid = String(item.product?._id || item.product);
               if (!item.product || pid === 'null' || pid === 'undefined') return null;
-              const img = item.image || item.product?.images?.[0] || 'https://placehold.co/80x80/fff7ed/92400e?text=🧺';
+              const img = item.image || item.product?.images?.[0] || 'https://placehold.co/80x80/f5f3ff/4c1d95?text=🧺';
               const lineAmt = (item.price || 0) * (item.quantity || 0);
 
               return (
@@ -705,14 +705,16 @@ function FruitBasketTab({ fbCart, fbItemCount, fbSubtotal, fbUpdateItem, navigat
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => fbUpdateItem(pid, item.quantity - 1, { silent: true })}
-                          className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center transition active:scale-90"
+                          className="w-7 h-7 rounded-full flex items-center justify-center transition active:scale-90"
+                          style={{ background: '#f5f3ff', color: '#6d28d9' }}
                         >
                           <FiMinus size={11} />
                         </button>
                         <span className="text-sm font-bold text-gray-900 w-6 text-center">{item.quantity}</span>
                         <button
                           onClick={() => fbUpdateItem(pid, item.quantity + 1, { silent: true })}
-                          className="w-7 h-7 rounded-full bg-amber-700 text-white flex items-center justify-center transition active:scale-90"
+                          className="w-7 h-7 rounded-full text-white flex items-center justify-center transition active:scale-90"
+                          style={{ background: '#6d28d9' }}
                         >
                           <FiPlus size={11} />
                         </button>

@@ -14,6 +14,7 @@ import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import api from '../../utils/api';
 import { useFruitBasketCart } from '../../context/FruitBasketCartContext';
+import { FB_THEME } from '../../utils/fruitBasketTheme';
 
 const OCCASION_LABELS = {
   general: 'All Occasions', birthday: 'Birthday', anniversary: 'Anniversary',
@@ -58,13 +59,13 @@ export default function FruitBasketShop() {
 
   if (status && !status.featureEnabled) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen" style={{ background: FB_THEME.purple50 }}>
         <Navbar />
         <div className="max-w-lg mx-auto px-4 py-24 text-center">
-          <FiGift size={40} className="mx-auto text-emerald-600 mb-4" />
+          <FiGift size={40} className="mx-auto mb-4" style={{ color: FB_THEME.purple600 }} />
           <h1 className="text-xl font-black text-gray-800 mb-2">Fruit Baskets & Hampers</h1>
           <p className="text-gray-500 text-sm">This is coming back soon — please check again shortly.</p>
-          <Link to="/" className="inline-block mt-6 text-emerald-700 font-bold text-sm">Back to Home</Link>
+          <Link to="/" className="inline-block mt-6 font-bold text-sm" style={{ color: FB_THEME.purple700 }}>Back to Home</Link>
         </div>
         <Footer />
       </div>
@@ -72,19 +73,22 @@ export default function FruitBasketShop() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen pb-24" style={{ background: FB_THEME.purple50 }}>
       <Navbar />
 
       {/* Header */}
-      <div className="relative overflow-hidden" style={{ background: 'linear-gradient(120deg, #0a3d2c 0%, #157a4a 60%, #b45309 100%)' }}>
+      <div className="relative overflow-hidden fb-royal-header" style={{ background: FB_THEME.gradientHero }}>
+        <span className="pointer-events-none absolute inset-0 fb-royal-shimmer" />
         <div className="max-w-5xl mx-auto px-4 py-8 md:py-12 relative z-10">
-          <span className="inline-flex items-center gap-1.5 bg-amber-400 text-amber-900 text-[10px] font-black tracking-widest uppercase px-2.5 py-1 rounded-full">
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase px-2.5 py-1 rounded-full"
+            style={{ background: FB_THEME.gradientGold, color: FB_THEME.purple900 }}>
             <FiGift size={11} /> Fruit Baskets & Hampers
           </span>
-          <h1 className="text-white font-black text-2xl md:text-3xl mt-3" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+          <h1 className="font-black text-2xl md:text-3xl mt-3"
+            style={{ color: FB_THEME.goldLight, textShadow: '0 2px 10px rgba(0,0,0,0.45)' }}>
             Gift a basket, delight a day
           </h1>
-          <p className="text-emerald-100 text-sm mt-1.5 max-w-lg">
+          <p className="text-sm mt-1.5 max-w-lg" style={{ color: FB_THEME.purple100 }}>
             Curated fruit baskets and hampers, hand-packed and delivered to your door — pick a slot that suits you.
           </p>
         </div>
@@ -95,9 +99,10 @@ export default function FruitBasketShop() {
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
           {['', ...Object.keys(OCCASION_LABELS).filter(k => k !== 'general')].map(key => (
             <button key={key || 'all'} onClick={() => setOccasion(key)}
-              className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                occasion === key ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-600 border-gray-200'
-              }`}>
+              className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-colors"
+              style={occasion === key
+                ? { background: FB_THEME.gradientButton, color: '#fff', borderColor: FB_THEME.purple700 }
+                : { background: '#fff', color: FB_THEME.purple700, borderColor: FB_THEME.purple100 }}>
               {key ? OCCASION_LABELS[key] : 'All Occasions'}
             </button>
           ))}
@@ -110,36 +115,39 @@ export default function FruitBasketShop() {
           href="tel:+919500050027"
           className="group relative flex items-center gap-4 overflow-hidden rounded-2xl px-4 py-4 md:px-6 md:py-5 transition-transform active:scale-[0.99]"
           style={{
-            background: 'linear-gradient(120deg, #1c1305 0%, #7a4a0a 45%, #d4a017 100%)',
-            boxShadow: '0 8px 28px rgba(180,131,15,0.35)',
+            background: FB_THEME.gradientHeader,
+            border: FB_THEME.borderGold,
+            boxShadow: FB_THEME.shadowPurple,
           }}
         >
           {/* Subtle sheen sweep */}
           <span className="pointer-events-none absolute inset-0 fb-cta-shine" />
           {/* Decorative ring glow behind the icon */}
-          <span className="pointer-events-none absolute -left-6 -top-6 w-28 h-28 rounded-full bg-amber-300/20 blur-2xl" />
+          <span className="pointer-events-none absolute -left-6 -top-6 w-28 h-28 rounded-full blur-2xl" style={{ background: 'rgba(212,175,55,0.25)' }} />
 
-          <div className="relative flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/25 fb-cta-icon">
-            <FiGift size={22} className="text-amber-50" />
+          <div className="relative flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-2xl backdrop-blur-sm flex items-center justify-center fb-cta-icon"
+            style={{ background: 'rgba(212,175,55,0.18)', border: FB_THEME.borderGold }}>
+            <FiGift size={22} style={{ color: FB_THEME.goldLight }} />
           </div>
 
           <div className="relative flex-1 min-w-0">
-            <p className="flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase text-amber-200 mb-0.5">
-              <FiEdit3 size={11} /> Customised baskets <span className="text-amber-100/50">·</span> <FiZap size={11} /> Urgent orders
+            <p className="flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase mb-0.5" style={{ color: FB_THEME.goldLight }}>
+              <FiEdit3 size={11} /> Customised baskets <span style={{ color: 'rgba(245,213,118,0.5)' }}>·</span> <FiZap size={11} /> Urgent orders
             </p>
             <p className="text-white font-bold text-sm md:text-base leading-snug">
               Want your own choice of fruits, custom printing, or an urgent same-day basket?
             </p>
-            <p className="text-amber-100/80 text-xs md:text-sm mt-0.5">
+            <p className="text-xs md:text-sm mt-0.5" style={{ color: FB_THEME.purple100 }}>
               Talk to us directly — we'll set it up for you.
             </p>
           </div>
 
           <div className="relative flex-shrink-0 flex flex-col items-end gap-1">
-            <span className="flex items-center gap-1.5 bg-white text-amber-800 font-black text-xs md:text-sm px-3.5 py-2 rounded-xl shadow-md group-hover:bg-amber-50 transition-colors fb-cta-pulse">
+            <span className="flex items-center gap-1.5 font-black text-xs md:text-sm px-3.5 py-2 rounded-xl shadow-md transition-colors fb-cta-pulse"
+              style={{ background: FB_THEME.gradientGold, color: FB_THEME.purple900 }}>
               <FiPhoneCall size={14} /> +91 95000 50027
             </span>
-            <span className="text-amber-100/70 text-[10px] font-semibold pr-1">Tap to call</span>
+            <span className="text-[10px] font-semibold pr-1" style={{ color: FB_THEME.purple100 }}>Tap to call</span>
           </div>
         </a>
       </div>
@@ -159,12 +167,13 @@ export default function FruitBasketShop() {
             {products.map(p => {
               const qty = getQty(p._id);
               return (
-                <div key={p._id} className="bg-white rounded-2xl overflow-hidden border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+                <div key={p._id} className="bg-white rounded-2xl overflow-hidden"
+                  style={{ border: `1px solid ${FB_THEME.purple100}`, boxShadow: FB_THEME.cardShadow }}>
                   <div className="aspect-square bg-gray-50 relative">
                     {p.images?.[0] ? (
                       <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300"><FiGift size={32} /></div>
+                      <div className="w-full h-full flex items-center justify-center" style={{ color: FB_THEME.purple100 }}><FiGift size={32} /></div>
                     )}
                     {!p.isAvailable && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -175,7 +184,7 @@ export default function FruitBasketShop() {
                   <div className="p-2.5">
                     <p className="text-[13px] font-bold text-gray-800 leading-tight line-clamp-2">{p.name}</p>
                     <div className="flex items-baseline gap-1.5 mt-1">
-                      <span className="text-sm font-black text-emerald-700">₹{p.price}</span>
+                      <span className="text-sm font-black" style={{ color: FB_THEME.purple700 }}>₹{p.price}</span>
                       {p.compareAtPrice > p.price && (
                         <span className="text-[10px] text-gray-400 line-through">₹{p.compareAtPrice}</span>
                       )}
@@ -183,14 +192,15 @@ export default function FruitBasketShop() {
                     {p.isAvailable && (
                       qty === 0 ? (
                         <button onClick={() => setQty(p, 1)}
-                          className="mt-2 w-full bg-emerald-600 text-white text-xs font-bold py-1.5 rounded-lg active:scale-[0.97] transition-transform">
+                          className="mt-2 w-full text-white text-xs font-bold py-1.5 rounded-lg active:scale-[0.97] transition-transform"
+                          style={{ background: FB_THEME.gradientButton }}>
                           Add
                         </button>
                       ) : (
-                        <div className="mt-2 flex items-center justify-between bg-emerald-50 rounded-lg px-1 py-1">
-                          <button onClick={() => setQty(p, qty - 1)} className="w-6 h-6 flex items-center justify-center text-emerald-700"><FiMinus size={12} /></button>
-                          <span className="text-xs font-black text-emerald-800">{qty}</span>
-                          <button onClick={() => setQty(p, qty + 1)} className="w-6 h-6 flex items-center justify-center text-emerald-700"><FiPlus size={12} /></button>
+                        <div className="mt-2 flex items-center justify-between rounded-lg px-1 py-1" style={{ background: FB_THEME.purple50 }}>
+                          <button onClick={() => setQty(p, qty - 1)} className="w-6 h-6 flex items-center justify-center" style={{ color: FB_THEME.purple700 }}><FiMinus size={12} /></button>
+                          <span className="text-xs font-black" style={{ color: FB_THEME.purple800 }}>{qty}</span>
+                          <button onClick={() => setQty(p, qty + 1)} className="w-6 h-6 flex items-center justify-center" style={{ color: FB_THEME.purple700 }}><FiPlus size={12} /></button>
                         </div>
                       )
                     )}
@@ -206,7 +216,8 @@ export default function FruitBasketShop() {
       {cartCount > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-4">
           <button onClick={goToCheckout}
-            className="max-w-5xl mx-auto w-full bg-emerald-700 text-white rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-2xl active:scale-[0.98] transition-transform">
+            className="max-w-5xl mx-auto w-full text-white rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-2xl active:scale-[0.98] transition-transform"
+            style={{ background: FB_THEME.gradientHeader, border: FB_THEME.borderGold }}>
             <span className="flex items-center gap-2 text-sm font-bold">
               <FiShoppingBag size={16} /> {cartCount} item{cartCount > 1 ? 's' : ''} · ₹{cartTotal}
             </span>

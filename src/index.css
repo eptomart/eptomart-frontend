@@ -603,6 +603,17 @@
   .fb-cta-pulse { animation: fb-cta-pulse-glow 2.2s ease-in-out infinite; }
 }
 
+/* Fruit Basket "royal" hero header — slow gold shimmer sweep */
+.fb-royal-header { overflow: hidden; }
+.fb-royal-shimmer::after {
+  content: '';
+  position: absolute; top: -40%; bottom: -40%; left: 0; width: 14%;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,0.22), transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fb-royal-shimmer::after { animation: fb-cta-shine-sweep 4.5s ease-in-out infinite; }
+}
+
 .sob-wrap {
   --sob-angle: 0deg;
   position: relative;

@@ -19,6 +19,7 @@ import SavedAddressPicker from '../../components/common/SavedAddressPicker';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { useFruitBasketCart } from '../../context/FruitBasketCartContext';
+import { FB_THEME } from '../../utils/fruitBasketTheme';
 
 const fmtDate = (d) => {
   const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
@@ -249,7 +250,7 @@ export default function FruitBasketCheckout() {
         },
         modal: { ondismiss: () => toast('Payment cancelled', { icon: '🧺' }) },
         prefill: { name: addr.name, contact: addr.phone, email: user?.email || '' },
-        theme: { color: '#0f5132' },
+        theme: { color: FB_THEME.purple700 },
       });
       rzp.open();
     } catch (err) {
@@ -261,10 +262,10 @@ export default function FruitBasketCheckout() {
 
   if (!status?.featureEnabled && status) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen" style={{ background: FB_THEME.purple50 }}>
         <Navbar />
         <div className="max-w-lg mx-auto px-4 py-24 text-center">
-          <FiGift size={40} className="mx-auto text-emerald-600 mb-4" />
+          <FiGift size={40} className="mx-auto mb-4" style={{ color: FB_THEME.purple600 }} />
           <p className="text-gray-500 text-sm">Fruit Baskets & Hampers is currently unavailable.</p>
         </div>
         <Footer />
@@ -273,17 +274,17 @@ export default function FruitBasketCheckout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-32">
+    <div className="min-h-screen pb-32" style={{ background: FB_THEME.purple50 }}>
       <Navbar />
       <div className="max-w-2xl mx-auto px-4 py-4">
-        <button onClick={() => navigate('/fruitbaskets')} className="flex items-center gap-1.5 text-sm text-gray-500 font-semibold mb-3">
+        <button onClick={() => navigate('/fruitbaskets')} className="flex items-center gap-1.5 text-sm font-semibold mb-3" style={{ color: FB_THEME.purple700 }}>
           <FiArrowLeft size={14} /> Back to baskets
         </button>
-        <h1 className="text-lg font-black text-gray-800 mb-4">Checkout — Fruit Baskets & Hampers</h1>
+        <h1 className="text-lg font-black mb-4" style={{ color: FB_THEME.purple900 }}>Checkout — Fruit Baskets & Hampers</h1>
 
         {/* Items summary */}
-        <div className="bg-white rounded-2xl p-4 mb-3" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-          <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Your Order</p>
+        <div className="bg-white rounded-2xl p-4 mb-3" style={{ boxShadow: FB_THEME.cardShadow, border: `1px solid ${FB_THEME.purple100}` }}>
+          <p className="text-xs font-black uppercase tracking-wide mb-2" style={{ color: FB_THEME.purple500 }}>Your Order</p>
           {cartItems.map(it => (
             <div key={it.productId} className="flex items-center justify-between py-1.5 text-sm">
               <span className="text-gray-700">{it.name} × {it.quantity}</span>
@@ -293,8 +294,8 @@ export default function FruitBasketCheckout() {
         </div>
 
         {/* Address */}
-        <div className="bg-white rounded-2xl p-4 mb-3" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-          <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-3">Delivery Address</p>
+        <div className="bg-white rounded-2xl p-4 mb-3" style={{ boxShadow: FB_THEME.cardShadow, border: `1px solid ${FB_THEME.purple100}` }}>
+          <p className="text-xs font-black uppercase tracking-wide mb-3" style={{ color: FB_THEME.purple500 }}>Delivery Address</p>
 
           <SavedAddressPicker
             addresses={user?.addresses || []}
@@ -327,7 +328,8 @@ export default function FruitBasketCheckout() {
             )}
           </div>
           <button onClick={() => useMyLocation(false)} disabled={locating}
-            className="mt-3 w-full flex items-center justify-center gap-2 border-2 border-dashed border-emerald-300 text-emerald-700 rounded-lg py-2.5 text-sm font-bold">
+            className="mt-3 w-full flex items-center justify-center gap-2 border-2 border-dashed rounded-lg py-2.5 text-sm font-bold"
+            style={{ borderColor: FB_THEME.purple500, color: FB_THEME.purple700 }}>
             <FiCrosshair size={14} /> {locating ? 'Locating…' : coords ? 'Location captured — tap to update' : 'Use my current location'}
           </button>
           {deliveryPreview && (
@@ -341,12 +343,13 @@ export default function FruitBasketCheckout() {
         </div>
 
         {/* Date */}
-        <div className="bg-white rounded-2xl overflow-hidden mb-3" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-          <div className="flex divide-x divide-gray-100">
+        <div className="bg-white rounded-2xl overflow-hidden mb-3" style={{ boxShadow: FB_THEME.cardShadow, border: `1px solid ${FB_THEME.purple100}` }}>
+          <div className="flex divide-x" style={{ borderColor: FB_THEME.purple100 }}>
             {[['today', todayDate, todayDisabled], ['tomorrow', tomorrowDate, false]].map(([key, date, disabled]) => (
               <button key={key} disabled={disabled} onClick={() => setDateTab(key)}
-                className={`flex-1 py-3 text-center ${disabled ? 'opacity-40' : ''} ${dateTab === key ? 'bg-emerald-50 border-b-[3px] border-emerald-600' : 'border-b-[3px] border-transparent'}`}>
-                <p className={`text-xs font-black uppercase ${dateTab === key ? 'text-emerald-800' : 'text-gray-500'}`}>{key}</p>
+                className={`flex-1 py-3 text-center ${disabled ? 'opacity-40' : ''}`}
+                style={{ borderBottom: dateTab === key ? `3px solid ${FB_THEME.gold}` : '3px solid transparent', background: dateTab === key ? FB_THEME.purple50 : 'transparent' }}>
+                <p className="text-xs font-black uppercase" style={{ color: dateTab === key ? FB_THEME.purple800 : '#9ca3af' }}>{key}</p>
                 <p className="text-[11px] font-semibold text-gray-500 mt-0.5">{fmtDisplayDate(date)}</p>
                 {disabled && <span className="text-[9px] text-red-500 font-bold">CLOSED</span>}
               </button>
@@ -355,17 +358,19 @@ export default function FruitBasketCheckout() {
         </div>
 
         {/* Slots */}
-        <div className="bg-white rounded-2xl p-4 mb-3" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-          <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Delivery Slot</p>
+        <div className="bg-white rounded-2xl p-4 mb-3" style={{ boxShadow: FB_THEME.cardShadow, border: `1px solid ${FB_THEME.purple100}` }}>
+          <p className="text-xs font-black uppercase tracking-wide mb-2" style={{ color: FB_THEME.purple500 }}>Delivery Slot</p>
           <div className="space-y-2">
             {slots.map(s => (
               <button key={s.key} onClick={() => setSlotKey(s.key)}
-                className={`w-full rounded-xl px-4 py-3 flex items-center gap-2.5 border-2 text-left ${
-                  slotKey === s.key ? 'bg-emerald-50 border-emerald-600' : 'bg-gray-50 border-gray-200'
-                }`}>
-                <span className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${slotKey === s.key ? 'bg-emerald-600 border-emerald-600' : 'border-gray-300'}`} />
-                <span className={`text-sm font-semibold ${slotKey === s.key ? 'text-emerald-800' : 'text-gray-600'}`}>{s.label}</span>
-                {slotKey === s.key && <FiCheck size={14} className="ml-auto text-emerald-600" />}
+                className="w-full rounded-xl px-4 py-3 flex items-center gap-2.5 border-2 text-left"
+                style={slotKey === s.key
+                  ? { background: FB_THEME.purple50, borderColor: FB_THEME.purple600 }
+                  : { background: '#f9fafb', borderColor: '#e5e7eb' }}>
+                <span className="w-4 h-4 rounded-full border-2 flex-shrink-0"
+                  style={slotKey === s.key ? { background: FB_THEME.purple600, borderColor: FB_THEME.purple600 } : { borderColor: '#d1d5db' }} />
+                <span className="text-sm font-semibold" style={{ color: slotKey === s.key ? FB_THEME.purple800 : '#4b5563' }}>{s.label}</span>
+                {slotKey === s.key && <FiCheck size={14} className="ml-auto" style={{ color: FB_THEME.gold }} />}
               </button>
             ))}
             {slots.length === 0 && <p className="text-xs text-gray-400">No delivery slots available right now.</p>}
@@ -373,13 +378,15 @@ export default function FruitBasketCheckout() {
         </div>
 
         {/* Price breakdown */}
-        <div className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-          <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Price Details</p>
+        <div className="bg-white rounded-2xl p-4" style={{ boxShadow: FB_THEME.cardShadow, border: `1px solid ${FB_THEME.purple100}` }}>
+          <p className="text-xs font-black uppercase tracking-wide mb-2" style={{ color: FB_THEME.purple500 }}>Price Details</p>
           {quote?.success ? (
             <>
               <div className="flex justify-between text-sm py-1"><span className="text-gray-600">Subtotal</span><span className="font-semibold">₹{quote.subtotal}</span></div>
               <div className="flex justify-between text-sm py-1"><span className="text-gray-600">Delivery ({quote.distanceKm} km)</span><span className="font-semibold">{quote.deliveryCharge === 0 ? 'FREE' : `₹${quote.deliveryCharge}`}</span></div>
-              <div className="flex justify-between text-base font-black pt-2 mt-1 border-t border-gray-100"><span>Total</span><span className="text-emerald-700">₹{quote.total}</span></div>
+              <div className="flex justify-between text-base font-black pt-2 mt-1 border-t" style={{ borderColor: FB_THEME.purple100 }}>
+                <span>Total</span><span style={{ color: FB_THEME.purple700 }}>₹{quote.total}</span>
+              </div>
             </>
           ) : (
             <p className="text-xs text-gray-400">{quoting ? 'Calculating…' : quote?.message || 'Share your location to see the total'}</p>
@@ -388,9 +395,10 @@ export default function FruitBasketCheckout() {
       </div>
 
       {/* Sticky pay button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 z-40">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 z-40" style={{ borderColor: FB_THEME.purple100 }}>
         <button onClick={placeOrder} disabled={placing || !quote?.success}
-          className="max-w-2xl mx-auto w-full bg-emerald-700 disabled:bg-gray-300 text-white font-black py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
+          className="max-w-2xl mx-auto w-full disabled:bg-gray-300 text-white font-black py-3.5 rounded-2xl active:scale-[0.98] transition-transform"
+          style={!placing && quote?.success ? { background: FB_THEME.gradientHeader, border: FB_THEME.borderGold } : {}}>
           {placing ? 'Placing order…' : quote?.success ? `Pay ₹${quote.total}` : 'Complete details above'}
         </button>
       </div>

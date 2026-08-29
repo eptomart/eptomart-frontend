@@ -544,7 +544,7 @@ function FruitBasketBanner({ onReady }) {
     <Link to="/fruitbaskets" className="sob-wrap tap-ripple block h-full active:scale-[0.98] transition-transform">
       <div className="sob-border h-full">
         <div className="sob-inner promo-card relative overflow-hidden rounded-[13px] h-full px-3 py-2.5 md:px-4 md:py-3"
-          style={{ background: 'linear-gradient(145deg, #7c2d12 0%, #b45309 55%, #92400e 100%)' }}>
+          style={{ background: 'linear-gradient(145deg, #1a0a2e 0%, #4c1d95 55%, #6d28d9 100%)', border: '1px solid rgba(212,175,55,0.35)' }}>
 
           {/* Real gift-hamper photo, bleeding in from the right edge and
               fading into the gradient via a mask — mirrors ComboBanner's
@@ -555,7 +555,7 @@ function FruitBasketBanner({ onReady }) {
               maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 28%, black 55%)',
               WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 28%, black 55%)',
             }} />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(124,45,18,0.25), transparent 30%, transparent 70%, rgba(124,45,18,0.35))' }} />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(26,10,46,0.3), transparent 30%, transparent 70%, rgba(76,29,149,0.4))' }} />
 
           <div className="sob-orb sob-orb-a" />
           {/* Diagonal ribbon shimmer — a gift-wrap ribbon, not a generic sweep */}
@@ -565,11 +565,12 @@ function FruitBasketBanner({ onReady }) {
           <div className="relative z-10 flex flex-col h-full pr-[46%] md:pr-[40%]">
             <div className="flex items-center justify-between gap-2">
               <div className="promo-icon-wrap promo-icon-fruit flex-shrink-0 flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-2xl"
-                style={{ background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.35)' }}>
+                style={{ background: 'rgba(212,175,55,0.18)', border: '1px solid rgba(212,175,55,0.45)' }}>
                 <span className="promo-icon-fruit-badge absolute inset-0 rounded-2xl" />
-                <FiGift size={16} className="text-amber-100" />
+                <FiGift size={16} style={{ color: '#f5d576' }} />
               </div>
-              <span className="bg-amber-400 text-amber-900 text-[8px] md:text-[9px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full flex-shrink-0">
+              <span className="text-[8px] md:text-[9px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full flex-shrink-0"
+                style={{ background: 'linear-gradient(135deg, #b8860b, #d4af37 55%, #f5d576 100%)', color: '#1a0a2e' }}>
                 New
               </span>
             </div>
@@ -579,14 +580,14 @@ function FruitBasketBanner({ onReady }) {
                 style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
                 Fruit Baskets &amp; Hampers
               </p>
-              <p className="text-amber-100/85 text-[10px] md:text-[11px] mt-0.5 leading-snug hidden sm:block line-clamp-1">
+              <p className="text-[10px] md:text-[11px] mt-0.5 leading-snug hidden sm:block line-clamp-1" style={{ color: 'rgba(237,233,254,0.85)' }}>
                 Curated gift baskets, delivered to your door.
               </p>
             </div>
 
             <div className="flex justify-start mt-1.5">
-              <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg"
-                style={{ color: '#7c2d12' }}>
+              <span className="sob-cta font-black text-[10.5px] md:text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #b8860b, #d4af37 55%, #f5d576 100%)', color: '#1a0a2e' }}>
                 Shop <FiArrowRight size={11} className="sob-cta-arrow" />
               </span>
             </div>

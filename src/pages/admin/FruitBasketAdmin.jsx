@@ -13,6 +13,7 @@ import {
   FiSave, FiPackage, FiClock, FiTruck, FiX,
 } from 'react-icons/fi';
 import api from '../../utils/api';
+import { FB_THEME } from '../../utils/fruitBasketTheme';
 
 const TABS = [
   { key: 'baskets',  label: 'Baskets',  Icon: FiGift },
@@ -25,15 +26,16 @@ export default function FruitBasketAdmin() {
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
-      <h1 className="text-xl font-black text-gray-800 flex items-center gap-2 mb-1"><FiGift /> Fruit Baskets & Hampers</h1>
+      <h1 className="text-xl font-black flex items-center gap-2 mb-1" style={{ color: FB_THEME.purple900 }}>
+        <FiGift style={{ color: FB_THEME.goldDark }} /> Fruit Baskets & Hampers
+      </h1>
       <p className="text-sm text-gray-500 mb-4">Manage the basket catalog, delivery settings, and orders for this vertical.</p>
 
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5 w-fit">
+      <div className="flex gap-1 rounded-xl p-1 mb-5 w-fit" style={{ background: FB_THEME.purple50 }}>
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
-              tab === t.key ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500'
-            }`}>
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+            style={tab === t.key ? { background: '#fff', color: FB_THEME.purple700, boxShadow: '0 1px 4px rgba(76,29,149,0.15)' } : { color: '#6b7280' }}>
             <t.Icon size={14} /> {t.label}
           </button>
         ))}
@@ -71,7 +73,8 @@ function BasketsTab() {
 
   return (
     <div>
-      <button onClick={() => setEditing({})} className="mb-4 flex items-center gap-1.5 bg-emerald-600 text-white text-sm font-bold px-3.5 py-2 rounded-lg">
+      <button onClick={() => setEditing({})} className="mb-4 flex items-center gap-1.5 text-white text-sm font-bold px-3.5 py-2 rounded-lg"
+        style={{ background: FB_THEME.gradientButton }}>
         <FiPlus size={14} /> New Basket
       </button>
 
@@ -82,7 +85,7 @@ function BasketsTab() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {products.map(p => (
-            <div key={p._id} className="bg-white border border-gray-100 rounded-xl p-3" style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+            <div key={p._id} className="bg-white rounded-xl p-3" style={{ boxShadow: '0 1px 6px rgba(76,29,149,0.08)', border: `1px solid ${FB_THEME.purple100}` }}>
               <div className="flex gap-3">
                 <div className="w-16 h-16 rounded-lg bg-gray-50 flex-shrink-0 overflow-hidden">
                   {p.images?.[0] && <img src={p.images[0]} alt="" className="w-full h-full object-cover" />}
@@ -91,10 +94,10 @@ function BasketsTab() {
                   <p className="text-sm font-bold text-gray-800 truncate">{p.name}</p>
                   <p className="text-xs text-gray-500">₹{p.price} · {p.occasion}</p>
                   <div className="flex gap-2 mt-1">
-                    <button onClick={() => toggleField(p, 'isActive')} className="text-[11px] font-semibold flex items-center gap-1" style={{ color: p.isActive ? '#16a34a' : '#9ca3af' }}>
+                    <button onClick={() => toggleField(p, 'isActive')} className="text-[11px] font-semibold flex items-center gap-1" style={{ color: p.isActive ? FB_THEME.purple600 : '#9ca3af' }}>
                       {p.isActive ? <FiToggleRight size={14} /> : <FiToggleLeft size={14} />} {p.isActive ? 'Active' : 'Hidden'}
                     </button>
-                    <button onClick={() => toggleField(p, 'isAvailable')} className="text-[11px] font-semibold flex items-center gap-1" style={{ color: p.isAvailable ? '#16a34a' : '#dc2626' }}>
+                    <button onClick={() => toggleField(p, 'isAvailable')} className="text-[11px] font-semibold flex items-center gap-1" style={{ color: p.isAvailable ? FB_THEME.purple600 : '#dc2626' }}>
                       {p.isAvailable ? <FiToggleRight size={14} /> : <FiToggleLeft size={14} />} {p.isAvailable ? 'In Stock' : 'Out of Stock'}
                     </button>
                   </div>
@@ -214,7 +217,7 @@ function BasketEditorModal({ product, onClose, onSaved }) {
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-xs font-bold text-gray-500">What's Inside</p>
-              <button onClick={addContentLine} className="text-xs text-emerald-600 font-bold">+ Add item</button>
+              <button onClick={addContentLine} className="text-xs font-bold" style={{ color: FB_THEME.purple600 }}>+ Add item</button>
             </div>
             {form.contents.map((c, i) => (
               <div key={i} className="flex gap-2 mb-1.5">
@@ -229,7 +232,8 @@ function BasketEditorModal({ product, onClose, onSaved }) {
         </div>
 
         <button onClick={save} disabled={saving}
-          className="mt-4 w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50">
+          className="mt-4 w-full text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+          style={{ background: FB_THEME.gradientButton }}>
           <FiSave size={14} /> {saving ? 'Saving…' : 'Save Basket'}
         </button>
       </div>
@@ -300,20 +304,20 @@ function SettingsTab() {
   return (
     <div className="space-y-5 max-w-2xl">
       {/* Master toggle */}
-      <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between" style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+      <div className="bg-white rounded-xl p-4 flex items-center justify-between" style={{ boxShadow: '0 1px 6px rgba(76,29,149,0.08)', border: `1px solid ${FB_THEME.purple100}` }}>
         <div>
           <p className="font-bold text-gray-800 text-sm">Fruit Baskets & Hampers — Master Switch</p>
           <p className="text-xs text-gray-500 mt-0.5">When off, the shop/checkout pages and the Home page banner are hidden platform-wide.</p>
         </div>
         <button onClick={toggleFeature} disabled={saving} className="flex-shrink-0">
           {settings.featureEnabled
-            ? <FiToggleRight size={34} className="text-emerald-600" />
+            ? <FiToggleRight size={34} style={{ color: FB_THEME.purple600 }} />
             : <FiToggleLeft size={34} className="text-gray-300" />}
         </button>
       </div>
 
       {/* Same-day cutoff */}
-      <div className="bg-white border border-gray-100 rounded-xl p-4" style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+      <div className="bg-white rounded-xl p-4" style={{ boxShadow: '0 1px 6px rgba(76,29,149,0.08)', border: `1px solid ${FB_THEME.purple100}` }}>
         <p className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-1.5"><FiClock size={14} /> Same-Day Delivery Cutoff</p>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-1.5 text-sm">
@@ -324,15 +328,15 @@ function SettingsTab() {
           <input type="time" value={settings.sameDayDelivery.cutoffTime}
             onChange={e => setSettings(s => ({ ...s, sameDayDelivery: { ...s.sameDayDelivery, cutoffTime: e.target.value } }))}
             className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm" />
-          <button onClick={saveSameDayDelivery} disabled={saving} className="ml-auto text-xs font-bold bg-emerald-600 text-white px-3 py-1.5 rounded-lg">Save</button>
+          <button onClick={saveSameDayDelivery} disabled={saving} className="ml-auto text-xs font-bold text-white px-3 py-1.5 rounded-lg" style={{ background: FB_THEME.gradientButton }}>Save</button>
         </div>
       </div>
 
       {/* Delivery slots */}
-      <div className="bg-white border border-gray-100 rounded-xl p-4" style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+      <div className="bg-white rounded-xl p-4" style={{ boxShadow: '0 1px 6px rgba(76,29,149,0.08)', border: `1px solid ${FB_THEME.purple100}` }}>
         <div className="flex items-center justify-between mb-3">
           <p className="font-bold text-gray-800 text-sm flex items-center gap-1.5"><FiTruck size={14} /> Delivery Slots</p>
-          <button onClick={addSlot} className="text-xs text-emerald-600 font-bold">+ Add slot</button>
+          <button onClick={addSlot} className="text-xs font-bold" style={{ color: FB_THEME.purple600 }}>+ Add slot</button>
         </div>
         <div className="space-y-2">
           {settings.deliverySlots.map((s, i) => (
@@ -346,11 +350,11 @@ function SettingsTab() {
             </div>
           ))}
         </div>
-        <button onClick={saveSlots} disabled={saving} className="mt-3 text-xs font-bold bg-emerald-600 text-white px-3 py-1.5 rounded-lg">Save Slots</button>
+        <button onClick={saveSlots} disabled={saving} className="mt-3 text-xs font-bold text-white px-3 py-1.5 rounded-lg" style={{ background: FB_THEME.gradientButton }}>Save Slots</button>
       </div>
 
       {/* Delivery charges */}
-      <div className="bg-white border border-gray-100 rounded-xl p-4" style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
+      <div className="bg-white rounded-xl p-4" style={{ boxShadow: '0 1px 6px rgba(76,29,149,0.08)', border: `1px solid ${FB_THEME.purple100}` }}>
         <p className="font-bold text-gray-800 text-sm mb-1 flex items-center gap-1.5"><FiTruck size={14} /> Delivery Charges (distance-based)</p>
         <p className="text-xs text-gray-500 mb-3">Free delivery within the radius below; beyond that, a charge applies per extra block of distance.</p>
         <div className="grid grid-cols-2 gap-3">
@@ -382,7 +386,7 @@ function SettingsTab() {
         <p className="text-[11px] text-gray-400 mt-2">
           Example: free for the first {settings.delivery.freeRadiusKm || 5} km, then ₹{settings.delivery.chargePerBlock || 40} for every additional {settings.delivery.blockSizeKm || 5} km.
         </p>
-        <button onClick={saveDeliveryCharges} disabled={saving} className="mt-3 text-xs font-bold bg-emerald-600 text-white px-3 py-1.5 rounded-lg">Save Pricing</button>
+        <button onClick={saveDeliveryCharges} disabled={saving} className="mt-3 text-xs font-bold text-white px-3 py-1.5 rounded-lg" style={{ background: FB_THEME.gradientButton }}>Save Pricing</button>
       </div>
     </div>
   );
