@@ -16,7 +16,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   FiTrash2, FiShoppingBag, FiTruck, FiEdit2, FiInfo, FiCheckCircle,
-  FiZap, FiPackage, FiLock, FiGrid, FiMinus, FiPlus, FiChevronRight, FiSun,
+  FiZap, FiPackage, FiLock, FiGrid, FiMinus, FiPlus, FiChevronRight, FiSun, FiGift,
 } from 'react-icons/fi';
 import { FaLeaf } from 'react-icons/fa';
 import Navbar from '../components/common/Navbar';
@@ -26,6 +26,7 @@ import VariantPickerModal from '../components/cart/VariantPickerModal';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useKoyambeduCart } from '../context/KoyambeduCartContext';
+import { useFruitBasketCart } from '../context/FruitBasketCartContext';
 import { formatINR } from '../utils/currency';
 import { imgCart } from '../utils/cloudinary';
 import toast from 'react-hot-toast';
@@ -74,12 +75,28 @@ const VERTICAL_CONFIG = {
     continueLabel:       'Continue Shopping',
     displayOrder:        1,
   },
+  fruitBaskets: {
+    id:                  'fruitBaskets',
+    label:               'Fruit Baskets & Hampers',
+    iconEl:              <FiGift size={13} />,
+    accent:              '#b45309',
+    accentLight:         '#fff7ed',
+    accentText:          '#92400e',
+    headerGradient:      'linear-gradient(135deg,#0a3d2c,#b45309)',
+    btnGradient:         'linear-gradient(135deg,#0a3d2c,#b45309)',
+    btnShadow:           '0 4px 16px rgba(180,83,9,0.35)',
+    checkoutPath:        '/fruitbaskets/checkout',
+    checkoutLabel:       'Proceed to Fruit Basket Checkout →',
+    continuePath:        '/fruitbaskets',
+    continueLabel:       'Add more baskets',
+    displayOrder:        2,
+  },
   // ── Future verticals (uncomment when integrated) ───────
   // farmerFresh: {
-  //   id: 'farmerFresh', label: 'Farmer Fresh', displayOrder: 2, ...
+  //   id: 'farmerFresh', label: 'Farmer Fresh', displayOrder: 3, ...
   // },
   // proteins: {
-  //   id: 'proteins', label: 'Proteins', displayOrder: 3, ...
+  //   id: 'proteins', label: 'Proteins', displayOrder: 4, ...
   // },
 };
 
@@ -133,6 +150,14 @@ export default function Cart() {
     itemCount:  kbdItemCount,
   } = useKoyambeduCart();
 
+  const {
+    cart:       fbCart,
+    fetchCart:  fbFetchCart,
+    updateItem: fbUpdateItem,
+    subtotal:   fbSubtotal,
+    itemCount:  fbItemCount,
+  } = useFruitBasketCart();
+
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
 
@@ -140,12 +165,13 @@ export default function Cart() {
   const [variantPickerItem, setVariantPickerItem] = useState(null);
   const [activeTab,        setActiveTab]         = useState(null);
 
-  useEffect(() => { kbdFetchCart(); }, []);
+  useEffect(() => { kbdFetchCart(); fbFetchCart(); }, []);
 
   // Map vertical id → item count
   const itemCounts = {
-    koyambedu: kbdItemCount,
-    eptomart:  cartCount,
+    koyambedu:    kbdItemCount,
+    eptomart:     cartCount,
+    fruitBaskets: fbItemCount,
   };
 
   // Tabs sorted by displayOrder, filtered to those with items
@@ -160,9 +186,9 @@ export default function Cart() {
       if (first) setActiveTab(first);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kbdItemCount, cartCount]);
+  }, [kbdItemCount, cartCount, fbItemCount]);
 
-  const totalCount    = kbdItemCount + cartCount;
+  const totalCount    = kbdItemCount + cartCount + fbItemCount;
   const activeTabId   = (activeTab && itemCounts[activeTab] > 0) ? activeTab : availableTabs[0]?.id;
   const activeVertical = VERTICAL_CONFIG[activeTabId];
 
@@ -217,6 +243,14 @@ export default function Cart() {
                 color: '#065f46',
                 bg:    '#dcfce7',
                 icon:  <FaLeaf size={14} />,
+              },
+              {
+                name: 'Fruit Baskets & Hampers',
+                desc: 'Curated gift baskets, delivered fresh',
+                path: '/fruitbaskets',
+                color: '#b45309',
+                bg:    '#fff7ed',
+                icon:  <FiGift size={16} />,
               },
               {
                 name: 'Farmer Fresh',
@@ -326,6 +360,17 @@ export default function Cart() {
             navigate={navigate}
             isLoggedIn={isLoggedIn}
             vertical={VERTICAL_CONFIG.eptomart}
+          />
+        )}
+
+        {activeTabId === 'fruitBaskets' && (
+          <FruitBasketTab
+            fbCart={fbCart}
+            fbItemCount={fbItemCount}
+            fbSubtotal={fbSubtotal}
+            fbUpdateItem={fbUpdateItem}
+            navigate={navigate}
+            vertical={VERTICAL_CONFIG.fruitBaskets}
           />
         )}
 
@@ -589,6 +634,145 @@ function KoyambeduTab({
             style={kbdSubtotal >= KBD_MIN_ORDER
               ? { background: vertical.btnGradient, boxShadow: vertical.btnShadow }
               : { background: '#9ca3af' }}
+          >
+            {vertical.checkoutLabel}
+          </button>
+
+          <Link
+            to={vertical.continuePath}
+            className="block text-center text-sm hover:underline"
+            style={{ color: vertical.accent }}
+          >
+            <FiShoppingBag className="inline mr-1" size={13} />
+            {vertical.continueLabel}
+          </Link>
+
+          <p className="text-xs text-gray-400 text-center mt-3 flex items-center justify-center gap-1">
+            <FiLock size={11} /> Secure checkout
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════
+// FRUIT BASKETS & HAMPERS TAB
+// Delivery charges are distance-based (same as Koyambedu) → shown at
+// checkout. Checkout/pricing logic itself is untouched — this tab only
+// displays and edits the same server/guest cart FruitBasketShop.jsx uses.
+// ════════════════════════════════════════════════════════
+function FruitBasketTab({ fbCart, fbItemCount, fbSubtotal, fbUpdateItem, navigate, vertical }) {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+      {/* ── Items ──────────────────────────────────────── */}
+      <div className="lg:col-span-2 space-y-4">
+
+        <div className="card overflow-hidden">
+          <div className="px-4 py-2.5 border-b" style={{ background: vertical.headerGradient }}>
+            <p className="text-sm font-bold text-white flex items-center gap-2">
+              <span className="text-amber-200">{vertical.iconEl}</span>
+              {vertical.label}
+              <span className="ml-auto text-amber-100 text-xs font-normal">
+                {fbItemCount} item{fbItemCount !== 1 ? 's' : ''}
+              </span>
+            </p>
+          </div>
+
+          <div className="divide-y divide-gray-100">
+            {fbCart.items?.map((item, i) => {
+              const pid = String(item.product?._id || item.product);
+              if (!item.product || pid === 'null' || pid === 'undefined') return null;
+              const img = item.image || item.product?.images?.[0] || 'https://placehold.co/80x80/fff7ed/92400e?text=🧺';
+              const lineAmt = (item.price || 0) * (item.quantity || 0);
+
+              return (
+                <div key={item._id || i} className="p-4 flex gap-4">
+                  <img src={imgCart(img)} alt={item.name}
+                    className="w-20 h-20 object-cover rounded-xl bg-gray-100 flex-shrink-0" />
+
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-medium text-gray-800 line-clamp-2 mb-1">{item.name}</h3>
+                    <div className="flex items-baseline gap-1.5 mb-2">
+                      <span className="text-xs text-gray-500">₹{item.price}</span>
+                      {item.compareAtPrice > item.price && (
+                        <span className="text-[10px] text-gray-400 line-through">₹{item.compareAtPrice}</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => fbUpdateItem(pid, item.quantity - 1, { silent: true })}
+                          className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center transition active:scale-90"
+                        >
+                          <FiMinus size={11} />
+                        </button>
+                        <span className="text-sm font-bold text-gray-900 w-6 text-center">{item.quantity}</span>
+                        <button
+                          onClick={() => fbUpdateItem(pid, item.quantity + 1, { silent: true })}
+                          className="w-7 h-7 rounded-full bg-amber-700 text-white flex items-center justify-center transition active:scale-90"
+                        >
+                          <FiPlus size={11} />
+                        </button>
+                      </div>
+                      <p className="font-bold text-gray-900">{formatINR(lineAmt)}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => fbUpdateItem(pid, 0, { silent: true })}
+                    className="text-gray-300 hover:text-red-400 transition-colors self-start mt-1"
+                  >
+                    <FiTrash2 size={16} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="card p-4">
+          <div className="flex items-start gap-3">
+            <FiTruck size={15} className="flex-shrink-0 mt-0.5" style={{ color: vertical.accent }} />
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-1">Delivery Charges</p>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Fruit Basket delivery charges are calculated based on your delivery
+                distance. The exact charge will be shown at checkout.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Summary sidebar ────────────────────────────── */}
+      <div>
+        <div className="card p-6 sticky top-20">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">Order Summary</h2>
+
+          <div className="space-y-2.5 text-sm mb-4">
+            <div className="flex justify-between text-gray-600">
+              <span>Items ({fbItemCount})</span>
+              <span>{formatINR(fbSubtotal)}</span>
+            </div>
+            <div className="flex justify-between text-gray-500 text-xs">
+              <span className="flex items-center gap-1">
+                <FiTruck size={11} /> Delivery charge
+              </span>
+              <span className="italic">Calculated at checkout</span>
+            </div>
+            <div className="flex justify-between font-bold text-base text-gray-900 pt-2 border-t border-gray-100">
+              <span>Items Total</span>
+              <span style={{ color: vertical.accent }}>{formatINR(fbSubtotal)}</span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => navigate(vertical.checkoutPath)}
+            className="w-full py-3 rounded-xl text-sm font-bold text-white transition mb-3"
+            style={{ background: vertical.btnGradient, boxShadow: vertical.btnShadow }}
           >
             {vertical.checkoutLabel}
           </button>

@@ -1,25 +1,19 @@
 // ============================================
 // FRUIT BASKETS & HAMPERS — Shop / Listing page
-// Standalone vertical: its own catalog, its own local "order builder" cart
-// (kept in sessionStorage, not shared with the main Eptomart cart or any
-// other vertical), its own checkout page (FruitBasketCheckout.jsx).
+// Cart is now backed by FruitBasketCartContext (guest localStorage + server
+// persistence for logged-in users), so items also appear in the common
+// Eptomart /cart page under their own "Fruit Baskets & Hampers" tab.
+// Checkout page (FruitBasketCheckout.jsx) and all pricing/order logic are
+// unchanged — only the source of the cart changed.
 // ============================================
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FiShoppingBag, FiPlus, FiMinus, FiArrowRight, FiGift, FiTruck } from 'react-icons/fi';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import api from '../../utils/api';
-
-const CART_KEY = 'eptomart_fb_cart';
-
-const loadCart = () => {
-  try { return JSON.parse(sessionStorage.getItem(CART_KEY) || '{}'); } catch { return {}; }
-};
-const saveCart = (cart) => {
-  try { sessionStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch {}
-};
+import { useFruitBasketCart } from '../../context/FruitBasketCartContext';
 
 const OCCASION_LABELS = {
   general: 'All Occasions', birthday: 'Birthday', anniversary: 'Anniversary',
@@ -32,10 +26,11 @@ export default function FruitBasketShop() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [occasion, setOccasion] = useState('');
-  const [cart, setCart]         = useState(loadCart);
+  const { cart, fetchCart, updateItem, getQty, itemCount, subtotal } = useFruitBasketCart();
 
   useEffect(() => {
     api.get('/fruitbaskets/status').then(r => setStatus(r.data)).catch(() => setStatus({ featureEnabled: false }));
+    fetchCart();
   }, []);
 
   useEffect(() => {
@@ -48,23 +43,13 @@ export default function FruitBasketShop() {
       .finally(() => setLoading(false));
   }, [status, occasion]);
 
-  useEffect(() => { saveCart(cart); }, [cart]);
-
   const setQty = (product, qty) => {
-    setCart(prev => {
-      const next = { ...prev };
-      if (qty <= 0) { delete next[product._id]; return next; }
-      next[product._id] = {
-        productId: product._id, name: product.name, image: product.images?.[0] || '',
-        price: product.price, quantity: qty,
-      };
-      return next;
-    });
+    updateItem(product._id, qty, { productData: product });
   };
 
-  const cartItems = useMemo(() => Object.values(cart), [cart]);
-  const cartCount = cartItems.reduce((s, it) => s + it.quantity, 0);
-  const cartTotal = cartItems.reduce((s, it) => s + it.price * it.quantity, 0);
+  const cartItems = cart.items || [];
+  const cartCount = itemCount;
+  const cartTotal = subtotal;
 
   const goToCheckout = () => {
     if (cartItems.length === 0) { toast.error('Add a basket first'); return; }
@@ -132,7 +117,7 @@ export default function FruitBasketShop() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {products.map(p => {
-              const qty = cart[p._id]?.quantity || 0;
+              const qty = getQty(p._id);
               return (
                 <div key={p._id} className="bg-white rounded-2xl overflow-hidden border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
                   <div className="aspect-square bg-gray-50 relative">

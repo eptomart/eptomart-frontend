@@ -11,6 +11,7 @@ import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { CompareProvider } from './context/CompareContext';
 import { KoyambeduCartProvider } from './context/KoyambeduCartContext';
+import { FruitBasketCartProvider } from './context/FruitBasketCartContext';
 import { EptoFreshCartProvider } from './context/EptoFreshCartContext';
 import Loader from './components/common/Loader';
 import CompareBar from './components/product/CompareBar';
@@ -338,7 +339,9 @@ export default function App() {
           <CompareProvider>
             <KoyambeduCartProvider>
               <EptoFreshCartProvider>
-                <AppRoutes />
+                <FruitBasketCartProvider>
+                  <AppRoutes />
+                </FruitBasketCartProvider>
               </EptoFreshCartProvider>
             </KoyambeduCartProvider>
           </CompareProvider>

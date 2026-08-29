@@ -1,11 +1,9 @@
 // ============================================
 // FRUIT BASKETS & HAMPERS — Checkout
-// Fully standalone checkout (per the feature spec — no shared cart/checkout
-// with any other Eptomart vertical). Address capture uses the browser's
-// own geolocation API rather than the Google Maps embed Koyambedu uses,
-// to keep this vertical self-contained and avoid depending on that map
-// config — distance-based delivery pricing only needs a lat/lng, which
-// geolocation (or manual entry) provides just as well.
+// Item list now comes from FruitBasketCartContext (shared with the common
+// /cart page + FruitBasketShop.jsx) instead of sessionStorage. Everything
+// below that — address capture, same-day cutoff, slot selection, quote,
+// Razorpay create/verify — is completely unchanged.
 //
 // The deliveryTab staleness bug fixed in KoyambeduCheckout.jsx (tab not
 // re-deriving after the async same-day-settings fetch resolves) is avoided
@@ -19,11 +17,7 @@ import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
-
-const CART_KEY = 'eptomart_fb_cart';
-const loadCart = () => {
-  try { return JSON.parse(sessionStorage.getItem(CART_KEY) || '{}'); } catch { return {}; }
-};
+import { useFruitBasketCart } from '../../context/FruitBasketCartContext';
 
 const fmtDate = (d) => {
   const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
@@ -46,20 +40,36 @@ export default function FruitBasketCheckout() {
   const navigate = useNavigate();
   const { user, isLoggedIn } = useAuth();
 
-  const [cart, setCart] = useState(loadCart);
-  const cartItems = useMemo(() => Object.values(cart), [cart]);
+  const { cart, fetchCart, clearCart } = useFruitBasketCart();
+  // Normalize to { productId, name, price, quantity } regardless of whether
+  // the underlying item came from the guest (localStorage) or server cart.
+  const cartItems = useMemo(() => (cart.items || []).map(it => ({
+    productId: String(it.product?._id || it.product),
+    name:      it.name,
+    price:     it.price,
+    quantity:  it.quantity,
+  })), [cart.items]);
 
   const [status, setStatus] = useState(null); // /fruitbaskets/status response
   useEffect(() => {
     api.get('/fruitbaskets/status').then(r => setStatus(r.data)).catch(() => setStatus({ featureEnabled: false, deliverySlots: [], sameDayDelivery: {} }));
-  }, []);
+    fetchCart();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const [cartChecked, setCartChecked] = useState(false);
   useEffect(() => {
-    if (cartItems.length === 0) {
+    // Give fetchCart a tick to resolve before deciding the basket is empty,
+    // so a hard refresh on this page doesn't bounce the user out while the
+    // server cart is still loading.
+    const t = setTimeout(() => setCartChecked(true), 400);
+    return () => clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    if (cartChecked && cartItems.length === 0) {
       toast.error('Your basket order is empty');
       navigate('/fruitbaskets', { replace: true });
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cartChecked, cartItems.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Address form ──
   const [addr, setAddr] = useState({ name: user?.name || '', phone: user?.phone || '', addressLine: '', city: '', pincode: '', label: 'Home' });
@@ -160,7 +170,7 @@ export default function FruitBasketCheckout() {
             orderId: data.orderId, razorpayOrderId: data.rzpOrderId,
             razorpayPaymentId: `demo_pay_${Date.now()}`, razorpaySignature: 'demo',
           });
-          sessionStorage.removeItem(CART_KEY);
+          clearCart();
           toast.success('Order placed! 🎁');
           navigate('/fruitbaskets/my-orders');
         } catch {
@@ -184,7 +194,7 @@ export default function FruitBasketCheckout() {
               razorpayPaymentId: resp.razorpay_payment_id,
               razorpaySignature: resp.razorpay_signature,
             });
-            sessionStorage.removeItem(CART_KEY);
+            clearCart();
             toast.success('Order placed! 🎁');
             navigate('/fruitbaskets/my-orders');
           } catch {
