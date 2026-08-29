@@ -9,7 +9,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FiShoppingBag, FiPlus, FiMinus, FiArrowRight, FiGift, FiTruck } from 'react-icons/fi';
+import { FiShoppingBag, FiPlus, FiMinus, FiArrowRight, FiGift, FiTruck, FiPhoneCall, FiEdit3, FiZap } from 'react-icons/fi';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import api from '../../utils/api';
@@ -102,6 +102,46 @@ export default function FruitBasketShop() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Custom order / urgent order banner */}
+      <div className="max-w-5xl mx-auto px-4 mt-4">
+        <a
+          href="tel:+919500050027"
+          className="group relative flex items-center gap-4 overflow-hidden rounded-2xl px-4 py-4 md:px-6 md:py-5 transition-transform active:scale-[0.99]"
+          style={{
+            background: 'linear-gradient(120deg, #1c1305 0%, #7a4a0a 45%, #d4a017 100%)',
+            boxShadow: '0 8px 28px rgba(180,131,15,0.35)',
+          }}
+        >
+          {/* Subtle sheen sweep */}
+          <span className="pointer-events-none absolute inset-0 fb-cta-shine" />
+          {/* Decorative ring glow behind the icon */}
+          <span className="pointer-events-none absolute -left-6 -top-6 w-28 h-28 rounded-full bg-amber-300/20 blur-2xl" />
+
+          <div className="relative flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/25 fb-cta-icon">
+            <FiGift size={22} className="text-amber-50" />
+          </div>
+
+          <div className="relative flex-1 min-w-0">
+            <p className="flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase text-amber-200 mb-0.5">
+              <FiEdit3 size={11} /> Customised baskets <span className="text-amber-100/50">·</span> <FiZap size={11} /> Urgent orders
+            </p>
+            <p className="text-white font-bold text-sm md:text-base leading-snug">
+              Want your own choice of fruits, custom printing, or an urgent same-day basket?
+            </p>
+            <p className="text-amber-100/80 text-xs md:text-sm mt-0.5">
+              Talk to us directly — we'll set it up for you.
+            </p>
+          </div>
+
+          <div className="relative flex-shrink-0 flex flex-col items-end gap-1">
+            <span className="flex items-center gap-1.5 bg-white text-amber-800 font-black text-xs md:text-sm px-3.5 py-2 rounded-xl shadow-md group-hover:bg-amber-50 transition-colors fb-cta-pulse">
+              <FiPhoneCall size={14} /> +91 95000 50027
+            </span>
+            <span className="text-amber-100/70 text-[10px] font-semibold pr-1">Tap to call</span>
+          </div>
+        </a>
       </div>
 
       {/* Product grid */}
