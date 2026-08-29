@@ -179,6 +179,10 @@ export default function KoyambeduShop() {
   const search       = searchParams.get('search')   || '';
   const categoryId   = searchParams.get('category') || '';
   const sortBy       = searchParams.get('sort')      || 'default';
+  // Home.jsx's Flash Sale / Combo banner links here with ?combo=true so it
+  // opens straight into a listing of ONLY combo/flash-sale items instead of
+  // the general category shop — see ComboBanner in Home.jsx.
+  const comboOnly    = searchParams.get('combo') === 'true';
 
   // Words to ignore when finding the category keyword (colours, sizes, common adjectives)
   const IGNORE_WORDS = useMemo(() => new Set([
@@ -240,6 +244,7 @@ export default function KoyambeduShop() {
       const params = new URLSearchParams({ page: pg, limit: 20, sort: sortBy });
       if (search)     params.set('search',   search);
       if (categoryId) params.set('category', categoryId);
+      if (comboOnly)  params.set('combo',    'true');
       const { data } = await api.get(`/koyambedu/products?${params}`);
       if (reqId !== requestIdRef.current) return; // superseded by a newer request — ignore stale response
 
@@ -261,14 +266,14 @@ export default function KoyambeduShop() {
     } finally {
       if (reqId === requestIdRef.current) setLoading(false);
     }
-  }, [search, categoryId, sortBy]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [search, categoryId, sortBy, comboOnly]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchCart();
     api.get('/koyambedu/categories').then(r => setCategories(r.data.categories || [])).catch(() => {});
   }, []);
 
-  const cacheKey = `${search}|${categoryId}|${sortBy}`;
+  const cacheKey = `${search}|${categoryId}|${sortBy}|${comboOnly ? 'combo' : ''}`;
 
   // Restore cached results for this exact filter combination instead of
   // always re-fetching page 1 — see shopStateCache comment above.
@@ -297,7 +302,7 @@ export default function KoyambeduShop() {
       setAlsoOnEptomart([]);
       loadProducts(1);
     }
-  }, [search, categoryId, sortBy]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [search, categoryId, sortBy, comboOnly]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep the cache in sync as more pages load via infinite scroll, so
   // scrolling down and then navigating away/back restores the full list.
@@ -412,7 +417,7 @@ export default function KoyambeduShop() {
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="font-black text-white text-base leading-tight">
-              {activeCategory ? `${activeCategory.name}` : 'Shop Fresh Market'}
+              {comboOnly ? '⚡ Combos & Flash Sale' : (activeCategory ? `${activeCategory.name}` : 'Shop Fresh Market')}
             </h1>
             {distToMarket != null && (
               <p className="text-white/75 text-[11px] mt-0.5 flex items-center gap-1">
@@ -460,8 +465,8 @@ export default function KoyambeduShop() {
 
       <div className="max-w-7xl mx-auto">
 
-          {/* ── Category pills ── */}
-          {categories.length > 0 && (
+          {/* ── Category pills — hidden in combo-only mode (categories don't apply to a pure combo listing) ── */}
+          {!comboOnly && categories.length > 0 && (
             <div className="px-4 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
               <button onClick={() => setParam('category', '')}
                 className={`text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap border transition ${

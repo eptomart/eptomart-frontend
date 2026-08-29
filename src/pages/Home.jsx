@@ -602,12 +602,15 @@ function FruitBasketBanner({ onReady }) {
 // COMBO / FLASH SALE BANNER — promotes Koyambedu Daily's new Combos &
 // Flash Sale category (vegetable/fruit combo packs with addons, managed
 // by Koyambedu's Super Admin — see KoyambeduComboSettings.js). Combos are
-// NOT a separate vertical — this links straight into the existing
-// Koyambedu Daily shop where combo items sit alongside everything else in
-// the same cart/checkout. Feature-flag gated on /koyambedu/combos/status;
-// renders nothing when Super Admin has the feature off. Sits side-by-side
-// with FruitBasketBanner via PromoBannersRow below, per request ("first
-// half" combos/flash sale, "rest half" fruit baskets & hampers).
+// NOT a separate vertical — tapping this links into the SAME Koyambedu
+// Daily shop (/koyambedu/shop?combo=true), pre-filtered to show ONLY
+// combo/flash-sale products (never the general category listing), while
+// cart/checkout stay completely shared/unchanged — combo items still sit
+// alongside everything else once added to cart. Feature-flag gated on
+// /koyambedu/combos/status; renders nothing when Super Admin has the
+// feature off. Sits side-by-side with FruitBasketBanner via
+// PromoBannersRow below, per request ("first half" combos/flash sale,
+// "rest half" fruit baskets & hampers).
 // ══════════════════════════════════════════════════════════════
 function ComboBanner({ onReady }) {
   const [enabled, setEnabled] = useState(false);
@@ -622,7 +625,7 @@ function ComboBanner({ onReady }) {
   if (!enabled) return null;
 
   return (
-    <Link to="/koyambedu" className="sob-wrap tap-ripple block h-full active:scale-[0.98] transition-transform">
+    <Link to="/koyambedu/shop?combo=true" className="sob-wrap tap-ripple block h-full active:scale-[0.98] transition-transform">
       <div className="sob-border h-full">
         <div className="sob-inner promo-card relative overflow-hidden rounded-[13px] h-full px-3 py-2.5 md:px-4 md:py-3"
           style={{ background: 'linear-gradient(145deg, #581c87 0%, #9333ea 55%, #6b21a8 100%)' }}>
