@@ -20,7 +20,7 @@
     "recharts": "^2.10.1",
     "swiper": "^11.0.5",
     "framer-motion": "^10.16.16",
-    "firebase": "^10.7.0"
+    "firebase": "^12.18.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
