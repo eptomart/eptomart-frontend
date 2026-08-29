@@ -109,11 +109,11 @@ export default function FruitBasketShop() {
         </div>
       </div>
 
-      {/* Custom order / urgent order banner */}
+      {/* Custom order / express order banner */}
       <div className="max-w-5xl mx-auto px-4 mt-4">
         <a
           href="tel:+919500050027"
-          className="group relative flex items-center gap-4 overflow-hidden rounded-2xl px-4 py-4 md:px-6 md:py-5 transition-transform active:scale-[0.99]"
+          className="group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 md:px-4 md:py-3 transition-transform active:scale-[0.99]"
           style={{
             background: FB_THEME.gradientHeader,
             border: FB_THEME.borderGold,
@@ -123,31 +123,27 @@ export default function FruitBasketShop() {
           {/* Subtle sheen sweep */}
           <span className="pointer-events-none absolute inset-0 fb-cta-shine" />
           {/* Decorative ring glow behind the icon */}
-          <span className="pointer-events-none absolute -left-6 -top-6 w-28 h-28 rounded-full blur-2xl" style={{ background: 'rgba(212,175,55,0.25)' }} />
+          <span className="pointer-events-none absolute -left-6 -top-6 w-20 h-20 rounded-full blur-2xl" style={{ background: 'rgba(212,175,55,0.25)' }} />
 
-          <div className="relative flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-2xl backdrop-blur-sm flex items-center justify-center fb-cta-icon"
+          <div className="relative flex-shrink-0 w-9 h-9 md:w-10 md:h-10 rounded-xl backdrop-blur-sm flex items-center justify-center fb-cta-icon"
             style={{ background: 'rgba(212,175,55,0.18)', border: FB_THEME.borderGold }}>
-            <FiGift size={22} style={{ color: FB_THEME.goldLight }} />
+            <FiGift size={17} style={{ color: FB_THEME.goldLight }} />
           </div>
 
           <div className="relative flex-1 min-w-0">
-            <p className="flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase mb-0.5" style={{ color: FB_THEME.goldLight }}>
-              <FiEdit3 size={11} /> Customised baskets <span style={{ color: 'rgba(245,213,118,0.5)' }}>·</span> <FiZap size={11} /> Urgent orders
+            <p className="flex items-center gap-1 text-[9px] font-black tracking-widest uppercase mb-0.5" style={{ color: FB_THEME.goldLight }}>
+              <FiEdit3 size={10} /> Custom baskets <span style={{ color: 'rgba(245,213,118,0.5)' }}>·</span> <FiZap size={10} /> Express orders
             </p>
-            <p className="text-white font-bold text-sm md:text-base leading-snug">
-              Want your own choice of fruits, custom printing, or an urgent same-day basket?
-            </p>
-            <p className="text-xs md:text-sm mt-0.5" style={{ color: FB_THEME.purple100 }}>
-              Talk to us directly — we'll set it up for you.
+            <p className="text-white font-bold text-xs md:text-sm leading-snug line-clamp-1">
+              Your choice of fruits, custom printing, or express delivery
             </p>
           </div>
 
-          <div className="relative flex-shrink-0 flex flex-col items-end gap-1">
-            <span className="flex items-center gap-1.5 font-black text-xs md:text-sm px-3.5 py-2 rounded-xl shadow-md transition-colors fb-cta-pulse"
+          <div className="relative flex-shrink-0">
+            <span className="flex items-center gap-1.5 font-black text-[11px] md:text-xs px-2.5 py-1.5 rounded-lg shadow-md transition-colors fb-cta-pulse whitespace-nowrap"
               style={{ background: FB_THEME.gradientGold, color: FB_THEME.purple900 }}>
-              <FiPhoneCall size={14} /> +91 95000 50027
+              <FiPhoneCall size={12} /> Call
             </span>
-            <span className="text-[10px] font-semibold pr-1" style={{ color: FB_THEME.purple100 }}>Tap to call</span>
           </div>
         </a>
       </div>
