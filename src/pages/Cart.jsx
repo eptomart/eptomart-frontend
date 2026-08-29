@@ -29,6 +29,7 @@ import { useKoyambeduCart } from '../context/KoyambeduCartContext';
 import { useFruitBasketCart } from '../context/FruitBasketCartContext';
 import { formatINR } from '../utils/currency';
 import { imgCart } from '../utils/cloudinary';
+import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 // ── Eptomart (main cart) shipping thresholds ────────────
@@ -164,6 +165,20 @@ export default function Cart() {
   const [updating,         setUpdating]         = useState({});
   const [variantPickerItem, setVariantPickerItem] = useState(null);
   const [activeTab,        setActiveTab]         = useState(null);
+
+  // Combo minimum-order override — if the Koyambedu cart contains a combo
+  // item (and the combo feature is on), the combo's own minimum order value
+  // applies to the WHOLE cart instead of the normal ₹799 default, mirroring
+  // exactly what koyambeduController.placeOrder enforces server-side. This
+  // is read-only status info (same public endpoint KoyambeduCheckout.jsx
+  // already calls) — no other cart/checkout behavior is touched.
+  const [comboStatus, setComboStatus] = useState(null);
+  useEffect(() => {
+    api.get('/koyambedu/combos/status').then(r => { if (r.data?.success) setComboStatus(r.data); }).catch(() => {});
+  }, []);
+  const kbdCartHasCombo = !!kbdCart?.items?.some(it => it.product?.isCombo);
+  const kbdComboActive  = !!(comboStatus?.featureEnabled && kbdCartHasCombo);
+  const kbdMinOrder     = kbdComboActive ? (comboStatus?.minOrderValue?.value ?? 0) : KBD_MIN_ORDER;
 
   useEffect(() => { kbdFetchCart(); fbFetchCart(); }, []);
 
@@ -337,6 +352,8 @@ export default function Cart() {
             kbdLoading={kbdLoading}
             kbdSubtotal={kbdSubtotal}
             kbdUpdateItem={kbdUpdateItem}
+            kbdMinOrder={kbdMinOrder}
+            kbdComboActive={kbdComboActive}
             navigate={navigate}
             vertical={VERTICAL_CONFIG.koyambedu}
           />
@@ -394,7 +411,7 @@ export default function Cart() {
 // Delivery charges are distance-based → shown at checkout.
 // ════════════════════════════════════════════════════════
 function KoyambeduTab({
-  kbdCart, kbdItemCount, kbdLoading, kbdSubtotal, kbdUpdateItem, navigate, vertical,
+  kbdCart, kbdItemCount, kbdLoading, kbdSubtotal, kbdUpdateItem, kbdMinOrder, kbdComboActive, navigate, vertical,
 }) {
   // editQty maps itemKey → draft string while user is editing qty inline
   const [editQty, setEditQty] = useState({});
@@ -610,28 +627,30 @@ function KoyambeduTab({
             </div>
           </div>
 
-          {/* Minimum order warning */}
-          {kbdSubtotal < KBD_MIN_ORDER && (
+          {/* Minimum order warning — uses the combo's own minimum whenever
+              the cart has a combo item, otherwise the normal ₹799 default,
+              matching koyambeduController.placeOrder exactly. */}
+          {kbdSubtotal < kbdMinOrder && (
             <div className="mb-3 rounded-xl px-3 py-2.5 flex items-start gap-2"
                  style={{ background: '#fef3c7', border: '1px solid #fde68a' }}>
               <FiInfo size={14} className="flex-shrink-0 mt-0.5" style={{ color: '#b45309' }} />
               <div>
                 <p className="text-xs font-semibold" style={{ color: '#92400e' }}>
-                  Minimum order ₹{KBD_MIN_ORDER}
+                  Minimum order ₹{kbdMinOrder}{kbdComboActive ? ' (combo)' : ''}
                 </p>
                 <p className="text-[11px]" style={{ color: '#b45309' }}>
-                  Add ₹{(KBD_MIN_ORDER - kbdSubtotal).toFixed(0)} more to proceed
+                  Add ₹{(kbdMinOrder - kbdSubtotal).toFixed(0)} more to proceed
                 </p>
               </div>
             </div>
           )}
 
           <button
-            onClick={() => kbdSubtotal >= KBD_MIN_ORDER && navigate(vertical.checkoutPath)}
-            disabled={kbdSubtotal < KBD_MIN_ORDER}
+            onClick={() => kbdSubtotal >= kbdMinOrder && navigate(vertical.checkoutPath)}
+            disabled={kbdSubtotal < kbdMinOrder}
             className="w-full py-3 rounded-xl text-sm font-bold text-white transition mb-3
                        disabled:opacity-50 disabled:cursor-not-allowed"
-            style={kbdSubtotal >= KBD_MIN_ORDER
+            style={kbdSubtotal >= kbdMinOrder
               ? { background: vertical.btnGradient, boxShadow: vertical.btnShadow }
               : { background: '#9ca3af' }}
           >
