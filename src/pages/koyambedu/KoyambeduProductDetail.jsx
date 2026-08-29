@@ -498,6 +498,24 @@ export default function KoyambeduProductDetail() {
             </p>
           )}
 
+          {/* What's inside this combo — buyer-facing list of the actual products
+              & quantities the seller admin picked when building the combo. */}
+          {product.isCombo && product.comboContents?.length > 0 && (
+            <div className="mt-3 rounded-xl p-3 border border-purple-100 bg-purple-50/50">
+              <p className="text-purple-700 text-xs font-black uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                <FiZap size={12} /> What&apos;s inside this combo
+              </p>
+              <ul className="space-y-1">
+                {product.comboContents.map((c, i) => (
+                  <li key={i} className="flex items-center gap-1.5 text-gray-700 text-sm">
+                    <FiCheckCircle size={12} className="text-purple-500 shrink-0" />
+                    <span>{c.name} <span className="text-gray-400">— {c.qty}{c.unit || ''}</span></span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Description */}
           {product.description && (
             <p className="mt-3 text-gray-500 text-sm leading-relaxed border-t border-gray-50 pt-3">

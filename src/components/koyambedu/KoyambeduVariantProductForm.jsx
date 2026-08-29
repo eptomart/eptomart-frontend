@@ -367,6 +367,10 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
       const catName = (categories || []).find(c => c._id === form.categoryId)?.name || '';
       const { data } = await api.post('/koyambedu/ai/describe', {
         name: form.name, nameTamil: form.nameTamil, category: catName, unit: form.unit,
+        // For combos, the AI writes the description around the ACTUAL items
+        // picked below (see comboContents) instead of a generic blurb.
+        isCombo: !!form.isCombo,
+        comboContents: form.isCombo ? (form.comboContents || []) : undefined,
       });
       onChange({ ...form, description: data.description });
       toast.success('Description generated!');
@@ -667,6 +671,9 @@ export default function KoyambeduVariantProductForm({ form, onChange, categories
           <label className="text-xs font-semibold text-gray-700">Description</label>
           <button type="button" onClick={handleDescribe}
             disabled={describing || !form.name?.trim()}
+            title={form.isCombo && !(form.comboContents || []).length
+              ? 'Tip: add the items below first so the AI can describe what\'s actually inside'
+              : undefined}
             className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 disabled:opacity-50 transition">
             {describing
               ? <><span className="w-2.5 h-2.5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin inline-block" /> Writing…</>
