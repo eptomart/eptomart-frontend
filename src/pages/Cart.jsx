@@ -178,7 +178,10 @@ export default function Cart() {
   }, []);
   const kbdCartHasCombo = !!kbdCart?.items?.some(it => it.product?.isCombo);
   const kbdComboActive  = !!(comboStatus?.featureEnabled && kbdCartHasCombo);
-  const kbdMinOrder     = kbdComboActive ? (comboStatus?.minOrderValue?.value ?? 0) : KBD_MIN_ORDER;
+  // NOTE: /koyambedu/combos/status returns minOrderValue as a plain number
+  // (KoyambeduComboSettings.getPublicStatus flattens doc.minOrderValue.value
+  // into just `minOrderValue`) — not an object, so no `.value` here.
+  const kbdMinOrder     = kbdComboActive ? (comboStatus?.minOrderValue ?? 0) : KBD_MIN_ORDER;
 
   useEffect(() => { kbdFetchCart(); fbFetchCart(); }, []);
 
