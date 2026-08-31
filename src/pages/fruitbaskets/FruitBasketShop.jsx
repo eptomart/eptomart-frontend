@@ -80,10 +80,26 @@ export default function FruitBasketShop() {
       <div className="relative overflow-hidden fb-royal-header" style={{ background: FB_THEME.gradientHero }}>
         <span className="pointer-events-none absolute inset-0 fb-royal-shimmer" />
         <div className="max-w-5xl mx-auto px-4 py-8 md:py-12 relative z-10">
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase px-2.5 py-1 rounded-full"
-            style={{ background: FB_THEME.gradientGold, color: FB_THEME.purple900 }}>
-            <FiGift size={11} /> Fruit Baskets & Hampers
-          </span>
+          <div className="flex items-start justify-between gap-3">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase px-2.5 py-1 rounded-full"
+              style={{ background: FB_THEME.gradientGold, color: FB_THEME.purple900 }}>
+              <FiGift size={11} /> Fruit Baskets & Hampers
+            </span>
+            {/* Always-visible cart icon + item-count badge — the sticky bottom
+                bar below only appears once you've scrolled past the grid, so
+                this gives an immediate, persistent signal that items were
+                added (mirrors Koyambedu shop's header cart icon). */}
+            <Link to="/cart" className="relative w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: 'rgba(255,255,255,0.15)', border: FB_THEME.borderGold }}>
+              <FiShoppingBag size={18} style={{ color: FB_THEME.goldLight }} />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center"
+                  style={{ background: FB_THEME.gold, color: FB_THEME.purple900 }}>
+                  {cartCount > 9 ? '9+' : cartCount}
+                </span>
+              )}
+            </Link>
+          </div>
           <h1 className="font-black text-2xl md:text-3xl mt-3"
             style={{ color: FB_THEME.goldLight, textShadow: '0 2px 10px rgba(0,0,0,0.45)' }}>
             Gift a basket, delight a day
@@ -165,20 +181,24 @@ export default function FruitBasketShop() {
               return (
                 <div key={p._id} className="bg-white rounded-2xl overflow-hidden"
                   style={{ border: `1px solid ${FB_THEME.purple100}`, boxShadow: FB_THEME.cardShadow }}>
-                  <div className="aspect-square bg-gray-50 relative">
-                    {p.images?.[0] ? (
-                      <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center" style={{ color: FB_THEME.purple100 }}><FiGift size={32} /></div>
-                    )}
-                    {!p.isAvailable && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">Out of Stock</span>
-                      </div>
-                    )}
-                  </div>
+                  <Link to={`/fruitbaskets/product/${p.slug || p._id}`}>
+                    <div className="aspect-square bg-gray-50 relative">
+                      {p.images?.[0] ? (
+                        <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center" style={{ color: FB_THEME.purple100 }}><FiGift size={32} /></div>
+                      )}
+                      {!p.isAvailable && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <span className="text-white text-xs font-bold">Out of Stock</span>
+                        </div>
+                      )}
+                    </div>
+                  </Link>
                   <div className="p-2.5">
-                    <p className="text-[13px] font-bold text-gray-800 leading-tight line-clamp-2">{p.name}</p>
+                    <Link to={`/fruitbaskets/product/${p.slug || p._id}`}>
+                      <p className="text-[13px] font-bold text-gray-800 leading-tight line-clamp-2">{p.name}</p>
+                    </Link>
                     <div className="flex items-baseline gap-1.5 mt-1">
                       <span className="text-sm font-black" style={{ color: FB_THEME.purple700 }}>₹{p.price}</span>
                       {p.compareAtPrice > p.price && (

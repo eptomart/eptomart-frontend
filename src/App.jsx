@@ -97,6 +97,7 @@ const KoyambeduSpecialRequests     = lazy(() => import('./pages/koyambedu/seller
 // Standalone vertical: own catalog, own checkout, own orders list — no
 // shared cart/checkout with Koyambedu or any other vertical.
 const FruitBasketShop      = lazy(() => import('./pages/fruitbaskets/FruitBasketShop'));
+const FruitBasketProductDetail = lazy(() => import('./pages/fruitbaskets/FruitBasketProductDetail'));
 const FruitBasketCheckout  = lazy(() => import('./pages/fruitbaskets/FruitBasketCheckout'));
 const FruitBasketMyOrders  = lazy(() => import('./pages/fruitbaskets/FruitBasketMyOrders'));
 
@@ -279,9 +280,10 @@ function AppRoutes() {
           <Route path="/koyambedu/seller-admin/special-requests"   element={<ProtectedRoute><KoyambeduSpecialRequests /></ProtectedRoute>} />
 
           {/* ── Fruit Baskets & Hampers — standalone vertical ─────── */}
-          <Route path="/fruitbaskets"           element={<FruitBasketShop />} />
-          <Route path="/fruitbaskets/checkout"  element={<ProtectedRoute><FruitBasketCheckout /></ProtectedRoute>} />
-          <Route path="/fruitbaskets/my-orders" element={<ProtectedRoute><FruitBasketMyOrders /></ProtectedRoute>} />
+          <Route path="/fruitbaskets"                    element={<FruitBasketShop />} />
+          <Route path="/fruitbaskets/product/:idOrSlug"  element={<FruitBasketProductDetail />} />
+          <Route path="/fruitbaskets/checkout"           element={<ProtectedRoute><FruitBasketCheckout /></ProtectedRoute>} />
+          <Route path="/fruitbaskets/my-orders"          element={<ProtectedRoute><FruitBasketMyOrders /></ProtectedRoute>} />
 
           {/* ── Farmer Fresh ───────────────────── */}
           <Route path="/uzhavar"                    element={<UzhavarHome />} />
