@@ -157,15 +157,20 @@ export default function FruitBasketCheckout() {
   const [quote, setQuote]   = useState(null);
   const [quoting, setQuoting] = useState(false);
   const quoteTimer = useRef(null);
+  // Precise coordinates give the most accurate delivery charge, but
+  // geolocation can fail/be denied — a pincode is enough to still price
+  // and place the order (delivery charge is then confirmed by our team
+  // instead of blocking checkout entirely; see priceOrderRequest on the backend).
+  const hasLocationInfo = !!coords || !!addr.pincode?.trim();
   useEffect(() => {
-    if (!coords || !slotKey || cartItems.length === 0) { setQuote(null); return; }
+    if (!hasLocationInfo || !slotKey || cartItems.length === 0) { setQuote(null); return; }
     clearTimeout(quoteTimer.current);
     quoteTimer.current = setTimeout(async () => {
       setQuoting(true);
       try {
         const { data } = await api.post('/fruitbaskets/quote', {
           items: cartItems.map(it => ({ productId: it.productId, quantity: it.quantity })),
-          deliveryAddress: { ...coords },
+          deliveryAddress: coords ? { ...coords } : { pincode: addr.pincode },
           deliveryDate: fmtDate(deliveryDate),
           slotKey,
         });
@@ -177,14 +182,14 @@ export default function FruitBasketCheckout() {
       }
     }, 350);
     return () => clearTimeout(quoteTimer.current);
-  }, [coords, slotKey, dateTab, cartItems]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [coords, addr.pincode, slotKey, dateTab, cartItems]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [placing, setPlacing] = useState(false);
 
   const placeOrder = async () => {
     if (!isLoggedIn) { toast.error('Please log in to continue'); navigate('/login'); return; }
     if (!addr.name || !addr.phone || !addr.addressLine) { toast.error('Please fill in your delivery address'); return; }
-    if (!coords) { toast.error('Please share your location so we can calculate delivery'); return; }
+    if (!coords && !addr.pincode?.trim()) { toast.error('Please share your location or enter your pincode so we can arrange delivery'); return; }
     if (!quote?.success) { toast.error('Please wait for the price to be calculated'); return; }
 
     setPlacing(true);
@@ -317,7 +322,8 @@ export default function FruitBasketCheckout() {
             <div className="flex gap-2">
               <input value={addr.city} onChange={e => setAddr({ ...addr, city: e.target.value })} placeholder="City"
                 className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-              <input value={addr.pincode} onChange={e => setAddr({ ...addr, pincode: e.target.value })} placeholder="Pincode"
+              <input value={addr.pincode} onChange={e => setAddr({ ...addr, pincode: e.target.value })} placeholder="Pincode *"
+                title="Required if you don't share your location below"
                 className="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
             </div>
             {selectedAddressId === null && (
@@ -383,13 +389,23 @@ export default function FruitBasketCheckout() {
           {quote?.success ? (
             <>
               <div className="flex justify-between text-sm py-1"><span className="text-gray-600">Subtotal</span><span className="font-semibold">₹{quote.subtotal}</span></div>
-              <div className="flex justify-between text-sm py-1"><span className="text-gray-600">Delivery ({quote.distanceKm} km)</span><span className="font-semibold">{quote.deliveryCharge === 0 ? 'FREE' : `₹${quote.deliveryCharge}`}</span></div>
+              <div className="flex justify-between text-sm py-1">
+                <span className="text-gray-600">Delivery{quote.distanceKm != null ? ` (${quote.distanceKm} km)` : ''}</span>
+                <span className="font-semibold">
+                  {quote.deliveryChargePending ? 'To be confirmed' : (quote.deliveryCharge === 0 ? 'FREE' : `₹${quote.deliveryCharge}`)}
+                </span>
+              </div>
+              {quote.deliveryChargePending && (
+                <p className="text-[11px] mt-1" style={{ color: FB_THEME.purple600 }}>
+                  We couldn&apos;t get your exact location — our team will confirm the delivery charge for your pincode shortly.
+                </p>
+              )}
               <div className="flex justify-between text-base font-black pt-2 mt-1 border-t" style={{ borderColor: FB_THEME.purple100 }}>
-                <span>Total</span><span style={{ color: FB_THEME.purple700 }}>₹{quote.total}</span>
+                <span>Total{quote.deliveryChargePending ? ' (excl. delivery)' : ''}</span><span style={{ color: FB_THEME.purple700 }}>₹{quote.total}</span>
               </div>
             </>
           ) : (
-            <p className="text-xs text-gray-400">{quoting ? 'Calculating…' : quote?.message || 'Share your location to see the total'}</p>
+            <p className="text-xs text-gray-400">{quoting ? 'Calculating…' : quote?.message || 'Share your location or enter your pincode to see the total'}</p>
           )}
         </div>
       </div>

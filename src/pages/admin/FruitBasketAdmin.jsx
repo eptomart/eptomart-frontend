@@ -219,7 +219,11 @@ function BasketEditorModal({ product, onClose, onSaved }) {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <select value={form.occasion} onChange={e => setForm({ ...form, occasion: e.target.value })} className="border border-gray-200 rounded-lg px-3 py-2 text-sm">
-              {['general', 'birthday', 'anniversary', 'get-well', 'festival', 'congratulations', 'condolence'].map(o => <option key={o} value={o}>{o}</option>)}
+              {/* 'general' shows this basket under EVERY occasion tab on the shop
+                  page, not just the "All Occasions" tab — see fruitBasketController's
+                  getProducts occasion filter. */}
+              <option value="general">general (shows in all occasions)</option>
+              {['birthday', 'anniversary', 'get-well', 'festival', 'congratulations', 'condolence'].map(o => <option key={o} value={o}>{o}</option>)}
             </select>
             <input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value })} placeholder="Stock (blank = unlimited)"
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
