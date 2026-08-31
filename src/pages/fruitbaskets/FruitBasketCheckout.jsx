@@ -410,8 +410,12 @@ export default function FruitBasketCheckout() {
         </div>
       </div>
 
-      {/* Sticky pay button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 z-40" style={{ borderColor: FB_THEME.purple100 }}>
+      {/* Sticky pay button — /fruitbaskets/checkout is now in App.jsx's
+          GlobalBottomNav hidden list (matches /koyambedu/checkout), and
+          above-bottom-nav is kept as a defensive second layer in case the
+          nav is ever visible here, same belt-and-suspenders pattern
+          KoyambeduCheckout.jsx uses for its own pay bar. */}
+      <div className="fixed bottom-0 left-0 right-0 above-bottom-nav bg-white border-t px-4 py-3 z-[9970]" style={{ borderColor: FB_THEME.purple100 }}>
         <button onClick={placeOrder} disabled={placing || !quote?.success}
           className="max-w-2xl mx-auto w-full disabled:bg-gray-300 text-white font-black py-3.5 rounded-2xl active:scale-[0.98] transition-transform"
           style={!placing && quote?.success ? { background: FB_THEME.gradientHeader, border: FB_THEME.borderGold } : {}}>

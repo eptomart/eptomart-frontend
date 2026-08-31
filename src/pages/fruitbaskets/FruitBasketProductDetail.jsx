@@ -216,7 +216,7 @@ export default function FruitBasketProductDetail() {
 
       {/* Sticky bottom action bar */}
       {!outOfStock && (
-        <div className="fixed left-0 right-0 bottom-0 bg-white z-40" style={{
+        <div className="fixed left-0 right-0 bottom-0 above-bottom-nav bg-white z-[9970]" style={{
           borderTop: `1px solid ${FB_THEME.purple100}`,
           boxShadow: '0 -2px 12px rgba(0,0,0,0.06)',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',

@@ -173,6 +173,7 @@ function GlobalBottomNav() {
                  pathname === '/koyambedu/cart' ||
                  pathname === '/koyambedu/checkout' ||
                  pathname === '/eptofresh/checkout' ||
+                 pathname === '/fruitbaskets/checkout' ||
                  pathname === '/checkout';
   if (hidden) return null;
   return <BottomNav />;

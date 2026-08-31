@@ -228,9 +228,11 @@ export default function FruitBasketShop() {
         )}
       </div>
 
-      {/* Sticky cart bar */}
+      {/* Sticky cart bar — above-bottom-nav so the mobile BottomNav (z-[9980])
+          never covers/intercepts taps on this button (matches Koyambedu's
+          and every other vertical's fixed CTA bars). */}
       {cartCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-4">
+        <div className="fixed bottom-0 left-0 right-0 above-bottom-nav z-[9970] px-4 pb-4">
           <button onClick={goToCheckout}
             className="max-w-5xl mx-auto w-full text-white rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-2xl active:scale-[0.98] transition-transform"
             style={{ background: FB_THEME.gradientHeader, border: FB_THEME.borderGold }}>
