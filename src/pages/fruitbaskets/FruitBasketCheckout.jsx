@@ -24,8 +24,12 @@ import { FB_THEME } from '../../utils/fruitBasketTheme';
 const DEFAULT_MAP_CENTER = { lat: 13.0389, lng: 80.1730 }; // Valasaravakkam, Chennai — same default as Koyambedu's picker
 
 // ── Load Google Maps SDK (key from backend) — identical to KoyambeduCheckout.jsx's
-// loadGoogleMaps, duplicated locally per this codebase's existing per-file convention. ──
-function loadGoogleMaps() {
+// loadGoogleMaps, duplicated locally per this codebase's existing per-file convention.
+// Retries on transient network failures (weak mobile signal, slow config
+// fetch) before giving up — the map picker is the customer's only way to
+// avoid the browser's native geolocation prompt, so it's worth a couple of
+// silent retries rather than immediately falling back to "Map unavailable". ──
+function loadGoogleMapsOnce() {
   return new Promise((resolve, reject) => {
     if (window.google?.maps) { resolve(); return; }
     api.get('/eptofresh/maps/config')
@@ -41,6 +45,17 @@ function loadGoogleMaps() {
       })
       .catch(reject);
   });
+}
+
+async function loadGoogleMaps(retries = 2, delayMs = 1200) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await loadGoogleMapsOnce();
+    } catch (err) {
+      if (attempt >= retries) throw err;
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
 }
 
 // ── Reverse geocode lat/lng → short area name ──
@@ -77,6 +92,7 @@ const FBMapPicker = forwardRef(function FBMapPicker({ initialCenter, onLocationC
   const [query,       setQuery]       = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSugg,    setShowSugg]    = useState(false);
+  const [retryKey,    setRetryKey]    = useState(0);
 
   useEffect(() => {
     if (!query || query.length < 2 || !acRef.current) { setSuggestions([]); return; }
@@ -113,6 +129,7 @@ const FBMapPicker = forwardRef(function FBMapPicker({ initialCenter, onLocationC
   useEffect(() => {
     let alive = true;
     const startCenter = initialCenter || DEFAULT_MAP_CENTER;
+    setLoadError(false);
 
     loadGoogleMaps()
       .then(() => {
@@ -148,7 +165,7 @@ const FBMapPicker = forwardRef(function FBMapPicker({ initialCenter, onLocationC
 
     return () => { alive = false; clearTimeout(geoTimer.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [retryKey]);
 
   useEffect(() => {
     onStateChange?.({
@@ -181,6 +198,10 @@ const FBMapPicker = forwardRef(function FBMapPicker({ initialCenter, onLocationC
       <FiMapPin size={24} className="text-red-400 mx-auto mb-2" />
       <p className="font-bold text-red-700 text-sm">Map unavailable</p>
       <p className="text-red-400 text-xs mt-1">Enter your pincode above — we'll confirm the delivery charge for it.</p>
+      <button onClick={() => setRetryKey(k => k + 1)}
+        className="mt-3 text-xs font-bold px-4 py-2 rounded-xl text-red-700 border border-red-200 bg-white hover:bg-red-50">
+        Try loading the map again
+      </button>
     </div>
   );
 
@@ -419,8 +440,13 @@ export default function FruitBasketCheckout() {
           deliveryAddress: coords ? { ...coords } : { pincode: addr.pincode },
           deliveryDate: fmtDate(deliveryDate),
           slotKey,
+          couponCode: couponApplied?.code || undefined,
         });
         setQuote(data.success ? data : { success: false, message: data.message });
+        // Server is the source of truth — if the coupon didn't actually
+        // apply (expired/limit reached since it was validated), drop it
+        // from the UI too instead of showing a discount that isn't real.
+        if (data.success && couponApplied && !data.couponCode) setCouponApplied(null);
       } catch (err) {
         setQuote({ success: false, message: err?.response?.data?.message || 'Could not price your order' });
       } finally {
@@ -428,7 +454,38 @@ export default function FruitBasketCheckout() {
       }
     }, 350);
     return () => clearTimeout(quoteTimer.current);
-  }, [coords, addr.pincode, slotKey, dateTab, cartItems]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [coords, addr.pincode, slotKey, dateTab, cartItems, couponApplied]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Coupon (same universal /coupon/validate flow Koyambedu checkout uses,
+  // scoped to platform: 'fruitbasket') — the quote endpoint re-validates it
+  // server-side too, so a stale/expired code typed here never overcharges
+  // or undercharges the actual amount paid. ──
+  const [couponCode,    setCouponCode]    = useState('');
+  const [couponApplied, setCouponApplied] = useState(null); // { code, discount }
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim();
+    if (!code) return;
+    setCouponLoading(true);
+    try {
+      const { data } = await api.post('/coupon/validate', {
+        code, orderAmount: quote?.subtotal || 0, platform: 'fruitbasket',
+      });
+      if (data.success) {
+        setCouponApplied({ code: data.coupon.code, discount: data.discount });
+        setCouponCode(data.coupon.code);
+        toast.success(`Coupon applied! ₹${data.discount.toFixed(2)} off`);
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Invalid coupon');
+      setCouponApplied(null);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => { setCouponApplied(null); setCouponCode(''); };
 
   const [placing, setPlacing] = useState(false);
 
@@ -456,6 +513,7 @@ export default function FruitBasketCheckout() {
         deliveryAddress: { ...addr, ...coords },
         deliveryDate: fmtDate(deliveryDate),
         slotKey,
+        couponCode: couponApplied?.code || undefined,
       });
       if (!data.success) { toast.error(data.message || 'Failed to start checkout'); setPlacing(false); return; }
 
@@ -648,6 +706,34 @@ export default function FruitBasketCheckout() {
           </div>
         </div>
 
+        {/* Promo code */}
+        <div className="bg-white rounded-2xl p-4" style={{ boxShadow: FB_THEME.cardShadow, border: `1px solid ${FB_THEME.purple100}` }}>
+          <p className="text-xs font-black uppercase tracking-wide mb-2" style={{ color: FB_THEME.purple500 }}>Promo Code</p>
+          {couponApplied ? (
+            <div className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: '#f5f3ff' }}>
+              <span className="text-sm font-bold" style={{ color: FB_THEME.purple700 }}>
+                <FiCheck className="inline mr-1" size={14} /> {couponApplied.code} applied
+              </span>
+              <button onClick={removeCoupon} className="text-xs font-bold text-gray-400 hover:text-gray-600">Remove</button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                type="text" value={couponCode}
+                onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                placeholder="Enter coupon code"
+                className="flex-1 py-2.5 px-3 rounded-xl text-sm outline-none border bg-white uppercase"
+                style={{ borderColor: FB_THEME.purple100 }}
+              />
+              <button onClick={handleApplyCoupon} disabled={couponLoading || !couponCode.trim()}
+                className="px-4 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                style={{ background: FB_THEME.gradientButton }}>
+                {couponLoading ? '…' : 'Apply'}
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Price breakdown */}
         <div className="bg-white rounded-2xl p-4" style={{ boxShadow: FB_THEME.cardShadow, border: `1px solid ${FB_THEME.purple100}` }}>
           <p className="text-xs font-black uppercase tracking-wide mb-2" style={{ color: FB_THEME.purple500 }}>Price Details</p>
@@ -660,6 +746,12 @@ export default function FruitBasketCheckout() {
                   {quote.deliveryChargePending ? 'To be confirmed' : (quote.deliveryCharge === 0 ? 'FREE' : `₹${quote.deliveryCharge}`)}
                 </span>
               </div>
+              {quote.couponDiscount > 0 && (
+                <div className="flex justify-between text-sm py-1">
+                  <span className="text-gray-600">Coupon ({quote.couponCode})</span>
+                  <span className="font-semibold" style={{ color: '#16a34a' }}>− ₹{quote.couponDiscount}</span>
+                </div>
+              )}
               {quote.deliveryChargePending && (
                 <p className="text-[11px] mt-1" style={{ color: FB_THEME.purple600 }}>
                   We couldn&apos;t get your exact location — our team will confirm the delivery charge for your pincode shortly.
