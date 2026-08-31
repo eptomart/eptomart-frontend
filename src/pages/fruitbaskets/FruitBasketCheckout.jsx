@@ -420,6 +420,15 @@ export default function FruitBasketCheckout() {
   const [slotKey, setSlotKey] = useState('');
   useEffect(() => { if (slots.length && !slotKey) setSlotKey(slots[0].key); }, [slots]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Coupon (same universal /coupon/validate flow Koyambedu checkout uses,
+  // scoped to platform: 'fruitbasket') — the quote endpoint re-validates it
+  // server-side too, so a stale/expired code typed here never overcharges
+  // or undercharges the actual amount paid. Declared before the quote
+  // effect below since that effect reads couponApplied. ──
+  const [couponCode,    setCouponCode]    = useState('');
+  const [couponApplied, setCouponApplied] = useState(null); // { code, discount }
+  const [couponLoading, setCouponLoading] = useState(false);
+
   // ── Live quote ──
   const [quote, setQuote]   = useState(null);
   const [quoting, setQuoting] = useState(false);
@@ -455,14 +464,6 @@ export default function FruitBasketCheckout() {
     }, 350);
     return () => clearTimeout(quoteTimer.current);
   }, [coords, addr.pincode, slotKey, dateTab, cartItems, couponApplied]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Coupon (same universal /coupon/validate flow Koyambedu checkout uses,
-  // scoped to platform: 'fruitbasket') — the quote endpoint re-validates it
-  // server-side too, so a stale/expired code typed here never overcharges
-  // or undercharges the actual amount paid. ──
-  const [couponCode,    setCouponCode]    = useState('');
-  const [couponApplied, setCouponApplied] = useState(null); // { code, discount }
-  const [couponLoading, setCouponLoading] = useState(false);
 
   const handleApplyCoupon = async () => {
     const code = couponCode.trim();
