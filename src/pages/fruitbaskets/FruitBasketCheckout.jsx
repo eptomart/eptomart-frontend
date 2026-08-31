@@ -9,10 +9,10 @@
 // re-deriving after the async same-day-settings fetch resolves) is avoided
 // here from the start via the same corrective effect pattern.
 // ============================================
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FiMapPin, FiCheck, FiGift, FiArrowLeft, FiCrosshair } from 'react-icons/fi';
+import { FiMapPin, FiCheck, FiGift, FiArrowLeft, FiSearch, FiX } from 'react-icons/fi';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import SavedAddressPicker from '../../components/common/SavedAddressPicker';
@@ -20,6 +20,258 @@ import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { useFruitBasketCart } from '../../context/FruitBasketCartContext';
 import { FB_THEME } from '../../utils/fruitBasketTheme';
+
+const DEFAULT_MAP_CENTER = { lat: 13.0389, lng: 80.1730 }; // Valasaravakkam, Chennai — same default as Koyambedu's picker
+
+// ── Load Google Maps SDK (key from backend) — identical to KoyambeduCheckout.jsx's
+// loadGoogleMaps, duplicated locally per this codebase's existing per-file convention. ──
+function loadGoogleMaps() {
+  return new Promise((resolve, reject) => {
+    if (window.google?.maps) { resolve(); return; }
+    api.get('/eptofresh/maps/config')
+      .then(({ data }) => {
+        if (!data.key) { reject(new Error('No key')); return; }
+        const cb = '__gmFbCO_' + Date.now();
+        window[cb] = () => { resolve(); delete window[cb]; };
+        const s = document.createElement('script');
+        s.src = `https://maps.googleapis.com/maps/api/js?key=${data.key}&libraries=places,geocoding&callback=${cb}`;
+        s.async = true;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      })
+      .catch(reject);
+  });
+}
+
+// ── Reverse geocode lat/lng → short area name ──
+function reverseGeocode(lat, lng) {
+  return new Promise(resolve => {
+    if (!window.google?.maps) { resolve('Unknown area'); return; }
+    new window.google.maps.Geocoder().geocode({ location: { lat, lng } }, (results, status) => {
+      if (status !== 'OK' || !results?.length) { resolve('Unknown area'); return; }
+      const c = results[0].address_components || [];
+      const get = t => c.find(x => x.types.includes(t))?.long_name || '';
+      resolve(get('sublocality_level_1') || get('sublocality') || get('locality') || results[0].formatted_address || 'Selected area');
+    });
+  });
+}
+
+// ── Embedded Google Maps location picker — search box + draggable pin.
+// This is the exact same approach KoyambeduCheckout.jsx uses (its
+// EmbeddedMapPicker): the customer searches/drags to their address on a
+// map instead of the browser's native "Share your location?" geolocation
+// permission prompt, which is what Fruit Basket used before this fix. ──
+const FBMapPicker = forwardRef(function FBMapPicker({ initialCenter, onLocationConfirmed, onStateChange }, ref) {
+  const mapDivRef  = useRef(null);
+  const mapRef     = useRef(null);
+  const geoTimer   = useRef(null);
+  const acRef      = useRef(null);
+  const tokenRef   = useRef(null);
+
+  const [mapReady,   setMapReady]   = useState(false);
+  const [loadError,  setLoadError]  = useState(false);
+  const [center,     setCenter]     = useState(initialCenter || DEFAULT_MAP_CENTER);
+  const [shortAddr,  setShortAddr]  = useState('');
+  const [mapMoving,  setMapMoving]  = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [query,       setQuery]       = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSugg,    setShowSugg]    = useState(false);
+
+  useEffect(() => {
+    if (!query || query.length < 2 || !acRef.current) { setSuggestions([]); return; }
+    const t = setTimeout(() => {
+      acRef.current.getPlacePredictions(
+        { input: query, sessionToken: tokenRef.current, componentRestrictions: { country: 'in' }, types: ['geocode', 'establishment'] },
+        (preds, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && preds?.length) {
+            setSuggestions(preds); setShowSugg(true);
+          } else setSuggestions([]);
+        },
+      );
+    }, 350);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const pickSuggestion = useCallback((pred) => {
+    setQuery(pred.structured_formatting?.main_text || pred.description);
+    setSuggestions([]); setShowSugg(false);
+    const svc = new window.google.maps.places.PlacesService(mapRef.current);
+    svc.getDetails(
+      { placeId: pred.place_id, fields: ['geometry'], sessionToken: tokenRef.current },
+      (place, status) => {
+        tokenRef.current = new window.google.maps.places.AutocompleteSessionToken();
+        if (status !== window.google.maps.places.PlacesServiceStatus.OK || !place?.geometry) {
+          toast.error('Could not load that location'); return;
+        }
+        mapRef.current.panTo(place.geometry.location);
+        mapRef.current.setZoom(16);
+      },
+    );
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    const startCenter = initialCenter || DEFAULT_MAP_CENTER;
+
+    loadGoogleMaps()
+      .then(() => {
+        if (!alive || !mapDivRef.current) return;
+        const map = new window.google.maps.Map(mapDivRef.current, {
+          center:           startCenter,
+          zoom:             15,
+          disableDefaultUI: true,
+          gestureHandling:  'greedy',
+          clickableIcons:   false,
+          styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }],
+        });
+
+        map.addListener('dragstart', () => setMapMoving(true));
+        map.addListener('idle', () => {
+          setMapMoving(false);
+          const c = map.getCenter();
+          const pos = { lat: c.lat(), lng: c.lng() };
+          setCenter(pos);
+          clearTimeout(geoTimer.current);
+          geoTimer.current = setTimeout(() => {
+            reverseGeocode(pos.lat, pos.lng).then(name => { if (alive) setShortAddr(name); });
+          }, 400);
+        });
+
+        mapRef.current   = map;
+        acRef.current    = new window.google.maps.places.AutocompleteService();
+        tokenRef.current = new window.google.maps.places.AutocompleteSessionToken();
+        reverseGeocode(startCenter.lat, startCenter.lng).then(name => { if (alive) setShortAddr(name); });
+        setMapReady(true);
+      })
+      .catch(() => { if (alive) setLoadError(true); });
+
+    return () => { alive = false; clearTimeout(geoTimer.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    onStateChange?.({
+      disabled: !mapReady || mapMoving || confirming,
+      label:    confirming ? 'Checking…' : mapMoving ? 'Adjusting…' : 'Confirm Location',
+    });
+  }, [mapReady, mapMoving, confirming, onStateChange]);
+
+  useImperativeHandle(ref, () => ({ triggerConfirm: () => handleConfirm() }));
+
+  const handleConfirm = async () => {
+    if (!center || mapMoving || confirming) return;
+    setConfirming(true);
+    try {
+      const { data } = await api.post('/fruitbaskets/check-delivery', { lat: center.lat, lng: center.lng });
+      if (!data.available) {
+        toast.error(data.message || 'Delivery not available in your area');
+        setConfirming(false);
+        return;
+      }
+      onLocationConfirmed({ lat: center.lat, lng: center.lng, areaName: shortAddr });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not check delivery availability');
+      setConfirming(false);
+    }
+  };
+
+  if (loadError) return (
+    <div className="rounded-2xl p-4 text-center" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
+      <FiMapPin size={24} className="text-red-400 mx-auto mb-2" />
+      <p className="font-bold text-red-700 text-sm">Map unavailable</p>
+      <p className="text-red-400 text-xs mt-1">Enter your pincode above — we'll confirm the delivery charge for it.</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" size={16} />
+        <input
+          type="text"
+          value={query}
+          onChange={e => { setQuery(e.target.value); setShowSugg(true); }}
+          onFocus={() => suggestions.length && setShowSugg(true)}
+          placeholder="Search area, street or landmark…"
+          disabled={!mapReady}
+          className="w-full py-3 pl-10 pr-9 rounded-2xl text-gray-800 placeholder-gray-400 outline-none border bg-white"
+          style={{ fontSize: '16px', borderColor: FB_THEME.purple100 }}
+        />
+        {query && (
+          <button type="button" onClick={() => { setQuery(''); setSuggestions([]); setShowSugg(false); }}
+            className="absolute right-3 top-1/2 -translate-y-1/2">
+            <FiX size={16} className="text-gray-400" />
+          </button>
+        )}
+        {showSugg && suggestions.length > 0 && (
+          <div className="absolute left-0 right-0 top-full mt-1 z-30 rounded-2xl overflow-hidden bg-white"
+            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.18)' }}>
+            {suggestions.map((pred, i) => (
+              <button key={pred.place_id} type="button" onClick={() => pickSuggestion(pred)}
+                className="w-full flex items-start gap-3 px-4 py-3 text-left active:bg-gray-50"
+                style={{ borderBottom: i < suggestions.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                <FiMapPin size={14} className="shrink-0 mt-1" style={{ color: FB_THEME.purple600 }} />
+                <div className="min-w-0">
+                  <p className="text-gray-800 text-sm font-semibold truncate">
+                    {pred.structured_formatting?.main_text || pred.description.split(',')[0]}
+                  </p>
+                  {pred.structured_formatting?.secondary_text && (
+                    <p className="text-gray-400 text-xs truncate mt-0.5">{pred.structured_formatting.secondary_text}</p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="relative rounded-2xl overflow-hidden" style={{ height: 260, border: `2px solid ${FB_THEME.purple100}` }}>
+        <div ref={mapDivRef} style={{ width: '100%', height: '100%' }} />
+
+        {!mapReady && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3" style={{ background: FB_THEME.purple50 }}>
+            <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: FB_THEME.purple500, borderTopColor: 'transparent' }} />
+            <p className="text-gray-400 text-xs">Loading map…</p>
+          </div>
+        )}
+
+        {mapReady && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ paddingBottom: 50 }}>
+            <div className="flex flex-col items-center">
+              <div className="transition-all duration-200" style={{ transform: mapMoving ? 'translateY(-10px) scale(1.1)' : 'translateY(0) scale(1)' }}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                  style={{ background: FB_THEME.purple600, border: '3px solid #fff', boxShadow: mapMoving ? '0 8px 24px rgba(109,40,217,0.6)' : '0 4px 14px rgba(109,40,217,0.5)' }}>
+                  <FiMapPin className="text-white" size={18} />
+                </div>
+                <div className="w-0.5 h-3 mx-auto" style={{ background: `linear-gradient(${FB_THEME.purple600}, transparent)` }} />
+              </div>
+              <div className="rounded-full" style={{ width: mapMoving ? 4 : 12, height: mapMoving ? 2 : 4, background: 'rgba(0,0,0,0.18)', filter: 'blur(2px)', marginTop: -1 }} />
+            </div>
+          </div>
+        )}
+
+        {mapReady && (
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 bg-white/90 backdrop-blur-sm rounded-xl px-3 py-1 text-[10px] text-gray-500 whitespace-nowrap">
+            Drag the map to fine-tune your location
+          </div>
+        )}
+      </div>
+
+      {shortAddr && (
+        <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5" style={{ background: FB_THEME.purple50, border: `1px solid ${FB_THEME.purple100}` }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: FB_THEME.purple100 }}>
+            <FiMapPin size={15} style={{ color: FB_THEME.purple600 }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">{mapMoving ? 'Adjusting…' : 'Pinned location'}</p>
+            <p className="font-bold text-gray-800 text-sm truncate">{mapMoving ? 'Keep dragging…' : shortAddr}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
 
 const fmtDate = (d) => {
   const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
@@ -88,8 +340,22 @@ export default function FruitBasketCheckout() {
   const [selectedAddressId, setSelectedAddressId] = useState(undefined); // undefined = not yet initialized, null = "new address"
   const [saveNewAddress, setSaveNewAddress] = useState(true);
   const [coords, setCoords] = useState(null); // { lat, lng }
-  const [locating, setLocating] = useState(false);
+  const [areaName, setAreaName] = useState('');
   const [deliveryPreview, setDeliveryPreview] = useState(null); // { distanceKm, available, deliveryCharge }
+
+  // Location is captured via an on-screen map (search + drag-to-pin), same
+  // as KoyambeduCheckout.jsx — never the browser's native geolocation
+  // permission prompt, which is what this page used before this fix.
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [mapBtnState, setMapBtnState] = useState({ disabled: true, label: 'Confirm Location' });
+  const mapPickerRef = useRef(null);
+
+  const handleLocationConfirmed = (loc) => {
+    setCoords({ lat: loc.lat, lng: loc.lng });
+    setAreaName(loc.areaName || '');
+    setShowMapPicker(false);
+    toast.success('Location confirmed');
+  };
 
   // Existing customer → auto-pick their default (or most recent) saved
   // address on load instead of making them retype it every time. They can
@@ -102,26 +368,6 @@ export default function FruitBasketCheckout() {
     setSelectedAddressId(String(def._id));
     setAddr(fromSavedAddress(def));
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const useMyLocation = (silent = false) => {
-    if (!navigator.geolocation) { if (!silent) toast.error('Location not supported on this device'); return; }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocating(false); if (!silent) toast.success('Location captured'); },
-      () => { setLocating(false); if (!silent) toast.error('Could not get your location — you can still place the order, delivery charge will be confirmed by our team'); },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  };
-
-  // If the browser already has geolocation permission granted from a past
-  // visit, fetch it silently on load — a returning customer with a saved
-  // address shouldn't have to tap "Use my location" again either.
-  useEffect(() => {
-    if (!navigator.permissions?.query) return;
-    navigator.permissions.query({ name: 'geolocation' })
-      .then(status => { if (status.state === 'granted') useMyLocation(true); })
-      .catch(() => {});
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!coords) { setDeliveryPreview(null); return; }
@@ -333,11 +579,30 @@ export default function FruitBasketCheckout() {
               </label>
             )}
           </div>
-          <button onClick={() => useMyLocation(false)} disabled={locating}
-            className="mt-3 w-full flex items-center justify-center gap-2 border-2 border-dashed rounded-lg py-2.5 text-sm font-bold"
-            style={{ borderColor: FB_THEME.purple500, color: FB_THEME.purple700 }}>
-            <FiCrosshair size={14} /> {locating ? 'Locating…' : coords ? 'Location captured — tap to update' : 'Use my current location'}
-          </button>
+          {/* Location — same on-screen map picker as Koyambedu Daily's
+              checkout (search + drag-to-pin), never the browser's native
+              geolocation permission prompt. */}
+          {!showMapPicker ? (
+            <button onClick={() => setShowMapPicker(true)}
+              className="mt-3 w-full flex items-center justify-center gap-2 border-2 border-dashed rounded-lg py-2.5 text-sm font-bold"
+              style={{ borderColor: FB_THEME.purple500, color: FB_THEME.purple700 }}>
+              <FiMapPin size={14} /> {coords ? `Pinned: ${areaName || 'your location'} — tap to change` : 'Pin your delivery location on map'}
+            </button>
+          ) : (
+            <div className="mt-3">
+              <FBMapPicker
+                ref={mapPickerRef}
+                initialCenter={coords || undefined}
+                onLocationConfirmed={handleLocationConfirmed}
+                onStateChange={setMapBtnState}
+              />
+              <button onClick={() => mapPickerRef.current?.triggerConfirm()} disabled={mapBtnState.disabled}
+                className="mt-3 w-full py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                style={{ background: FB_THEME.gradientButton }}>
+                {mapBtnState.label}
+              </button>
+            </div>
+          )}
           {deliveryPreview && (
             <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
               <FiMapPin size={11} />
