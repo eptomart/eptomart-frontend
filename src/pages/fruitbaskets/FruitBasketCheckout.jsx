@@ -388,6 +388,10 @@ export default function FruitBasketCheckout() {
     const def = saved.find(a => a.isDefault) || saved[saved.length - 1];
     setSelectedAddressId(String(def._id));
     setAddr(fromSavedAddress(def));
+    // Saved addresses never carry a lat/lng (User.addresses has no location
+    // field), so a saved address is never "pre-pinned" — prompt for the map
+    // pin right away instead of letting the customer reach checkout first.
+    setShowMapPicker(true);
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -493,7 +497,14 @@ export default function FruitBasketCheckout() {
   const placeOrder = async () => {
     if (!isLoggedIn) { toast.error('Please log in to continue'); navigate('/login'); return; }
     if (!addr.name || !addr.phone || !addr.addressLine) { toast.error('Please fill in your delivery address'); return; }
-    if (!coords && !addr.pincode?.trim()) { toast.error('Please share your location or enter your pincode so we can arrange delivery'); return; }
+    // A map pin is mandatory — new addresses and saved addresses (which
+    // never carry a lat/lng) both require it. Pop the picker back open
+    // instead of just erroring, so the customer can fix it in one tap.
+    if (!coords) {
+      toast.error('Please pin your exact delivery location on the map to continue');
+      setShowMapPicker(true);
+      return;
+    }
     if (!quote?.success) { toast.error('Please wait for the price to be calculated'); return; }
 
     setPlacing(true);
@@ -610,10 +621,19 @@ export default function FruitBasketCheckout() {
           <SavedAddressPicker
             addresses={user?.addresses || []}
             selectedId={selectedAddressId}
-            onSelect={(a) => { setSelectedAddressId(String(a._id)); setAddr(fromSavedAddress(a)); }}
+            onSelect={(a) => {
+              setSelectedAddressId(String(a._id)); setAddr(fromSavedAddress(a));
+              // Switching addresses invalidates any previous pin — saved
+              // addresses never carry a lat/lng, so this one hasn't been
+              // pinned yet either. Pop the picker back open immediately.
+              setCoords(null); setAreaName('');
+              setShowMapPicker(true);
+            }}
             onNewAddress={() => {
               setSelectedAddressId(null);
               setAddr({ name: user?.name || '', phone: user?.phone || '', addressLine: '', city: '', pincode: '', label: 'Home' });
+              setCoords(null); setAreaName('');
+              setShowMapPicker(true);
             }}
           />
 
@@ -638,29 +658,22 @@ export default function FruitBasketCheckout() {
               </label>
             )}
           </div>
-          {/* Location — same on-screen map picker as Koyambedu Daily's
-              checkout (search + drag-to-pin), never the browser's native
-              geolocation permission prompt. */}
-          {!showMapPicker ? (
+          {/* Location — a map pin is mandatory (new addresses and saved
+              addresses both lack one), captured via the same on-screen map
+              picker Koyambedu Daily's checkout uses (search + drag-to-pin),
+              never the browser's native geolocation permission prompt. */}
+          {coords ? (
             <button onClick={() => setShowMapPicker(true)}
               className="mt-3 w-full flex items-center justify-center gap-2 border-2 border-dashed rounded-lg py-2.5 text-sm font-bold"
               style={{ borderColor: FB_THEME.purple500, color: FB_THEME.purple700 }}>
-              <FiMapPin size={14} /> {coords ? `Pinned: ${areaName || 'your location'} — tap to change` : 'Pin your delivery location on map'}
+              <FiMapPin size={14} /> Pinned: {areaName || 'your location'} — tap to change
             </button>
           ) : (
-            <div className="mt-3">
-              <FBMapPicker
-                ref={mapPickerRef}
-                initialCenter={coords || undefined}
-                onLocationConfirmed={handleLocationConfirmed}
-                onStateChange={setMapBtnState}
-              />
-              <button onClick={() => mapPickerRef.current?.triggerConfirm()} disabled={mapBtnState.disabled}
-                className="mt-3 w-full py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
-                style={{ background: FB_THEME.gradientButton }}>
-                {mapBtnState.label}
-              </button>
-            </div>
+            <button onClick={() => setShowMapPicker(true)}
+              className="mt-3 w-full flex items-center justify-center gap-2 border-2 rounded-lg py-2.5 text-sm font-bold animate-pulse"
+              style={{ borderColor: '#f59e0b', color: '#b45309', background: '#fffbeb' }}>
+              <FiMapPin size={14} /> Delivery location not pinned — tap to pin now
+            </button>
           )}
           {deliveryPreview && (
             <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
@@ -774,12 +787,48 @@ export default function FruitBasketCheckout() {
           nav is ever visible here, same belt-and-suspenders pattern
           KoyambeduCheckout.jsx uses for its own pay bar. */}
       <div className="fixed bottom-0 left-0 right-0 above-bottom-nav bg-white border-t px-4 py-3 z-[9970]" style={{ borderColor: FB_THEME.purple100 }}>
-        <button onClick={placeOrder} disabled={placing || !quote?.success}
+        <button onClick={placeOrder} disabled={placing || !quote?.success || !coords}
           className="max-w-2xl mx-auto w-full disabled:bg-gray-300 text-white font-black py-3.5 rounded-2xl active:scale-[0.98] transition-transform"
-          style={!placing && quote?.success ? { background: FB_THEME.gradientHeader, border: FB_THEME.borderGold } : {}}>
-          {placing ? 'Placing order…' : quote?.success ? `Pay ₹${quote.total}` : 'Complete details above'}
+          style={!placing && quote?.success && coords ? { background: FB_THEME.gradientHeader, border: FB_THEME.borderGold } : {}}>
+          {placing ? 'Placing order…' : !coords ? 'Pin your location to continue' : quote?.success ? `Pay ₹${quote.total}` : 'Complete details above'}
         </button>
       </div>
+
+      {/* Mandatory map-pin popup — opens automatically whenever the current
+          address (new or saved) has no confirmed pin yet. Can be dismissed
+          with the X, but placeOrder + the Pay button both stay blocked
+          until a pin is actually confirmed, so checkout can't proceed
+          without one. */}
+      {showMapPicker && (
+        <div className="fixed inset-0 z-[9990] flex items-end sm:items-center justify-center p-0 sm:p-4"
+          style={{ background: 'rgba(17,10,30,0.55)' }}>
+          <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-black text-sm" style={{ color: FB_THEME.purple800 }}>
+                <FiMapPin className="inline mr-1.5" size={16} style={{ color: FB_THEME.purple600 }} />
+                Pin your delivery location
+              </p>
+              <button onClick={() => setShowMapPicker(false)} className="p-1.5 rounded-full hover:bg-gray-100">
+                <FiX size={18} className="text-gray-400" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              This is required so we can confirm delivery and pricing for your basket — search or drag the pin to your exact address.
+            </p>
+            <FBMapPicker
+              ref={mapPickerRef}
+              initialCenter={coords || undefined}
+              onLocationConfirmed={handleLocationConfirmed}
+              onStateChange={setMapBtnState}
+            />
+            <button onClick={() => mapPickerRef.current?.triggerConfirm()} disabled={mapBtnState.disabled}
+              className="mt-3 w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+              style={{ background: FB_THEME.gradientButton }}>
+              {mapBtnState.label}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
