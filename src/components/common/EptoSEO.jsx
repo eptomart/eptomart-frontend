@@ -18,10 +18,10 @@ const APP_CONFIG = {
     twitterSite: '@eptomart',
     pages: {
       home: {
-        title:       'Eptomart — Wholesale Fruits & Vegetables, Groceries & More | Chennai',
-        description: "Eptomart brings Koyambedu Market home: wholesale fruits and vegetables at market rates, fresh groceries, electronics, fashion and more — fast delivery across Chennai.",
+        title:       'Eptomart — Fruits, Vegetables & Fruit Baskets Online | Retail, Wholesale & Same-Day Delivery Chennai',
+        description: "Eptomart brings Koyambedu Market home: retail and wholesale fruits and vegetables at market rates, fresh fruit baskets & gift hampers, groceries, electronics, fashion and more — with same-day delivery across Chennai, Tamil Nadu and India.",
         canonical:   `${BASE_URL}/`,
-        keywords:    'wholesale fruits and vegetables, wholesale vegetables Chennai, koyambedu market online, online shopping, groceries, bulk vegetables delivery, Chennai delivery',
+        keywords:    'fruits and vegetables online, buy vegetables online Chennai, wholesale fruits and vegetables, retail fruits and vegetables India, fruit basket Chennai, fruit basket India, gift hampers Chennai, same day delivery Chennai, online grocery Tamil Nadu, koyambedu market online, bulk vegetables delivery, Chennai delivery',
         image:       DEFAULT_IMAGE,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -31,7 +31,7 @@ const APP_CONFIG = {
               '@id':   `${BASE_URL}/#website`,
               url:     `${BASE_URL}/`,
               name:    'Eptomart',
-              description: "India's fast, affordable online shopping destination.",
+              description: "India's fast, affordable online retail and wholesale marketplace for fruits, vegetables and fruit baskets, with same-day delivery across Chennai and Tamil Nadu.",
               potentialAction: {
                 '@type':       'SearchAction',
                 target:        { '@type': 'EntryPoint', urlTemplate: `${BASE_URL}/shop?q={search_term_string}` },
@@ -45,7 +45,13 @@ const APP_CONFIG = {
               name:     'Eptomart',
               url:      `${BASE_URL}/`,
               logo:     { '@type': 'ImageObject', url: DEFAULT_IMAGE, width: 512, height: 512 },
+              description: 'Online retail and wholesale marketplace for fresh fruits and vegetables, fruit baskets & gift hampers, and groceries — with same-day delivery across Chennai, Tamil Nadu and India.',
               contactPoint: { '@type': 'ContactPoint', contactType: 'customer service', email: 'support@eptomart.com', availableLanguage: ['English', 'Tamil'] },
+              areaServed: [
+                { '@type': 'City', name: 'Chennai' },
+                { '@type': 'State', name: 'Tamil Nadu' },
+                { '@type': 'Country', name: 'India' },
+              ],
               sameAs:   ['https://www.facebook.com/eptomart', 'https://www.instagram.com/eptomart'],
             },
           ],
@@ -191,6 +197,46 @@ const APP_CONFIG = {
           description: 'Farm-fresh produce direct from Tamil Nadu farmers.',
           url:         `${BASE_URL}/uzhavar`,
           image:       `${BASE_URL}/icons/uzhavar-og.png`,
+          parentOrganization: { '@type': 'Organization', name: 'Eptomart', url: BASE_URL },
+        },
+      },
+    },
+  },
+
+  fruitbaskets: {
+    siteName:    'Fruit Baskets & Hampers | Eptomart',
+    themeColor:  '#6d28d9',
+    locale:      'en_IN',
+    twitterSite: '@eptomart',
+    pages: {
+      home: {
+        title:       'Fruit Basket Chennai — Fresh Fruit Baskets & Gift Hampers Online | Eptomart',
+        description: 'Order fresh fruit baskets and gift hampers online in Chennai, Tamil Nadu and across India. Retail fruit basket delivery with same-day delivery available — perfect for birthdays, get-well wishes, festivals, anniversaries and congratulations.',
+        canonical:   `${BASE_URL}/fruitbaskets`,
+        keywords:    'fruit basket Chennai, fruit basket India, fruit basket delivery Chennai, fresh fruit basket online, send fruit basket Chennai, gift hamper Chennai, gift basket delivery India, same day fruit basket delivery, retail fruit basket, fruit basket Tamil Nadu',
+        image:       `${BASE_URL}/icons/fruitbaskets-og.png`,
+        jsonLd: {
+          '@context':   'https://schema.org',
+          '@type':      'LocalBusiness',
+          name:         'Eptomart Fruit Baskets & Hampers',
+          description:  'Fresh fruit baskets and gift hampers — retail delivery with same-day delivery available across Chennai, Tamil Nadu and India.',
+          keywords:     'fruit basket Chennai, fruit basket India, gift hampers, same day delivery, retail fruit basket',
+          url:          `${BASE_URL}/fruitbaskets`,
+          image:        `${BASE_URL}/icons/fruitbaskets-og.png`,
+          priceRange:   '₹₹',
+          currenciesAccepted: 'INR',
+          paymentAccepted:    'Cash, Credit Card, UPI',
+          areaServed: [
+            { '@type': 'City', name: 'Chennai', sameAs: 'https://www.wikidata.org/wiki/Q1352' },
+            { '@type': 'State', name: 'Tamil Nadu' },
+            { '@type': 'Country', name: 'India' },
+          ],
+          address: {
+            '@type':           'PostalAddress',
+            addressLocality:   'Chennai',
+            addressRegion:     'Tamil Nadu',
+            addressCountry:    'IN',
+          },
           parentOrganization: { '@type': 'Organization', name: 'Eptomart', url: BASE_URL },
         },
       },

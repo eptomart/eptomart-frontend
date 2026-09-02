@@ -18,6 +18,8 @@ Allow: /eptofresh
 Allow: /eptofresh/shop/
 Allow: /uzhavar
 Allow: /uzhavar/farmer/
+Allow: /fruitbaskets
+Allow: /fruitbaskets/product/
 
 Disallow: /admin
 Disallow: /admin/*
@@ -32,6 +34,8 @@ Disallow: /koyambedu/seller
 Disallow: /koyambedu/seller-admin
 Disallow: /eptofresh/seller
 Disallow: /uzhavar/my-orders
+Disallow: /fruitbaskets/checkout
+Disallow: /fruitbaskets/my-orders
 Disallow: /api/
 Disallow: /login
 Disallow: /delete-account
@@ -44,3 +48,4 @@ Sitemap: https://www.eptomart.com/sitemap/main.xml
 Sitemap: https://www.eptomart.com/sitemap/koyambedu.xml
 Sitemap: https://www.eptomart.com/sitemap/eptofresh.xml
 Sitemap: https://www.eptomart.com/sitemap/uzhavar.xml
+Sitemap: https://www.eptomart.com/sitemap/fruitbaskets.xml

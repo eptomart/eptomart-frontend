@@ -93,7 +93,15 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-gray-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+        {/* SEO — visible, sitewide contextual copy for retail/wholesale
+            fruits & vegetables, fruit baskets, and same-day delivery
+            searches across Chennai, Tamil Nadu and India. */}
+        <p className="text-xs text-gray-500 border-t border-gray-800 pt-6 leading-relaxed">
+          Eptomart is an online retail and wholesale marketplace for fresh fruits and vegetables, fruit baskets & gift hampers, groceries and more —
+          with same-day delivery available across Chennai, Tamil Nadu and India.
+        </p>
+
+        <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-xs">© {new Date().getFullYear()} Eptomart. All rights reserved. Made with ❤️ in India 🇮🇳</p>
           <p className="text-xs">GST Registered Business</p>
         </div>

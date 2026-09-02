@@ -42,6 +42,14 @@
     <priority>0.8</priority>
   </url>
 
+  <!-- Fruit Baskets & Hampers -->
+  <url>
+    <loc>https://www.eptomart.com/fruitbaskets</loc>
+    <lastmod>2026-09-02</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
   <!-- About -->
   <url>
     <loc>https://www.eptomart.com/about</loc>

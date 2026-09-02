@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { FiShoppingBag, FiPlus, FiMinus, FiArrowRight, FiGift, FiTruck, FiPhoneCall, FiEdit3, FiZap } from 'react-icons/fi';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
+import EptoSEO from '../../components/common/EptoSEO';
 import api from '../../utils/api';
 import { useFruitBasketCart } from '../../context/FruitBasketCartContext';
 import { FB_THEME } from '../../utils/fruitBasketTheme';
@@ -60,6 +61,7 @@ export default function FruitBasketShop() {
   if (status && !status.featureEnabled) {
     return (
       <div className="min-h-screen" style={{ background: FB_THEME.purple50 }}>
+        <EptoSEO app="fruitbaskets" page="home" noIndex />
         <Navbar />
         <div className="max-w-lg mx-auto px-4 py-24 text-center">
           <FiGift size={40} className="mx-auto mb-4" style={{ color: FB_THEME.purple600 }} />
@@ -74,6 +76,10 @@ export default function FruitBasketShop() {
 
   return (
     <div className="min-h-screen pb-24" style={{ background: FB_THEME.purple50 }}>
+      <EptoSEO app="fruitbaskets" page="home" breadcrumb={[
+        { name: 'Home', url: 'https://www.eptomart.com/' },
+        { name: 'Fruit Baskets & Hampers', url: 'https://www.eptomart.com/fruitbaskets' },
+      ]} />
       <Navbar />
 
       {/* Header */}
