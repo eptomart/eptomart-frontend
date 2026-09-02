@@ -33,16 +33,26 @@ const WhatsAppFloat = ({ message = 'Hi Eptomart! I need help with my order.' }) 
   const drag        = useRef(null);
   const isDragging  = useRef(false);
 
-  // Recalculate on window resize so button stays in viewport
+  // Recalculate on window resize so button stays in viewport.
+  // Also listens on visualViewport's resize — iOS Safari's collapsing/
+  // expanding address bar changes the visual viewport without reliably
+  // firing the window 'resize' event, which could otherwise leave the
+  // button positioned too low (near/behind the safe-area edge) on first load.
   useEffect(() => {
     const onResize = () => {
+      const vh = window.visualViewport?.height || window.innerHeight;
+      const vw = window.visualViewport?.width  || window.innerWidth;
       setPos(prev => ({
-        x: Math.max(0, Math.min(prev.x, window.innerWidth  - 60)),
-        y: Math.max(0, Math.min(prev.y, window.innerHeight - 60)),
+        x: Math.max(0, Math.min(prev.x, vw - 60)),
+        y: Math.max(0, Math.min(prev.y, vh - 60)),
       }));
     };
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    window.visualViewport?.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.visualViewport?.removeEventListener('resize', onResize);
+    };
   }, []);
 
   const onPointerDown = useCallback((e) => {
@@ -55,7 +65,14 @@ const WhatsAppFloat = ({ message = 'Hi Eptomart! I need help with my order.' }) 
       startPosY:   pos.y,
     };
     e.currentTarget.setPointerCapture(e.pointerId);
-    e.preventDefault();
+    // NOTE: deliberately NOT calling e.preventDefault() here. iOS Safari
+    // suppresses the synthetic 'click' event it would otherwise fire on
+    // the inner <button> when the pointerdown that started the gesture
+    // called preventDefault() — this made the button untappable on
+    // iPhones specifically (Chrome/Android/desktop still synthesized the
+    // click fine, masking the bug there). touchAction:'none' on the
+    // wrapper already stops the browser from scrolling/panning during a
+    // drag, so preventDefault() here isn't actually needed for that.
   }, [pos]);
 
   const onPointerMove = useCallback((e) => {
@@ -82,6 +99,14 @@ const WhatsAppFloat = ({ message = 'Hi Eptomart! I need help with my order.' }) 
     }
   }, []);
 
+  // Defensive: if the gesture is interrupted (e.g. an iOS system gesture
+  // takes over), still clear drag state so the button isn't left thinking
+  // a drag is in progress and blocking the next tap's click.
+  const onPointerCancel = useCallback(() => {
+    drag.current = null;
+    isDragging.current = false;
+  }, []);
+
   const handleClick = useCallback(() => {
     if (isDragging.current) return;
     try {
@@ -106,6 +131,7 @@ const WhatsAppFloat = ({ message = 'Hi Eptomart! I need help with my order.' }) 
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
