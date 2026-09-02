@@ -11,18 +11,21 @@ import toast from 'react-hot-toast';
 import {
   FiGift, FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight,
   FiSave, FiPackage, FiClock, FiTruck, FiX, FiZap,
+  FiGrid, FiShoppingCart, FiEye, FiSearch,
 } from 'react-icons/fi';
 import api from '../../utils/api';
 import { FB_THEME } from '../../utils/fruitBasketTheme';
 
 const TABS = [
-  { key: 'baskets',  label: 'Baskets',  Icon: FiGift },
-  { key: 'settings', label: 'Settings', Icon: FiClock },
-  { key: 'orders',   label: 'Orders',   Icon: FiPackage },
+  { key: 'dashboard', label: 'Dashboard', Icon: FiGrid },
+  { key: 'baskets',   label: 'Baskets',   Icon: FiGift },
+  { key: 'settings',  label: 'Settings',  Icon: FiClock },
+  { key: 'orders',    label: 'Orders',    Icon: FiPackage },
+  { key: 'carts',     label: 'Carts',     Icon: FiShoppingCart },
 ];
 
 export default function FruitBasketAdmin() {
-  const [tab, setTab] = useState('baskets');
+  const [tab, setTab] = useState('dashboard');
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
@@ -41,9 +44,147 @@ export default function FruitBasketAdmin() {
         ))}
       </div>
 
-      {tab === 'baskets'  && <BasketsTab />}
-      {tab === 'settings' && <SettingsTab />}
-      {tab === 'orders'   && <OrdersTab />}
+      {tab === 'dashboard' && <DashboardTab />}
+      {tab === 'baskets'   && <BasketsTab />}
+      {tab === 'settings'  && <SettingsTab />}
+      {tab === 'orders'    && <OrdersTab />}
+      {tab === 'carts'     && <CartsTab />}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
+// DASHBOARD TAB
+// Same stat-card pattern as KoyambeduAdmin's Dashboard tab, plus visitor
+// and in-progress-cart counts (reusing the existing site-wide Analytics
+// tracking + the FruitBasketCart collection — no new tracking added).
+// ══════════════════════════════════════════════
+function DashboardTab() {
+  const [stats, setStats]     = useState(null);
+  const [visitors, setVisitors] = useState(null);
+
+  const load = () => {
+    api.get('/fruitbaskets/admin/dashboard').then(r => setStats(r.data.stats)).catch(() => toast.error('Failed to load dashboard'));
+    api.get('/fruitbaskets/admin/visitors?limit=10').then(r => setVisitors(r.data.visits || [])).catch(() => setVisitors([]));
+  };
+  useEffect(() => { load(); }, []);
+
+  if (!stats) return <p className="text-sm text-gray-400">Loading…</p>;
+
+  const cards = [
+    ['Today Orders',    stats.todayOrders,     FB_THEME.purple700],
+    ['Pending',         stats.pendingOrders,   '#b45309'],
+    ['Delivered Today', stats.deliveredToday,  '#15803d'],
+    ['Today Revenue',   `₹${stats.todayRevenue}`, FB_THEME.purple700],
+    ['Active Baskets',  stats.activeBaskets,   FB_THEME.purple700],
+    ['Carts With Items', stats.cartsWithItems, '#b45309'],
+    ['Page Visits',     stats.totalVisits,     '#0369a1'],
+    ['Unique Visitors', stats.uniqueVisitors,  '#0369a1'],
+    ['Logged-in Visitors', stats.loggedInVisitors, '#0369a1'],
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {cards.map(([label, value, color]) => (
+          <div key={label} className="bg-white rounded-xl p-4" style={{ boxShadow: '0 1px 6px rgba(76,29,149,0.08)', border: `1px solid ${FB_THEME.purple100}` }}>
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">{label}</p>
+            <p className="text-2xl font-black mt-1" style={{ color }}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Recent visitors — same underlying Analytics data as the site-wide
+          Visitors admin page, filtered to Fruit Basket pages. */}
+      <div className="bg-white rounded-xl p-4" style={{ boxShadow: '0 1px 6px rgba(76,29,149,0.08)', border: `1px solid ${FB_THEME.purple100}` }}>
+        <p className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-1.5"><FiEye size={14} /> Recent Visitors</p>
+        {visitors === null ? (
+          <p className="text-sm text-gray-400">Loading…</p>
+        ) : visitors.length === 0 ? (
+          <p className="text-sm text-gray-400">No visits recorded yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {visitors.map(v => (
+              <div key={v._id} className="flex items-center justify-between text-xs border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-700 truncate">{v.user ? `${v.user.name} (${v.user.phone || v.user.email || 'logged in'})` : 'Guest visitor'}</p>
+                  <p className="text-gray-400 mt-0.5">{v.page} {v.city ? `· ${v.city}` : ''} {v.device ? `· ${v.device}` : ''}</p>
+                </div>
+                <span className="text-gray-400 whitespace-nowrap ml-2">{new Date(v.timestamp).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
+// CARTS TAB — customers with baskets in cart, order not yet placed
+// (same pattern as KoyambeduAdmin's "Users Cart" tab)
+// ══════════════════════════════════════════════
+function CartsTab() {
+  const [carts, setCarts]   = useState(null);
+  const [search, setSearch] = useState('');
+
+  const load = () => {
+    const params = search ? `?search=${encodeURIComponent(search)}` : '';
+    api.get(`/fruitbaskets/admin/carts${params}`).then(r => setCarts(r.data.carts || [])).catch(() => toast.error('Failed to load carts'));
+  };
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-white rounded-xl p-3" style={{ boxShadow: '0 1px 6px rgba(76,29,149,0.08)', border: `1px solid ${FB_THEME.purple100}` }}>
+        <div className="flex gap-2">
+          <input
+            type="text" value={search}
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && load()}
+            placeholder="Search by customer name / phone / email…"
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm"
+          />
+          <button onClick={load} className="flex items-center gap-1.5 text-white text-xs font-bold px-3.5 py-2 rounded-lg"
+            style={{ background: FB_THEME.gradientButton }}>
+            <FiSearch size={13} /> Search
+          </button>
+        </div>
+      </div>
+
+      {carts === null ? (
+        <p className="text-sm text-gray-400">Loading…</p>
+      ) : (
+        <>
+          <p className="text-xs text-gray-400 px-1">{carts.length} customer{carts.length !== 1 ? 's' : ''} with baskets in cart</p>
+          {carts.map(c => (
+            <div key={c._id} className="bg-white rounded-xl p-3" style={{ boxShadow: '0 1px 6px rgba(76,29,149,0.08)', border: `1px solid ${FB_THEME.purple100}` }}>
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <p className="font-bold text-gray-800 text-sm">{c.customerName}</p>
+                  <p className="text-xs text-gray-500">📞 {c.phone} {c.email && c.email !== '—' ? `· ✉️ ${c.email}` : ''}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Updated {new Date(c.updatedAt).toLocaleString('en-IN')}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-black text-sm" style={{ color: FB_THEME.purple700 }}>₹{c.cartValue?.toFixed(0)}</p>
+                  <p className="text-[10px] text-gray-400">{c.itemCount} item{c.itemCount !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+              <div className="border-t border-gray-100 pt-2 space-y-1">
+                {c.items.map((it, ii) => (
+                  <div key={ii} className="flex justify-between text-xs">
+                    <span className="text-gray-700">{it.name} {it.occasion ? `(${it.occasion})` : ''} × {it.quantity}</span>
+                    <span className="text-gray-500">₹{((it.price || 0) * (it.quantity || 0)).toFixed(0)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          {carts.length === 0 && (
+            <p className="text-center text-gray-400 py-8">No customers currently have baskets in their cart</p>
+          )}
+        </>
+      )}
     </div>
   );
 }
