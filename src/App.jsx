@@ -23,6 +23,10 @@ import PwaInstallBanner from './components/common/PwaInstallBanner';
 
 // ── Customer pages ───────────────────────────
 const Home           = lazy(() => import('./pages/Home'));
+// Tab-switcher wrapper mounted at "/" instead of Home directly — renders
+// Home unchanged unless Koyambedu admin has turned on the Bulk Harvest
+// and/or News tabs (see HomeTabs.jsx for details).
+const HomeTabs       = lazy(() => import('./pages/HomeTabs'));
 const Categories     = lazy(() => import('./pages/Categories'));
 const Shop           = lazy(() => import('./pages/Shop'));
 const ProductPage    = lazy(() => import('./pages/ProductPage'));
@@ -97,10 +101,6 @@ const AdminWhatsAppInbox   = lazy(() => import('./pages/admin/WhatsAppInbox'));
 
 // ── Koyambedu Daily pages ─────────────────────
 const KoyambeduHome         = lazy(() => import('./pages/koyambedu/KoyambeduHome'));
-// Tab-switcher wrapper mounted at /koyambedu instead of KoyambeduHome directly —
-// renders KoyambeduHome unchanged unless Koyambedu admin has turned on the
-// Bulk Harvest and/or News tabs (see KoyambeduHomeTabs.jsx for details).
-const KoyambeduHomeTabs     = lazy(() => import('./pages/koyambedu/KoyambeduHomeTabs'));
 const KoyambeduPolicy       = lazy(() => import('./pages/koyambedu/KoyambeduPolicy'));
 const KoyambeduShop         = lazy(() => import('./pages/koyambedu/KoyambeduShop'));
 const KoyambeduProductDetail= lazy(() => import('./pages/koyambedu/KoyambeduProductDetail'));
@@ -213,7 +213,7 @@ function AppRoutes() {
         <div key={pathname} className="route-anim">
         <Routes>
           {/* Public */}
-          <Route path="/"              element={<Home />} />
+          <Route path="/"              element={<HomeTabs />} />
           <Route path="/categories"    element={<Categories />} />
           <Route path="/wholesale-chennai" element={<WholesaleChennai />} />
           <Route path="/shop"          element={<Shop />} />
@@ -286,7 +286,7 @@ function AppRoutes() {
           </Route>
 
           {/* ── Koyambedu Daily ─────────────────── */}
-          <Route path="/koyambedu"                           element={<KoyambeduHomeTabs />} />
+          <Route path="/koyambedu"                           element={<KoyambeduHome />} />
           <Route path="/koyambedu/policy"                    element={<KoyambeduPolicy />} />
           <Route path="/koyambedu/location"                  element={<KoyambeduLocationPicker />} />
           <Route path="/koyambedu/shop"                      element={<KoyambeduShop />} />
