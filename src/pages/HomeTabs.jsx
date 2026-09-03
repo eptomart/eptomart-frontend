@@ -22,7 +22,7 @@ import Footer from '../components/common/Footer';
 
 const TABS = [
   { id: 'home', label: 'Home', icon: <FiHome size={13} /> },
-  { id: 'bulk-harvest', label: 'Bulk Harvest', icon: <FiZap size={13} /> },
+  { id: 'bulk-harvest', label: 'Bulk Harvest from Farmers', icon: <FiZap size={13} /> },
   { id: 'news', label: 'News', icon: <FiFileText size={13} /> },
 ];
 
@@ -52,11 +52,11 @@ export default function HomeTabs() {
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold transition ${
-                activeTab === t.id ? 'text-green-700 border-b-2 border-green-600' : 'text-gray-400 border-b-2 border-transparent'
+              className={`flex-1 flex items-center justify-center text-center gap-1.5 py-2.5 px-1.5 text-[11px] leading-tight font-bold transition ${
+                activeTab === t.id ? 'text-green-800 border-b-2 border-green-600' : 'text-gray-700 border-b-2 border-transparent'
               }`}
             >
-              {t.icon} {t.label}
+              {t.icon} <span>{t.label}</span>
             </button>
           ))}
         </div>
