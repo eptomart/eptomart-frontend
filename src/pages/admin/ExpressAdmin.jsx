@@ -12,21 +12,25 @@ import toast from 'react-hot-toast';
 import {
   FiZap, FiMapPin, FiUsers, FiUserCheck, FiPackage, FiSliders, FiBox,
   FiClipboard, FiPlus, FiToggleLeft, FiToggleRight, FiEdit2, FiTrash2, FiX, FiCheck,
+  FiGrid, FiDollarSign, FiShoppingCart, FiEye, FiTrendingUp, FiTrendingDown, FiFileText,
 } from 'react-icons/fi';
 import api from '../../utils/api';
 
 const TABS = [
+  { key: 'dashboard',  label: 'Dashboard',   Icon: FiGrid },
   { key: 'stores',     label: 'Stores',      Icon: FiMapPin },
   { key: 'managers',   label: 'Managers',    Icon: FiUserCheck },
   { key: 'pos',        label: 'POS Users',   Icon: FiUsers },
   { key: 'products',   label: 'Products',    Icon: FiPackage },
   { key: 'allocation', label: 'Store Inventory', Icon: FiBox },
+  { key: 'expenses',   label: 'Expenses',    Icon: FiDollarSign },
+  { key: 'carts',      label: 'Carts',       Icon: FiShoppingCart },
   { key: 'margin',     label: 'Settings', Icon: FiSliders },
   { key: 'inventory',  label: 'Inventory Requests', Icon: FiClipboard },
 ];
 
 export default function ExpressAdmin() {
-  const [tab, setTab] = useState('stores');
+  const [tab, setTab] = useState('dashboard');
   const [stores, setStores] = useState([]); // shared across tabs (managers/pos/products need store dropdowns)
 
   const loadStores = () => {
@@ -53,13 +57,103 @@ export default function ExpressAdmin() {
         ))}
       </div>
 
+      {tab === 'dashboard'  && <DashboardTab stores={stores} />}
       {tab === 'stores'    && <StoresTab stores={stores} reload={loadStores} />}
       {tab === 'managers'  && <ManagersTab stores={stores} />}
       {tab === 'pos'       && <POSUsersTab stores={stores} />}
       {tab === 'products'   && <ProductsTab />}
       {tab === 'allocation' && <StoreInventoryTab stores={stores} />}
+      {tab === 'expenses'   && <ExpensesTab stores={stores} />}
+      {tab === 'carts'      && <CartsTab />}
       {tab === 'margin'     && <MarginConfigTab stores={stores} />}
       {tab === 'inventory'  && <InventoryRequestsTab />}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
+// DASHBOARD TAB — profit/loss finance summary + recent visitors
+// Mirrors the FruitBasketAdmin/KoyambeduAdmin dashboard pattern: stat cards
+// fed by the finance-dashboard endpoint (revenue, COGS, losses, other
+// expenses, net profit) plus a recent-visitors list from the shared
+// Analytics collection, filtered to Express's own API paths.
+// ══════════════════════════════════════════════
+function DashboardTab({ stores }) {
+  const [finance, setFinance] = useState(null);
+  const [visits, setVisits] = useState([]);
+  const [storeId, setStoreId] = useState('');
+  const [range, setRange] = useState({ from: '', to: '' });
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (storeId) params.set('storeId', storeId);
+    if (range.from) params.set('from', range.from);
+    if (range.to) params.set('to', range.to);
+    Promise.all([
+      api.get(`/express/admin/finance-dashboard?${params.toString()}`).then(r => setFinance(r.data.finance)).catch(() => setFinance(null)),
+      api.get('/express/admin/visitors?limit=12').then(r => setVisits(r.data.visits || [])).catch(() => setVisits([])),
+    ]).finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, [storeId, range.from, range.to]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const Stat = ({ label, value, positive, negative, icon: Icon }) => (
+    <div className="bg-white border rounded-xl p-4">
+      <div className="flex items-center gap-1.5 text-xs text-gray-400 font-semibold mb-1">
+        {Icon && <Icon size={12} />} {label}
+      </div>
+      <p className={`text-xl font-black ${positive ? 'text-green-600' : negative ? 'text-red-600' : 'text-gray-800'}`}>{value}</p>
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h2 className="font-bold text-gray-700">Finance Overview</h2>
+        <div className="flex flex-wrap gap-2">
+          <select value={storeId} onChange={e => setStoreId(e.target.value)} className="border rounded-lg px-2.5 py-1.5 text-xs">
+            <option value="">All stores</option>
+            {stores.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+          </select>
+          <input type="date" value={range.from} onChange={e => setRange(r => ({ ...r, from: e.target.value }))} className="border rounded-lg px-2.5 py-1.5 text-xs" />
+          <input type="date" value={range.to} onChange={e => setRange(r => ({ ...r, to: e.target.value }))} className="border rounded-lg px-2.5 py-1.5 text-xs" />
+        </div>
+      </div>
+
+      {loading && <p className="text-sm text-gray-400">Loading…</p>}
+
+      {!loading && finance && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+            <Stat label="Revenue" value={`₹${finance.revenue}`} icon={FiDollarSign} />
+            <Stat label="Procurement + Logistics Cost" value={`₹${finance.cogs}`} icon={FiPackage} />
+            <Stat label="Loss Value" value={`₹${finance.lossValue}`} icon={FiTrendingDown} negative={finance.lossValue > 0} />
+            <Stat label="Other Expenses" value={`₹${finance.otherExpenses}`} icon={FiFileText} />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            <Stat label="Online Revenue" value={`₹${finance.onlineRevenue}`} />
+            <Stat label="POS Revenue" value={`₹${finance.posRevenue}`} />
+            <Stat label="Orders + Bills" value={`${finance.onlineOrderCount} / ${finance.posBillCount}`} />
+            <Stat label="Net Profit / Loss" value={`₹${finance.netProfit}`} icon={finance.netProfit >= 0 ? FiTrendingUp : FiTrendingDown}
+              positive={finance.netProfit >= 0} negative={finance.netProfit < 0} />
+          </div>
+        </>
+      )}
+
+      <h3 className="font-bold text-gray-700 mb-2 text-sm flex items-center gap-1.5"><FiEye size={14} /> Recent Visitors</h3>
+      <div className="bg-white border rounded-xl divide-y">
+        {visits.map(v => (
+          <div key={v._id} className="flex items-center justify-between px-3 py-2 text-xs">
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-700 truncate">{v.page}</p>
+              <p className="text-gray-400">{v.user ? v.user.name : 'Guest'} · {v.city || v.country || 'Unknown location'} · {v.device || ''}</p>
+            </div>
+            <span className="text-gray-400 shrink-0 ml-2">{new Date(v.timestamp).toLocaleString('en-IN')}</span>
+          </div>
+        ))}
+        {visits.length === 0 && <p className="text-sm text-gray-400 px-3 py-3">No visits recorded yet.</p>}
+      </div>
     </div>
   );
 }
@@ -486,12 +580,11 @@ function ProductsTab() {
 // ══════════════════════════════════════════════
 // STORE INVENTORY TAB — admin directly allocates stock to a store
 // Complements (doesn't replace) the Store Manager request → Admin approve
-// flow in Inventory Requests: this is a direct shortcut for the admin to
-// set/adjust a store's stock and availability for any linked product
-// without waiting on a manager-raised request (e.g. initial stocking of a
-// brand-new store, or a quick correction). Uses the same
-// GET/POST /express/admin/stores/:storeId/products endpoints that already
-// existed for this purpose.
+// flow in Inventory Requests. "Add Stock" ADDS to whatever the store
+// already has (each delivery accumulates onto existing stock, rather than
+// overwriting it) — the toggle and remove actions are separate, immediate
+// actions. A "Stock Report" section below shows every addition (by admin)
+// and loss (reported by the Store Manager) for the selected store.
 // ══════════════════════════════════════════════
 function StoreInventoryTab({ stores }) {
   const [storeId, setStoreId] = useState('');
@@ -499,22 +592,32 @@ function StoreInventoryTab({ stores }) {
   const [storeProducts, setStoreProducts] = useState([]); // this store's stock/availability rows
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [drafts, setDrafts] = useState({});            // productId -> { stockQty, isAvailable }
-  const [savingId, setSavingId] = useState(null);
+  const [addDrafts, setAddDrafts] = useState({});       // productId -> { qty, note }
+  const [addingId, setAddingId] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
   const [removingId, setRemovingId] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const [logsOpen, setLogsOpen] = useState(false);
 
   useEffect(() => {
     api.get('/express/admin/products').then(r => setProducts(r.data.products || [])).catch(() => {});
   }, []);
 
-  useEffect(() => {
+  const loadStoreProducts = () => {
     if (!storeId) { setStoreProducts([]); return; }
     setLoading(true);
     api.get(`/express/admin/stores/${storeId}/products`)
       .then(r => setStoreProducts(r.data.storeProducts || []))
       .catch(() => toast.error('Failed to load store inventory'))
       .finally(() => setLoading(false));
-  }, [storeId]);
+  };
+  useEffect(() => { loadStoreProducts(); }, [storeId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadLogs = () => {
+    if (!storeId) { setLogs([]); return; }
+    api.get(`/express/admin/stock-logs?storeId=${storeId}`).then(r => setLogs(r.data.logs || [])).catch(() => {});
+  };
+  useEffect(() => { if (logsOpen) loadLogs(); }, [logsOpen, storeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Merge the master catalogue with this store's existing stock rows, so
   // every linked product shows up even if the store has never stocked it yet.
@@ -522,40 +625,50 @@ function StoreInventoryTab({ stores }) {
     .filter(p => !search.trim() || (p.koyambeduProduct?.name || '').toLowerCase().includes(search.trim().toLowerCase()))
     .map(p => {
       const existing = storeProducts.find(sp => String(sp.product?._id) === String(p._id));
-      const draft = drafts[p._id];
       return {
         product: p,
         storeProductId: existing?._id || null,
-        stockQty: draft?.stockQty ?? existing?.stockQty ?? 0,
-        isAvailable: draft?.isAvailable ?? existing?.isAvailable ?? false,
-        dirty: !!draft,
+        stockQty: existing?.stockQty ?? 0,
+        isAvailable: existing?.isAvailable ?? false,
+        addQty: addDrafts[p._id]?.qty ?? '',
       };
     });
 
-  const setDraft = (productId, patch) => {
-    setDrafts(d => ({ ...d, [productId]: { stockQty: rows.find(r => r.product._id === productId)?.stockQty ?? 0, isAvailable: rows.find(r => r.product._id === productId)?.isAvailable ?? false, ...d[productId], ...patch } }));
-  };
+  const setAddQty = (productId, qty) => setAddDrafts(d => ({ ...d, [productId]: { ...d[productId], qty } }));
 
-  const save = async (productId) => {
+  const addStock = async (productId) => {
     const row = rows.find(r => r.product._id === productId);
-    if (!row) return;
-    setSavingId(productId);
+    const qty = Number(row?.addQty);
+    if (!Number.isFinite(qty) || qty <= 0) return toast.error('Enter a quantity greater than 0 to add');
+    setAddingId(productId);
     try {
-      const { data } = await api.post(`/express/admin/stores/${storeId}/products`, {
-        productId,
-        stockQty: Number(row.stockQty),
-        isAvailable: row.isAvailable,
-      });
+      const { data } = await api.post(`/express/admin/stores/${storeId}/products/${productId}/add-stock`, { qty });
       setStoreProducts(sp => {
         const others = sp.filter(x => String(x.product?._id) !== String(productId));
         return [...others, { ...data.storeProduct, product: row.product }];
       });
-      setDrafts(d => { const next = { ...d }; delete next[productId]; return next; });
-      toast.success(`Stock updated for ${row.product.koyambeduProduct?.name || 'product'}`);
+      setAddDrafts(d => ({ ...d, [productId]: { qty: '' } }));
+      toast.success(`Added ${qty} ${row.product.unit} — new total ${data.storeProduct.stockQty}`);
+      if (logsOpen) loadLogs();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to update stock');
+      toast.error(err?.response?.data?.message || 'Failed to add stock');
     } finally {
-      setSavingId(null);
+      setAddingId(null);
+    }
+  };
+
+  const toggleAvailability = async (productId, current) => {
+    setTogglingId(productId);
+    try {
+      const { data } = await api.post(`/express/admin/stores/${storeId}/products`, { productId, isAvailable: !current });
+      setStoreProducts(sp => {
+        const others = sp.filter(x => String(x.product?._id) !== String(productId));
+        return [...others, data.storeProduct];
+      });
+    } catch {
+      toast.error('Failed to update availability');
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -567,7 +680,6 @@ function StoreInventoryTab({ stores }) {
     try {
       await api.delete(`/express/admin/stores/${storeId}/products/${productId}`);
       setStoreProducts(sp => sp.filter(x => String(x.product?._id) !== String(productId)));
-      setDrafts(d => { const next = { ...d }; delete next[productId]; return next; });
       toast.success('Removed from store inventory');
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to remove product');
@@ -580,9 +692,8 @@ function StoreInventoryTab({ stores }) {
     <div>
       <h2 className="font-bold text-gray-700 mb-1">Store Inventory Allocation</h2>
       <p className="text-xs text-gray-400 mb-3">
-        Directly allocate, edit, disable or remove any linked product's stock at a specific store — a quick admin
-        shortcut alongside the Store Manager request → approve flow in Inventory Requests. "Available/Hidden"
-        toggles visibility to customers &amp; POS without losing the stock count; "Remove" deletes the
+        "Add Stock" adds to whatever the store already has — each delivery accumulates onto the existing quantity.
+        "Available/Hidden" toggles visibility to customers &amp; POS without touching stock. "Remove" deletes the
         store-product record entirely.
       </p>
 
@@ -595,10 +706,35 @@ function StoreInventoryTab({ stores }) {
           <input placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)}
             className="border rounded-lg px-3 py-2 text-sm flex-1" />
         )}
+        {storeId && (
+          <button onClick={() => setLogsOpen(o => !o)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-semibold hover:bg-gray-50 shrink-0">
+            <FiFileText size={14} /> {logsOpen ? 'Hide' : 'View'} Stock Report
+          </button>
+        )}
       </div>
 
       {!storeId && <p className="text-sm text-gray-400">Choose a store above to view and set its stock levels.</p>}
       {storeId && loading && <p className="text-sm text-gray-400">Loading inventory…</p>}
+
+      {storeId && logsOpen && (
+        <div className="bg-white border rounded-xl divide-y mb-4 max-h-64 overflow-y-auto">
+          {logs.map(l => (
+            <div key={l._id} className="flex items-center justify-between px-3 py-2 text-xs">
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-700 truncate">
+                  {l.product?.koyambeduProduct?.name || 'Product'} —{' '}
+                  <span className={l.type === 'addition' ? 'text-green-600' : 'text-red-600'}>
+                    {l.type === 'addition' ? '+' : '−'}{l.qty}
+                  </span> ({l.previousQty} → {l.newQty})
+                </p>
+                <p className="text-gray-400">{l.actorType === 'admin' ? 'Admin' : 'Store Manager'}: {l.actorName}{l.reason ? ` — ${l.reason}` : ''}</p>
+              </div>
+              <span className="text-gray-400 shrink-0 ml-2">{new Date(l.createdAt).toLocaleString('en-IN')}</span>
+            </div>
+          ))}
+          {logs.length === 0 && <p className="text-sm text-gray-400 px-3 py-3">No stock movements recorded yet for this store.</p>}
+        </div>
+      )}
 
       {storeId && !loading && (
         <div className="grid gap-2">
@@ -609,25 +745,23 @@ function StoreInventoryTab({ stores }) {
               )}
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-gray-800 text-sm truncate">{row.product.koyambeduProduct?.name || '(linked product not found)'}</p>
-                <p className="text-xs text-gray-400">Unit: {row.product.unit}</p>
+                <p className="text-xs text-gray-400">Current stock: <span className="font-bold text-gray-600">{row.stockQty}</span> {row.product.unit}</p>
               </div>
 
               <div className="flex items-center gap-1.5">
-                <label className="text-xs text-gray-500 font-semibold">Stock</label>
-                <input type="number" min="0" value={row.stockQty}
-                  onChange={e => setDraft(row.product._id, { stockQty: e.target.value })}
+                <input type="number" min="0" placeholder="+ qty" value={row.addQty}
+                  onChange={e => setAddQty(row.product._id, e.target.value)}
                   className="w-20 border rounded-lg px-2 py-1.5 text-sm" />
+                <button onClick={() => addStock(row.product._id)} disabled={addingId === row.product._id}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold disabled:opacity-40">
+                  <FiPlus size={12} /> {addingId === row.product._id ? 'Adding…' : 'Add Stock'}
+                </button>
               </div>
 
-              <button onClick={() => setDraft(row.product._id, { isAvailable: !row.isAvailable })}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold ${row.isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+              <button onClick={() => toggleAvailability(row.product._id, row.isAvailable)} disabled={togglingId === row.product._id}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40 ${row.isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                 {row.isAvailable ? <FiToggleRight size={14} /> : <FiToggleLeft size={14} />}
                 {row.isAvailable ? 'Available' : 'Hidden'}
-              </button>
-
-              <button onClick={() => save(row.product._id)} disabled={!row.dirty || savingId === row.product._id}
-                className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold disabled:opacity-40">
-                {savingId === row.product._id ? 'Saving…' : 'Save'}
               </button>
 
               {row.storeProductId && (
@@ -641,6 +775,127 @@ function StoreInventoryTab({ stores }) {
           {rows.length === 0 && <p className="text-sm text-gray-400">No products match — link products in the Products tab first.</p>}
         </div>
       )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
+// EXPENSES TAB — admin-entered misc costs (rent, salary, utilities, etc.)
+// ══════════════════════════════════════════════
+function ExpensesTab({ stores }) {
+  const [expenses, setExpenses] = useState([]);
+  const [form, setForm] = useState({ storeId: '', category: 'other', amount: '', note: '', date: new Date().toISOString().slice(0, 10) });
+  const [saving, setSaving] = useState(false);
+
+  const load = () => api.get('/express/admin/expenses').then(r => setExpenses(r.data.expenses || [])).catch(() => {});
+  useEffect(() => { load(); }, []);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.amount) return toast.error('Amount is required');
+    setSaving(true);
+    try {
+      await api.post('/express/admin/expenses', form);
+      toast.success('Expense recorded');
+      setForm({ storeId: '', category: 'other', amount: '', note: '', date: new Date().toISOString().slice(0, 10) });
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to record expense');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async (id) => {
+    if (!window.confirm('Delete this expense entry?')) return;
+    try {
+      await api.delete(`/express/admin/expenses/${id}`);
+      load();
+    } catch { toast.error('Failed to delete expense'); }
+  };
+
+  const total = expenses.reduce((s, e) => s + (e.amount || 0), 0);
+
+  return (
+    <div>
+      <h2 className="font-bold text-gray-700 mb-3">Other Expenses</h2>
+
+      <form onSubmit={submit} className="bg-white border rounded-xl p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <select value={form.storeId} onChange={e => setForm(f => ({ ...f, storeId: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm">
+          <option value="">Company-wide (no specific store)</option>
+          {stores.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+        </select>
+        <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm">
+          {['rent', 'salary', 'utilities', 'maintenance', 'packaging', 'fuel', 'marketing', 'other'].map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <input type="number" min="0" placeholder="Amount (₹)" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+        <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+        <input placeholder="Note (optional)" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm sm:col-span-2" />
+        <button type="submit" disabled={saving} className="sm:col-span-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
+          {saving ? 'Saving…' : 'Record Expense'}
+        </button>
+      </form>
+
+      <p className="text-xs text-gray-400 mb-2">Total recorded: <span className="font-bold text-gray-700">₹{total}</span></p>
+
+      <div className="grid gap-2">
+        {expenses.map(e => (
+          <div key={e._id} className="bg-white border rounded-xl p-3 flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="font-bold text-gray-800 text-sm">₹{e.amount} <span className="text-xs font-normal text-gray-400">· {e.category}{e.store ? ` · ${e.store.name}` : ' · company-wide'}</span></p>
+              <p className="text-xs text-gray-400 truncate">{e.note || '—'} · {new Date(e.date).toLocaleDateString('en-IN')} · by {e.enteredByName}</p>
+            </div>
+            <button onClick={() => remove(e._id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 shrink-0"><FiTrash2 size={14} /></button>
+          </div>
+        ))}
+        {expenses.length === 0 && <p className="text-sm text-gray-400">No expenses recorded yet.</p>}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
+// CARTS TAB — customers currently holding items in their Express cart
+// ══════════════════════════════════════════════
+function CartsTab() {
+  const [carts, setCarts] = useState([]);
+  const [search, setSearch] = useState('');
+
+  const load = (q) => api.get(`/express/admin/carts${q ? `?search=${encodeURIComponent(q)}` : ''}`).then(r => setCarts(r.data.carts || [])).catch(() => {});
+  useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => load(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3 gap-2">
+        <h2 className="font-bold text-gray-700">Customer Carts</h2>
+        <input placeholder="Search name, phone or email…" value={search} onChange={e => setSearch(e.target.value)}
+          className="border rounded-lg px-3 py-1.5 text-sm w-56" />
+      </div>
+      <div className="grid gap-3">
+        {carts.map(c => (
+          <div key={c._id} className="bg-white border rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="font-bold text-gray-800">{c.customerName}</p>
+                <p className="text-xs text-gray-500">{c.phone} · {c.email} · {c.store}</p>
+              </div>
+              <div className="text-right">
+                <p className="font-black text-indigo-700">₹{c.cartValue}</p>
+                <p className="text-xs text-gray-400">{c.itemCount} item(s)</p>
+              </div>
+            </div>
+            <ul className="text-xs text-gray-600 list-disc pl-4">
+              {c.items.map((it, i) => <li key={i}>{it.name} — {it.quantity} {it.unit} @ ₹{it.price}</li>)}
+            </ul>
+          </div>
+        ))}
+        {carts.length === 0 && <p className="text-sm text-gray-400">No customers currently have items in their Express cart.</p>}
+      </div>
     </div>
   );
 }

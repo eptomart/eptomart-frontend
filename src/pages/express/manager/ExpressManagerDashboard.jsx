@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   FiZap, FiLogOut, FiGrid, FiPackage, FiToggleLeft, FiToggleRight,
-  FiClipboard, FiPlus, FiTruck,
+  FiClipboard, FiPlus, FiTruck, FiAlertTriangle, FiFileText,
 } from 'react-icons/fi';
 import expressManagerApi, { getManagerToken, clearManagerToken } from '../../../utils/expressManagerApi';
 
@@ -177,9 +177,17 @@ function OrdersTab() {
 
 function ProductsTab() {
   const [storeProducts, setStoreProducts] = useState([]);
+  const [lossOpenId, setLossOpenId] = useState(null);
+  const [lossForm, setLossForm] = useState({ qty: '', reason: '' });
+  const [submittingLoss, setSubmittingLoss] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [logs, setLogs] = useState([]);
 
   const load = () => expressManagerApi.get('/products').then(({ data }) => setStoreProducts(data.storeProducts || [])).catch(() => {});
   useEffect(() => { load(); }, []);
+
+  const loadLogs = () => expressManagerApi.get('/stock-logs').then(({ data }) => setLogs(data.logs || [])).catch(() => {});
+  useEffect(() => { if (reportOpen) loadLogs(); }, [reportOpen]);
 
   const toggle = async (sp) => {
     try {
@@ -188,21 +196,88 @@ function ProductsTab() {
     } catch { toast.error('Failed to update product'); }
   };
 
+  const openLoss = (sp) => { setLossOpenId(sp._id); setLossForm({ qty: '', reason: '' }); };
+
+  const submitLoss = async (sp) => {
+    const qty = Number(lossForm.qty);
+    if (!Number.isFinite(qty) || qty <= 0) return toast.error('Enter a quantity greater than 0');
+    if (!lossForm.reason.trim()) return toast.error('A reason is required (e.g. spoilage, damage)');
+    setSubmittingLoss(true);
+    try {
+      await expressManagerApi.post(`/products/${sp._id}/loss`, { qty, reason: lossForm.reason.trim() });
+      toast.success('Loss recorded');
+      setLossOpenId(null);
+      load();
+      if (reportOpen) loadLogs();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to record loss');
+    } finally {
+      setSubmittingLoss(false);
+    }
+  };
+
   return (
-    <div className="grid gap-2">
-      {storeProducts.map(sp => (
-        <div key={sp._id} className="bg-white border rounded-xl p-3 flex items-center justify-between">
-          <div>
-            <p className="font-bold text-sm text-gray-800">{sp.product?.koyambeduProduct?.name}</p>
-            <p className="text-xs text-gray-400">Stock: {sp.stockQty} {sp.product?.unit}</p>
-          </div>
-          <button onClick={() => toggle(sp)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${sp.isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-            {sp.isAvailable ? <FiToggleRight size={14} /> : <FiToggleLeft size={14} />} {sp.isAvailable ? 'ON' : 'OFF'}
-          </button>
+    <div>
+      <button onClick={() => setReportOpen(o => !o)} className="flex items-center gap-1.5 mb-3 text-xs font-semibold text-indigo-600">
+        <FiFileText size={13} /> {reportOpen ? 'Hide' : 'View'} My Stock Report
+      </button>
+
+      {reportOpen && (
+        <div className="bg-white border rounded-xl divide-y mb-4 max-h-56 overflow-y-auto">
+          {logs.map(l => (
+            <div key={l._id} className="flex items-center justify-between px-3 py-2 text-xs">
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-700 truncate">
+                  {l.product?.koyambeduProduct?.name || 'Product'} —{' '}
+                  <span className={l.type === 'addition' ? 'text-green-600' : 'text-red-600'}>{l.type === 'addition' ? '+' : '−'}{l.qty}</span>
+                </p>
+                <p className="text-gray-400">{l.actorName}{l.reason ? ` — ${l.reason}` : ''}</p>
+              </div>
+              <span className="text-gray-400 shrink-0 ml-2">{new Date(l.createdAt).toLocaleString('en-IN')}</span>
+            </div>
+          ))}
+          {logs.length === 0 && <p className="text-sm text-gray-400 px-3 py-3">No stock movements yet.</p>}
         </div>
-      ))}
-      {storeProducts.length === 0 && <p className="text-sm text-gray-400">No products assigned to your store yet — ask Admin to allocate inventory.</p>}
+      )}
+
+      <div className="grid gap-2">
+        {storeProducts.map(sp => (
+          <div key={sp._id} className="bg-white border rounded-xl p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-bold text-sm text-gray-800">{sp.product?.koyambeduProduct?.name}</p>
+                <p className="text-xs text-gray-400">Stock: {sp.stockQty} {sp.product?.unit}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => openLoss(sp)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-bold">
+                  <FiAlertTriangle size={12} /> Report Loss
+                </button>
+                <button onClick={() => toggle(sp)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${sp.isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {sp.isAvailable ? <FiToggleRight size={14} /> : <FiToggleLeft size={14} />} {sp.isAvailable ? 'ON' : 'OFF'}
+                </button>
+              </div>
+            </div>
+
+            {lossOpenId === sp._id && (
+              <div className="mt-3 pt-3 border-t flex flex-wrap items-center gap-2">
+                <input type="number" min="0" placeholder="Qty lost" value={lossForm.qty}
+                  onChange={e => setLossForm(f => ({ ...f, qty: e.target.value }))}
+                  className="w-24 border rounded-lg px-2 py-1.5 text-xs" />
+                <input placeholder="Reason (spoilage, damage…)" value={lossForm.reason}
+                  onChange={e => setLossForm(f => ({ ...f, reason: e.target.value }))}
+                  className="flex-1 min-w-[140px] border rounded-lg px-2 py-1.5 text-xs" />
+                <button onClick={() => submitLoss(sp)} disabled={submittingLoss}
+                  className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-50">
+                  {submittingLoss ? 'Saving…' : 'Submit'}
+                </button>
+                <button onClick={() => setLossOpenId(null)} className="px-2 py-1.5 rounded-lg border text-xs font-semibold">Cancel</button>
+              </div>
+            )}
+          </div>
+        ))}
+        {storeProducts.length === 0 && <p className="text-sm text-gray-400">No products assigned to your store yet — ask Admin to allocate inventory.</p>}
+      </div>
     </div>
   );
 }
