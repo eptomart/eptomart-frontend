@@ -12,7 +12,8 @@
 // "Koyambedu Daily" (unchanged), "Bulk Harvest" and "News" — page 1 /
 // page 2 style, same content area swapped per tab.
 import { useState, useEffect } from 'react';
-import { FiLeaf, FiZap, FiFileText } from 'react-icons/fi';
+import { FiZap, FiFileText } from 'react-icons/fi';
+import { FaLeaf } from 'react-icons/fa';
 import api from '../../utils/api';
 import KoyambeduHome from './KoyambeduHome';
 import KoyambeduBulkHarvestPage from './KoyambeduBulkHarvestPage';
@@ -21,7 +22,7 @@ import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 
 const TABS = [
-  { id: 'daily', label: 'Koyambedu Daily', icon: <FiLeaf size={13} /> },
+  { id: 'daily', label: 'Koyambedu Daily', icon: <FaLeaf size={12} /> },
   { id: 'bulk-harvest', label: 'Bulk Harvest', icon: <FiZap size={13} /> },
   { id: 'news', label: 'News', icon: <FiFileText size={13} /> },
 ];
