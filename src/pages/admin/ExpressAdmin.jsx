@@ -165,6 +165,9 @@ function StoresTab({ stores, reload }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', code: '', address: '', city: 'Chennai', pincode: '', lat: '', lng: '', notes: '' });
   const [saving, setSaving] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [editSaving, setEditSaving] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -189,6 +192,29 @@ function StoresTab({ stores, reload }) {
       reload();
     } catch {
       toast.error('Failed to toggle store status');
+    }
+  };
+
+  const openEdit = (s) => {
+    setEditId(s._id);
+    setEditForm({
+      name: s.name || '', address: s.address || '', city: s.city || '', pincode: s.pincode || '',
+      lat: s.location?.lat ?? '', lng: s.location?.lng ?? '', notes: s.notes || '',
+    });
+  };
+
+  const saveEdit = async (storeId) => {
+    if (!editForm.name || !editForm.lat || !editForm.lng) return toast.error('Name, lat and lng are required');
+    setEditSaving(true);
+    try {
+      await api.put(`/express/admin/stores/${storeId}`, editForm);
+      toast.success('Store updated');
+      setEditId(null);
+      reload();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update store');
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -231,17 +257,42 @@ function StoresTab({ stores, reload }) {
 
       <div className="grid gap-3">
         {stores.map(s => (
-          <div key={s._id} className="bg-white border rounded-xl p-4 flex items-center justify-between">
-            <div>
-              <p className="font-bold text-gray-800">{s.name} <span className="text-xs text-gray-400 font-normal">({s.code})</span></p>
-              <p className="text-xs text-gray-500">{s.address}{s.city ? `, ${s.city}` : ''} {s.pincode}</p>
-              <p className="text-xs text-gray-400">Manager: {s.storeManager?.name || 'Not assigned'}</p>
-              <p className="text-xs text-gray-400">{s.location?.lat}, {s.location?.lng}</p>
+          <div key={s._id} className="bg-white border rounded-xl p-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <p className="font-bold text-gray-800">{s.name} <span className="text-xs text-gray-400 font-normal">({s.code})</span></p>
+                <p className="text-xs text-gray-500">{s.address}{s.city ? `, ${s.city}` : ''} {s.pincode}</p>
+                <p className="text-xs text-gray-400">Manager: {s.storeManager?.name || 'Not assigned'}</p>
+                <p className="text-xs text-gray-400">{s.location?.lat}, {s.location?.lng}</p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button onClick={() => openEdit(s)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
+                  <FiEdit2 size={12} /> Edit
+                </button>
+                <button onClick={() => toggleActive(s._id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${s.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {s.isActive ? <FiToggleRight size={16} /> : <FiToggleLeft size={16} />} {s.isActive ? 'Active' : 'Inactive'}
+                </button>
+              </div>
             </div>
-            <button onClick={() => toggleActive(s._id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${s.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-              {s.isActive ? <FiToggleRight size={16} /> : <FiToggleLeft size={16} />} {s.isActive ? 'Active' : 'Inactive'}
-            </button>
+
+            {editId === s._id && (
+              <div className="mt-3 pt-3 border-t grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input placeholder="Store name" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <input placeholder="City" value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <input placeholder="Address" value={editForm.address} onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm sm:col-span-2" />
+                <input placeholder="Pincode" value={editForm.pincode} onChange={e => setEditForm(f => ({ ...f, pincode: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <input placeholder="Notes" value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <input placeholder="Latitude" value={editForm.lat} onChange={e => setEditForm(f => ({ ...f, lat: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <input placeholder="Longitude" value={editForm.lng} onChange={e => setEditForm(f => ({ ...f, lng: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <div className="sm:col-span-2 flex gap-2">
+                  <button onClick={() => saveEdit(s._id)} disabled={editSaving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
+                    {editSaving ? 'Saving…' : 'Save Changes'}
+                  </button>
+                  <button onClick={() => setEditId(null)} className="px-4 py-2 rounded-lg border text-sm font-semibold">Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
         {stores.length === 0 && <p className="text-sm text-gray-400">No stores yet — add your first one above.</p>}
@@ -258,6 +309,9 @@ function ManagersTab({ stores }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', password: '', storeId: '' });
   const [saving, setSaving] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [editSaving, setEditSaving] = useState(false);
 
   const load = () => api.get('/express/admin/managers').then(r => setManagers(r.data.managers || [])).catch(() => {});
   useEffect(() => { load(); }, []);
@@ -284,6 +338,25 @@ function ManagersTab({ stores }) {
       await api.put(`/express/admin/managers/${m._id}`, { isActive: !m.isActive });
       load();
     } catch { toast.error('Failed to update manager'); }
+  };
+
+  const openEdit = (m) => { setEditId(m._id); setEditForm({ name: m.name || '', phone: m.phone || '', password: '' }); };
+
+  const saveEdit = async (managerId) => {
+    if (!editForm.name || !editForm.phone) return toast.error('Name and phone are required');
+    setEditSaving(true);
+    try {
+      const payload = { name: editForm.name, phone: editForm.phone };
+      if (editForm.password) payload.password = editForm.password;
+      await api.put(`/express/admin/managers/${managerId}`, payload);
+      toast.success(editForm.password ? 'Manager updated and password reset' : 'Manager updated');
+      setEditId(null);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update manager');
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   return (
@@ -316,15 +389,37 @@ function ManagersTab({ stores }) {
 
       <div className="grid gap-3">
         {managers.map(m => (
-          <div key={m._id} className="bg-white border rounded-xl p-4 flex items-center justify-between">
-            <div>
-              <p className="font-bold text-gray-800">{m.name}</p>
-              <p className="text-xs text-gray-500">{m.phone} · {m.store?.name || 'No store'}</p>
+          <div key={m._id} className="bg-white border rounded-xl p-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <p className="font-bold text-gray-800">{m.name}</p>
+                <p className="text-xs text-gray-500">{m.phone} · {m.store?.name || 'No store'}</p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button onClick={() => openEdit(m)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
+                  <FiEdit2 size={12} /> Edit
+                </button>
+                <button onClick={() => toggleActive(m)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${m.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {m.isActive ? <FiToggleRight size={16} /> : <FiToggleLeft size={16} />} {m.isActive ? 'Active' : 'Suspended'}
+                </button>
+              </div>
             </div>
-            <button onClick={() => toggleActive(m)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${m.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-              {m.isActive ? <FiToggleRight size={16} /> : <FiToggleLeft size={16} />} {m.isActive ? 'Active' : 'Suspended'}
-            </button>
+
+            {editId === m._id && (
+              <div className="mt-3 pt-3 border-t grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input placeholder="Full name" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <input placeholder="Phone" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <input placeholder="New password (leave blank to keep current)" type="password" value={editForm.password}
+                  onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm sm:col-span-2" />
+                <div className="sm:col-span-2 flex gap-2">
+                  <button onClick={() => saveEdit(m._id)} disabled={editSaving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
+                    {editSaving ? 'Saving…' : 'Save Changes'}
+                  </button>
+                  <button onClick={() => setEditId(null)} className="px-4 py-2 rounded-lg border text-sm font-semibold">Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
         {managers.length === 0 && <p className="text-sm text-gray-400">No store managers yet.</p>}
@@ -341,6 +436,9 @@ function POSUsersTab({ stores }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', username: '', pin: '', storeId: '' });
   const [saving, setSaving] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [editSaving, setEditSaving] = useState(false);
 
   const load = () => api.get('/express/admin/pos-users').then(r => setPosUsers(r.data.posUsers || [])).catch(() => {});
   useEffect(() => { load(); }, []);
@@ -367,6 +465,25 @@ function POSUsersTab({ stores }) {
       await api.put(`/express/admin/pos-users/${p._id}`, { isActive: !p.isActive });
       load();
     } catch { toast.error('Failed to update POS user'); }
+  };
+
+  const openEdit = (p) => { setEditId(p._id); setEditForm({ name: p.name || '', pin: '' }); };
+
+  const saveEdit = async (posUserId) => {
+    if (!editForm.name) return toast.error('Name is required');
+    setEditSaving(true);
+    try {
+      const payload = { name: editForm.name };
+      if (editForm.pin) payload.pin = editForm.pin;
+      await api.put(`/express/admin/pos-users/${posUserId}`, payload);
+      toast.success(editForm.pin ? 'POS user updated and PIN reset' : 'POS user updated');
+      setEditId(null);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update POS user');
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   return (
@@ -399,15 +516,36 @@ function POSUsersTab({ stores }) {
 
       <div className="grid gap-3">
         {posUsers.map(p => (
-          <div key={p._id} className="bg-white border rounded-xl p-4 flex items-center justify-between">
-            <div>
-              <p className="font-bold text-gray-800">{p.name}</p>
-              <p className="text-xs text-gray-500">@{p.username} · {p.store?.name || 'No store'}</p>
+          <div key={p._id} className="bg-white border rounded-xl p-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <p className="font-bold text-gray-800">{p.name}</p>
+                <p className="text-xs text-gray-500">@{p.username} · {p.store?.name || 'No store'}</p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button onClick={() => openEdit(p)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
+                  <FiEdit2 size={12} /> Edit
+                </button>
+                <button onClick={() => toggleActive(p)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${p.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {p.isActive ? <FiToggleRight size={16} /> : <FiToggleLeft size={16} />} {p.isActive ? 'Active' : 'Suspended'}
+                </button>
+              </div>
             </div>
-            <button onClick={() => toggleActive(p)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${p.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-              {p.isActive ? <FiToggleRight size={16} /> : <FiToggleLeft size={16} />} {p.isActive ? 'Active' : 'Suspended'}
-            </button>
+
+            {editId === p._id && (
+              <div className="mt-3 pt-3 border-t grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input placeholder="Full name" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <input placeholder="New PIN (leave blank to keep current)" value={editForm.pin}
+                  onChange={e => setEditForm(f => ({ ...f, pin: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <div className="sm:col-span-2 flex gap-2">
+                  <button onClick={() => saveEdit(p._id)} disabled={editSaving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
+                    {editSaving ? 'Saving…' : 'Save Changes'}
+                  </button>
+                  <button onClick={() => setEditId(null)} className="px-4 py-2 rounded-lg border text-sm font-semibold">Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
         {posUsers.length === 0 && <p className="text-sm text-gray-400">No POS users yet.</p>}
@@ -561,6 +699,7 @@ function ProductsTab() {
                     className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 text-sm">
                     {kb.images?.[0]?.url && <img src={kb.images[0].url} alt="" className="w-8 h-8 rounded object-cover" />}
                     <span>{kb.name} <span className="text-xs text-gray-400">({kb.unit})</span></span>
+                    {kb.isActive === false && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Disabled in Koyambedu</span>}
                   </button>
                 ))}
               </div>
@@ -570,6 +709,7 @@ function ProductsTab() {
             <div className="sm:col-span-2 flex items-center gap-2 bg-indigo-50 rounded-lg px-3 py-2">
               {selected.images?.[0]?.url && <img src={selected.images[0].url} alt="" className="w-8 h-8 rounded object-cover" />}
               <span className="text-sm font-semibold text-indigo-900">{selected.name}</span>
+              {selected.isActive === false && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-600">Disabled in Koyambedu</span>}
             </div>
           )}
           <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm">
