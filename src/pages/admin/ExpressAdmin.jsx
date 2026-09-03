@@ -10,18 +10,19 @@
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
-  FiZap, FiMapPin, FiUsers, FiUserCheck, FiPackage, FiSliders,
+  FiZap, FiMapPin, FiUsers, FiUserCheck, FiPackage, FiSliders, FiBox,
   FiClipboard, FiPlus, FiToggleLeft, FiToggleRight, FiEdit2, FiTrash2, FiX, FiCheck,
 } from 'react-icons/fi';
 import api from '../../utils/api';
 
 const TABS = [
-  { key: 'stores',    label: 'Stores',      Icon: FiMapPin },
-  { key: 'managers',  label: 'Managers',    Icon: FiUserCheck },
-  { key: 'pos',       label: 'POS Users',   Icon: FiUsers },
-  { key: 'products',  label: 'Products',    Icon: FiPackage },
-  { key: 'margin',    label: 'Settings', Icon: FiSliders },
-  { key: 'inventory', label: 'Inventory Requests', Icon: FiClipboard },
+  { key: 'stores',     label: 'Stores',      Icon: FiMapPin },
+  { key: 'managers',   label: 'Managers',    Icon: FiUserCheck },
+  { key: 'pos',        label: 'POS Users',   Icon: FiUsers },
+  { key: 'products',   label: 'Products',    Icon: FiPackage },
+  { key: 'allocation', label: 'Store Inventory', Icon: FiBox },
+  { key: 'margin',     label: 'Settings', Icon: FiSliders },
+  { key: 'inventory',  label: 'Inventory Requests', Icon: FiClipboard },
 ];
 
 export default function ExpressAdmin() {
@@ -55,9 +56,10 @@ export default function ExpressAdmin() {
       {tab === 'stores'    && <StoresTab stores={stores} reload={loadStores} />}
       {tab === 'managers'  && <ManagersTab stores={stores} />}
       {tab === 'pos'       && <POSUsersTab stores={stores} />}
-      {tab === 'products'  && <ProductsTab />}
-      {tab === 'margin'    && <MarginConfigTab stores={stores} />}
-      {tab === 'inventory' && <InventoryRequestsTab />}
+      {tab === 'products'   && <ProductsTab />}
+      {tab === 'allocation' && <StoreInventoryTab stores={stores} />}
+      {tab === 'margin'     && <MarginConfigTab stores={stores} />}
+      {tab === 'inventory'  && <InventoryRequestsTab />}
     </div>
   );
 }
@@ -477,6 +479,168 @@ function ProductsTab() {
         ))}
         {products.length === 0 && <p className="text-sm text-gray-400">No products linked yet.</p>}
       </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
+// STORE INVENTORY TAB — admin directly allocates stock to a store
+// Complements (doesn't replace) the Store Manager request → Admin approve
+// flow in Inventory Requests: this is a direct shortcut for the admin to
+// set/adjust a store's stock and availability for any linked product
+// without waiting on a manager-raised request (e.g. initial stocking of a
+// brand-new store, or a quick correction). Uses the same
+// GET/POST /express/admin/stores/:storeId/products endpoints that already
+// existed for this purpose.
+// ══════════════════════════════════════════════
+function StoreInventoryTab({ stores }) {
+  const [storeId, setStoreId] = useState('');
+  const [products, setProducts] = useState([]);       // master Express catalogue
+  const [storeProducts, setStoreProducts] = useState([]); // this store's stock/availability rows
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [drafts, setDrafts] = useState({});            // productId -> { stockQty, isAvailable }
+  const [savingId, setSavingId] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
+
+  useEffect(() => {
+    api.get('/express/admin/products').then(r => setProducts(r.data.products || [])).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!storeId) { setStoreProducts([]); return; }
+    setLoading(true);
+    api.get(`/express/admin/stores/${storeId}/products`)
+      .then(r => setStoreProducts(r.data.storeProducts || []))
+      .catch(() => toast.error('Failed to load store inventory'))
+      .finally(() => setLoading(false));
+  }, [storeId]);
+
+  // Merge the master catalogue with this store's existing stock rows, so
+  // every linked product shows up even if the store has never stocked it yet.
+  const rows = products
+    .filter(p => !search.trim() || (p.koyambeduProduct?.name || '').toLowerCase().includes(search.trim().toLowerCase()))
+    .map(p => {
+      const existing = storeProducts.find(sp => String(sp.product?._id) === String(p._id));
+      const draft = drafts[p._id];
+      return {
+        product: p,
+        storeProductId: existing?._id || null,
+        stockQty: draft?.stockQty ?? existing?.stockQty ?? 0,
+        isAvailable: draft?.isAvailable ?? existing?.isAvailable ?? false,
+        dirty: !!draft,
+      };
+    });
+
+  const setDraft = (productId, patch) => {
+    setDrafts(d => ({ ...d, [productId]: { stockQty: rows.find(r => r.product._id === productId)?.stockQty ?? 0, isAvailable: rows.find(r => r.product._id === productId)?.isAvailable ?? false, ...d[productId], ...patch } }));
+  };
+
+  const save = async (productId) => {
+    const row = rows.find(r => r.product._id === productId);
+    if (!row) return;
+    setSavingId(productId);
+    try {
+      const { data } = await api.post(`/express/admin/stores/${storeId}/products`, {
+        productId,
+        stockQty: Number(row.stockQty),
+        isAvailable: row.isAvailable,
+      });
+      setStoreProducts(sp => {
+        const others = sp.filter(x => String(x.product?._id) !== String(productId));
+        return [...others, { ...data.storeProduct, product: row.product }];
+      });
+      setDrafts(d => { const next = { ...d }; delete next[productId]; return next; });
+      toast.success(`Stock updated for ${row.product.koyambeduProduct?.name || 'product'}`);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update stock');
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const remove = async (productId) => {
+    const row = rows.find(r => r.product._id === productId);
+    if (!row?.storeProductId) return;
+    if (!window.confirm(`Remove "${row.product.koyambeduProduct?.name || 'this product'}" from this store's inventory entirely? Its stock record will be deleted (you can re-add it later).`)) return;
+    setRemovingId(productId);
+    try {
+      await api.delete(`/express/admin/stores/${storeId}/products/${productId}`);
+      setStoreProducts(sp => sp.filter(x => String(x.product?._id) !== String(productId)));
+      setDrafts(d => { const next = { ...d }; delete next[productId]; return next; });
+      toast.success('Removed from store inventory');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to remove product');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="font-bold text-gray-700 mb-1">Store Inventory Allocation</h2>
+      <p className="text-xs text-gray-400 mb-3">
+        Directly allocate, edit, disable or remove any linked product's stock at a specific store — a quick admin
+        shortcut alongside the Store Manager request → approve flow in Inventory Requests. "Available/Hidden"
+        toggles visibility to customers &amp; POS without losing the stock count; "Remove" deletes the
+        store-product record entirely.
+      </p>
+
+      <div className="flex flex-col sm:flex-row gap-2 mb-4">
+        <select value={storeId} onChange={e => setStoreId(e.target.value)} className="border rounded-lg px-3 py-2 text-sm sm:w-64">
+          <option value="">Select a store…</option>
+          {stores.map(s => <option key={s._id} value={s._id}>{s.name} ({s.code})</option>)}
+        </select>
+        {storeId && (
+          <input placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)}
+            className="border rounded-lg px-3 py-2 text-sm flex-1" />
+        )}
+      </div>
+
+      {!storeId && <p className="text-sm text-gray-400">Choose a store above to view and set its stock levels.</p>}
+      {storeId && loading && <p className="text-sm text-gray-400">Loading inventory…</p>}
+
+      {storeId && !loading && (
+        <div className="grid gap-2">
+          {rows.map(row => (
+            <div key={row.product._id} className="bg-white border rounded-xl p-3 flex flex-wrap items-center gap-3">
+              {row.product.koyambeduProduct?.images?.[0]?.url && (
+                <img src={row.product.koyambeduProduct.images[0].url} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-gray-800 text-sm truncate">{row.product.koyambeduProduct?.name || '(linked product not found)'}</p>
+                <p className="text-xs text-gray-400">Unit: {row.product.unit}</p>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-gray-500 font-semibold">Stock</label>
+                <input type="number" min="0" value={row.stockQty}
+                  onChange={e => setDraft(row.product._id, { stockQty: e.target.value })}
+                  className="w-20 border rounded-lg px-2 py-1.5 text-sm" />
+              </div>
+
+              <button onClick={() => setDraft(row.product._id, { isAvailable: !row.isAvailable })}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold ${row.isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                {row.isAvailable ? <FiToggleRight size={14} /> : <FiToggleLeft size={14} />}
+                {row.isAvailable ? 'Available' : 'Hidden'}
+              </button>
+
+              <button onClick={() => save(row.product._id)} disabled={!row.dirty || savingId === row.product._id}
+                className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold disabled:opacity-40">
+                {savingId === row.product._id ? 'Saving…' : 'Save'}
+              </button>
+
+              {row.storeProductId && (
+                <button onClick={() => remove(row.product._id)} disabled={removingId === row.product._id}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-semibold disabled:opacity-40">
+                  <FiTrash2 size={12} /> {removingId === row.product._id ? 'Removing…' : 'Remove'}
+                </button>
+              )}
+            </div>
+          ))}
+          {rows.length === 0 && <p className="text-sm text-gray-400">No products match — link products in the Products tab first.</p>}
+        </div>
+      )}
     </div>
   );
 }
