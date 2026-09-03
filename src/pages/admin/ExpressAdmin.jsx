@@ -571,6 +571,7 @@ function ProductsTab() {
   const [editForm, setEditForm] = useState({});
   const [editSaving, setEditSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null); // click-to-confirm, no native dialog
 
   const load = () => api.get('/express/admin/products').then(r => setProducts(r.data.products || [])).catch(() => {});
   useEffect(() => { load(); }, []);
@@ -606,19 +607,32 @@ function ProductsTab() {
     }
   };
 
+  // Click-to-confirm instead of window.confirm() — native confirm() dialogs
+  // can be silently suppressed in some embedded/webview contexts, which
+  // made Delete appear to do nothing. First click arms it; a second click
+  // on the now-red "Confirm Delete?" button actually deletes; it
+  // auto-disarms after a few seconds or if you click elsewhere.
   const deleteProduct = async (p) => {
-    if (!window.confirm(`Delete "${p.koyambeduProduct?.name || 'this product'}" from Express entirely? This also removes its stock records at every store. This cannot be undone.`)) return;
+    if (confirmDeleteId !== p._id) { setConfirmDeleteId(p._id); return; }
+    setConfirmDeleteId(null);
     setDeletingId(p._id);
     try {
       await api.delete(`/express/admin/products/${p._id}`);
       toast.success('Product deleted from Express');
       load();
     } catch (err) {
+      console.error('[ExpressAdmin.deleteProduct]', err);
       toast.error(err?.response?.data?.message || 'Failed to delete product');
     } finally {
       setDeletingId(null);
     }
   };
+
+  useEffect(() => {
+    if (!confirmDeleteId) return;
+    const t = setTimeout(() => setConfirmDeleteId(null), 4000);
+    return () => clearTimeout(t);
+  }, [confirmDeleteId]);
 
   // Debounced search against Koyambedu Daily's catalogue — Express links to
   // an existing product rather than typing its own name/image/description.
@@ -755,8 +769,8 @@ function ProductsTab() {
                   <FiEdit2 size={12} /> Edit
                 </button>
                 <button onClick={() => deleteProduct(p)} disabled={deletingId === p._id}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-semibold disabled:opacity-40">
-                  <FiTrash2 size={12} /> {deletingId === p._id ? 'Deleting…' : 'Delete'}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40 ${confirmDeleteId === p._id ? 'bg-red-600 text-white' : 'bg-red-50 text-red-600'}`}>
+                  <FiTrash2 size={12} /> {deletingId === p._id ? 'Deleting…' : confirmDeleteId === p._id ? 'Confirm Delete?' : 'Delete'}
                 </button>
               </div>
             </div>
@@ -822,8 +836,15 @@ function StoreInventoryTab({ stores }) {
   const [addingId, setAddingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
   const [removingId, setRemovingId] = useState(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState(null); // click-to-confirm, no native dialog
   const [logs, setLogs] = useState([]);
   const [logsOpen, setLogsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!confirmRemoveId) return;
+    const t = setTimeout(() => setConfirmRemoveId(null), 4000);
+    return () => clearTimeout(t);
+  }, [confirmRemoveId]);
 
   useEffect(() => {
     api.get('/express/admin/products').then(r => setProducts(r.data.products || [])).catch(() => {});
@@ -901,7 +922,8 @@ function StoreInventoryTab({ stores }) {
   const remove = async (productId) => {
     const row = rows.find(r => r.product._id === productId);
     if (!row?.storeProductId) return;
-    if (!window.confirm(`Remove "${row.product.koyambeduProduct?.name || 'this product'}" from this store's inventory entirely? Its stock record will be deleted (you can re-add it later).`)) return;
+    if (confirmRemoveId !== productId) { setConfirmRemoveId(productId); return; }
+    setConfirmRemoveId(null);
     setRemovingId(productId);
     try {
       await api.delete(`/express/admin/stores/${storeId}/products/${productId}`);
@@ -992,8 +1014,8 @@ function StoreInventoryTab({ stores }) {
 
               {row.storeProductId && (
                 <button onClick={() => remove(row.product._id)} disabled={removingId === row.product._id}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-semibold disabled:opacity-40">
-                  <FiTrash2 size={12} /> {removingId === row.product._id ? 'Removing…' : 'Remove'}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40 ${confirmRemoveId === row.product._id ? 'bg-red-600 text-white' : 'bg-red-50 text-red-600'}`}>
+                  <FiTrash2 size={12} /> {removingId === row.product._id ? 'Removing…' : confirmRemoveId === row.product._id ? 'Confirm?' : 'Remove'}
                 </button>
               )}
             </div>
@@ -1032,8 +1054,16 @@ function ExpensesTab({ stores }) {
     }
   };
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null); // click-to-confirm, no native dialog
+  useEffect(() => {
+    if (!confirmDeleteId) return;
+    const t = setTimeout(() => setConfirmDeleteId(null), 4000);
+    return () => clearTimeout(t);
+  }, [confirmDeleteId]);
+
   const remove = async (id) => {
-    if (!window.confirm('Delete this expense entry?')) return;
+    if (confirmDeleteId !== id) { setConfirmDeleteId(id); return; }
+    setConfirmDeleteId(null);
     try {
       await api.delete(`/express/admin/expenses/${id}`);
       load();
@@ -1071,7 +1101,10 @@ function ExpensesTab({ stores }) {
               <p className="font-bold text-gray-800 text-sm">₹{e.amount} <span className="text-xs font-normal text-gray-400">· {e.category}{e.store ? ` · ${e.store.name}` : ' · company-wide'}</span></p>
               <p className="text-xs text-gray-400 truncate">{e.note || '—'} · {new Date(e.date).toLocaleDateString('en-IN')} · by {e.enteredByName}</p>
             </div>
-            <button onClick={() => remove(e._id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 shrink-0"><FiTrash2 size={14} /></button>
+            <button onClick={() => remove(e._id)}
+              className={`shrink-0 rounded-lg ${confirmDeleteId === e._id ? 'px-2.5 py-1.5 bg-red-600 text-white text-xs font-semibold flex items-center gap-1' : 'p-1.5 hover:bg-red-50 text-red-500'}`}>
+              <FiTrash2 size={14} /> {confirmDeleteId === e._id ? 'Confirm?' : ''}
+            </button>
           </div>
         ))}
         {expenses.length === 0 && <p className="text-sm text-gray-400">No expenses recorded yet.</p>}
