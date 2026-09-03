@@ -13,11 +13,24 @@ import toast from 'react-hot-toast';
 import api from '../../utils/api';
 import { useExpressCart } from '../../context/ExpressCartContext';
 
+// Weight sub-unit options for kg-priced produce — lets the customer pick a
+// smaller pack size than a full kilogram before adding to cart, instead of
+// only ever being able to add/step by whole kilograms.
+const WEIGHT_STEPS = [
+  { label: '250 g', kg: 0.25 },
+  { label: '500 g', kg: 0.5 },
+  { label: '1 kg', kg: 1 },
+];
+
 export default function ExpressShop() {
   const navigate = useNavigate();
   const { selectedStore, cart, fetchCart, addToCart, updateItem } = useExpressCart();
   const [catalogue, setCatalogue] = useState([]);
   const [loading, setLoading] = useState(true);
+  // productId -> chosen kg step (default 1kg). Only relevant for unit==='kg'
+  // products; once an item is in the cart its stepper increments/decrements
+  // by whatever step is currently selected here.
+  const [weightStep, setWeightStep] = useState({});
 
   useEffect(() => {
     if (!selectedStore?._id) {
@@ -32,12 +45,14 @@ export default function ExpressShop() {
   }, [selectedStore]);
 
   const qtyInCart = (productId) => cart.items?.find(i => String(i.product) === String(productId))?.quantity || 0;
+  const stepFor = (productId) => weightStep[productId] ?? 1;
 
-  const handleAdd = (productId) => addToCart(productId, 1);
-  const handleQtyChange = (productId, delta) => {
+  const handleAdd = (productId, unit) => addToCart(productId, unit === 'kg' ? stepFor(productId) : 1);
+  const handleQtyChange = (productId, unit, direction) => {
+    const step = unit === 'kg' ? stepFor(productId) : 1;
     const current = qtyInCart(productId);
-    const next = Math.max(0, current + delta);
-    if (current === 0 && delta > 0) return handleAdd(productId);
+    const next = Math.max(0, Math.round((current + direction * step) * 100) / 100);
+    if (current === 0 && direction > 0) return handleAdd(productId, unit);
     updateItem(productId, next);
   };
 
@@ -71,6 +86,7 @@ export default function ExpressShop() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {catalogue.map(({ product, pricePerUnit, stockQty }) => {
             const qty = qtyInCart(product._id);
+            const isKg = product.unit === 'kg';
             return (
               <div key={product._id} className="bg-white border rounded-xl p-3 flex flex-col">
                 <div className="w-full aspect-square rounded-lg bg-gray-100 mb-2 flex items-center justify-center overflow-hidden">
@@ -80,16 +96,24 @@ export default function ExpressShop() {
                 </div>
                 <p className="font-bold text-sm text-gray-800 truncate">{product.name}</p>
                 <p className="text-xs text-gray-400 mb-2">₹{pricePerUnit}/{product.unit}</p>
+
+                {isKg && qty === 0 && (
+                  <select value={stepFor(product._id)} onChange={e => setWeightStep(w => ({ ...w, [product._id]: Number(e.target.value) }))}
+                    className="mb-1.5 border rounded-lg px-2 py-1 text-xs">
+                    {WEIGHT_STEPS.map(s => <option key={s.kg} value={s.kg}>{s.label}</option>)}
+                  </select>
+                )}
+
                 {qty === 0 ? (
-                  <button onClick={() => handleAdd(product._id)} disabled={stockQty === 0}
+                  <button onClick={() => handleAdd(product._id, product.unit)} disabled={stockQty === 0}
                     className="mt-auto w-full py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-40">
                     {stockQty === 0 ? 'Out of stock' : 'Add'}
                   </button>
                 ) : (
                   <div className="mt-auto flex items-center justify-between bg-indigo-50 rounded-lg px-2 py-1.5">
-                    <button onClick={() => handleQtyChange(product._id, -1)} className="text-indigo-700"><FiMinus size={14} /></button>
-                    <span className="font-bold text-sm text-indigo-900">{qty}</span>
-                    <button onClick={() => handleQtyChange(product._id, 1)} className="text-indigo-700"><FiPlus size={14} /></button>
+                    <button onClick={() => handleQtyChange(product._id, product.unit, -1)} className="text-indigo-700"><FiMinus size={14} /></button>
+                    <span className="font-bold text-sm text-indigo-900">{qty}{isKg ? ' kg' : ''}</span>
+                    <button onClick={() => handleQtyChange(product._id, product.unit, 1)} className="text-indigo-700"><FiPlus size={14} /></button>
                   </div>
                 )}
               </div>

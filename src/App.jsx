@@ -81,6 +81,17 @@ const ExpressManagerLogin     = lazy(() => import('./pages/express/manager/Expre
 const ExpressManagerDashboard = lazy(() => import('./pages/express/manager/ExpressManagerDashboard'));
 const ExpressPOSLogin         = lazy(() => import('./pages/express/pos/ExpressPOSLogin'));
 const ExpressPOSTerminal      = lazy(() => import('./pages/express/pos/ExpressPOSTerminal'));
+
+// Tiny, non-lazy entry gate for "/express" — per the rule that once a
+// customer has already pinned/selected their Express store, they should
+// never be forced to re-pin it just to open the app again. Reads the same
+// localStorage key ExpressCartContext persists to, synchronously, so there
+// is no flash of the location picker before redirecting to the shop.
+function ExpressEntry() {
+  let hasStore = false;
+  try { hasStore = !!JSON.parse(localStorage.getItem('express_selected_store') || 'null')?._id; } catch { /* ignore */ }
+  return <Navigate to={hasStore ? '/express/shop' : '/express/location'} replace />;
+}
 const AdminCoupons         = lazy(() => import('./pages/admin/Coupons'));
 const AdminWhatsAppInbox   = lazy(() => import('./pages/admin/WhatsAppInbox'));
 
@@ -298,7 +309,7 @@ function AppRoutes() {
           <Route path="/fruitbaskets/my-orders"          element={<ProtectedRoute><FruitBasketMyOrders /></ProtectedRoute>} />
 
           {/* ── Eptomart Express — standalone vertical (Phase 2: browse only, no checkout yet) ── */}
-          <Route path="/express"           element={<Navigate to="/express/location" replace />} />
+          <Route path="/express"           element={<ExpressEntry />} />
           <Route path="/express/location"  element={<ExpressLocationPicker />} />
           <Route path="/express/shop"      element={<ExpressShop />} />
           <Route path="/express/checkout"  element={<ProtectedRoute><ExpressCheckout /></ProtectedRoute>} />

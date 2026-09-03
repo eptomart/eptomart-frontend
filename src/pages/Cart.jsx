@@ -27,6 +27,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useKoyambeduCart } from '../context/KoyambeduCartContext';
 import { useFruitBasketCart } from '../context/FruitBasketCartContext';
+import { useExpressCart } from '../context/ExpressCartContext';
 import { formatINR } from '../utils/currency';
 import { imgCart } from '../utils/cloudinary';
 import api from '../utils/api';
@@ -91,6 +92,22 @@ const VERTICAL_CONFIG = {
     continuePath:        '/fruitbaskets',
     continueLabel:       'Add more baskets',
     displayOrder:        2,
+  },
+  express: {
+    id:                  'express',
+    label:               'Eptomart Express',
+    iconEl:              <FiZap size={13} />,
+    accent:              '#4f46e5',
+    accentLight:         '#eef2ff',
+    accentText:          '#3730a3',
+    headerGradient:      'linear-gradient(135deg,#3730a3,#4f46e5)',
+    btnGradient:         'linear-gradient(135deg,#4338ca,#4f46e5)',
+    btnShadow:           '0 4px 16px rgba(79,70,229,0.35)',
+    checkoutPath:        '/express/checkout',
+    checkoutLabel:       'Proceed to Express Checkout →',
+    continuePath:        '/express/shop',
+    continueLabel:       'Add more items',
+    displayOrder:        3,
   },
   // ── Future verticals (uncomment when integrated) ───────
   // farmerFresh: {
@@ -159,6 +176,13 @@ export default function Cart() {
     itemCount:  fbItemCount,
   } = useFruitBasketCart();
 
+  const {
+    cart:       exCart,
+    fetchCart:  exFetchCart,
+    updateItem: exUpdateItem,
+    itemCount:  exItemCount,
+  } = useExpressCart();
+
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
 
@@ -183,13 +207,14 @@ export default function Cart() {
   // into just `minOrderValue`) — not an object, so no `.value` here.
   const kbdMinOrder     = kbdComboActive ? (comboStatus?.minOrderValue ?? 0) : KBD_MIN_ORDER;
 
-  useEffect(() => { kbdFetchCart(); fbFetchCart(); }, []);
+  useEffect(() => { kbdFetchCart(); fbFetchCart(); exFetchCart(); }, []);
 
   // Map vertical id → item count
   const itemCounts = {
     koyambedu:    kbdItemCount,
     eptomart:     cartCount,
     fruitBaskets: fbItemCount,
+    express:      exItemCount,
   };
 
   // Tabs sorted by displayOrder, filtered to those with items
@@ -204,9 +229,9 @@ export default function Cart() {
       if (first) setActiveTab(first);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kbdItemCount, cartCount, fbItemCount]);
+  }, [kbdItemCount, cartCount, fbItemCount, exItemCount]);
 
-  const totalCount    = kbdItemCount + cartCount + fbItemCount;
+  const totalCount    = kbdItemCount + cartCount + fbItemCount + exItemCount;
   const activeTabId   = (activeTab && itemCounts[activeTab] > 0) ? activeTab : availableTabs[0]?.id;
   const activeVertical = VERTICAL_CONFIG[activeTabId];
 
@@ -269,6 +294,14 @@ export default function Cart() {
                 color: '#b45309',
                 bg:    '#fff7ed',
                 icon:  <FiGift size={16} />,
+              },
+              {
+                name: 'Eptomart Express',
+                desc: 'Same-day delivery, right to your door',
+                path: '/express',
+                color: '#4f46e5',
+                bg:    '#eef2ff',
+                icon:  <FiZap size={16} />,
               },
               {
                 name: 'Farmer Fresh',
@@ -391,6 +424,16 @@ export default function Cart() {
             fbUpdateItem={fbUpdateItem}
             navigate={navigate}
             vertical={VERTICAL_CONFIG.fruitBaskets}
+          />
+        )}
+
+        {activeTabId === 'express' && (
+          <ExpressTab
+            exCart={exCart}
+            exItemCount={exItemCount}
+            exUpdateItem={exUpdateItem}
+            navigate={navigate}
+            vertical={VERTICAL_CONFIG.express}
           />
         )}
 
@@ -790,6 +833,143 @@ function FruitBasketTab({ fbCart, fbItemCount, fbSubtotal, fbUpdateItem, navigat
             <div className="flex justify-between font-bold text-base text-gray-900 pt-2 border-t border-gray-100">
               <span>Items Total</span>
               <span style={{ color: vertical.accent }}>{formatINR(fbSubtotal)}</span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => navigate(vertical.checkoutPath)}
+            className="w-full py-3 rounded-xl text-sm font-bold text-white transition mb-3"
+            style={{ background: vertical.btnGradient, boxShadow: vertical.btnShadow }}
+          >
+            {vertical.checkoutLabel}
+          </button>
+
+          <Link
+            to={vertical.continuePath}
+            className="block text-center text-sm hover:underline"
+            style={{ color: vertical.accent }}
+          >
+            <FiShoppingBag className="inline mr-1" size={13} />
+            {vertical.continueLabel}
+          </Link>
+
+          <p className="text-xs text-gray-400 text-center mt-3 flex items-center justify-center gap-1">
+            <FiLock size={11} /> Secure checkout
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════
+// EPTOMART EXPRESS TAB
+// Same-day-delivery vertical — its cart displays here alongside every
+// other vertical, but "Proceed to Checkout" hands off entirely to
+// Express's own checkout flow (address + same-day/next-day delivery-slot
+// selection, Razorpay payment) exactly like Koyambedu/Fruit Baskets do.
+// No Express-specific business logic lives here — this is display + qty
+// edit only, backed by the same ExpressCartContext the shop page uses.
+// ════════════════════════════════════════════════════════
+function ExpressTab({ exCart, exItemCount, exUpdateItem, navigate, vertical }) {
+  const exSubtotal = exCart.subtotal || 0;
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+      {/* ── Items ──────────────────────────────────────── */}
+      <div className="lg:col-span-2 space-y-4">
+
+        <div className="card overflow-hidden">
+          <div className="px-4 py-2.5 border-b" style={{ background: vertical.headerGradient }}>
+            <p className="text-sm font-bold text-white flex items-center gap-2">
+              <span style={{ color: '#c7d2fe' }}>{vertical.iconEl}</span>
+              {vertical.label}
+              <span className="ml-auto text-xs font-normal" style={{ color: '#e0e7ff' }}>
+                {exItemCount} item{exItemCount !== 1 ? 's' : ''}
+              </span>
+            </p>
+          </div>
+
+          <div className="divide-y divide-gray-100">
+            {exCart.items?.map((item, i) => {
+              const pid = String(item.product?._id || item.product);
+              if (!item.product && pid === 'undefined') return null;
+              const lineAmt = (item.price || 0) * (item.quantity || 0);
+              const isKg = item.unit === 'kg';
+
+              return (
+                <div key={item._id || i} className="p-4 flex gap-4">
+                  <div className="w-20 h-20 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                    <FiZap size={22} className="text-indigo-400" />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-medium text-gray-800 line-clamp-2 mb-1">{item.name}</h3>
+                    <p className="text-xs text-gray-500 mb-2">₹{item.price} / {item.unit}</p>
+
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => exUpdateItem(pid, Math.max(0, Math.round((item.quantity - (isKg ? 0.25 : 1)) * 100) / 100))}
+                          className="w-7 h-7 rounded-full flex items-center justify-center transition active:scale-90"
+                          style={{ background: '#eef2ff', color: '#4f46e5' }}
+                        >
+                          <FiMinus size={11} />
+                        </button>
+                        <span className="text-sm font-bold text-gray-900 w-10 text-center">
+                          {item.quantity}{isKg ? ' kg' : ''}
+                        </span>
+                        <button
+                          onClick={() => exUpdateItem(pid, Math.round((item.quantity + (isKg ? 0.25 : 1)) * 100) / 100)}
+                          className="w-7 h-7 rounded-full text-white flex items-center justify-center transition active:scale-90"
+                          style={{ background: '#4f46e5' }}
+                        >
+                          <FiPlus size={11} />
+                        </button>
+                      </div>
+                      <p className="font-bold text-gray-900">{formatINR(lineAmt)}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => exUpdateItem(pid, 0)}
+                    className="text-gray-300 hover:text-red-400 transition-colors self-start mt-1"
+                  >
+                    <FiTrash2 size={16} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="card p-4">
+          <div className="flex items-start gap-3">
+            <FiZap size={15} className="flex-shrink-0 mt-0.5" style={{ color: vertical.accent }} />
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-1">Same-Day Delivery</p>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Choose a same-day delivery window or a next-day slot at checkout —
+                Express follows its own delivery schedule, separate from other verticals.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Summary sidebar ────────────────────────────── */}
+      <div>
+        <div className="card p-6 sticky top-20">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">Order Summary</h2>
+
+          <div className="space-y-2.5 text-sm mb-4">
+            <div className="flex justify-between text-gray-600">
+              <span>Items ({exItemCount})</span>
+              <span>{formatINR(exSubtotal)}</span>
+            </div>
+            <div className="flex justify-between font-bold text-base text-gray-900 pt-2 border-t border-gray-100">
+              <span>Items Total</span>
+              <span style={{ color: vertical.accent }}>{formatINR(exSubtotal)}</span>
             </div>
           </div>
 

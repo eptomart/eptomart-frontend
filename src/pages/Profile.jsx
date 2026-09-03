@@ -4,7 +4,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiUser, FiSave, FiMapPin, FiPlus, FiTrash2, FiCheck, FiPackage, FiHeart, FiMessageSquare, FiSend, FiChevronLeft, FiToggleLeft, FiToggleRight, FiExternalLink } from 'react-icons/fi';
+import { FiUser, FiSave, FiMapPin, FiPlus, FiTrash2, FiCheck, FiPackage, FiHeart, FiMessageSquare, FiSend, FiChevronLeft, FiToggleLeft, FiToggleRight, FiExternalLink, FiEdit2 } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import { useAuth } from '../context/AuthContext';
@@ -601,6 +601,7 @@ export default function Profile() {
   const [showAddAddr, setShowAddAddr] = useState(false);
   const [addrForm,    setAddrForm]    = useState(BLANK_ADDR);
   const [savingAddr,  setSavingAddr]  = useState(false);
+  const [editingAddrId, setEditingAddrId] = useState(null); // non-null = editing this address instead of creating new
 
   const { lookupPincode, pincodeLoading } = usePincodeAutofill(
     useCallback(({ city, state }) => setAddrForm(f => ({ ...f, city, state })), [])
@@ -625,14 +626,31 @@ export default function Profile() {
     }
     setSavingAddr(true);
     try {
-      await api.post('/auth/add-address', addrForm);
+      if (editingAddrId) {
+        await api.put(`/auth/address/${editingAddrId}`, addrForm);
+        toast.success('Address updated!');
+      } else {
+        await api.post('/auth/add-address', addrForm);
+        toast.success('Address saved!');
+      }
       await loadUser();
       setShowAddAddr(false);
+      setEditingAddrId(null);
       setAddrForm(BLANK_ADDR);
-      toast.success('Address saved!');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save address');
     } finally { setSavingAddr(false); }
+  };
+
+  const startEditAddress = (addr) => {
+    setEditingAddrId(addr._id);
+    setAddrForm({
+      label: addr.label || 'Home', fullName: addr.fullName || '', phone: addr.phone || '',
+      addressLine1: addr.addressLine1 || '', addressLine2: addr.addressLine2 || '',
+      city: addr.city || '', state: addr.state || '', pincode: addr.pincode || '',
+      isDefault: !!addr.isDefault,
+    });
+    setShowAddAddr(true);
   };
 
   const deleteAddress = async (addressId) => {
@@ -740,7 +758,7 @@ export default function Profile() {
             <h2 className="font-bold text-gray-800 flex items-center gap-2">
               <FiMapPin size={18} className="text-primary-500" /> Saved Addresses
             </h2>
-            <button onClick={() => { setShowAddAddr(true); setAddrForm(BLANK_ADDR); }}
+            <button onClick={() => { setShowAddAddr(true); setEditingAddrId(null); setAddrForm(BLANK_ADDR); }}
               className="flex items-center gap-1.5 text-sm text-primary-500 hover:text-primary-600 font-medium">
               <FiPlus size={14} /> Add Address
             </button>
@@ -770,6 +788,10 @@ export default function Profile() {
                           <FiCheck size={14} />
                         </button>
                       )}
+                      <button onClick={() => startEditAddress(addr)} title="Edit"
+                        className="text-gray-400 hover:text-primary-500 p-1.5 rounded-lg hover:bg-orange-50">
+                        <FiEdit2 size={14} />
+                      </button>
                       <button onClick={() => deleteAddress(addr._id)} title="Remove"
                         className="text-gray-300 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-50">
                         <FiTrash2 size={14} />
@@ -784,7 +806,7 @@ export default function Profile() {
           {/* Add address form */}
           {showAddAddr && (
             <form onSubmit={handleAddAddress} className="mt-4 border-t pt-4 space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700">New Address</h3>
+              <h3 className="text-sm font-semibold text-gray-700">{editingAddrId ? 'Edit Address' : 'New Address'}</h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Label</label>
@@ -845,9 +867,9 @@ export default function Profile() {
                 <label htmlFor="defAddr" className="text-sm text-gray-600">Set as default address</label>
               </div>
               <div className="flex gap-3">
-                <button type="button" onClick={() => setShowAddAddr(false)} className="btn-outline flex-1 text-sm">Cancel</button>
+                <button type="button" onClick={() => { setShowAddAddr(false); setEditingAddrId(null); }} className="btn-outline flex-1 text-sm">Cancel</button>
                 <button type="submit" disabled={savingAddr} className="btn-primary flex-1 text-sm">
-                  {savingAddr ? 'Saving...' : 'Save Address'}
+                  {savingAddr ? 'Saving...' : editingAddrId ? 'Update Address' : 'Save Address'}
                 </button>
               </div>
             </form>
