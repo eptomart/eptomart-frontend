@@ -326,26 +326,54 @@ function POSUsersTab({ stores }) {
 function ProductsTab() {
   const [products, setProducts] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', category: '', unit: 'kg', unitsPerKg: '', procurementBaseCost: '', customMarginPct: '' });
+  const [search, setSearch] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [selected, setSelected] = useState(null); // the chosen Koyambedu product
+  const [form, setForm] = useState({ unit: 'kg', unitsPerKg: '', procurementBaseCost: '', customMarginPct: '' });
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState({}); // productId -> breakdown
 
   const load = () => api.get('/express/admin/products').then(r => setProducts(r.data.products || [])).catch(() => {});
   useEffect(() => { load(); }, []);
 
+  // Debounced search against Koyambedu Daily's catalogue — Express links to
+  // an existing product rather than typing its own name/image/description.
+  useEffect(() => {
+    if (!showForm) return;
+    const t = setTimeout(() => {
+      setSearching(true);
+      api.get(`/express/admin/koyambedu-catalog?search=${encodeURIComponent(search)}`)
+        .then(r => setSearchResults(r.data.products || []))
+        .catch(() => setSearchResults([]))
+        .finally(() => setSearching(false));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search, showForm]);
+
+  const pickProduct = (kb) => {
+    setSelected(kb);
+    setForm(f => ({ ...f, unit: kb.unit || 'kg' }));
+    setSearchResults([]);
+    setSearch(kb.name);
+  };
+
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.unit || !form.procurementBaseCost) return toast.error('Name, unit and procurement cost are required');
+    if (!selected) return toast.error('Search and select a Koyambedu Daily product first');
+    if (!form.unit || !form.procurementBaseCost) return toast.error('Unit and procurement cost are required');
     setSaving(true);
     try {
       await api.post('/express/admin/products', {
-        ...form,
+        koyambeduProductId: selected._id,
+        unit: form.unit,
         unitsPerKg: form.unitsPerKg || null,
+        procurementBaseCost: form.procurementBaseCost,
         customMarginPct: form.customMarginPct || null,
       });
-      toast.success('Product created');
-      setForm({ name: '', category: '', unit: 'kg', unitsPerKg: '', procurementBaseCost: '', customMarginPct: '' });
-      setShowForm(false);
+      toast.success('Product linked to Express');
+      setForm({ unit: 'kg', unitsPerKg: '', procurementBaseCost: '', customMarginPct: '' });
+      setSelected(null); setSearch(''); setShowForm(false);
       load();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to create product');
@@ -367,14 +395,38 @@ function ProductsTab() {
         <h2 className="font-bold text-gray-700">Product Catalogue</h2>
         <button onClick={() => setShowForm(s => !s)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
-          <FiPlus size={14} /> Add Product
+          <FiPlus size={14} /> Link Product
         </button>
       </div>
+      <p className="text-xs text-gray-400 mb-3">
+        Product name, description and photo always come from Koyambedu Daily's catalogue — Express only manages its own procurement cost, unit and margin here.
+      </p>
 
       {showForm && (
         <form onSubmit={submit} className="bg-white border rounded-xl p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <input placeholder="Product name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
-          <input placeholder="Category" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+          <div className="sm:col-span-2 relative">
+            <input placeholder="Search Koyambedu Daily products…" value={search}
+              onChange={e => { setSearch(e.target.value); setSelected(null); }}
+              className="border rounded-lg px-3 py-2 text-sm w-full" />
+            {searching && <p className="text-xs text-gray-400 mt-1">Searching…</p>}
+            {searchResults.length > 0 && !selected && (
+              <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                {searchResults.map(kb => (
+                  <button type="button" key={kb._id} onClick={() => pickProduct(kb)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 text-sm">
+                    {kb.images?.[0]?.url && <img src={kb.images[0].url} alt="" className="w-8 h-8 rounded object-cover" />}
+                    <span>{kb.name} <span className="text-xs text-gray-400">({kb.unit})</span></span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {selected && (
+            <div className="sm:col-span-2 flex items-center gap-2 bg-indigo-50 rounded-lg px-3 py-2">
+              {selected.images?.[0]?.url && <img src={selected.images[0].url} alt="" className="w-8 h-8 rounded object-cover" />}
+              <span className="text-sm font-semibold text-indigo-900">{selected.name}</span>
+            </div>
+          )}
           <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm">
             {['kg', 'gram', 'piece', 'bunch', 'litre', 'dozen'].map(u => <option key={u} value={u}>{u}</option>)}
           </select>
@@ -386,9 +438,9 @@ function ProductsTab() {
             onChange={e => setForm(f => ({ ...f, customMarginPct: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
           <div className="sm:col-span-2 flex gap-2">
             <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
-              {saving ? 'Saving…' : 'Create Product'}
+              {saving ? 'Saving…' : 'Link Product'}
             </button>
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg border text-sm font-semibold">Cancel</button>
+            <button type="button" onClick={() => { setShowForm(false); setSelected(null); setSearch(''); }} className="px-4 py-2 rounded-lg border text-sm font-semibold">Cancel</button>
           </div>
         </form>
       )}
@@ -397,12 +449,15 @@ function ProductsTab() {
         {products.map(p => (
           <div key={p._id} className="bg-white border rounded-xl p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="font-bold text-gray-800">{p.name} <span className="text-xs text-gray-400 font-normal">({p.category || 'General'})</span></p>
-                <p className="text-xs text-gray-500">
-                  ₹{p.procurementBaseCost}/{p.unit}{p.unitsPerKg ? ` · ${p.unitsPerKg} ${p.unit}s/kg` : ''}
-                  {p.customMarginPct != null ? ` · Custom margin ${p.customMarginPct}%` : ''}
-                </p>
+              <div className="flex items-center gap-2">
+                {p.koyambeduProduct?.images?.[0]?.url && <img src={p.koyambeduProduct.images[0].url} alt="" className="w-10 h-10 rounded object-cover" />}
+                <div>
+                  <p className="font-bold text-gray-800">{p.koyambeduProduct?.name || '(linked product not found)'}</p>
+                  <p className="text-xs text-gray-500">
+                    ₹{p.procurementBaseCost}/{p.unit}{p.unitsPerKg ? ` · ${p.unitsPerKg} ${p.unit}s/kg` : ''}
+                    {p.customMarginPct != null ? ` · Custom margin ${p.customMarginPct}%` : ''}
+                  </p>
+                </div>
               </div>
               <button onClick={() => loadPreview(p._id)} className="px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
                 Preview Price
@@ -420,7 +475,7 @@ function ProductsTab() {
             )}
           </div>
         ))}
-        {products.length === 0 && <p className="text-sm text-gray-400">No products yet.</p>}
+        {products.length === 0 && <p className="text-sm text-gray-400">No products linked yet.</p>}
       </div>
     </div>
   );
@@ -595,7 +650,7 @@ function InventoryRequestsTab() {
             </div>
             <ul className="text-xs text-gray-600 mb-2 list-disc pl-4">
               {r.items?.map((it, i) => (
-                <li key={i}>{it.product?.name || 'Product'} — requested {it.requestedQty} {it.product?.unit || ''}{it.allocatedQty != null ? ` (allocated ${it.allocatedQty})` : ''}</li>
+                <li key={i}>{it.product?.koyambeduProduct?.name || 'Product'} — requested {it.requestedQty} {it.product?.unit || ''}{it.allocatedQty != null ? ` (allocated ${it.allocatedQty})` : ''}</li>
               ))}
             </ul>
             {r.status === 'pending' && (

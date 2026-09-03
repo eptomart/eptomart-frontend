@@ -74,8 +74,8 @@ export default function ExpressShop() {
             return (
               <div key={product._id} className="bg-white border rounded-xl p-3 flex flex-col">
                 <div className="w-full aspect-square rounded-lg bg-gray-100 mb-2 flex items-center justify-center overflow-hidden">
-                  {product.image?.url
-                    ? <img src={product.image.url} alt={product.name} className="w-full h-full object-cover" />
+                  {product.image
+                    ? <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                     : <FiZap className="text-gray-300" size={24} />}
                 </div>
                 <p className="font-bold text-sm text-gray-800 truncate">{product.name}</p>

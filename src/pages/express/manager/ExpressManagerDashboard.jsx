@@ -193,7 +193,7 @@ function ProductsTab() {
       {storeProducts.map(sp => (
         <div key={sp._id} className="bg-white border rounded-xl p-3 flex items-center justify-between">
           <div>
-            <p className="font-bold text-sm text-gray-800">{sp.product?.name}</p>
+            <p className="font-bold text-sm text-gray-800">{sp.product?.koyambeduProduct?.name}</p>
             <p className="text-xs text-gray-400">Stock: {sp.stockQty} {sp.product?.unit}</p>
           </div>
           <button onClick={() => toggle(sp)}
@@ -245,7 +245,7 @@ function InventoryTab() {
               <select value={it.product} onChange={e => setItems(arr => arr.map((x, j) => j === i ? { ...x, product: e.target.value } : x))}
                 className="border rounded-lg px-2 py-1.5 text-sm flex-1">
                 <option value="">Select product…</option>
-                {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                {products.map(p => <option key={p._id} value={p._id}>{p.koyambeduProduct?.name}</option>)}
               </select>
               <input placeholder="Qty" type="number" value={it.requestedQty}
                 onChange={e => setItems(arr => arr.map((x, j) => j === i ? { ...x, requestedQty: e.target.value } : x))}
@@ -269,7 +269,7 @@ function InventoryTab() {
                 r.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{r.status}</span>
             </div>
             <ul className="text-xs text-gray-600">
-              {r.items?.map((it, i) => <li key={i}>{it.product?.name} — {it.requestedQty} requested{it.allocatedQty != null ? `, ${it.allocatedQty} allocated` : ''}</li>)}
+              {r.items?.map((it, i) => <li key={i}>{it.product?.koyambeduProduct?.name} — {it.requestedQty} requested{it.allocatedQty != null ? `, ${it.allocatedQty} allocated` : ''}</li>)}
             </ul>
           </div>
         ))}
