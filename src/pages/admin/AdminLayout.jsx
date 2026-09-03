@@ -9,7 +9,7 @@ import {
   FiBarChart2, FiTag, FiMenu, FiX, FiLogOut, FiHome,
   FiUploadCloud, FiBell, FiCheckSquare, FiUserCheck, FiDollarSign, FiSettings,
   FiShield, FiCreditCard, FiMessageSquare, FiActivity, FiChevronDown, FiChevronRight,
-  FiGlobe, FiGift,
+  FiGlobe, FiGift, FiZap,
 } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import EptomartLogo from '../../components/common/EptomartLogo';
@@ -68,6 +68,9 @@ const NAV_GROUPS = [
       // intentionally Super-Admin-only for now (canAccess below always
       // returns true for superAdmin regardless of the permission enum).
       { path: '/admin/fruitbaskets', label: 'Fruit Baskets & Hampers', icon: FiGift, permission: 'fruitbaskets' },
+      // No 'express' entry in User.js's permissions enum yet — intentionally
+      // Super-Admin-only for now, same reasoning as Fruit Baskets above.
+      { path: '/admin/express', label: 'Eptomart Express', icon: FiZap, permission: 'express' },
       { path: '/admin/notifications',label: 'Notifications', icon: FiBell,      permission: null        },
       { path: '/admin/activity-log', label: 'Activity Log',  icon: FiActivity,  permission: null        },
       { path: '/admin/admins',       label: 'Admin Accounts',icon: FiShield,    permission: 'admins'    },
