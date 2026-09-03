@@ -77,6 +77,8 @@ const ExpressLocationPicker   = lazy(() => import('./pages/express/ExpressLocati
 const ExpressShop             = lazy(() => import('./pages/express/ExpressShop'));
 const ExpressCheckout         = lazy(() => import('./pages/express/ExpressCheckout'));
 const ExpressMyOrders         = lazy(() => import('./pages/express/ExpressMyOrders'));
+const ExpressManagerLogin     = lazy(() => import('./pages/express/manager/ExpressManagerLogin'));
+const ExpressManagerDashboard = lazy(() => import('./pages/express/manager/ExpressManagerDashboard'));
 const AdminCoupons         = lazy(() => import('./pages/admin/Coupons'));
 const AdminWhatsAppInbox   = lazy(() => import('./pages/admin/WhatsAppInbox'));
 
@@ -299,6 +301,8 @@ function AppRoutes() {
           <Route path="/express/shop"      element={<ExpressShop />} />
           <Route path="/express/checkout"  element={<ProtectedRoute><ExpressCheckout /></ProtectedRoute>} />
           <Route path="/express/my-orders" element={<ProtectedRoute><ExpressMyOrders /></ProtectedRoute>} />
+          <Route path="/express/manager/login" element={<ExpressManagerLogin />} />
+          <Route path="/express/manager"       element={<ExpressManagerDashboard />} />
 
           {/* ── Farmer Fresh ───────────────────── */}
           <Route path="/uzhavar"                    element={<UzhavarHome />} />
