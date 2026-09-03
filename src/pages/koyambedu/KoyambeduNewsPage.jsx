@@ -34,7 +34,11 @@ export default function KoyambeduNewsPage() {
         <div className="grid gap-4">
           {posts.map(p => (
             <div key={p._id} className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-              {p.image?.url && <img src={p.image.url} alt={p.title} className="w-full h-44 object-cover" />}
+              {p.image?.url && (
+                <div className="w-full bg-gray-50 flex items-center justify-center" style={{ maxHeight: 280 }}>
+                  <img src={p.image.url} alt={p.title} className="w-full h-auto max-h-[280px] object-contain" />
+                </div>
+              )}
               <div className="p-4">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <h3 className="font-bold text-gray-900 text-base">{p.title}</h3>
