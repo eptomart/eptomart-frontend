@@ -429,9 +429,58 @@ function ProductsTab() {
   const [form, setForm] = useState({ unit: 'kg', unitsPerKg: '', procurementBaseCost: '', customMarginPct: '' });
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState({}); // productId -> breakdown
+  const [editId, setEditId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [editSaving, setEditSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const load = () => api.get('/express/admin/products').then(r => setProducts(r.data.products || [])).catch(() => {});
   useEffect(() => { load(); }, []);
+
+  const openEdit = (p) => {
+    setEditId(p._id);
+    setEditForm({
+      unit: p.unit || 'kg',
+      unitsPerKg: p.unitsPerKg ?? '',
+      procurementBaseCost: p.procurementBaseCost ?? '',
+      customMarginPct: p.customMarginPct ?? '',
+      isActive: p.isActive !== false,
+    });
+  };
+
+  const saveEdit = async (productId) => {
+    setEditSaving(true);
+    try {
+      await api.put(`/express/admin/products/${productId}`, {
+        unit: editForm.unit,
+        unitsPerKg: editForm.unitsPerKg === '' ? null : editForm.unitsPerKg,
+        procurementBaseCost: editForm.procurementBaseCost,
+        customMarginPct: editForm.customMarginPct === '' ? null : editForm.customMarginPct,
+        isActive: editForm.isActive,
+      });
+      toast.success('Product updated');
+      setEditId(null);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update product');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const deleteProduct = async (p) => {
+    if (!window.confirm(`Delete "${p.koyambeduProduct?.name || 'this product'}" from Express entirely? This also removes its stock records at every store. This cannot be undone.`)) return;
+    setDeletingId(p._id);
+    try {
+      await api.delete(`/express/admin/products/${p._id}`);
+      toast.success('Product deleted from Express');
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to delete product');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   // Debounced search against Koyambedu Daily's catalogue — Express links to
   // an existing product rather than typing its own name/image/description.
@@ -544,21 +593,34 @@ function ProductsTab() {
       <div className="grid gap-3">
         {products.map(p => (
           <div key={p._id} className="bg-white border rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {p.koyambeduProduct?.images?.[0]?.url && <img src={p.koyambeduProduct.images[0].url} alt="" className="w-10 h-10 rounded object-cover" />}
-                <div>
-                  <p className="font-bold text-gray-800">{p.koyambeduProduct?.name || '(linked product not found)'}</p>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {p.koyambeduProduct?.images?.[0]?.url && <img src={p.koyambeduProduct.images[0].url} alt="" className="w-10 h-10 rounded object-cover shrink-0" />}
+                <div className="min-w-0">
+                  <p className="font-bold text-gray-800 truncate flex items-center gap-1.5">
+                    {p.koyambeduProduct?.name || '(linked product not found)'}
+                    {p.isActive === false && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Inactive</span>}
+                  </p>
                   <p className="text-xs text-gray-500">
                     ₹{p.procurementBaseCost}/{p.unit}{p.unitsPerKg ? ` · ${p.unitsPerKg} ${p.unit}s/kg` : ''}
                     {p.customMarginPct != null ? ` · Custom margin ${p.customMarginPct}%` : ''}
                   </p>
                 </div>
               </div>
-              <button onClick={() => loadPreview(p._id)} className="px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
-                Preview Price
-              </button>
+              <div className="flex gap-1.5 shrink-0">
+                <button onClick={() => loadPreview(p._id)} className="px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
+                  Preview Price
+                </button>
+                <button onClick={() => openEdit(p)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
+                  <FiEdit2 size={12} /> Edit
+                </button>
+                <button onClick={() => deleteProduct(p)} disabled={deletingId === p._id}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-semibold disabled:opacity-40">
+                  <FiTrash2 size={12} /> {deletingId === p._id ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
             </div>
+
             {preview[p._id] && (
               <div className="mt-2 pt-2 border-t text-xs text-gray-600 grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <span>Procurement: ₹{preview[p._id].procurementCost}</span>
@@ -567,6 +629,30 @@ function ProductsTab() {
                 <span>Salesman ({preview[p._id].salesmanPct}%): ₹{preview[p._id].salesmanCharge}</span>
                 <span>Packing ({preview[p._id].packingPct}%): ₹{preview[p._id].packingCharge}</span>
                 <span className="font-bold text-gray-800">Selling Price: ₹{preview[p._id].sellingPricePerUnit}</span>
+              </div>
+            )}
+
+            {editId === p._id && (
+              <div className="mt-3 pt-3 border-t grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <select value={editForm.unit} onChange={e => setEditForm(f => ({ ...f, unit: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm">
+                  {['kg', 'gram', 'piece', 'bunch', 'litre', 'dozen'].map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+                <input placeholder="Units per kg" value={editForm.unitsPerKg}
+                  onChange={e => setEditForm(f => ({ ...f, unitsPerKg: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <input placeholder="Procurement cost" value={editForm.procurementBaseCost}
+                  onChange={e => setEditForm(f => ({ ...f, procurementBaseCost: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <input placeholder="Custom margin % (optional)" value={editForm.customMarginPct}
+                  onChange={e => setEditForm(f => ({ ...f, customMarginPct: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <button onClick={() => setEditForm(f => ({ ...f, isActive: !f.isActive }))}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold justify-center sm:col-span-2 ${editForm.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {editForm.isActive ? <FiToggleRight size={14} /> : <FiToggleLeft size={14} />} {editForm.isActive ? 'Active' : 'Inactive'}
+                </button>
+                <div className="sm:col-span-2 flex gap-2">
+                  <button onClick={() => saveEdit(p._id)} disabled={editSaving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
+                    {editSaving ? 'Saving…' : 'Save Changes'}
+                  </button>
+                  <button onClick={() => setEditId(null)} className="px-4 py-2 rounded-lg border text-sm font-semibold">Cancel</button>
+                </div>
               </div>
             )}
           </div>
