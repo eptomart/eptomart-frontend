@@ -20,7 +20,7 @@ const TABS = [
   { key: 'managers',  label: 'Managers',    Icon: FiUserCheck },
   { key: 'pos',       label: 'POS Users',   Icon: FiUsers },
   { key: 'products',  label: 'Products',    Icon: FiPackage },
-  { key: 'margin',    label: 'Margin Config', Icon: FiSliders },
+  { key: 'margin',    label: 'Settings', Icon: FiSliders },
   { key: 'inventory', label: 'Inventory Requests', Icon: FiClipboard },
 ];
 

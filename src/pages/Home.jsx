@@ -599,6 +599,72 @@ function FruitBasketBanner({ onReady }) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// EPTOMART EXPRESS BANNER — promotes the new same-day delivery vertical
+// (separate stores, separate cart/checkout — see ExpressShop.jsx). Feature-
+// flag gated: fetches /express/status and renders nothing at all when
+// Super Admin has the master switch off — see ExpressAdmin.jsx's Settings
+// tab. Reuses the sob-* premium animation classes already defined in
+// index.css, same as FruitBasketBanner/ComboBanner, for visual consistency
+// without duplicating that animation layer under a new prefix.
+// ══════════════════════════════════════════════════════════════
+function ExpressBanner({ onReady }) {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    api.get('/express/status')
+      .then(r => { const v = !!r.data?.isEnabled; setEnabled(v); onReady?.(v); })
+      .catch(() => { setEnabled(false); onReady?.(false); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!enabled) return null;
+
+  return (
+    <Link to="/express" className="sob-wrap tap-ripple block h-full active:scale-[0.98] transition-transform">
+      <div className="sob-border h-full">
+        <div className="sob-inner promo-card relative overflow-hidden rounded-[13px] h-full px-3 py-2.5 md:px-4 md:py-3"
+          style={{ background: 'linear-gradient(145deg, #0c1a3a 0%, #1e3a8a 55%, #2563eb 100%)' }}>
+
+          <div className="sob-orb sob-orb-a" />
+          <div className="promo-shine" />
+          <span className="promo-spark promo-spark-1 w-1.5 h-1.5 bg-amber-300" style={{ right: '12%', top: '20%' }} />
+          <span className="promo-spark promo-spark-2 w-1 h-1 bg-white" style={{ right: '20%', top: '58%' }} />
+
+          <div className="relative z-10 flex flex-col h-full">
+            <div className="flex items-center justify-between gap-2">
+              <div className="promo-icon-wrap flex-shrink-0 flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-2xl"
+                style={{ background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.35)' }}>
+                <FiZap size={16} className="text-amber-300" />
+              </div>
+              <span className="bg-amber-400 text-amber-900 text-[8px] md:text-[9px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full flex-shrink-0">
+                New
+              </span>
+            </div>
+
+            <div className="promo-title mt-1.5 flex-1">
+              <p className="text-white font-black text-[13px] md:text-[15px] leading-tight line-clamp-2"
+                style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
+                Eptomart Express
+              </p>
+              <p className="text-blue-100/85 text-[10px] md:text-[11px] mt-0.5 leading-snug hidden sm:block line-clamp-1">
+                Same-day delivery from your nearest store.
+              </p>
+            </div>
+
+            <div className="flex justify-start mt-1.5">
+              <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg"
+                style={{ color: '#1e3a8a' }}>
+                Shop <FiArrowRight size={11} className="sob-cta-arrow" />
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 // COMBO / FLASH SALE BANNER — promotes Koyambedu Daily's new Combos &
 // Flash Sale category (vegetable/fruit combo packs with addons, managed
 // by Koyambedu's Super Admin — see KoyambeduComboSettings.js). Combos are
@@ -682,22 +748,26 @@ function ComboBanner({ onReady }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// PROMO BANNERS ROW — places ComboBanner and FruitBasketBanner side by
-// side, each taking half the row ("first half" combos/flash sale, "rest
-// half" fruit baskets & hampers per request). If only one of the two
-// features is currently enabled by its Super Admin, that banner expands to
-// the full row instead of leaving blank space next to it.
+// PROMO BANNERS ROW — places ComboBanner, ExpressBanner, and
+// FruitBasketBanner side by side, each taking an equal share of the row.
+// Any banner whose vertical is toggled off by its Super Admin is hidden
+// entirely, and the remaining enabled banners expand to fill the freed
+// space instead of leaving blank gaps.
 // ══════════════════════════════════════════════════════════════
 function PromoBannersRow() {
-  const [comboOn, setComboOn] = useState(null); // null = still loading
-  const [fbOn,    setFbOn]    = useState(null);
+  const [comboOn,   setComboOn]   = useState(null); // null = still loading
+  const [expressOn, setExpressOn] = useState(null);
+  const [fbOn,      setFbOn]      = useState(null);
 
-  const comboCls = comboOn === false ? 'hidden' : (fbOn === true ? 'flex-1 min-w-0' : 'w-full');
-  const fbCls    = fbOn === false ? 'hidden' : (comboOn === true ? 'flex-1 min-w-0' : 'w-full');
+  const anyOthersOn = (a, b) => a === true || b === true;
+  const comboCls   = comboOn === false ? 'hidden' : (anyOthersOn(expressOn, fbOn) ? 'flex-1 min-w-0' : 'w-full');
+  const expressCls = expressOn === false ? 'hidden' : (anyOthersOn(comboOn, fbOn) ? 'flex-1 min-w-0' : 'w-full');
+  const fbCls      = fbOn === false ? 'hidden' : (anyOthersOn(comboOn, expressOn) ? 'flex-1 min-w-0' : 'w-full');
 
   return (
     <div className="flex items-stretch gap-2">
       <div className={comboCls}><ComboBanner onReady={setComboOn} /></div>
+      <div className={expressCls}><ExpressBanner onReady={setExpressOn} /></div>
       <div className={fbCls}><FruitBasketBanner onReady={setFbOn} /></div>
     </div>
   );
