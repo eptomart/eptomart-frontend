@@ -105,8 +105,9 @@ export default function ExpressShop() {
               <p className="text-xs text-gray-500">{cart.itemCount} item(s) · {cart.totalWeightKg} kg</p>
               <p className="font-bold text-gray-800">₹{cart.subtotal}</p>
             </div>
-            <button disabled className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-300 text-gray-500 font-bold text-sm cursor-not-allowed">
-              <FiShoppingCart size={16} /> Checkout coming soon
+            <button onClick={() => navigate('/express/checkout')}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700">
+              <FiShoppingCart size={16} /> Checkout
             </button>
           </div>
         </div>
