@@ -467,10 +467,31 @@ function MarginConfigTab({ stores }) {
     } catch { toast.error('Failed to recompute logistics cost'); }
   };
 
+  const toggleEnabled = async () => {
+    try {
+      const { data } = await api.patch('/express/admin/margin-config/toggle-enabled', {});
+      setConfig(data.config);
+      toast.success(data.config.isEnabled ? 'Eptomart Express is now LIVE for customers' : 'Eptomart Express turned OFF');
+    } catch { toast.error('Failed to toggle Eptomart Express'); }
+  };
+
   if (!config) return <p className="text-sm text-gray-400">Loading…</p>;
 
   return (
     <div className="grid gap-4">
+      <div className={`border rounded-xl p-4 flex items-center justify-between ${config.isEnabled ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>
+        <div>
+          <p className="font-bold text-gray-800">Eptomart Express — Master Switch</p>
+          <p className="text-xs text-gray-500">
+            {config.isEnabled ? 'Live — customers can access Express and place orders.' : 'Off — Express is hidden from customers.'}
+          </p>
+        </div>
+        <button onClick={toggleEnabled}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold ${config.isEnabled ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}>
+          {config.isEnabled ? <FiToggleRight size={16} /> : <FiToggleLeft size={16} />} {config.isEnabled ? 'ON' : 'OFF'}
+        </button>
+      </div>
+
       <div className="bg-white border rounded-xl p-4">
         <h2 className="font-bold text-gray-700 mb-3">Default Margin Stack</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

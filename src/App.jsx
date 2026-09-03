@@ -12,6 +12,7 @@ import { WishlistProvider } from './context/WishlistContext';
 import { CompareProvider } from './context/CompareContext';
 import { KoyambeduCartProvider } from './context/KoyambeduCartContext';
 import { FruitBasketCartProvider } from './context/FruitBasketCartContext';
+import { ExpressCartProvider } from './context/ExpressCartContext';
 import { EptoFreshCartProvider } from './context/EptoFreshCartContext';
 import Loader from './components/common/Loader';
 import CompareBar from './components/product/CompareBar';
@@ -72,6 +73,8 @@ const AdminKoyambedu    = lazy(() => import('./pages/admin/KoyambeduAdmin'));
 const AdminKoyambeduInventory = lazy(() => import('./pages/admin/KoyambeduInventory'));
 const AdminFruitBaskets       = lazy(() => import('./pages/admin/FruitBasketAdmin'));
 const AdminExpress            = lazy(() => import('./pages/admin/ExpressAdmin'));
+const ExpressLocationPicker   = lazy(() => import('./pages/express/ExpressLocationPicker'));
+const ExpressShop             = lazy(() => import('./pages/express/ExpressShop'));
 const AdminCoupons         = lazy(() => import('./pages/admin/Coupons'));
 const AdminWhatsAppInbox   = lazy(() => import('./pages/admin/WhatsAppInbox'));
 
@@ -288,6 +291,11 @@ function AppRoutes() {
           <Route path="/fruitbaskets/checkout"           element={<ProtectedRoute><FruitBasketCheckout /></ProtectedRoute>} />
           <Route path="/fruitbaskets/my-orders"          element={<ProtectedRoute><FruitBasketMyOrders /></ProtectedRoute>} />
 
+          {/* ── Eptomart Express — standalone vertical (Phase 2: browse only, no checkout yet) ── */}
+          <Route path="/express"           element={<Navigate to="/express/location" replace />} />
+          <Route path="/express/location"  element={<ExpressLocationPicker />} />
+          <Route path="/express/shop"      element={<ExpressShop />} />
+
           {/* ── Farmer Fresh ───────────────────── */}
           <Route path="/uzhavar"                    element={<UzhavarHome />} />
           <Route path="/uzhavar/farmer/register"    element={<ProtectedRoute><FarmerRegister /></ProtectedRoute>} />
@@ -345,7 +353,9 @@ export default function App() {
             <KoyambeduCartProvider>
               <EptoFreshCartProvider>
                 <FruitBasketCartProvider>
-                  <AppRoutes />
+                  <ExpressCartProvider>
+                    <AppRoutes />
+                  </ExpressCartProvider>
                 </FruitBasketCartProvider>
               </EptoFreshCartProvider>
             </KoyambeduCartProvider>
