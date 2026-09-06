@@ -11,6 +11,14 @@ import { FiZap, FiLogOut, FiPlus, FiMinus, FiTrash2, FiPrinter, FiSearch, FiX } 
 import expressPOSApi, { getPOSToken, clearPOSToken } from '../../../utils/expressPOSApi';
 import { printReceipt } from '../../../utils/expressThermalPrinter';
 
+const round3 = (n) => Math.round((Number(n) || 0) * 1000) / 1000;
+// Weight/volume units allow fractional quantities (1.35kg, 0.5 litre); the
+// discrete units (piece/bunch/dozen) don't, so they keep the simple +/-
+// stepper. Unit itself always comes from the linked Koyambedu Daily
+// product (see expressAdminController — unit defaults to koyambeduProduct.unit
+// or 'kg' when a product is first linked into Express), never hardcoded here.
+const isDecimalUnit = (unit) => unit === 'kg' || unit === 'gram' || unit === 'litre';
+
 export default function ExpressPOSTerminal() {
   const navigate = useNavigate();
   const [posUser, setPosUser] = useState(null);
@@ -20,6 +28,12 @@ export default function ExpressPOSTerminal() {
   const [activeBillId, setActiveBillId] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [codeInput, setCodeInput] = useState('');
+  // Per-tile quantity typed before adding (e.g. "1.35" for 1.35kg of a
+  // weight-based product) — defaults to "1" for every product until edited.
+  const [qtyDrafts, setQtyDrafts] = useState({});
+  // Quantity being edited inline on an already-added bill line — keyed by
+  // productId, so typing "1.35" doesn't get clobbered by a bill refresh.
+  const [lineQtyDrafts, setLineQtyDrafts] = useState({});
 
   useEffect(() => {
     if (!getPOSToken()) { navigate('/express/pos/login'); return; }
@@ -50,11 +64,24 @@ export default function ExpressPOSTerminal() {
   const addItem = async (productId, delta = 1) => {
     if (!activeBill) return toast.error('Start a new bill first');
     const existing = activeBill.items.find(i => String(i.product) === String(productId));
-    const nextQty = Math.max(0, (existing?.quantity || 0) + delta);
+    const nextQty = Math.max(0, round3((existing?.quantity || 0) + delta));
     try {
       const { data } = await expressPOSApi.post(`/bills/${activeBill._id}/item`, { productId, quantity: nextQty });
       setBills(bs => bs.map(b => b._id === data.bill._id ? data.bill : b));
     } catch (err) { toast.error(err?.response?.data?.message || 'Failed to update bill'); }
+  };
+
+  // Sets a line's quantity to an exact typed value (e.g. 1.35kg) instead of
+  // stepping by whole units — used both when first adding a weight-based
+  // product and when correcting its quantity on the bill afterwards.
+  const setExactQuantity = async (productId, qty) => {
+    if (!activeBill) return toast.error('Start a new bill first');
+    if (!Number.isFinite(qty) || qty <= 0) return toast.error('Enter a quantity greater than 0');
+    try {
+      const { data } = await expressPOSApi.post(`/bills/${activeBill._id}/item`, { productId, quantity: round3(qty) });
+      setBills(bs => bs.map(b => b._id === data.bill._id ? data.bill : b));
+      setLineQtyDrafts(d => { const n = { ...d }; delete n[productId]; return n; });
+    } catch (err) { toast.error(err?.response?.data?.message || 'Failed to update quantity'); }
   };
 
   const completeSale = async () => {
@@ -146,16 +173,46 @@ export default function ExpressPOSTerminal() {
               className="w-full border rounded-lg pl-9 pr-3 py-2 text-sm" />
           </div>
           <div className="grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto">
-            {filteredProducts.map(p => (
-              <button key={p._id} onClick={() => addItem(p._id, 1)} disabled={!activeBill || p.stockQty === 0}
-                className="text-left bg-white border rounded-lg p-2 disabled:opacity-40">
-                <p className="text-xs font-bold text-gray-800 truncate flex items-center gap-1">
-                  {p.name}
-                  {p.plu != null && <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700 shrink-0">{p.plu}</span>}
-                </p>
-                <p className="text-xs text-gray-400">₹{p.price}/{p.unit} · Stock {p.stockQty}</p>
-              </button>
-            ))}
+            {filteredProducts.map(p => {
+              const decimal = isDecimalUnit(p.unit);
+              const draft = qtyDrafts[p._id] ?? '1';
+              return (
+                <div key={p._id} className={`bg-white border rounded-lg p-2 ${(!activeBill || p.stockQty === 0) ? 'opacity-40' : ''}`}>
+                  <p className="text-xs font-bold text-gray-800 truncate flex items-center gap-1">
+                    {p.name}
+                    {p.plu != null && <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700 shrink-0">{p.plu}</span>}
+                  </p>
+                  <p className="text-xs text-gray-400 mb-1.5">₹{p.price}/{p.unit} · Stock {p.stockQty}</p>
+                  {decimal ? (
+                    <div className="flex items-center gap-1">
+                      <input value={draft} inputMode="decimal" placeholder="1"
+                        onChange={e => {
+                          const v = e.target.value.replace(/[^0-9.]/g, '');
+                          setQtyDrafts(d => ({ ...d, [p._id]: v }));
+                        }}
+                        disabled={!activeBill || p.stockQty === 0}
+                        className="w-16 border rounded px-1.5 py-1 text-xs text-center disabled:bg-gray-50" />
+                      <span className="text-[10px] text-gray-400">{p.unit}</span>
+                      <button
+                        onClick={() => {
+                          const qty = Number(draft);
+                          if (!Number.isFinite(qty) || qty <= 0) return toast.error('Enter a quantity greater than 0');
+                          addItem(p._id, qty);
+                        }}
+                        disabled={!activeBill || p.stockQty === 0}
+                        className="ml-auto px-2 py-1 rounded bg-indigo-600 text-white text-[11px] font-bold disabled:opacity-40">
+                        Add
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => addItem(p._id, 1)} disabled={!activeBill || p.stockQty === 0}
+                      className="w-full px-2 py-1 rounded bg-indigo-600 text-white text-[11px] font-bold disabled:opacity-40">
+                      Add 1 {p.unit}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -171,19 +228,48 @@ export default function ExpressPOSTerminal() {
               </div>
               <div className="flex-1 overflow-y-auto mb-3">
                 {activeBill.items.length === 0 && <p className="text-xs text-gray-400">No items yet — tap a product to add.</p>}
-                {activeBill.items.map(it => (
-                  <div key={String(it.product)} className="flex items-center justify-between py-1.5 border-b">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{it.name}</p>
-                      <p className="text-xs text-gray-400">₹{it.price}/{it.unit}</p>
+                {activeBill.items.map(it => {
+                  const pid = String(it.product);
+                  const decimal = isDecimalUnit(it.unit);
+                  return (
+                    <div key={pid} className="flex items-center justify-between py-1.5 border-b">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{it.name}</p>
+                        <p className="text-xs text-gray-400">₹{it.price}/{it.unit}</p>
+                      </div>
+                      {decimal ? (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <input
+                            value={lineQtyDrafts[pid] ?? String(it.quantity)}
+                            inputMode="decimal"
+                            onChange={e => {
+                              const v = e.target.value.replace(/[^0-9.]/g, '');
+                              setLineQtyDrafts(d => ({ ...d, [pid]: v }));
+                            }}
+                            onBlur={() => {
+                              const v = lineQtyDrafts[pid];
+                              if (v === undefined) return;
+                              const qty = Number(v);
+                              if (v === '' || !Number.isFinite(qty) || qty <= 0) {
+                                setLineQtyDrafts(d => { const n = { ...d }; delete n[pid]; return n; });
+                                return;
+                              }
+                              setExactQuantity(it.product, qty);
+                            }}
+                            onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+                            className="w-16 border rounded px-1.5 py-1 text-sm font-bold text-center" />
+                          <span className="text-[10px] text-gray-400">{it.unit}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button onClick={() => addItem(it.product, -1)} className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center"><FiMinus size={12} /></button>
+                          <span className="text-sm font-bold w-6 text-center">{it.quantity}</span>
+                          <button onClick={() => addItem(it.product, 1)} className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center"><FiPlus size={12} /></button>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button onClick={() => addItem(it.product, -1)} className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center"><FiMinus size={12} /></button>
-                      <span className="text-sm font-bold w-6 text-center">{it.quantity}</span>
-                      <button onClick={() => addItem(it.product, 1)} className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center"><FiPlus size={12} /></button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="flex justify-between font-bold text-gray-800 mb-3 pt-2 border-t">
                 <span>Total</span><span>₹{activeBill.total}</span>
