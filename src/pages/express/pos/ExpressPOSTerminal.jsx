@@ -4,7 +4,7 @@
 // spec sections 6, 17, 18: create/hold/resume/complete bills, thermal
 // receipt printing, every sale billed through the POS.
 // ============================================
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FiZap, FiLogOut, FiPlus, FiMinus, FiTrash2, FiPrinter, FiSearch, FiX, FiBluetooth } from 'react-icons/fi';
@@ -21,6 +21,40 @@ const round3 = (n) => Math.round((Number(n) || 0) * 1000) / 1000;
 // product (see expressAdminController — unit defaults to koyambeduProduct.unit
 // or 'kg' when a product is first linked into Express), never hardcoded here.
 const isDecimalUnit = (unit) => unit === 'kg' || unit === 'gram' || unit === 'litre';
+
+// ── Audio feedback ──────────────────────────────────────────────
+// A short beep on every successful add and a lower buzz on every error, the
+// way a real POS/barcode-scanner terminal does — lets the cashier keep
+// their eyes on the customer/produce instead of the screen while billing.
+// Lazily creates one shared AudioContext (browsers require it to start
+// inside a user gesture, which every call site here already is — a click
+// or a form submit).
+let audioCtx = null;
+function getAudioCtx() {
+  if (audioCtx) return audioCtx;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  audioCtx = new AC();
+  return audioCtx;
+}
+function beep(freq, duration, type = 'sine') {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  try {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration / 1000);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration / 1000);
+  } catch { /* audio is a nice-to-have; never let it break billing */ }
+}
+const beepSuccess = () => beep(880, 90);
+const beepError = () => beep(220, 180, 'square');
 
 export default function ExpressPOSTerminal() {
   const navigate = useNavigate();
@@ -45,6 +79,8 @@ export default function ExpressPOSTerminal() {
   const [printerConnected, setPrinterConnected] = useState(isPrinterConnected());
   const [connectingPrinter, setConnectingPrinter] = useState(false);
   const [printingList, setPrintingList] = useState(false);
+  const codeInputRef = useRef(null);
+  const refocusCodeInput = () => { codeInputRef.current?.focus(); codeInputRef.current?.select?.(); };
 
   useEffect(() => {
     if (!getPOSToken()) { navigate('/express/pos/login'); return; }
@@ -79,7 +115,12 @@ export default function ExpressPOSTerminal() {
     try {
       const { data } = await expressPOSApi.post(`/bills/${activeBill._id}/item`, { productId, quantity: nextQty });
       setBills(bs => bs.map(b => b._id === data.bill._id ? data.bill : b));
-    } catch (err) { toast.error(err?.response?.data?.message || 'Failed to update bill'); }
+      beepSuccess();
+      refocusCodeInput();
+    } catch (err) {
+      beepError();
+      toast.error(err?.response?.data?.message || 'Failed to update bill');
+    }
   };
 
   // Sets a line's quantity to an exact typed value (e.g. 1.35kg) instead of
@@ -92,7 +133,11 @@ export default function ExpressPOSTerminal() {
       const { data } = await expressPOSApi.post(`/bills/${activeBill._id}/item`, { productId, quantity: round3(qty) });
       setBills(bs => bs.map(b => b._id === data.bill._id ? data.bill : b));
       setLineQtyDrafts(d => { const n = { ...d }; delete n[productId]; return n; });
-    } catch (err) { toast.error(err?.response?.data?.message || 'Failed to update quantity'); }
+      beepSuccess();
+    } catch (err) {
+      beepError();
+      toast.error(err?.response?.data?.message || 'Failed to update quantity');
+    }
   };
 
   const completeSale = async () => {
@@ -165,8 +210,8 @@ export default function ExpressPOSTerminal() {
     if (!codeInput.trim() || !Number.isInteger(code)) return;
     if (!activeBill) { toast.error('Start a new bill first'); return; }
     const match = products.find(p => p.plu === code);
-    if (!match) { toast.error(`No product with code ${code}`); setCodeInput(''); return; }
-    if (match.stockQty === 0) { toast.error(`${match.name} is out of stock`); setCodeInput(''); return; }
+    if (!match) { beepError(); toast.error(`No product with code ${code}`); setCodeInput(''); return; }
+    if (match.stockQty === 0) { beepError(); toast.error(`${match.name} is out of stock`); setCodeInput(''); return; }
     addItem(match._id, 1);
     setCodeInput('');
   };
@@ -211,8 +256,8 @@ export default function ExpressPOSTerminal() {
         {/* Product search */}
         <div>
           <form onSubmit={addByCode} className="flex gap-2 mb-2">
-            <input value={codeInput} onChange={e => setCodeInput(e.target.value.replace(/\D/g, '').slice(0, 3))}
-              placeholder="Enter code (e.g. 214)" inputMode="numeric"
+            <input ref={codeInputRef} value={codeInput} onChange={e => setCodeInput(e.target.value.replace(/\D/g, '').slice(0, 3))}
+              placeholder="Enter code (e.g. 214)" inputMode="numeric" autoFocus
               className="w-40 border-2 border-indigo-200 rounded-lg px-3 py-2 text-sm font-bold text-center focus:border-indigo-500 focus:outline-none" />
             <button type="submit" className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold">Add</button>
           </form>
