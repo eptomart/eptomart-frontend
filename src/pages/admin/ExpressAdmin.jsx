@@ -572,9 +572,31 @@ function ProductsTab() {
   const [editSaving, setEditSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null); // click-to-confirm, no native dialog
+  const [pluEditId, setPluEditId] = useState(null);
+  const [pluDraft, setPluDraft] = useState('');
+  const [pluSavingId, setPluSavingId] = useState(null);
 
   const load = () => api.get('/express/admin/products').then(r => setProducts(r.data.products || [])).catch(() => {});
   useEffect(() => { load(); }, []);
+
+  // PLU (Price Look-Up) quick-entry code shown/edited inline on each product
+  // row — vegetables 100-199, fruits 200-299, auto-assigned on link but
+  // overridable here. Lets POS staff key in a 3-digit code instead of
+  // searching by name.
+  const openPluEdit = (p) => { setPluEditId(p._id); setPluDraft(p.plu != null ? String(p.plu) : ''); };
+  const savePlu = async (productId) => {
+    setPluSavingId(productId);
+    try {
+      await api.patch(`/express/admin/products/${productId}/plu`, { plu: pluDraft === '' ? null : Number(pluDraft) });
+      toast.success('PLU code updated');
+      setPluEditId(null);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update PLU code');
+    } finally {
+      setPluSavingId(null);
+    }
+  };
 
   const openEdit = (p) => {
     setEditId(p._id);
@@ -754,6 +776,9 @@ function ProductsTab() {
                   <p className="font-bold text-gray-800 truncate flex items-center gap-1.5">
                     {p.koyambeduProduct?.name || '(linked product not found)'}
                     {p.isActive === false && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Inactive</span>}
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.plu != null ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400'}`}>
+                      PLU {p.plu != null ? p.plu : '—'}
+                    </span>
                   </p>
                   <p className="text-xs text-gray-500">
                     ₹{p.procurementBaseCost}/{p.unit}{p.unitsPerKg ? ` · ${p.unitsPerKg} ${p.unit}s/kg` : ''}
@@ -764,6 +789,9 @@ function ProductsTab() {
               <div className="flex gap-1.5 shrink-0">
                 <button onClick={() => loadPreview(p._id)} className="px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
                   Preview Price
+                </button>
+                <button onClick={() => openPluEdit(p)} className="px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
+                  Set PLU
                 </button>
                 <button onClick={() => openEdit(p)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
                   <FiEdit2 size={12} /> Edit
@@ -783,6 +811,20 @@ function ProductsTab() {
                 <span>Salesman ({preview[p._id].salesmanPct}%): ₹{preview[p._id].salesmanCharge}</span>
                 <span>Packing ({preview[p._id].packingPct}%): ₹{preview[p._id].packingCharge}</span>
                 <span className="font-bold text-gray-800">Selling Price: ₹{preview[p._id].sellingPricePerUnit}</span>
+              </div>
+            )}
+
+            {pluEditId === p._id && (
+              <div className="mt-2 pt-2 border-t flex items-center gap-2">
+                <input type="number" min="100" max="299" placeholder="e.g. 214" value={pluDraft}
+                  onChange={e => setPluDraft(e.target.value)}
+                  className="w-28 border rounded-lg px-2 py-1.5 text-sm" />
+                <span className="text-xs text-gray-400">100-199 vegetables · 200-299 fruits · blank clears</span>
+                <button onClick={() => savePlu(p._id)} disabled={pluSavingId === p._id}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold disabled:opacity-50">
+                  {pluSavingId === p._id ? 'Saving…' : 'Save'}
+                </button>
+                <button onClick={() => setPluEditId(null)} className="px-3 py-1.5 rounded-lg border text-xs font-semibold">Cancel</button>
               </div>
             )}
 
@@ -840,6 +882,76 @@ function StoreInventoryTab({ stores }) {
   const [logs, setLogs] = useState([]);
   const [logsOpen, setLogsOpen] = useState(false);
 
+  // Combined "pick a Koyambedu product → assign to this store with stock +
+  // price" flow — one screen instead of Products-tab-link then
+  // Inventory-tab-stock. If the product isn't linked into Express yet, this
+  // links it too (auto-assigning its PLU code) in the same submit.
+  const [showAssign, setShowAssign] = useState(false);
+  const [assignSearch, setAssignSearch] = useState('');
+  const [assignResults, setAssignResults] = useState([]);
+  const [assignSearching, setAssignSearching] = useState(false);
+  const [assignSelected, setAssignSelected] = useState(null); // chosen Koyambedu product
+  const [assignForm, setAssignForm] = useState({ unit: 'kg', procurementBaseCost: '', customMarginPct: '', stockQty: '', priceOverride: '', note: '' });
+  const [assignSaving, setAssignSaving] = useState(false);
+
+  const assignAlreadyLinked = assignSelected && products.some(p => String(p.koyambeduProduct?._id) === String(assignSelected._id));
+
+  useEffect(() => {
+    if (!showAssign) return;
+    const t = setTimeout(() => {
+      setAssignSearching(true);
+      api.get(`/express/admin/koyambedu-catalog?search=${encodeURIComponent(assignSearch)}`)
+        .then(r => setAssignResults(r.data.products || []))
+        .catch(() => setAssignResults([]))
+        .finally(() => setAssignSearching(false));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [assignSearch, showAssign]);
+
+  const pickAssignProduct = (kb) => {
+    setAssignSelected(kb);
+    setAssignForm(f => ({ ...f, unit: kb.unit || 'kg' }));
+    setAssignResults([]);
+    setAssignSearch(kb.name);
+  };
+
+  const resetAssignForm = () => {
+    setShowAssign(false); setAssignSelected(null); setAssignSearch('');
+    setAssignForm({ unit: 'kg', procurementBaseCost: '', customMarginPct: '', stockQty: '', priceOverride: '', note: '' });
+  };
+
+  const submitAssign = async (e) => {
+    e.preventDefault();
+    if (!storeId) return toast.error('Select a store first');
+    if (!assignSelected) return toast.error('Search and select a Koyambedu Daily product first');
+    if (!assignAlreadyLinked && !assignForm.procurementBaseCost) {
+      return toast.error('Procurement cost is required to link this product into Express for the first time');
+    }
+    setAssignSaving(true);
+    try {
+      const payload = {
+        storeId,
+        koyambeduProductId: assignSelected._id,
+        unit: assignForm.unit,
+        procurementBaseCost: assignForm.procurementBaseCost || undefined,
+        customMarginPct: assignForm.customMarginPct || null,
+        stockQty: assignForm.stockQty || 0,
+        note: assignForm.note || undefined,
+      };
+      if (assignForm.priceOverride !== '') payload.priceOverride = assignForm.priceOverride;
+      const { data } = await api.post('/express/admin/products/assign-to-store', payload);
+      toast.success(`${data.product.koyambeduProduct?.name || 'Product'} assigned to store`);
+      resetAssignForm();
+      api.get('/express/admin/products').then(r => setProducts(r.data.products || [])).catch(() => {});
+      loadStoreProducts();
+      if (logsOpen) loadLogs();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to assign product to store');
+    } finally {
+      setAssignSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (!confirmRemoveId) return;
     const t = setTimeout(() => setConfirmRemoveId(null), 4000);
@@ -877,6 +989,7 @@ function StoreInventoryTab({ stores }) {
         storeProductId: existing?._id || null,
         stockQty: existing?.stockQty ?? 0,
         isAvailable: existing?.isAvailable ?? false,
+        priceOverride: existing?.priceOverride ?? null,
         addQty: addDrafts[p._id]?.qty ?? '',
       };
     });
@@ -959,7 +1072,70 @@ function StoreInventoryTab({ stores }) {
             <FiFileText size={14} /> {logsOpen ? 'Hide' : 'View'} Stock Report
           </button>
         )}
+        {storeId && (
+          <button onClick={() => setShowAssign(s => !s)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 shrink-0">
+            <FiPlus size={14} /> Assign Koyambedu Product
+          </button>
+        )}
       </div>
+
+      {storeId && showAssign && (
+        <form onSubmit={submitAssign} className="bg-white border rounded-xl p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <p className="sm:col-span-2 text-xs text-gray-400 -mt-1">
+            Pick a Koyambedu Daily product, set its stock and (optionally) a price just for this store — in one step.
+            If it isn&#39;t linked into Express yet, it will be linked automatically with a PLU code.
+          </p>
+          <div className="sm:col-span-2 relative">
+            <input placeholder="Search Koyambedu Daily products…" value={assignSearch}
+              onChange={e => { setAssignSearch(e.target.value); setAssignSelected(null); }}
+              className="border rounded-lg px-3 py-2 text-sm w-full" />
+            {assignSearching && <p className="text-xs text-gray-400 mt-1">Searching…</p>}
+            {assignResults.length > 0 && !assignSelected && (
+              <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                {assignResults.map(kb => (
+                  <button type="button" key={kb._id} onClick={() => pickAssignProduct(kb)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 text-sm">
+                    {kb.images?.[0]?.url && <img src={kb.images[0].url} alt="" className="w-8 h-8 rounded object-cover" />}
+                    <span>{kb.name} <span className="text-xs text-gray-400">({kb.unit})</span></span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {assignSelected && (
+            <div className="sm:col-span-2 flex items-center gap-2 bg-indigo-50 rounded-lg px-3 py-2">
+              {assignSelected.images?.[0]?.url && <img src={assignSelected.images[0].url} alt="" className="w-8 h-8 rounded object-cover" />}
+              <span className="text-sm font-semibold text-indigo-900">{assignSelected.name}</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-200 text-indigo-800">
+                {assignAlreadyLinked ? 'Already in Express' : 'Will be linked now'}
+              </span>
+            </div>
+          )}
+          {!assignAlreadyLinked && (
+            <>
+              <select value={assignForm.unit} onChange={e => setAssignForm(f => ({ ...f, unit: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm">
+                {['kg', 'gram', 'piece', 'bunch', 'litre', 'dozen'].map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+              <input placeholder="Procurement cost (₹/kg or ₹/unit)" value={assignForm.procurementBaseCost}
+                onChange={e => setAssignForm(f => ({ ...f, procurementBaseCost: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+              <input placeholder="Custom margin % (optional)" value={assignForm.customMarginPct}
+                onChange={e => setAssignForm(f => ({ ...f, customMarginPct: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+            </>
+          )}
+          <input type="number" min="0" placeholder="Stock to add at this store" value={assignForm.stockQty}
+            onChange={e => setAssignForm(f => ({ ...f, stockQty: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+          <input type="number" min="0" placeholder="Price override for this store (optional)" value={assignForm.priceOverride}
+            onChange={e => setAssignForm(f => ({ ...f, priceOverride: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+          <input placeholder="Note (optional, e.g. delivery ref)" value={assignForm.note}
+            onChange={e => setAssignForm(f => ({ ...f, note: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm sm:col-span-2" />
+          <div className="sm:col-span-2 flex gap-2">
+            <button type="submit" disabled={assignSaving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
+              {assignSaving ? 'Assigning…' : 'Assign to Store'}
+            </button>
+            <button type="button" onClick={resetAssignForm} className="px-4 py-2 rounded-lg border text-sm font-semibold">Cancel</button>
+          </div>
+        </form>
+      )}
 
       {!storeId && <p className="text-sm text-gray-400">Choose a store above to view and set its stock levels.</p>}
       {storeId && loading && <p className="text-sm text-gray-400">Loading inventory…</p>}
@@ -992,8 +1168,16 @@ function StoreInventoryTab({ stores }) {
                 <img src={row.product.koyambeduProduct.images[0].url} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
               )}
               <div className="min-w-0 flex-1">
-                <p className="font-bold text-gray-800 text-sm truncate">{row.product.koyambeduProduct?.name || '(linked product not found)'}</p>
-                <p className="text-xs text-gray-400">Current stock: <span className="font-bold text-gray-600">{row.stockQty}</span> {row.product.unit}</p>
+                <p className="font-bold text-gray-800 text-sm truncate flex items-center gap-1.5">
+                  {row.product.koyambeduProduct?.name || '(linked product not found)'}
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${row.product.plu != null ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400'}`}>
+                    PLU {row.product.plu != null ? row.product.plu : '—'}
+                  </span>
+                </p>
+                <p className="text-xs text-gray-400">
+                  Current stock: <span className="font-bold text-gray-600">{row.stockQty}</span> {row.product.unit}
+                  {row.priceOverride != null && <span className="ml-2 font-bold text-indigo-600">Store price: ₹{row.priceOverride}</span>}
+                </p>
               </div>
 
               <div className="flex items-center gap-1.5">

@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   FiZap, FiLogOut, FiGrid, FiPackage, FiToggleLeft, FiToggleRight,
-  FiClipboard, FiPlus, FiTruck, FiAlertTriangle, FiFileText,
+  FiClipboard, FiPlus, FiTruck, FiAlertTriangle, FiFileText, FiCheckCircle,
 } from 'react-icons/fi';
 import expressManagerApi, { getManagerToken, clearManagerToken } from '../../../utils/expressManagerApi';
 
@@ -182,12 +182,35 @@ function ProductsTab() {
   const [submittingLoss, setSubmittingLoss] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [logs, setLogs] = useState([]);
+  const [pendingAcks, setPendingAcks] = useState([]);
+  const [ackingId, setAckingId] = useState(null);
 
   const load = () => expressManagerApi.get('/products').then(({ data }) => setStoreProducts(data.storeProducts || [])).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const loadLogs = () => expressManagerApi.get('/stock-logs').then(({ data }) => setLogs(data.logs || [])).catch(() => {});
   useEffect(() => { if (reportOpen) loadLogs(); }, [reportOpen]);
+
+  // Stock the Admin added at any point is "pending acknowledgement" until
+  // the Store Manager confirms it physically arrived — reuses the same
+  // ExpressStockLog entries shown in the Stock Report above, just filtered
+  // to un-acknowledged admin additions.
+  const loadPendingAcks = () => expressManagerApi.get('/stock-logs/pending-ack').then(({ data }) => setPendingAcks(data.logs || [])).catch(() => {});
+  useEffect(() => { loadPendingAcks(); }, []);
+
+  const acknowledge = async (logId) => {
+    setAckingId(logId);
+    try {
+      await expressManagerApi.post(`/stock-logs/${logId}/acknowledge`);
+      toast.success('Inventory acknowledged');
+      loadPendingAcks();
+      if (reportOpen) loadLogs();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to acknowledge inventory');
+    } finally {
+      setAckingId(null);
+    }
+  };
 
   const toggle = async (sp) => {
     try {
@@ -218,6 +241,30 @@ function ProductsTab() {
 
   return (
     <div>
+      {pendingAcks.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
+          <p className="text-xs font-bold text-amber-800 mb-2 flex items-center gap-1.5">
+            <FiAlertTriangle size={13} /> Inventory pending your acknowledgement ({pendingAcks.length})
+          </p>
+          <div className="grid gap-2">
+            {pendingAcks.map(l => (
+              <div key={l._id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-gray-700 truncate">
+                    {l.product?.koyambeduProduct?.name || 'Product'} — <span className="text-green-600">+{l.qty}</span>
+                  </p>
+                  <p className="text-[11px] text-gray-400">Added by {l.actorName} on {new Date(l.createdAt).toLocaleString('en-IN')}</p>
+                </div>
+                <button onClick={() => acknowledge(l._id)} disabled={ackingId === l._id}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-600 text-white text-xs font-bold disabled:opacity-50 shrink-0">
+                  <FiCheckCircle size={12} /> {ackingId === l._id ? 'Saving…' : 'Acknowledge'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <button onClick={() => setReportOpen(o => !o)} className="flex items-center gap-1.5 mb-3 text-xs font-semibold text-indigo-600">
         <FiFileText size={13} /> {reportOpen ? 'Hide' : 'View'} My Stock Report
       </button>

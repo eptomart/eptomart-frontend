@@ -19,6 +19,7 @@ export default function ExpressPOSTerminal() {
   const [bills, setBills] = useState([]);
   const [activeBillId, setActiveBillId] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [codeInput, setCodeInput] = useState('');
 
   useEffect(() => {
     if (!getPOSToken()) { navigate('/express/pos/login'); return; }
@@ -89,6 +90,20 @@ export default function ExpressPOSTerminal() {
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
+  // Quick-entry by PLU code — vegetables 100-199, fruits 200-299 — so a POS
+  // user can just type the 3-digit code instead of hunting through the grid.
+  const addByCode = (e) => {
+    e.preventDefault();
+    const code = Number(codeInput.trim());
+    if (!codeInput.trim() || !Number.isInteger(code)) return;
+    if (!activeBill) { toast.error('Start a new bill first'); return; }
+    const match = products.find(p => p.plu === code);
+    if (!match) { toast.error(`No product with code ${code}`); setCodeInput(''); return; }
+    if (match.stockQty === 0) { toast.error(`${match.name} is out of stock`); setCodeInput(''); return; }
+    addItem(match._id, 1);
+    setCodeInput('');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
@@ -119,6 +134,12 @@ export default function ExpressPOSTerminal() {
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 max-w-5xl mx-auto w-full">
         {/* Product search */}
         <div>
+          <form onSubmit={addByCode} className="flex gap-2 mb-2">
+            <input value={codeInput} onChange={e => setCodeInput(e.target.value.replace(/\D/g, '').slice(0, 3))}
+              placeholder="Enter code (e.g. 214)" inputMode="numeric"
+              className="w-40 border-2 border-indigo-200 rounded-lg px-3 py-2 text-sm font-bold text-center focus:border-indigo-500 focus:outline-none" />
+            <button type="submit" className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold">Add</button>
+          </form>
           <div className="relative mb-3">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products…"
@@ -128,7 +149,10 @@ export default function ExpressPOSTerminal() {
             {filteredProducts.map(p => (
               <button key={p._id} onClick={() => addItem(p._id, 1)} disabled={!activeBill || p.stockQty === 0}
                 className="text-left bg-white border rounded-lg p-2 disabled:opacity-40">
-                <p className="text-xs font-bold text-gray-800 truncate">{p.name}</p>
+                <p className="text-xs font-bold text-gray-800 truncate flex items-center gap-1">
+                  {p.name}
+                  {p.plu != null && <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700 shrink-0">{p.plu}</span>}
+                </p>
                 <p className="text-xs text-gray-400">₹{p.price}/{p.unit} · Stock {p.stockQty}</p>
               </button>
             ))}
