@@ -224,6 +224,15 @@ async function writeBytesChunked(bytes, chunkSize = 100) {
   }
 }
 
+// Public alias — lets other verticals (e.g. Eptomart Express) send their own
+// ESC/POS byte streams over this same shared Bluetooth connection, without
+// duplicating the connect/pair/GATT-characteristic logic above or exporting
+// the module-private writeCharacteristic itself. Connect/disconnect state is
+// intentionally a single shared singleton across the whole app — one printer
+// pairing per browser session/device, reused by whichever admin/manager
+// screen needs to print next.
+const printRawBytes = writeBytesChunked;
+
 /** Print a full order slip or (if itemsOnly is given) a pack label over Bluetooth. */
 async function printViaBluetooth(order, opts = {}) {
   const bytes = buildEscPosSlip(order, opts);
@@ -505,4 +514,13 @@ export {
   printViaDialog,
   printCustomBillViaBluetooth,
   printCustomBillViaDialog,
+  // Shared low-level primitives — exported additively so other verticals can
+  // compose their own ESC/POS documents over the same Bluetooth connection
+  // instead of re-implementing byte-level printer commands from scratch.
+  // Nothing above this line changes; existing callers (Koyambedu Daily's
+  // Printer tab) are unaffected.
+  printRawBytes,
+  bytesInit, bytesBoldOn, bytesBoldOff, bytesAlignLeft, bytesAlignCenter,
+  bytesDoubleOn, bytesDoubleOff, bytesFeed, bytesText, concatBytes,
+  LINE_WIDTH, asciiSafe,
 };

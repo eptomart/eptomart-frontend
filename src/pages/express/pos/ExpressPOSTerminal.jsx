@@ -7,9 +7,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FiZap, FiLogOut, FiPlus, FiMinus, FiTrash2, FiPrinter, FiSearch, FiX } from 'react-icons/fi';
+import { FiZap, FiLogOut, FiPlus, FiMinus, FiTrash2, FiPrinter, FiSearch, FiX, FiBluetooth } from 'react-icons/fi';
 import expressPOSApi, { getPOSToken, clearPOSToken } from '../../../utils/expressPOSApi';
-import { printReceipt } from '../../../utils/expressThermalPrinter';
+import {
+  printReceipt, printPluList,
+  isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected,
+} from '../../../utils/expressThermalPrinter';
 
 const round3 = (n) => Math.round((Number(n) || 0) * 1000) / 1000;
 // Weight/volume units allow fractional quantities (1.35kg, 0.5 litre); the
@@ -34,6 +37,14 @@ export default function ExpressPOSTerminal() {
   // Quantity being edited inline on an already-added bill line — keyed by
   // productId, so typing "1.35" doesn't get clobbered by a bill refresh.
   const [lineQtyDrafts, setLineQtyDrafts] = useState({});
+  // Bluetooth thermal printer — same shared connection used by the Express
+  // admin panel and Store Manager dashboard (and Koyambedu Daily's own
+  // Printer tab, underneath). Connecting here before the shift starts means
+  // "Complete Sale & Print" goes straight to the printer with no OS dialog,
+  // and the POS operator can print their own code-reference sheet too.
+  const [printerConnected, setPrinterConnected] = useState(isPrinterConnected());
+  const [connectingPrinter, setConnectingPrinter] = useState(false);
+  const [printingList, setPrintingList] = useState(false);
 
   useEffect(() => {
     if (!getPOSToken()) { navigate('/express/pos/login'); return; }
@@ -97,7 +108,7 @@ export default function ExpressPOSTerminal() {
         customerName: data.bill.customerName,
         items: data.bill.items,
         total: data.bill.total,
-      });
+      }).catch(() => toast.error('Sale completed, but the receipt failed to print'));
       setBills(bs => bs.filter(b => b._id !== data.bill._id));
       setActiveBillId(null);
     } catch (err) { toast.error(err?.response?.data?.message || 'Failed to complete sale'); }
@@ -114,6 +125,35 @@ export default function ExpressPOSTerminal() {
   };
 
   const logout = () => { clearPOSToken(); navigate('/express/pos/login'); };
+
+  const togglePrinterConnection = async () => {
+    if (printerConnected) { disconnectPrinter(); setPrinterConnected(false); return; }
+    if (!isBluetoothSupported()) return toast.error('Web Bluetooth is not supported in this browser — use Chrome/Edge on Android, Windows, macOS or ChromeOS.');
+    setConnectingPrinter(true);
+    try {
+      const { name } = await connectPrinter();
+      setPrinterConnected(true);
+      toast.success(`Connected to ${name}`);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to connect to printer');
+    } finally {
+      setConnectingPrinter(false);
+    }
+  };
+
+  // Uses the products already loaded for the billing grid — no separate
+  // endpoint needed, since it's exactly the name/unit/plu/price shape the
+  // POS screen itself shows.
+  const printCodeList = async () => {
+    setPrintingList(true);
+    try {
+      await printPluList(products, posUser?.store?.name);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to print code list');
+    } finally {
+      setPrintingList(false);
+    }
+  };
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
@@ -141,7 +181,16 @@ export default function ExpressPOSTerminal() {
             <p className="text-xs text-gray-400">{posUser?.name}</p>
           </div>
         </div>
-        <button onClick={logout} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"><FiLogOut size={16} /></button>
+        <div className="flex items-center gap-2">
+          <button onClick={togglePrinterConnection} disabled={connectingPrinter}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50 ${printerConnected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+            <FiBluetooth size={14} /> {connectingPrinter ? 'Connecting…' : printerConnected ? 'Printer Connected' : 'Connect Printer'}
+          </button>
+          <button onClick={printCodeList} disabled={printingList} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold disabled:opacity-50">
+            <FiPrinter size={14} /> {printingList ? 'Printing…' : 'Code List'}
+          </button>
+          <button onClick={logout} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"><FiLogOut size={16} /></button>
+        </div>
       </header>
 
       {/* Held bills tray */}

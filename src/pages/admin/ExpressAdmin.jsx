@@ -13,8 +13,10 @@ import {
   FiZap, FiMapPin, FiUsers, FiUserCheck, FiPackage, FiSliders, FiBox,
   FiClipboard, FiPlus, FiToggleLeft, FiToggleRight, FiEdit2, FiTrash2, FiX, FiCheck,
   FiGrid, FiDollarSign, FiShoppingCart, FiEye, FiTrendingUp, FiTrendingDown, FiFileText,
+  FiBluetooth, FiPrinter,
 } from 'react-icons/fi';
 import api from '../../utils/api';
+import { isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected, printPluList } from '../../utils/expressThermalPrinter';
 
 const TABS = [
   { key: 'dashboard',  label: 'Dashboard',   Icon: FiGrid },
@@ -882,6 +884,44 @@ function StoreInventoryTab({ stores }) {
   const [logs, setLogs] = useState([]);
   const [logsOpen, setLogsOpen] = useState(false);
 
+  // Bluetooth thermal printer — same shared connection/pairing used by
+  // Koyambedu Daily's Printer tab (see utils/thermalPrinter.js). Connect
+  // once here before a shift/session; the Store Manager and POS terminal
+  // reuse the same paired printer to print receipts and this same PLU
+  // code-reference sheet without reconnecting.
+  const [printerConnected, setPrinterConnected] = useState(isPrinterConnected());
+  const [connectingPrinter, setConnectingPrinter] = useState(false);
+  const [printingList, setPrintingList] = useState(false);
+
+  const togglePrinterConnection = async () => {
+    if (printerConnected) { disconnectPrinter(); setPrinterConnected(false); return; }
+    if (!isBluetoothSupported()) return toast.error('Web Bluetooth is not supported in this browser — use Chrome/Edge on Android, Windows, macOS or ChromeOS.');
+    setConnectingPrinter(true);
+    try {
+      const { name } = await connectPrinter();
+      setPrinterConnected(true);
+      toast.success(`Connected to ${name}`);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to connect to printer');
+    } finally {
+      setConnectingPrinter(false);
+    }
+  };
+
+  const printCodeList = async () => {
+    if (!storeId) return toast.error('Select a store first');
+    setPrintingList(true);
+    try {
+      const { data } = await api.get(`/express/admin/stores/${storeId}/products/print-list`);
+      const storeName = stores.find(s => s._id === storeId)?.name;
+      await printPluList(data.products || [], storeName);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to print code list');
+    } finally {
+      setPrintingList(false);
+    }
+  };
+
   // Combined "pick a Koyambedu product → assign to this store with stock +
   // price" flow — one screen instead of Products-tab-link then
   // Inventory-tab-stock. If the product isn't linked into Express yet, this
@@ -1077,7 +1117,19 @@ function StoreInventoryTab({ stores }) {
             <FiPlus size={14} /> Assign Koyambedu Product
           </button>
         )}
+        <button onClick={togglePrinterConnection} disabled={connectingPrinter}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-semibold shrink-0 disabled:opacity-50 ${printerConnected ? 'bg-green-50 text-green-700 border-green-200' : 'hover:bg-gray-50'}`}>
+          <FiBluetooth size={14} /> {connectingPrinter ? 'Connecting…' : printerConnected ? 'Printer Connected' : 'Connect Printer'}
+        </button>
+        {storeId && (
+          <button onClick={printCodeList} disabled={printingList} className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-semibold hover:bg-gray-50 shrink-0 disabled:opacity-50">
+            <FiPrinter size={14} /> {printingList ? 'Printing…' : 'Print Code List'}
+          </button>
+        )}
       </div>
+      <p className="text-xs text-gray-400 mb-3 -mt-2">
+        Connect a Bluetooth thermal printer once before starting your shift, then print a code-reference sheet (PLU codes, names, prices) for the counter — the POS terminal can print its own copy too.
+      </p>
 
       {storeId && showAssign && (
         <form onSubmit={submitAssign} className="bg-white border rounded-xl p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">

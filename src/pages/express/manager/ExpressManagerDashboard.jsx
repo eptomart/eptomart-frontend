@@ -10,8 +10,10 @@ import toast from 'react-hot-toast';
 import {
   FiZap, FiLogOut, FiGrid, FiPackage, FiToggleLeft, FiToggleRight,
   FiClipboard, FiPlus, FiTruck, FiAlertTriangle, FiFileText, FiCheckCircle,
+  FiBluetooth, FiPrinter,
 } from 'react-icons/fi';
 import expressManagerApi, { getManagerToken, clearManagerToken } from '../../../utils/expressManagerApi';
+import { isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected, printPluList } from '../../../utils/expressThermalPrinter';
 
 const TABS = [
   { key: 'orders',    label: 'Orders',    Icon: FiPackage },
@@ -25,6 +27,12 @@ export default function ExpressManagerDashboard() {
   const [manager, setManager] = useState(null);
   const [store, setStore] = useState(null);
   const [stats, setStats] = useState(null);
+  // Bluetooth thermal printer — same shared connection as Koyambedu Daily's
+  // Printer tab and the Express admin panel. Connect once here before the
+  // shift starts, then print the PLU code-reference sheet for the counter.
+  const [printerConnected, setPrinterConnected] = useState(isPrinterConnected());
+  const [connectingPrinter, setConnectingPrinter] = useState(false);
+  const [printingList, setPrintingList] = useState(false);
 
   useEffect(() => {
     if (!getManagerToken()) { navigate('/express/manager/login'); return; }
@@ -43,6 +51,33 @@ export default function ExpressManagerDashboard() {
 
   const logout = () => { clearManagerToken(); navigate('/express/manager/login'); };
 
+  const togglePrinterConnection = async () => {
+    if (printerConnected) { disconnectPrinter(); setPrinterConnected(false); return; }
+    if (!isBluetoothSupported()) return toast.error('Web Bluetooth is not supported in this browser — use Chrome/Edge on Android, Windows, macOS or ChromeOS.');
+    setConnectingPrinter(true);
+    try {
+      const { name } = await connectPrinter();
+      setPrinterConnected(true);
+      toast.success(`Connected to ${name}`);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to connect to printer');
+    } finally {
+      setConnectingPrinter(false);
+    }
+  };
+
+  const printCodeList = async () => {
+    setPrintingList(true);
+    try {
+      const { data } = await expressManagerApi.get('/products/print-list');
+      await printPluList(data.products || [], store?.name);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to print code list');
+    } finally {
+      setPrintingList(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
@@ -60,6 +95,13 @@ export default function ExpressManagerDashboard() {
               {store.isActive ? <FiToggleRight size={14} /> : <FiToggleLeft size={14} />} {store.isActive ? 'Store ON' : 'Store OFF'}
             </button>
           )}
+          <button onClick={togglePrinterConnection} disabled={connectingPrinter}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50 ${printerConnected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+            <FiBluetooth size={14} /> {connectingPrinter ? 'Connecting…' : printerConnected ? 'Printer Connected' : 'Connect Printer'}
+          </button>
+          <button onClick={printCodeList} disabled={printingList} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold disabled:opacity-50">
+            <FiPrinter size={14} /> {printingList ? 'Printing…' : 'Print Code List'}
+          </button>
           <button onClick={logout} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"><FiLogOut size={16} /></button>
         </div>
       </header>
