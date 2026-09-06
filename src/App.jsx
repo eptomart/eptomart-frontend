@@ -184,14 +184,27 @@ const SellerRoute = ({ children }) => {
 
 // Redirect to home on fresh app open so the app never lands on login
 // sessionStorage is wiped when the app/tab is closed — perfect for detecting fresh opens
+// Express Store Manager and POS terminal screens are locked-down staff work
+// tools (a manager logging inventory, a POS operator billing a customer),
+// not customer-facing shopping pages — none of the app's customer chrome
+// (bottom shopping nav, AI shopping assistant, WhatsApp float, PWA install
+// prompt, compare bar) should be reachable from them, so staff on a shared
+// counter device can't wander off into the storefront.
+const isExpressStaffScreen = (pathname) =>
+  pathname.startsWith('/express/manager') || pathname.startsWith('/express/pos');
+
 function GlobalBottomNav() {
   const { pathname } = useLocation();
-  // Hide on admin, seller portal, koyambedu seller/admin, and eptofresh seller pages
+  // Hide on admin, seller portal, koyambedu seller/admin, eptofresh seller,
+  // and Express Store Manager / POS staff screens — those are locked-down
+  // work terminals, not customer shopping pages, so links to Home/
+  // Categories/Cart/Orders/Profile have no business appearing there.
   const hidden = pathname.startsWith('/admin') ||
                  pathname.startsWith('/seller') ||
                  pathname.startsWith('/koyambedu/seller') ||
                  pathname.startsWith('/koyambedu/seller-admin') ||
                  pathname.startsWith('/eptofresh/seller') ||
+                 isExpressStaffScreen(pathname) ||
                  pathname === '/eptofresh/location' ||
                  // Focused purchase flows: the page's own CTA bar must
                  // never compete with the bottom nav for the same space
@@ -358,15 +371,15 @@ function AppRoutes() {
       </Suspense>
 
       <GlobalBottomNav />
-      <CompareBar />
-      {!useLocation().pathname.startsWith('/koyambedu') && <AIAssistant />}
-      <WhatsAppFloat />
+      {!isExpressStaffScreen(useLocation().pathname) && <CompareBar />}
+      {!useLocation().pathname.startsWith('/koyambedu') && !isExpressStaffScreen(useLocation().pathname) && <AIAssistant />}
+      {!isExpressStaffScreen(useLocation().pathname) && <WhatsAppFloat />}
       {/* Was built but never mounted anywhere — meant no one was ever asked
           for push permission, so no offer/order-update notification could
           ever reach anyone regardless of anything else being configured
           correctly. Self-contained: dismissible, session-gated, no-op if
           push isn't supported. */}
-      <PwaInstallBanner />
+      {!isExpressStaffScreen(useLocation().pathname) && <PwaInstallBanner />}
     </>
   );
 }
