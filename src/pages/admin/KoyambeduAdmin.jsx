@@ -8,12 +8,13 @@ import KoyambeduScheduleAdmin from './KoyambeduScheduleAdmin';
 import PrinterTab from './koyambedu/PrinterTab';
 import BulkHarvestTab from './koyambedu/BulkHarvestTab';
 import NewsTab from './koyambedu/NewsTab';
+import QuotationTab from './koyambedu/QuotationTab';
 import KoyambeduDailyPricePanel from '../../components/koyambedu/KoyambeduDailyPricePanel';
 import toast from 'react-hot-toast';
 import { imgThumb } from '../../utils/cloudinary';
 import { FiToggleLeft, FiToggleRight, FiClock, FiTruck, FiX } from 'react-icons/fi';
 
-const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'combos', 'product-approvals', 'daily-price', 'schedule', 'printer', 'bulk-harvest', 'news', 'refund-requests', 'wallets', 'users-cart', 'procurement', 'offers', 'reports', 'whatsapp-inbox', 'dev-settings'];
+const TAB_LIST = ['dashboard', 'orders', 'pending-approval', 'alerts', 'cancelled-orders', 'sellers', 'seller-admins', 'categories', 'products', 'combos', 'product-approvals', 'daily-price', 'schedule', 'printer', 'bulk-harvest', 'news', 'refund-requests', 'wallets', 'users-cart', 'procurement', 'offers', 'quotation', 'reports', 'whatsapp-inbox', 'dev-settings'];
 
 const EXPIRY_OPTIONS = [
   { value: 'never', label: 'Never (Manual Disable Only)' },
@@ -1737,7 +1738,7 @@ export default function KoyambeduAdmin() {
           {TAB_LIST.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white hover:bg-white/30'}`}>
-              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'wallets' ? '💳 Wallets' : t === 'users-cart' ? '🛒 Users Cart' : t === 'procurement' ? '📦 Procurement' : t === 'offers' ? '📣 Offers' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'printer' ? '🖨️ Printer' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'combos' ? '🧺 Combos' : t === 'bulk-harvest' ? '🌾 Bulk Harvest' : t === 'news' ? '📰 News' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t === 'whatsapp-inbox' ? `💬 WhatsApp${waUnread > 0 ? ` (${waUnread})` : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'wallets' ? '💳 Wallets' : t === 'users-cart' ? '🛒 Users Cart' : t === 'procurement' ? '📦 Procurement' : t === 'offers' ? '📣 Offers' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'printer' ? '🖨️ Printer' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'combos' ? '🧺 Combos' : t === 'bulk-harvest' ? '🌾 Bulk Harvest' : t === 'news' ? '📰 News' : t === 'quotation' ? '🧾 Quotation' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t === 'whatsapp-inbox' ? `💬 WhatsApp${waUnread > 0 ? ` (${waUnread})` : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -2287,6 +2288,11 @@ export default function KoyambeduAdmin() {
         {/* ── NEWS (verified fruit/vegetable news, tab on/off) ── */}
         {tab === 'news' && (
           <NewsTab />
+        )}
+
+        {/* ── QUOTATION (bulk-buyer price quotation PDF) ── */}
+        {tab === 'quotation' && (
+          <QuotationTab />
         )}
 
         {/* ── REFUND REQUESTS ── */}
