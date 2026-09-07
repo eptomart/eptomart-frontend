@@ -21,11 +21,18 @@ const SCOPES = [
   { key: 'items',    label: 'By Item' },
 ];
 
+const STATUS_FILTERS = [
+  { key: 'active',   label: 'Active Only' },
+  { key: 'disabled', label: 'Disabled Only' },
+  { key: 'all',      label: "Don't Filter (All)" },
+];
+
 export default function QuotationTab() {
   const [cats, setCats] = useState([]);
   const [products, setProducts] = useState([]);
   const [scope, setScope] = useState('all');
   const [priceMode, setPriceMode] = useState('lowest');
+  const [statusFilter, setStatusFilter] = useState('active');
   const [selectedCatIds, setSelectedCatIds] = useState([]);
   const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [search, setSearch] = useState('');
@@ -50,7 +57,7 @@ export default function QuotationTab() {
     if (scope === 'items' && selectedProductIds.length === 0) return toast.error('Select at least one product');
     setGenerating(true);
     try {
-      const params = new URLSearchParams({ scope, priceMode });
+      const params = new URLSearchParams({ scope, priceMode, statusFilter });
       if (scope === 'category') params.set('categoryIds', selectedCatIds.join(','));
       if (scope === 'items') params.set('productIds', selectedProductIds.join(','));
       const { data } = await api.get(`/koyambedu/admin/quotation/pdf?${params}`, { responseType: 'blob' });
@@ -147,6 +154,18 @@ export default function QuotationTab() {
           <span className={`block font-normal mt-0.5 ${priceMode === 'highest' ? 'text-green-100' : 'text-gray-400'}`}>Small-quantity / retail rate</span>
         </button>
       </div>
+
+      {/* Item status — internal filtering only, never printed on the PDF itself */}
+      <p className="text-xs font-bold text-gray-500 mb-1.5">Item status to include</p>
+      <div className="flex gap-2 mb-1">
+        {STATUS_FILTERS.map(s => (
+          <button key={s.key} onClick={() => setStatusFilter(s.key)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${statusFilter === s.key ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-[11px] text-gray-400 mb-5">Internal filter only — the PDF never shows an active/disabled label for any item.</p>
 
       <button onClick={generate} disabled={generating}
         className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50">
