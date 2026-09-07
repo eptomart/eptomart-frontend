@@ -623,7 +623,12 @@ function KoyambeduTab({
 
                   {/* Remove button */}
                   <button
-                    onClick={() => kbdUpdateItem(pid, 0)}
+                    onClick={() => kbdUpdateItem(
+                      pid,
+                      0,
+                      item.deliveryType || 'tomorrow',
+                      { gradeKey: item.gradeKey, gradeName: item.gradeName }
+                    )}
                     disabled={kbdLoading}
                     className="text-gray-300 hover:text-red-400 transition-colors self-start mt-1 disabled:opacity-50"
                   >
