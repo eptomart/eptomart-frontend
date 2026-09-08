@@ -1734,7 +1734,12 @@ export default function KoyambeduAdmin() {
             </button>
           )}
         </div>
-        <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1">
+        {/* Wraps onto multiple rows instead of a single horizontally-scrollable
+            strip — with ~24 tabs, dragging left/right to find one every time
+            was the main friction point; every tab is now reachable with a
+            single tap, no scroll gesture required. Same tabs, same order,
+            same click handlers — layout only. */}
+        <div className="flex flex-wrap gap-1.5 pb-1">
           {TAB_LIST.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white hover:bg-white/30'}`}>
