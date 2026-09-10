@@ -630,21 +630,37 @@ function PriceListCard({ parsed, onClose }) {
 // authenticated proxy endpoint (blob, so the request carries the admin's auth
 // header) and renders it properly for each type.
 function MediaContent({ msg }) {
-  const [state, setState] = useState({ loading: true, url: null, error: false });
+  const [state, setState] = useState({ loading: true, url: null, error: false, detail: '' });
 
   useEffect(() => {
     let objectUrl = null;
     let cancelled = false;
-    setState({ loading: true, url: null, error: false });
+    setState({ loading: true, url: null, error: false, detail: '' });
 
     api.get(`/koyambedu/admin/whatsapp/messages/${msg._id}/media`, { responseType: 'blob' })
       .then(({ data }) => {
         if (cancelled) return;
         objectUrl = URL.createObjectURL(data);
-        setState({ loading: false, url: objectUrl, error: false });
+        setState({ loading: false, url: objectUrl, error: false, detail: '' });
       })
-      .catch(() => {
-        if (!cancelled) setState({ loading: false, url: null, error: true });
+      .catch(async (err) => {
+        if (cancelled) return;
+        // Error bodies come back as a Blob too (responseType: 'blob') — read the
+        // JSON out of it so the admin sees the *actual* reason (expired media,
+        // WhatsApp not configured, 404, etc.) instead of one generic message.
+        let detail = err?.message || 'Unknown error';
+        try {
+          const blob = err?.response?.data;
+          if (blob instanceof Blob) {
+            const text = await blob.text();
+            const parsed = JSON.parse(text);
+            detail = parsed?.message || detail;
+          } else if (err?.response?.data?.message) {
+            detail = err.response.data.message;
+          }
+        } catch { /* keep fallback detail */ }
+        console.error('[WhatsApp media] failed to load', msg._id, msg.type, err?.response?.status, detail);
+        if (!cancelled) setState({ loading: false, url: null, error: true, detail });
       });
 
     return () => {
@@ -665,7 +681,7 @@ function MediaContent({ msg }) {
   if (state.error || !state.url) {
     return (
       <p className="text-xs text-red-400 font-semibold">
-        ⚠️ Could not load this {msg.type} — the WhatsApp media link may have expired.
+        ⚠️ Could not load this {msg.type}{state.detail ? ` — ${state.detail}` : ' — the WhatsApp media link may have expired.'}
       </p>
     );
   }
