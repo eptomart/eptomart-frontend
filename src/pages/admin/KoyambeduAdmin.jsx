@@ -9,6 +9,7 @@ import PrinterTab from './koyambedu/PrinterTab';
 import BulkHarvestTab from './koyambedu/BulkHarvestTab';
 import NewsTab from './koyambedu/NewsTab';
 import QuotationTab from './koyambedu/QuotationTab';
+import WhatsAppMediaContent from '../../components/admin/WhatsAppMedia';
 import KoyambeduDailyPricePanel from '../../components/koyambedu/KoyambeduDailyPricePanel';
 import toast from 'react-hot-toast';
 import { imgThumb } from '../../utils/cloudinary';
@@ -4671,18 +4672,23 @@ export default function KoyambeduAdmin() {
                   </div>
                 </div>
 
-                {/* Message content */}
-                <div className="bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-700 leading-relaxed">
-                  {msg.type === 'text' || msg.type === 'button'
-                    ? (msg.text || <em className="text-gray-400">empty message</em>)
-                    : msg.type === 'image'    ? `📷 Image${msg.mediaCaption ? ` — ${msg.mediaCaption}` : ''}`
-                    : msg.type === 'audio'    ? '🎵 Audio message'
-                    : msg.type === 'video'    ? `🎥 Video${msg.mediaCaption ? ` — ${msg.mediaCaption}` : ''}`
-                    : msg.type === 'document' ? `📄 Document${msg.text ? `: ${msg.text}` : ''}`
-                    : msg.type === 'sticker'  ? '🙂 Sticker'
-                    : msg.type === 'location' ? `📍 Location${msg.locationName ? `: ${msg.locationName}` : ''}`
-                    : `[${msg.type}]`}
-                </div>
+                {/* Message content — images/audio/video/documents/stickers render
+                    the real file (with a tap-to-zoom viewer for images) via the
+                    same shared component the dedicated WhatsApp Inbox screen
+                    uses, instead of a placeholder label. */}
+                {(msg.type === 'image' || msg.type === 'audio' || msg.type === 'video' ||
+                  msg.type === 'document' || msg.type === 'sticker') ? (
+                  <div className="bg-gray-50 rounded-xl px-3 py-2.5">
+                    <WhatsAppMediaContent msg={msg} />
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-700 leading-relaxed">
+                    {msg.type === 'text' || msg.type === 'button'
+                      ? (msg.text || <em className="text-gray-400">empty message</em>)
+                      : msg.type === 'location' ? `📍 Location${msg.locationName ? `: ${msg.locationName}` : ''}`
+                      : `[${msg.type}]`}
+                  </div>
+                )}
 
                 {/* Replied indicator */}
                 {msg.repliedAt && (

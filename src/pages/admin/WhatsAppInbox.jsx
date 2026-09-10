@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
+import WhatsAppMediaContent from '../../components/admin/WhatsAppMedia';
 
 // ── Variant price helpers (mirrors backend variantPricingService) ──────────
 const fmt = (n) => `₹${Number(n || 0).toFixed(2)}`;
@@ -622,107 +623,11 @@ function PriceListCard({ parsed, onClose }) {
   );
 }
 
-// ── Media renderer ──────────────────────────────────────────────────────────
-// Images/audio/video/documents/stickers only ever stored a Meta mediaId on the
-// message — the admin inbox never actually fetched the binary, so all of these
-// silently showed as a placeholder label ("📷 Image", "🎵 Audio message", etc.)
-// with nothing to look at or play. This fetches the real file through the new
-// authenticated proxy endpoint (blob, so the request carries the admin's auth
-// header) and renders it properly for each type.
-function MediaContent({ msg }) {
-  const [state, setState] = useState({ loading: true, url: null, error: false, detail: '' });
-
-  useEffect(() => {
-    let objectUrl = null;
-    let cancelled = false;
-    setState({ loading: true, url: null, error: false, detail: '' });
-
-    api.get(`/koyambedu/admin/whatsapp/messages/${msg._id}/media`, { responseType: 'blob' })
-      .then(({ data }) => {
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(data);
-        setState({ loading: false, url: objectUrl, error: false, detail: '' });
-      })
-      .catch(async (err) => {
-        if (cancelled) return;
-        // Error bodies come back as a Blob too (responseType: 'blob') — read the
-        // JSON out of it so the admin sees the *actual* reason (expired media,
-        // WhatsApp not configured, 404, etc.) instead of one generic message.
-        let detail = err?.message || 'Unknown error';
-        try {
-          const blob = err?.response?.data;
-          if (blob instanceof Blob) {
-            const text = await blob.text();
-            const parsed = JSON.parse(text);
-            detail = parsed?.message || detail;
-          } else if (err?.response?.data?.message) {
-            detail = err.response.data.message;
-          }
-        } catch { /* keep fallback detail */ }
-        console.error('[WhatsApp media] failed to load', msg._id, msg.type, err?.response?.status, detail);
-        if (!cancelled) setState({ loading: false, url: null, error: true, detail });
-      });
-
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [msg._id]);
-
-  if (state.loading) {
-    return (
-      <div className="flex items-center gap-2 text-xs text-gray-400">
-        <span className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
-        Loading {msg.type}…
-      </div>
-    );
-  }
-
-  if (state.error || !state.url) {
-    return (
-      <p className="text-xs text-red-400 font-semibold">
-        ⚠️ Could not load this {msg.type}{state.detail ? ` — ${state.detail}` : ' — the WhatsApp media link may have expired.'}
-      </p>
-    );
-  }
-
-  if (msg.type === 'image' || msg.type === 'sticker') {
-    return (
-      <div>
-        <a href={state.url} target="_blank" rel="noreferrer">
-          <img src={state.url} alt={msg.type} className="max-w-xs max-h-72 rounded-xl border border-gray-200 object-contain" />
-        </a>
-        {msg.mediaCaption && <p className="text-sm text-gray-600 mt-2">{msg.mediaCaption}</p>}
-      </div>
-    );
-  }
-
-  if (msg.type === 'audio') {
-    return <audio controls src={state.url} className="w-full max-w-xs" />;
-  }
-
-  if (msg.type === 'video') {
-    return (
-      <div>
-        <video controls src={state.url} className="max-w-xs max-h-72 rounded-xl border border-gray-200" />
-        {msg.mediaCaption && <p className="text-sm text-gray-600 mt-2">{msg.mediaCaption}</p>}
-      </div>
-    );
-  }
-
-  if (msg.type === 'document') {
-    return (
-      <a href={state.url} target="_blank" rel="noreferrer" download={msg.text || 'document'}
-        className="flex items-center gap-2 text-sm font-bold text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded-xl hover:bg-green-100 transition w-fit">
-        📄 {msg.text || 'Download document'}
-      </a>
-    );
-  }
-
-  return null;
-}
-
 // ── Main Inbox ─────────────────────────────────────────────────────────────
+// (Media rendering + the zoomable image viewer now live in the shared
+// WhatsAppMediaContent component so both this screen and the WhatsApp Inbox
+// tab inside the Koyambedu admin panel stay in sync — see
+// components/admin/WhatsAppMedia.jsx.)
 
 export default function WhatsAppInbox() {
   const [msgs,       setMsgs]       = useState([]);
@@ -911,7 +816,7 @@ export default function WhatsAppInbox() {
               {(msg.type === 'image' || msg.type === 'audio' || msg.type === 'video' ||
                 msg.type === 'document' || msg.type === 'sticker') ? (
                 <div className="bg-gray-50 rounded-xl px-4 py-3 mb-3">
-                  <MediaContent msg={msg} />
+                  <WhatsAppMediaContent msg={msg} />
                 </div>
               ) : (
                 <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-700 leading-relaxed mb-3 whitespace-pre-wrap">
