@@ -1863,7 +1863,7 @@ export default function KoyambeduAdmin() {
             {/* Filters */}
             <div className="bg-white rounded-2xl p-3 mb-4 space-y-2">
               <div className="flex gap-2 flex-wrap">
-                <input value={searchOrder} onChange={e => setSearchOrder(e.target.value)} placeholder="Search Order ID..."
+                <input value={searchOrder} onChange={e => setSearchOrder(e.target.value)} placeholder="Search Order ID / Razorpay order_ or pay_ ID..."
                   className="border border-gray-200 rounded-xl px-3 py-2 text-sm flex-1 min-w-[120px] focus:outline-none focus:ring-2 focus:ring-green-400" />
                 <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
                   className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none">
