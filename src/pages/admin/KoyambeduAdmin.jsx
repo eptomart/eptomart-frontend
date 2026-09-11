@@ -2048,7 +2048,7 @@ export default function KoyambeduAdmin() {
                               ✕ Cancel
                             </button>
                           )}
-                          {isSuperAdmin && !['delivered','cancelled','closed','refund_initiated'].includes(order.orderStatus) && (
+                          {isSuperAdmin && ['payment_pending','pending_confirmation'].includes(order.orderStatus) && (
                             <button onClick={() => {
                               setRescheduleModal(order);
                               setRescheduleDate(order.deliveryDate ? new Date(order.deliveryDate).toISOString().slice(0, 10) : '');
