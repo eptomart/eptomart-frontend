@@ -1587,8 +1587,18 @@ export default function KoyambeduAdmin() {
 
   const recordProcurementShare = async (via) => {
     try {
-      const { data } = await api.post('/koyambedu/admin/reports/procurement-confirmed/share', { cycle: procDate, via });
-      setProcData(d => ({ ...d, shareStatus: data.shareStatus }));
+      const items = selectedProcProducts().map(p => ({ productKey: p.productKey, qty: procSelectedQty(p) }));
+      const { data } = await api.post('/koyambedu/admin/reports/procurement-confirmed/share', { cycle: procDate, via, items });
+      setProcData(d => ({
+        ...d,
+        shareStatus: data.shareStatus,
+        products: (d.products || []).map(p => {
+          const sent = items.find(i => i.productKey === p.productKey);
+          if (!sent) return p;
+          const sharedQty = Math.max(p.sharedQty || 0, sent.qty);
+          return { ...p, sharedQty, alreadyShared: sharedQty >= p.totalQty && p.totalQty > 0 };
+        }),
+      }));
     } catch { /* non-blocking — sharing itself already happened */ }
   };
 
@@ -4347,8 +4357,11 @@ export default function KoyambeduAdmin() {
                                 </button>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between gap-2">
-                                    <p className="text-sm font-bold text-gray-800">{p.productName}{p.gradeName ? ` (${p.gradeName})` : ''}</p>
-                                    <p className="text-base font-black text-purple-700 shrink-0">{procSelectedQty(p).toFixed(2)} <span className="text-xs font-normal text-gray-500">/ {p.totalQty.toFixed(2)} {p.unit}</span></p>
+                                    <p className={`text-sm font-bold ${p.alreadyShared ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                                      {p.productName}{p.gradeName ? ` (${p.gradeName})` : ''}
+                                      {p.alreadyShared && <span className="ml-1.5 text-[10px] font-bold text-green-600 no-underline">✓ Shared</span>}
+                                    </p>
+                                    <p className={`text-base font-black shrink-0 ${p.alreadyShared ? 'line-through text-gray-400' : 'text-purple-700'}`}>{procSelectedQty(p).toFixed(2)} <span className="text-xs font-normal text-gray-500 no-underline">/ {p.totalQty.toFixed(2)} {p.unit}</span></p>
                                   </div>
 
                                   {/* Sub-checkboxes: per contributing order, e.g. Radish 10kg = Order A 3kg + Order B 4kg + Order C 3kg */}
