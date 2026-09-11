@@ -379,11 +379,15 @@ function DangerZone() {
 
 
 const STATUS_OPTIONS = [
-  'placed','pending_confirmation','price_revision_pending','confirmed',
+  // payment_pending = Razorpay checkout was opened but verify-payment never
+  // completed (customer closed the app, lost network, etc.). Surfaced here so
+  // admin can filter for these and reconcile them — see the "Verify Payment"
+  // button on each such order below — instead of them being invisible.
+  'payment_pending','placed','pending_confirmation','price_revision_pending','confirmed',
   'packing','dispatched','delivered','reported','cancelled','closed',
 ];
 const STATUS_COLOR = {
-  placed:'bg-gray-100 text-gray-700', pending_confirmation:'bg-yellow-100 text-yellow-700',
+  payment_pending:'bg-red-100 text-red-700', placed:'bg-gray-100 text-gray-700', pending_confirmation:'bg-yellow-100 text-yellow-700',
   price_revision_pending:'bg-orange-100 text-orange-700', confirmed:'bg-green-100 text-green-700',
   packing:'bg-purple-100 text-purple-700', dispatched:'bg-blue-100 text-blue-700',
   delivered:'bg-green-200 text-green-800', reported:'bg-rose-100 text-rose-700', cancelled:'bg-red-100 text-red-700',
@@ -1943,6 +1947,29 @@ export default function KoyambeduAdmin() {
                           )}
                         </div>
                         <div className="flex gap-2 flex-wrap justify-end">
+                          {order.orderStatus === 'payment_pending' && (
+                            <button
+                              onClick={async () => {
+                                const paymentId = window.prompt(
+                                  `This order's Razorpay checkout was opened but never confirmed as paid.\n\n` +
+                                  `If you can see a captured payment for ₹${order.pricing?.total} on the Razorpay Dashboard for order ${order.orderId}, ` +
+                                  `paste its Payment ID below to reconcile it. We'll double-check with Razorpay before marking it paid.`
+                                );
+                                if (!paymentId?.trim()) return;
+                                try {
+                                  const { data } = await api.post(`/koyambedu/admin/orders/${order._id}/manual-verify-payment`, {
+                                    razorpayPaymentId: paymentId.trim(),
+                                  });
+                                  toast.success(data.message || 'Payment verified!');
+                                  loadTab('orders');
+                                } catch (err) {
+                                  toast.error(err?.response?.data?.message || 'Could not verify this payment');
+                                }
+                              }}
+                              className="text-xs text-red-700 font-bold border border-red-200 bg-red-50 px-2 py-1 rounded-lg">
+                              💳 Verify Payment
+                            </button>
+                          )}
                           <button onClick={() => expandOrder(order._id)}
                             className="text-xs text-green-700 font-bold border border-green-200 px-2 py-1 rounded-lg">
                             {isExp ? 'Hide' : 'Items ▾'}
