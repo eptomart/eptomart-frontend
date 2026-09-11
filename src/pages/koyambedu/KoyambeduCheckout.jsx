@@ -846,6 +846,21 @@ export default function KoyambeduCheckout() {
       }
 
       const launch = () => {
+        // Guards against a real Razorpay/UPI race condition: on UPI intent
+        // payments (customer switches to a UPI app and back), Razorpay's
+        // checkout.js can fire `ondismiss` even though the payment is still
+        // being processed and later succeeds — this order was NOT actually
+        // cancelled. Previously `ondismiss` (and the verify-payment failure
+        // handler) hard-deleted the pending order, which meant that when the
+        // payment *did* go through moments later, there was nothing left in
+        // our system to attach it to (money captured by Razorpay, customer's
+        // cart still full, no order anywhere) — exactly what happened here.
+        // Fix, matching the safe pattern already used by every other
+        // checkout flow in the app (see Checkout.jsx): never delete the
+        // order from the client. If it's genuinely abandoned it just sits as
+        // payment_pending (visible/reconcilable by admin); if the payment
+        // actually completes, the Razorpay webhook confirms it automatically.
+        let handlerCalled = false;
         const rzpModal = new window.Razorpay({
           key:      rzp.keyId,
           amount:   rzp.amount * 100,
@@ -854,6 +869,7 @@ export default function KoyambeduCheckout() {
           description: `Order #${data.order.orderId}`,
           order_id: rzp.rzpOrderId,
           handler: async (resp) => {
+            handlerCalled = true;
             try {
               await api.post('/koyambedu/orders/verify-payment', {
                 orderId:           pendingOrderId,
@@ -866,18 +882,19 @@ export default function KoyambeduCheckout() {
               setPlaced(data.order);
               toast.success('Payment confirmed!');
             } catch {
-              // Payment verification failed (signature mismatch or network error).
-              // Delete the pending order so it doesn't linger, and let customer retry.
-              try { await api.delete(`/koyambedu/orders/${pendingOrderId}/pending`); } catch (_) {}
-              toast.error('Payment verification failed. Please try again.');
+              // Verification call itself failed (network blip, etc.) — the
+              // payment may still be genuinely captured on Razorpay's side.
+              // Leave the order as payment_pending rather than deleting it;
+              // the webhook will reconcile it if the payment did go through.
+              toast.error('Could not confirm payment right now — if money was deducted, it will be verified automatically shortly. Please check My Orders in a few minutes before retrying.');
               setLoading(false);
             }
           },
           modal: {
-            ondismiss: async () => {
-              // User closed Razorpay without paying — delete the pending order.
-              // Cart items are intact (not cleared until verifyPayment succeeds).
-              try { await api.delete(`/koyambedu/orders/${pendingOrderId}/pending`); } catch (_) {}
+            ondismiss: () => {
+              // Only treat this as a genuine cancellation if the success
+              // handler above never fired for this same checkout session.
+              if (handlerCalled) return;
               toast('Payment cancelled — your cart is saved', { icon: '🛒' });
               setLoading(false);
             },
