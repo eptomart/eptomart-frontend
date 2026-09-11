@@ -435,6 +435,21 @@ export default function KoyambeduAdmin() {
   const [rescheduleSlot,  setRescheduleSlot]  = useState('slot2');
   const [rescheduling,    setRescheduling]    = useState(false);
 
+  // Manually place an order for a customer whose payment was collected
+  // outside the normal checkout flow (e.g. lost to the dismiss/verify race
+  // condition, or a UPI payment link sent directly). Builds the order from
+  // the customer's own current cart via the same validated placeOrder logic,
+  // then confirms it paid only after independently checking the given
+  // Razorpay payment ID with Razorpay itself.
+  const [manualOrderModal, setManualOrderModal] = useState(false);
+  const [manualOrderForm,  setManualOrderForm]  = useState({
+    customerPhone: '', razorpayPaymentId: '', adminNote: '',
+    fullName: '', phone: '', addressLine1: '', addressLine2: '', city: 'Chennai', pincode: '', landmark: '',
+    lat: '', lng: '', areaName: '',
+    deliverySlotKey: 'slot2', deliveryDate: '',
+  });
+  const [manualOrderSubmitting, setManualOrderSubmitting] = useState(false);
+
   // SellerAdmin create modal
   const [showSaCreate, setShowSaCreate] = useState(false);
   const [saForm, setSaForm] = useState({ userId:'', name:'', businessName:'', contactPhone:'', contactEmail:'' });
@@ -790,6 +805,38 @@ export default function KoyambeduAdmin() {
       loadTab('orders');
     } catch (err) { toast.error(err?.response?.data?.message || 'Reschedule failed'); }
     finally { setRescheduling(false); }
+  };
+
+  const submitManualOrder = async () => {
+    const f = manualOrderForm;
+    if (!f.customerPhone.trim()) return toast.error("Customer's phone number is required");
+    if (!f.razorpayPaymentId.trim()) return toast.error('Razorpay Payment ID is required');
+    if (!f.fullName || !f.addressLine1 || !f.pincode) return toast.error('Full shipping address is required');
+    if (!f.lat || !f.lng) return toast.error("Delivery location lat/lng is required — look up the address on Google Maps, right-click the pin, and copy the coordinates shown");
+    if (!f.deliveryDate) return toast.error('Pick a delivery date');
+
+    setManualOrderSubmitting(true);
+    try {
+      const { data } = await api.post('/koyambedu/admin/orders/create-manual', {
+        customerPhone: f.customerPhone.trim(),
+        razorpayPaymentId: f.razorpayPaymentId.trim(),
+        adminNote: f.adminNote,
+        shippingAddress: {
+          fullName: f.fullName, phone: f.phone || f.customerPhone, addressLine1: f.addressLine1,
+          addressLine2: f.addressLine2, city: f.city, pincode: f.pincode, landmark: f.landmark,
+        },
+        buyerLocation: { lat: Number(f.lat), lng: Number(f.lng), areaName: f.areaName, city: f.city, pincode: f.pincode },
+        deliverySlotKey: f.deliverySlotKey,
+        deliveryDate: f.deliveryDate,
+      });
+      toast.success(`Order ${data.orderId} created and marked paid!`);
+      setManualOrderModal(false);
+      loadTab('orders');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not create this order');
+    } finally {
+      setManualOrderSubmitting(false);
+    }
   };
 
   const handleEditQty = async () => {
@@ -1893,6 +1940,10 @@ export default function KoyambeduAdmin() {
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
               />
               <button onClick={() => loadTab('orders')} className="w-full bg-green-600 text-white font-bold px-4 py-2 rounded-xl text-sm">Search / Apply Filters</button>
+              <button onClick={() => setManualOrderModal(true)}
+                className="w-full bg-red-50 text-red-700 border border-red-200 font-bold px-4 py-2 rounded-xl text-sm">
+                🧾 Manually Place Order (payment collected outside app)
+              </button>
             </div>
 
             <div className="space-y-3">
@@ -3119,6 +3170,107 @@ export default function KoyambeduAdmin() {
               <button onClick={submitReschedule} disabled={rescheduling}
                 className="flex-1 bg-indigo-600 text-white font-bold py-2.5 rounded-xl hover:bg-indigo-700 disabled:opacity-60">
                 {rescheduling ? 'Saving...' : 'Reschedule'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Manually Place Order modal — for a customer whose payment was
+          collected outside the normal checkout (lost order, payment link,
+          etc.). Builds the order from their CURRENT cart via the real
+          placeOrder validation, then confirms paid only after Razorpay
+          itself confirms the given Payment ID is captured for the right
+          amount. ── */}
+      {manualOrderModal && (
+        <div className="fixed inset-0 bg-black/50 z-[9995] flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-3 my-6">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-800">🧾 Manually Place Order</h3>
+              <button onClick={() => setManualOrderModal(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">✕</button>
+            </div>
+            <p className="text-xs text-gray-500 leading-snug">
+              Use this only when a customer's payment was genuinely captured by Razorpay but no order exists in our system
+              (e.g. the checkout-dismiss bug, or a payment link/QR sent directly). This builds the order from the customer's
+              <b> current cart</b> — ask them to keep the items in their cart before you do this — and only marks it paid after
+              independently checking the Razorpay Payment ID with Razorpay itself.
+            </p>
+
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Customer's phone number (their account login)</label>
+              <input value={manualOrderForm.customerPhone}
+                onChange={e => setManualOrderForm(f => ({ ...f, customerPhone: e.target.value }))}
+                placeholder="9841581161"
+                className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-300" />
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Razorpay Payment ID (from the Razorpay Dashboard)</label>
+              <input value={manualOrderForm.razorpayPaymentId}
+                onChange={e => setManualOrderForm(f => ({ ...f, razorpayPaymentId: e.target.value }))}
+                placeholder="pay_..."
+                className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-300" />
+            </div>
+
+            <p className="text-xs font-bold text-gray-500 pt-1">Delivery address</p>
+            <div className="grid grid-cols-2 gap-2">
+              <input value={manualOrderForm.fullName} onChange={e => setManualOrderForm(f => ({ ...f, fullName: e.target.value }))}
+                placeholder="Full name" className="col-span-2 border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+              <input value={manualOrderForm.phone} onChange={e => setManualOrderForm(f => ({ ...f, phone: e.target.value }))}
+                placeholder="Delivery contact number (if different)" className="col-span-2 border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+              <input value={manualOrderForm.addressLine1} onChange={e => setManualOrderForm(f => ({ ...f, addressLine1: e.target.value }))}
+                placeholder="Address line 1" className="col-span-2 border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+              <input value={manualOrderForm.addressLine2} onChange={e => setManualOrderForm(f => ({ ...f, addressLine2: e.target.value }))}
+                placeholder="Address line 2" className="col-span-2 border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+              <input value={manualOrderForm.city} onChange={e => setManualOrderForm(f => ({ ...f, city: e.target.value }))}
+                placeholder="City" className="border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+              <input value={manualOrderForm.pincode} onChange={e => setManualOrderForm(f => ({ ...f, pincode: e.target.value }))}
+                placeholder="Pincode" className="border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+              <input value={manualOrderForm.landmark} onChange={e => setManualOrderForm(f => ({ ...f, landmark: e.target.value }))}
+                placeholder="Landmark (optional)" className="col-span-2 border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+            </div>
+
+            <p className="text-xs font-bold text-gray-500 pt-1">Delivery location (needed for delivery-charge calculation)</p>
+            <div className="grid grid-cols-2 gap-2">
+              <input value={manualOrderForm.lat} onChange={e => setManualOrderForm(f => ({ ...f, lat: e.target.value }))}
+                placeholder="Latitude" className="border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+              <input value={manualOrderForm.lng} onChange={e => setManualOrderForm(f => ({ ...f, lng: e.target.value }))}
+                placeholder="Longitude" className="border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+              <input value={manualOrderForm.areaName} onChange={e => setManualOrderForm(f => ({ ...f, areaName: e.target.value }))}
+                placeholder="Area name (optional)" className="col-span-2 border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+            </div>
+            <p className="text-[11px] text-gray-400">
+              Tip: search the address on Google Maps, right-click the exact pin, and the coordinates shown at the top are lat, lng.
+            </p>
+
+            <p className="text-xs font-bold text-gray-500 pt-1">Delivery date &amp; slot</p>
+            <div className="grid grid-cols-2 gap-2">
+              <input type="date" value={manualOrderForm.deliveryDate}
+                onChange={e => setManualOrderForm(f => ({ ...f, deliveryDate: e.target.value }))}
+                className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+              <select value={manualOrderForm.deliverySlotKey}
+                onChange={e => setManualOrderForm(f => ({ ...f, deliverySlotKey: e.target.value }))}
+                className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm">
+                <option value="slot1">7 AM – 9 AM</option>
+                <option value="slot2">9 AM – 12 PM</option>
+                <option value="slot3">12 PM – 2 PM</option>
+                <option value="slot4">2 PM – 4 PM</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Admin note (optional, saved on the order)</label>
+              <textarea value={manualOrderForm.adminNote}
+                onChange={e => setManualOrderForm(f => ({ ...f, adminNote: e.target.value }))}
+                rows={2} placeholder="e.g. Lost order after UPI payment — customer confirmed on call"
+                className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none" />
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setManualOrderModal(false)} className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl">Cancel</button>
+              <button onClick={submitManualOrder} disabled={manualOrderSubmitting}
+                className="flex-1 bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 disabled:opacity-60">
+                {manualOrderSubmitting ? 'Creating…' : 'Create & Mark Paid'}
               </button>
             </div>
           </div>
