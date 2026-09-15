@@ -16,17 +16,40 @@ const STATUS_BADGE = {
   payment_pending: 'bg-red-100 text-red-700',
   placed: 'bg-blue-100 text-blue-700',
   pending_confirmation: 'bg-amber-100 text-amber-700',
+  sa_review_submitted: 'bg-amber-100 text-amber-700',
+  price_revision_pending: 'bg-amber-100 text-amber-700',
   confirmed: 'bg-emerald-100 text-emerald-700',
   packing: 'bg-purple-100 text-purple-700',
   dispatched: 'bg-indigo-100 text-indigo-700',
   delivered: 'bg-green-100 text-green-700',
+  reported: 'bg-orange-100 text-orange-700',
   cancelled: 'bg-gray-200 text-gray-600',
   closed: 'bg-gray-200 text-gray-600',
+  refund_initiated: 'bg-pink-100 text-pink-700',
 };
+
+// Same values as the KoyambeduOrder.orderStatus enum — kept in one place so
+// the checkbox list and badge colours above stay in sync.
+const STATUS_OPTIONS = [
+  { value: 'payment_pending',        label: 'Payment Pending' },
+  { value: 'placed',                 label: 'Placed' },
+  { value: 'pending_confirmation',   label: 'Pending Confirmation' },
+  { value: 'sa_review_submitted',    label: 'SA Review Submitted' },
+  { value: 'price_revision_pending', label: 'Price Revision Pending' },
+  { value: 'confirmed',              label: 'Confirmed' },
+  { value: 'packing',                label: 'Packing' },
+  { value: 'dispatched',             label: 'Dispatched' },
+  { value: 'delivered',              label: 'Delivered' },
+  { value: 'reported',               label: 'Reported' },
+  { value: 'cancelled',              label: 'Cancelled' },
+  { value: 'closed',                 label: 'Closed' },
+  { value: 'refund_initiated',       label: 'Refund Initiated' },
+];
 
 export default function FulfillmentTab() {
   const [from, setFrom] = useState(daysAgoStr(7));
   const [to, setTo]     = useState(todayStr());
+  const [statuses, setStatuses] = useState([]); // empty = all statuses
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(null); // 'excel' | 'pdf' | null
@@ -37,14 +60,19 @@ export default function FulfillmentTab() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ from, to });
+      if (statuses.length) params.set('statuses', statuses.join(','));
       const { data } = await api.get(`/koyambedu/admin/orders/fulfillment?${params}`);
       setOrders(data.orders || []);
     } catch {
       toast.error('Failed to load orders');
     } finally { setLoading(false); }
-  }, [from, to]);
+  }, [from, to, statuses]);
 
   useEffect(() => { load(); }, [load]);
+
+  const toggleStatus = (value) => {
+    setStatuses(s => s.includes(value) ? s.filter(v => v !== value) : [...s, value]);
+  };
 
   const saveFulfilledBy = async (order) => {
     const value = drafts[order._id] ?? order.fulfilledBy ?? '';
@@ -64,6 +92,7 @@ export default function FulfillmentTab() {
     setExporting(format);
     try {
       const params = new URLSearchParams({ from, to, format });
+      if (statuses.length) params.set('statuses', statuses.join(','));
       const res = await api.get(`/koyambedu/admin/orders/fulfillment/export?${params}`, { responseType: 'blob' });
       const url = URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a');
@@ -106,6 +135,26 @@ export default function FulfillmentTab() {
             {exporting === 'pdf' ? 'Exporting…' : '📄 Export PDF'}
           </button>
         </div>
+
+        <div className="mt-3">
+          <label className="text-xs text-gray-500 font-medium block mb-1.5">Filter by status (leave all unchecked to show every status)</label>
+          <div className="flex flex-wrap gap-2">
+            {STATUS_OPTIONS.map(opt => {
+              const checked = statuses.includes(opt.value);
+              return (
+                <label key={opt.value}
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border cursor-pointer select-none transition ${checked ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                  <input type="checkbox" checked={checked} onChange={() => toggleStatus(opt.value)} className="accent-green-700" />
+                  {opt.label}
+                </label>
+              );
+            })}
+            {statuses.length > 0 && (
+              <button onClick={() => setStatuses([])} className="text-xs font-bold text-gray-500 underline px-1">Clear</button>
+            )}
+          </div>
+        </div>
+
         <p className="text-[11px] text-gray-400 mt-2">{orders.length} order{orders.length === 1 ? '' : 's'} found for this date range (based on order date).</p>
       </div>
 
