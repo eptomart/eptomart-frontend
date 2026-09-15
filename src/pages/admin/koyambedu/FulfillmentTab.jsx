@@ -5,7 +5,7 @@
 // (GET /koyambedu/admin/orders/fulfillment, PATCH .../fulfilled-by,
 // GET .../fulfillment/export) — completely separate from the existing
 // Orders tab's data/endpoint, so nothing there is affected.
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
 
@@ -46,6 +46,23 @@ const STATUS_OPTIONS = [
   { value: 'refund_initiated',       label: 'Refund Initiated' },
 ];
 
+// One line of the price-breakdown panel. Shows an original (struck-through)
+// amount next to the current one when a small-order discount applied.
+function Row({ label, value, original, bold, highlight }) {
+  const color = highlight === 'green' ? 'text-green-600' : highlight === 'red' ? 'text-red-600' : highlight === 'blue' ? 'text-blue-600' : 'text-gray-700';
+  return (
+    <div className="flex justify-between items-center px-3 py-1.5">
+      <span className={`text-gray-500 ${bold ? 'font-bold text-gray-700' : ''}`}>{label}</span>
+      <span className={`${bold ? 'font-bold' : 'font-medium'} ${color}`}>
+        {original != null && original !== value && (
+          <span className="text-gray-400 line-through mr-1.5 text-xs">₹{original.toFixed(2)}</span>
+        )}
+        {value < 0 ? '− ' : ''}₹{Math.abs(value || 0).toFixed(2)}
+      </span>
+    </div>
+  );
+}
+
 export default function FulfillmentTab() {
   const [from, setFrom] = useState(daysAgoStr(7));
   const [to, setTo]     = useState(todayStr());
@@ -55,6 +72,9 @@ export default function FulfillmentTab() {
   const [exporting, setExporting] = useState(null); // 'excel' | 'pdf' | null
   const [drafts, setDrafts] = useState({}); // orderId -> in-progress text
   const [saving, setSaving] = useState({}); // orderId -> bool
+  const [expandedId, setExpandedId] = useState(null);
+  const [detailCache, setDetailCache] = useState({}); // _id -> { items, pricing, calculatedPricing }
+  const [detailLoading, setDetailLoading] = useState(null); // _id currently loading
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,6 +106,20 @@ export default function FulfillmentTab() {
     } finally {
       setSaving(s => ({ ...s, [order._id]: false }));
     }
+  };
+
+  const toggleExpand = async (order) => {
+    if (expandedId === order._id) { setExpandedId(null); return; }
+    setExpandedId(order._id);
+    if (detailCache[order._id]) return; // already fetched
+    setDetailLoading(order._id);
+    try {
+      const { data } = await api.get(`/koyambedu/admin/orders/fulfillment/${order._id}`);
+      setDetailCache(c => ({ ...c, [order._id]: data }));
+    } catch {
+      toast.error('Failed to load order detail');
+      setExpandedId(null);
+    } finally { setDetailLoading(null); }
   };
 
   const exportFile = async (format) => {
@@ -173,38 +207,96 @@ export default function FulfillmentTab() {
             </tr>
           </thead>
           <tbody>
-            {orders.map(o => (
-              <tr key={o._id} className="border-t border-gray-100">
-                <td className="px-3 py-2 font-bold text-gray-700 whitespace-nowrap">{o.orderId}</td>
-                <td className="px-3 py-2">
-                  <div className="font-medium text-gray-700">{o.customerName}</div>
-                  <div className="text-xs text-gray-400">{o.customerPhone}</div>
-                </td>
-                <td className="px-3 py-2 whitespace-nowrap text-gray-600">{o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-IN') : '—'}</td>
-                <td className="px-3 py-2 whitespace-nowrap text-gray-600">
-                  {o.deliveryDate ? new Date(o.deliveryDate).toLocaleDateString('en-IN') : '—'}
-                  {o.deliverySlot && <div className="text-[10px] text-gray-400">{o.deliverySlot}</div>}
-                </td>
-                <td className="px-3 py-2">
-                  <span className={`text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap ${STATUS_BADGE[o.orderStatus] || 'bg-gray-100 text-gray-600'}`}>
-                    {o.orderStatus}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-center text-gray-600">{o.itemCount}</td>
-                <td className="px-3 py-2 text-right font-bold text-gray-700">₹{o.total.toFixed(2)}</td>
-                <td className="px-3 py-2">
-                  <input
-                    type="text"
-                    value={drafts[o._id] ?? o.fulfilledBy ?? ''}
-                    onChange={e => setDrafts(d => ({ ...d, [o._id]: e.target.value }))}
-                    onBlur={() => saveFulfilledBy(o)}
-                    placeholder="Who fulfilled this order?"
-                    disabled={!!saving[o._id]}
-                    className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-green-500 disabled:opacity-50"
-                  />
-                </td>
-              </tr>
-            ))}
+            {orders.map(o => {
+              const isExp = expandedId === o._id;
+              const detail = detailCache[o._id];
+              return (
+              <Fragment key={o._id}>
+                <tr onClick={() => toggleExpand(o)}
+                  className={`border-t border-gray-100 cursor-pointer hover:bg-gray-50 ${isExp ? 'bg-green-50/50' : ''}`}>
+                  <td className="px-3 py-2 font-bold text-gray-700 whitespace-nowrap">
+                    <span className="inline-block mr-1 text-gray-400 transition-transform" style={{ transform: isExp ? 'rotate(90deg)' : 'none' }}>▶</span>
+                    {o.orderId}
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="font-medium text-gray-700">{o.customerName}</div>
+                    <div className="text-xs text-gray-400">{o.customerPhone}</div>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-gray-600">{o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-IN') : '—'}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-gray-600">
+                    {o.deliveryDate ? new Date(o.deliveryDate).toLocaleDateString('en-IN') : '—'}
+                    {o.deliverySlot && <div className="text-[10px] text-gray-400">{o.deliverySlot}</div>}
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap ${STATUS_BADGE[o.orderStatus] || 'bg-gray-100 text-gray-600'}`}>
+                      {o.orderStatus}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-center text-gray-600">{o.itemCount}</td>
+                  <td className="px-3 py-2 text-right font-bold text-gray-700">₹{o.total.toFixed(2)}</td>
+                  <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
+                    <input
+                      type="text"
+                      value={drafts[o._id] ?? o.fulfilledBy ?? ''}
+                      onChange={e => setDrafts(d => ({ ...d, [o._id]: e.target.value }))}
+                      onBlur={() => saveFulfilledBy(o)}
+                      placeholder="Who fulfilled this order?"
+                      disabled={!!saving[o._id]}
+                      className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-green-500 disabled:opacity-50"
+                    />
+                  </td>
+                </tr>
+                {isExp && (
+                  <tr className="bg-gray-50/70">
+                    <td colSpan={8} className="px-4 py-3">
+                      {detailLoading === o._id ? (
+                        <p className="text-xs text-gray-400 py-3">Loading order detail…</p>
+                      ) : detail ? (
+                        <div className="grid md:grid-cols-2 gap-4">
+                          {/* Items */}
+                          <div>
+                            <p className="text-[11px] font-bold text-gray-500 uppercase mb-1.5">Items</p>
+                            <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                              {detail.items.map((it, i) => (
+                                <div key={i} className="flex justify-between items-center px-3 py-2 text-sm">
+                                  <div>
+                                    <span className="text-gray-700 font-medium">{it.name}{it.gradeName ? ` (${it.gradeName})` : ''}</span>
+                                    <span className="text-gray-400 text-xs ml-1.5">{it.quantity} {it.unit} × ₹{it.unitPrice.toFixed(2)}</span>
+                                    {it.isAmendment && <span className="ml-1.5 text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">Added later</span>}
+                                  </div>
+                                  <span className="font-bold text-gray-700 shrink-0">₹{it.lineTotal.toFixed(2)}</span>
+                                </div>
+                              ))}
+                              {detail.items.length === 0 && <p className="text-xs text-gray-400 px-3 py-2">No items</p>}
+                            </div>
+                          </div>
+
+                          {/* Price breakdown */}
+                          <div>
+                            <p className="text-[11px] font-bold text-gray-500 uppercase mb-1.5">Price Breakdown</p>
+                            <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 text-sm">
+                              <Row label="Subtotal" value={detail.pricing.subtotal} />
+                              <Row label="Delivery Charge" value={detail.pricing.deliveryCharge} original={detail.pricing.originalDeliveryCharge} />
+                              <Row label="Platform Fee" value={detail.pricing.platformFee} original={detail.pricing.originalPlatformFee} />
+                              {detail.pricing.packingLogisticsFee > 0 && <Row label="Packing / Logistics Fee" value={detail.pricing.packingLogisticsFee} />}
+                              {detail.pricing.discount > 0 && <Row label={`Discount${detail.pricing.couponCode ? ` (${detail.pricing.couponCode})` : ''}`} value={-detail.pricing.discount} highlight="green" />}
+                              {!!detail.pricing.walletAdjustment && <Row label="Wallet Adjustment" value={-detail.pricing.walletAdjustment} highlight={detail.pricing.walletAdjustment > 0 ? 'green' : 'red'} />}
+                              <Row label="Total" value={detail.pricing.total} bold />
+                              {detail.calculatedPricing?.finalPayableAmount != null && detail.calculatedPricing.finalPayableAmount !== detail.pricing.total && (
+                                <Row label="Final Payable (after revisions)" value={detail.calculatedPricing.finalPayableAmount} bold highlight="blue" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-red-400 py-3">Could not load order detail.</p>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+              );
+            })}
             {!loading && orders.length === 0 && (
               <tr><td colSpan={8} className="text-center text-gray-400 py-8">No orders found for this date range</td></tr>
             )}
