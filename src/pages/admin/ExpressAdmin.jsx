@@ -878,6 +878,8 @@ function StoreInventoryTab({ stores }) {
   const [search, setSearch] = useState('');
   const [addDrafts, setAddDrafts] = useState({});       // productId -> { qty, note }
   const [addingId, setAddingId] = useState(null);
+  const [priceDrafts, setPriceDrafts] = useState({});    // productId -> typed selling price
+  const [savingPriceId, setSavingPriceId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
   const [removingId, setRemovingId] = useState(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState(null); // click-to-confirm, no native dialog
@@ -1030,9 +1032,35 @@ function StoreInventoryTab({ stores }) {
         stockQty: existing?.stockQty ?? 0,
         isAvailable: existing?.isAvailable ?? false,
         priceOverride: existing?.priceOverride ?? null,
+        autoPrice: existing?.autoPrice ?? null,
         addQty: addDrafts[p._id]?.qty ?? '',
       };
     });
+
+  // Manually set (or clear, with an empty value) the selling price for one
+  // product at this store — rounds off whatever the margin engine computed.
+  const savePrice = async (productId) => {
+    const draft = priceDrafts[productId];
+    if (draft === undefined) return; // nothing typed, nothing to save
+    if (draft !== '' && (!Number.isFinite(Number(draft)) || Number(draft) < 0)) {
+      return toast.error('Enter a valid selling price');
+    }
+    setSavingPriceId(productId);
+    try {
+      const { data } = await api.post(`/express/admin/stores/${storeId}/products`, {
+        productId, priceOverride: draft === '' ? '' : Number(draft),
+      });
+      setStoreProducts(sp => {
+        const others = sp.filter(x => String(x.product?._id) !== String(productId));
+        const row = rows.find(r => r.product._id === productId);
+        return [...others, { ...data.storeProduct, product: row?.product, autoPrice: row?.autoPrice }];
+      });
+      setPriceDrafts(d => { const n = { ...d }; delete n[productId]; return n; });
+      toast.success(draft === '' ? 'Reverted to automatic pricing' : 'Selling price updated');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update selling price');
+    } finally { setSavingPriceId(null); }
+  };
 
   const setAddQty = (productId, qty) => setAddDrafts(d => ({ ...d, [productId]: { ...d[productId], qty } }));
 
@@ -1095,7 +1123,8 @@ function StoreInventoryTab({ stores }) {
       <p className="text-xs text-gray-400 mb-3">
         "Add Stock" adds to whatever the store already has — each delivery accumulates onto the existing quantity.
         "Available/Hidden" toggles visibility to customers &amp; POS without touching stock. "Remove" deletes the
-        store-product record entirely.
+        store-product record entirely. "Save Price" lets you manually round off the selling price for this store —
+        leave it blank and save to go back to the auto-computed price shown next to the stock count.
       </p>
 
       <div className="flex flex-col sm:flex-row gap-2 mb-4">
@@ -1228,8 +1257,21 @@ function StoreInventoryTab({ stores }) {
                 </p>
                 <p className="text-xs text-gray-400">
                   Current stock: <span className="font-bold text-gray-600">{row.stockQty}</span> {row.product.unit}
-                  {row.priceOverride != null && <span className="ml-2 font-bold text-indigo-600">Store price: ₹{row.priceOverride}</span>}
+                  {row.autoPrice != null && <span className="ml-2">Auto price: ₹{row.autoPrice}</span>}
                 </p>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-gray-400 shrink-0">₹</span>
+                <input type="number" min="0" step="0.01"
+                  placeholder={row.priceOverride != null ? String(row.priceOverride) : 'Selling price'}
+                  value={priceDrafts[row.product._id] ?? (row.priceOverride != null ? String(row.priceOverride) : '')}
+                  onChange={e => setPriceDrafts(d => ({ ...d, [row.product._id]: e.target.value }))}
+                  className="w-24 border rounded-lg px-2 py-1.5 text-sm" />
+                <button onClick={() => savePrice(row.product._id)} disabled={savingPriceId === row.product._id}
+                  className="px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-semibold disabled:opacity-40">
+                  {savingPriceId === row.product._id ? 'Saving…' : 'Save Price'}
+                </button>
               </div>
 
               <div className="flex items-center gap-1.5">

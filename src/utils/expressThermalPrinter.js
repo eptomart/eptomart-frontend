@@ -27,13 +27,22 @@ import {
 const fmtRs = (n) => `Rs.${(Number(n) || 0).toFixed(2)}`;
 
 /**
- * @param {object} bill - { billNo, dateStr, timeLabel, storeName, customerName, items: [{name, unit, price, quantity}], total }
+ * @param {object} bill - { billNo, dateStr, timeLabel, storeName, customerName, items: [{name, unit, price, quantity}], subtotal, discountPercent, discountAmount, total }
  */
 function buildReceiptHtml(bill) {
   const rows = bill.items.map((it, i) => `
     <div style="padding:3px 0;border-bottom:1px dashed #ccc;font-size:12px;line-height:1.4;word-break:break-word">
       <span>${i + 1}. ${it.name} — ${it.quantity}${it.unit ? ' ' + it.unit : ''} @${fmtRs(it.price)} = ${fmtRs(it.price * it.quantity)}</span>
     </div>`).join('');
+
+  const hasDiscount = (bill.discountAmount || 0) > 0;
+  const totalsBlock = hasDiscount ? `
+  <div style="display:flex;justify-content:space-between;font-size:12px;margin:2px 0">
+    <span>Subtotal</span><span>${fmtRs(bill.subtotal)}</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:12px;margin:2px 0">
+    <span>Discount (${bill.discountPercent}%)</span><span>-${fmtRs(bill.discountAmount)}</span>
+  </div>` : '';
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8">
 <style>
@@ -50,6 +59,7 @@ function buildReceiptHtml(bill) {
   <hr>
   ${rows}
   <hr>
+  ${totalsBlock}
   <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;margin:4px 0">
     <span>TOTAL</span><span>${fmtRs(bill.total)}</span>
   </div>
@@ -76,6 +86,10 @@ function buildReceiptEscPos(bill) {
     chunks.push(bytesText(`${i + 1}. ${it.name} - ${it.quantity}${it.unit ? ' ' + it.unit : ''} @${fmtRs(it.price)} = ${fmtRs(it.price * it.quantity)}\n`));
   });
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
+  if ((bill.discountAmount || 0) > 0) {
+    chunks.push(bytesText(`Subtotal: ${fmtRs(bill.subtotal)}\n`));
+    chunks.push(bytesText(`Discount (${bill.discountPercent}%): -${fmtRs(bill.discountAmount)}\n`));
+  }
   chunks.push(bytesBoldOn());
   chunks.push(bytesText(`TOTAL: ${fmtRs(bill.total)}\n`));
   chunks.push(bytesBoldOff());

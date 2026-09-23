@@ -71,6 +71,11 @@ export default function ExpressPOSTerminal() {
   // Quantity being edited inline on an already-added bill line — keyed by
   // productId, so typing "1.35" doesn't get clobbered by a bill refresh.
   const [lineQtyDrafts, setLineQtyDrafts] = useState({});
+  // Offer/discount %, applied to the whole bill's subtotal — draft text kept
+  // separate from the saved value so typing doesn't fire a request per
+  // keystroke; only "Apply" commits it.
+  const [discountDraft, setDiscountDraft] = useState('');
+  const [applyingDiscount, setApplyingDiscount] = useState(false);
   // Bluetooth thermal printer — same shared connection used by the Express
   // admin panel and Store Manager dashboard (and Koyambedu Daily's own
   // Printer tab, underneath). Connecting here before the shift starts means
@@ -98,6 +103,26 @@ export default function ExpressPOSTerminal() {
   };
 
   const activeBill = bills.find(b => b._id === activeBillId);
+
+  // Keep the discount input in sync with whichever bill is active — e.g.
+  // switching from a held bill with a 10% offer to a fresh one with none.
+  useEffect(() => {
+    setDiscountDraft(activeBill?.discountPercent ? String(activeBill.discountPercent) : '');
+  }, [activeBillId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const applyDiscount = async () => {
+    if (!activeBill) return;
+    const pct = discountDraft.trim() === '' ? 0 : Number(discountDraft);
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) return toast.error('Enter a discount between 0 and 100');
+    setApplyingDiscount(true);
+    try {
+      const { data } = await expressPOSApi.patch(`/bills/${activeBill._id}/discount`, { discountPercent: pct });
+      setBills(bs => bs.map(b => b._id === data.bill._id ? data.bill : b));
+      toast.success(pct > 0 ? `${pct}% offer applied` : 'Discount cleared');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to apply discount');
+    } finally { setApplyingDiscount(false); }
+  };
 
   const newBill = async () => {
     if (bills.length >= 4) return toast.error('You already have 4 held bills — complete or void one first');
@@ -152,10 +177,14 @@ export default function ExpressPOSTerminal() {
         storeName: posUser?.store?.name,
         customerName: data.bill.customerName,
         items: data.bill.items,
+        subtotal: data.bill.subtotal,
+        discountPercent: data.bill.discountPercent,
+        discountAmount: data.bill.discountAmount,
         total: data.bill.total,
       }).catch(() => toast.error('Sale completed, but the receipt failed to print'));
       setBills(bs => bs.filter(b => b._id !== data.bill._id));
       setActiveBillId(null);
+      setDiscountDraft('');
     } catch (err) { toast.error(err?.response?.data?.message || 'Failed to complete sale'); }
   };
 
@@ -329,7 +358,7 @@ export default function ExpressPOSTerminal() {
                     <div key={pid} className="flex items-center justify-between py-1.5 border-b">
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-gray-800 truncate">{it.name}</p>
-                        <p className="text-xs text-gray-400">₹{it.price}/{it.unit}</p>
+                        <p className="text-xs text-gray-400">₹{it.price}/{it.unit} × {it.quantity} = <span className="font-bold text-gray-600">₹{(it.price * it.quantity).toFixed(2)}</span></p>
                       </div>
                       {decimal ? (
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -365,8 +394,30 @@ export default function ExpressPOSTerminal() {
                   );
                 })}
               </div>
-              <div className="flex justify-between font-bold text-gray-800 mb-3 pt-2 border-t">
-                <span>Total</span><span>₹{activeBill.total}</span>
+              <div className="pt-2 border-t mb-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs text-gray-500 font-semibold shrink-0">Offer %</span>
+                  <input value={discountDraft} inputMode="decimal" placeholder="0"
+                    onChange={e => setDiscountDraft(e.target.value.replace(/[^0-9.]/g, ''))}
+                    className="w-16 border rounded px-1.5 py-1 text-sm text-center" />
+                  <button onClick={applyDiscount} disabled={applyingDiscount}
+                    className="px-2.5 py-1 rounded bg-gray-100 text-gray-700 text-xs font-bold disabled:opacity-50">
+                    {applyingDiscount ? 'Applying…' : 'Apply'}
+                  </button>
+                </div>
+                {activeBill.discountAmount > 0 && (
+                  <>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Subtotal</span><span>₹{activeBill.subtotal}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-green-600 mb-1">
+                      <span>Discount ({activeBill.discountPercent}%)</span><span>−₹{activeBill.discountAmount}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between font-bold text-gray-800">
+                  <span>Total</span><span>₹{activeBill.total}</span>
+                </div>
               </div>
               <div className="flex gap-2 mb-3">
                 {['cash', 'upi', 'card'].map(m => (
