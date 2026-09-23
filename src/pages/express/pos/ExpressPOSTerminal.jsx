@@ -148,6 +148,22 @@ export default function ExpressPOSTerminal() {
     }
   };
 
+  // Removes a line item entirely regardless of its current quantity —
+  // distinct from the +/- steppers (which only reach 0 one unit at a time)
+  // and from clearing the decimal-quantity input (which doesn't submit on
+  // its own). Backend already treats quantity<=0 as "remove this line".
+  const removeItem = async (productId) => {
+    if (!activeBill) return;
+    try {
+      const { data } = await expressPOSApi.post(`/bills/${activeBill._id}/item`, { productId, quantity: 0 });
+      setBills(bs => bs.map(b => b._id === data.bill._id ? data.bill : b));
+      setLineQtyDrafts(d => { const n = { ...d }; delete n[productId]; return n; });
+      toast('Item removed', { icon: '🗑️' });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to remove item');
+    }
+  };
+
   // Sets a line's quantity to an exact typed value (e.g. 1.35kg) instead of
   // stepping by whole units — used both when first adding a weight-based
   // product and when correcting its quantity on the bill afterwards.
@@ -180,6 +196,7 @@ export default function ExpressPOSTerminal() {
         subtotal: data.bill.subtotal,
         discountPercent: data.bill.discountPercent,
         discountAmount: data.bill.discountAmount,
+        roundOff: data.bill.roundOff,
         total: data.bill.total,
       }).catch(() => toast.error('Sale completed, but the receipt failed to print'));
       setBills(bs => bs.filter(b => b._id !== data.bill._id));
@@ -382,12 +399,16 @@ export default function ExpressPOSTerminal() {
                             onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
                             className="w-16 border rounded px-1.5 py-1 text-sm font-bold text-center" />
                           <span className="text-[10px] text-gray-400">{it.unit}</span>
+                          <button onClick={() => removeItem(it.product)} title="Remove item"
+                            className="w-6 h-6 rounded bg-red-50 text-red-500 flex items-center justify-center"><FiTrash2 size={12} /></button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 shrink-0">
                           <button onClick={() => addItem(it.product, -1)} className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center"><FiMinus size={12} /></button>
                           <span className="text-sm font-bold w-6 text-center">{it.quantity}</span>
                           <button onClick={() => addItem(it.product, 1)} className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center"><FiPlus size={12} /></button>
+                          <button onClick={() => removeItem(it.product)} title="Remove item"
+                            className="w-6 h-6 rounded bg-red-50 text-red-500 flex items-center justify-center"><FiTrash2 size={12} /></button>
                         </div>
                       )}
                     </div>
@@ -405,15 +426,20 @@ export default function ExpressPOSTerminal() {
                     {applyingDiscount ? 'Applying…' : 'Apply'}
                   </button>
                 </div>
+                {(activeBill.discountAmount > 0 || activeBill.roundOff !== 0) && (
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Subtotal</span><span>₹{activeBill.subtotal.toFixed(2)}</span>
+                  </div>
+                )}
                 {activeBill.discountAmount > 0 && (
-                  <>
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
-                      <span>Subtotal</span><span>₹{activeBill.subtotal}</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-green-600 mb-1">
-                      <span>Discount ({activeBill.discountPercent}%)</span><span>−₹{activeBill.discountAmount}</span>
-                    </div>
-                  </>
+                  <div className="flex justify-between text-xs text-green-600 mb-1">
+                    <span>Discount ({activeBill.discountPercent}%)</span><span>−₹{activeBill.discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                {activeBill.roundOff !== 0 && (
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Round Off</span><span>{activeBill.roundOff > 0 ? '+' : '−'}₹{Math.abs(activeBill.roundOff).toFixed(2)}</span>
+                  </div>
                 )}
                 <div className="flex justify-between font-bold text-gray-800">
                   <span>Total</span><span>₹{activeBill.total}</span>

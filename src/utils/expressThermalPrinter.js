@@ -36,13 +36,17 @@ function buildReceiptHtml(bill) {
     </div>`).join('');
 
   const hasDiscount = (bill.discountAmount || 0) > 0;
-  const totalsBlock = hasDiscount ? `
+  const hasRoundOff = (bill.roundOff || 0) !== 0;
+  const totalsBlock = (hasDiscount || hasRoundOff) ? `
   <div style="display:flex;justify-content:space-between;font-size:12px;margin:2px 0">
     <span>Subtotal</span><span>${fmtRs(bill.subtotal)}</span>
   </div>
-  <div style="display:flex;justify-content:space-between;font-size:12px;margin:2px 0">
+  ${hasDiscount ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin:2px 0">
     <span>Discount (${bill.discountPercent}%)</span><span>-${fmtRs(bill.discountAmount)}</span>
-  </div>` : '';
+  </div>` : ''}
+  ${hasRoundOff ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin:2px 0">
+    <span>Round Off</span><span>${bill.roundOff > 0 ? '+' : '-'}${fmtRs(Math.abs(bill.roundOff))}</span>
+  </div>` : ''}` : '';
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8">
 <style>
@@ -86,9 +90,14 @@ function buildReceiptEscPos(bill) {
     chunks.push(bytesText(`${i + 1}. ${it.name} - ${it.quantity}${it.unit ? ' ' + it.unit : ''} @${fmtRs(it.price)} = ${fmtRs(it.price * it.quantity)}\n`));
   });
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
-  if ((bill.discountAmount || 0) > 0) {
+  if ((bill.discountAmount || 0) > 0 || (bill.roundOff || 0) !== 0) {
     chunks.push(bytesText(`Subtotal: ${fmtRs(bill.subtotal)}\n`));
-    chunks.push(bytesText(`Discount (${bill.discountPercent}%): -${fmtRs(bill.discountAmount)}\n`));
+    if ((bill.discountAmount || 0) > 0) {
+      chunks.push(bytesText(`Discount (${bill.discountPercent}%): -${fmtRs(bill.discountAmount)}\n`));
+    }
+    if ((bill.roundOff || 0) !== 0) {
+      chunks.push(bytesText(`Round Off: ${bill.roundOff > 0 ? '+' : '-'}${fmtRs(Math.abs(bill.roundOff))}\n`));
+    }
   }
   chunks.push(bytesBoldOn());
   chunks.push(bytesText(`TOTAL: ${fmtRs(bill.total)}\n`));
