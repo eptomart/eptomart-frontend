@@ -19,6 +19,7 @@ const ALL_PERMISSIONS = [
   { key: 'settlements', label: 'Settlements' },
   { key: 'uzhavar',     label: 'Farmer Fresh' },
   { key: 'koyambedu',   label: 'Koyambedu Daily' },
+  { key: 'express',     label: 'Eptomart Express' },
 ];
 
 const BLANK = { name: '', email: '', phone: '', permissions: ['orders'] };
