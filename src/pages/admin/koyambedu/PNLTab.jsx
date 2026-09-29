@@ -47,6 +47,7 @@ export default function PNLTab() {
   const [loadmanDraft, setLoadmanDraft] = useState('');
   const [savingLoadman, setSavingLoadman] = useState(false);
   const [costDrafts, setCostDrafts] = useState({}); // productKey -> purchaseCostPerUnit draft (day-level, all bills at once)
+  const [procuredByDrafts, setProcuredByDrafts] = useState({}); // productKey -> manually-typed "procured by" name
   const [savingCost, setSavingCost] = useState({}); // productKey -> bool
   const [itemCostDrafts, setItemCostDrafts] = useState({}); // itemId -> bill-specific purchaseCostPerUnit draft
   const [savingItemCost, setSavingItemCost] = useState({}); // itemId -> bool
@@ -99,17 +100,22 @@ export default function PNLTab() {
   };
 
   const saveCost = async (row) => {
-    const draft = costDrafts[row.productKey];
-    if (draft === undefined) return;
+    const costDraft = costDrafts[row.productKey];
+    const nameDraft = procuredByDrafts[row.productKey];
+    if (costDraft === undefined && nameDraft === undefined) return;
     setSavingCost(s => ({ ...s, [row.productKey]: true }));
     try {
       await api.patch('/koyambedu/admin/reports/procurement-confirmed/item', {
         cycle, productKey: row.productKey, productName: row.productName,
         gradeKey: row.gradeKey, gradeName: row.gradeName,
-        purchaseCostPerUnit: draft === '' ? null : Number(draft),
-        purchased: true, // records the current logged-in admin as "procured by"
+        ...(costDraft !== undefined ? { purchaseCostPerUnit: costDraft === '' ? null : Number(costDraft) } : {}),
+        // Procured By is typed in by admin here — no longer auto-filled
+        // from whoever is logged in. Always sent (even unchanged) so an
+        // admin can clear it back to blank.
+        purchasedByName: (nameDraft ?? row.procuredBy ?? '').trim(),
+        purchased: true,
       });
-      toast.success(`${row.productName} cost saved`);
+      toast.success(`${row.productName} saved`);
       loadDay();
     } catch {
       toast.error('Failed to save cost');
@@ -243,7 +249,7 @@ export default function PNLTab() {
               <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
                 <div className="px-4 pt-3 pb-1">
                   <h3 className="font-bold text-gray-700 text-sm">Procurement Cost Entry (per product, per day)</h3>
-                  <p className="text-[11px] text-gray-400">Enter what was actually paid to the supplier per unit. Saving records you as who procured it.</p>
+                  <p className="text-[11px] text-gray-400">Enter what was actually paid to the supplier per unit, and type in who procured it.</p>
                 </div>
                 <table className="w-full text-sm">
                   <thead>
@@ -272,7 +278,12 @@ export default function PNLTab() {
                         <td className="px-3 py-2 text-right text-gray-600">{money(row.purchaseCost)}</td>
                         <td className="px-3 py-2 text-right text-gray-600">{money(row.loadmanCost)}</td>
                         <td className="px-3 py-2 text-right font-bold text-gray-700">{money(row.totalProcurement)}</td>
-                        <td className="px-3 py-2 text-gray-600">{row.procuredBy || '—'}</td>
+                        <td className="px-3 py-2">
+                          <input type="text" placeholder="Who procured this?"
+                            value={procuredByDrafts[row.productKey] ?? (row.procuredBy ?? '')}
+                            onChange={e => setProcuredByDrafts(d => ({ ...d, [row.productKey]: e.target.value }))}
+                            className="w-32 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-red-400" />
+                        </td>
                         <td className="px-3 py-2">
                           <button onClick={() => saveCost(row)} disabled={!!savingCost[row.productKey]}
                             className="text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-2.5 py-1 rounded-lg disabled:opacity-50">
