@@ -46,8 +46,10 @@ export default function PNLTab() {
   const [dayLoading, setDayLoading] = useState(false);
   const [loadmanDraft, setLoadmanDraft] = useState('');
   const [savingLoadman, setSavingLoadman] = useState(false);
-  const [costDrafts, setCostDrafts] = useState({}); // productKey -> purchaseCostPerUnit draft
+  const [costDrafts, setCostDrafts] = useState({}); // productKey -> purchaseCostPerUnit draft (day-level, all bills at once)
   const [savingCost, setSavingCost] = useState({}); // productKey -> bool
+  const [itemCostDrafts, setItemCostDrafts] = useState({}); // itemId -> bill-specific purchaseCostPerUnit draft
+  const [savingItemCost, setSavingItemCost] = useState({}); // itemId -> bool
   const [orderCostDrafts, setOrderCostDrafts] = useState({}); // orderId -> { platformFeeCost, transportCost, packingCost, razorpayDeduction }
   const [savingOrderCost, setSavingOrderCost] = useState({});
   const [expandedOrder, setExpandedOrder] = useState(null);
@@ -112,6 +114,25 @@ export default function PNLTab() {
     } catch {
       toast.error('Failed to save cost');
     } finally { setSavingCost(s => ({ ...s, [row.productKey]: false })); }
+  };
+
+  // Bill-specific override — enter procurement cost for ONE item on ONE
+  // order, instead of the day-level value above which applies to every
+  // order for that product at once. Blank clears the override, falling
+  // back to the day-level figure again.
+  const saveItemCost = async (order, item) => {
+    const draft = itemCostDrafts[item.itemId];
+    if (draft === undefined) return;
+    setSavingItemCost(s => ({ ...s, [item.itemId]: true }));
+    try {
+      await api.patch(`/koyambedu/admin/orders/${order._id}/items/${item.itemId}/procurement-cost`, {
+        procurementCostPerUnit: draft === '' ? null : Number(draft),
+      });
+      toast.success(`${item.name} cost saved for ${order.orderId}`);
+      loadDay();
+    } catch {
+      toast.error('Failed to save bill cost');
+    } finally { setSavingItemCost(s => ({ ...s, [item.itemId]: false })); }
   };
 
   const saveOrderCosts = async (order) => {
@@ -271,7 +292,8 @@ export default function PNLTab() {
               {dayReport.procuredByRollup.length > 0 && (
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
                   <div className="px-4 pt-3 pb-1">
-                    <h3 className="font-bold text-gray-700 text-sm">Procured By — Contribution Summary</h3>
+                    <h3 className="font-bold text-gray-700 text-sm">Procured By — Amount to Pay</h3>
+                    <p className="text-[11px] text-gray-400">What Eptomart owes each person for this day's procurement — their supplier cost plus their share of the loadman charge.</p>
                   </div>
                   <table className="w-full text-sm">
                     <thead>
@@ -279,7 +301,8 @@ export default function PNLTab() {
                         <th className="px-3 py-2">Name</th>
                         <th className="px-3 py-2 text-right">Qty Handled</th>
                         <th className="px-3 py-2 text-right">Purchase Cost</th>
-                        <th className="px-3 py-2 text-right">Total Procurement</th>
+                        <th className="px-3 py-2 text-right">Loadman Share</th>
+                        <th className="px-3 py-2 text-right">Amount to Pay</th>
                         <th className="px-3 py-2">Products</th>
                       </tr>
                     </thead>
@@ -289,7 +312,8 @@ export default function PNLTab() {
                           <td className="px-3 py-2 font-bold text-gray-700">{p.name}</td>
                           <td className="px-3 py-2 text-right text-gray-600">{p.totalQty.toFixed(2)}</td>
                           <td className="px-3 py-2 text-right text-gray-600">{money(p.purchaseCost)}</td>
-                          <td className="px-3 py-2 text-right font-bold text-gray-700">{money(p.totalProcurement)}</td>
+                          <td className="px-3 py-2 text-right text-gray-600">{money(p.loadmanCost)}</td>
+                          <td className="px-3 py-2 text-right font-bold text-green-700">{money(p.amountPayable)}</td>
                           <td className="px-3 py-2 text-gray-500 text-xs">{p.products.join(', ')}</td>
                         </tr>
                       ))}
@@ -353,7 +377,7 @@ export default function PNLTab() {
                                             <th className="px-2.5 py-1.5 text-right">Qty</th>
                                             <th className="px-2.5 py-1.5 text-right">Order Price</th>
                                             <th className="px-2.5 py-1.5 text-right">Revenue</th>
-                                            <th className="px-2.5 py-1.5 text-right">Purchase Cost</th>
+                                            <th className="px-2.5 py-1.5 text-right">Purchase Cost/Unit (this bill)</th>
                                             <th className="px-2.5 py-1.5 text-right">Loadman Cost</th>
                                             <th className="px-2.5 py-1.5 text-right">Total Procurement</th>
                                             <th className="px-2.5 py-1.5">Procured By</th>
@@ -361,15 +385,30 @@ export default function PNLTab() {
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
                                           {o.items.map((it, i) => (
-                                            <tr key={i}>
+                                            <tr key={i} onClick={e => e.stopPropagation()}>
                                               <td className="px-2.5 py-1.5 font-medium text-gray-700 whitespace-nowrap">{it.name}</td>
                                               <td className="px-2.5 py-1.5 text-right text-gray-600 whitespace-nowrap">{it.quantity} {it.unit}</td>
                                               <td className="px-2.5 py-1.5 text-right text-gray-600">₹{it.orderPrice.toFixed(2)}</td>
                                               <td className="px-2.5 py-1.5 text-right font-bold text-gray-700">{money(it.revenue)}</td>
-                                              <td className="px-2.5 py-1.5 text-right text-gray-600">
-                                                {it.purchaseCostPerUnit != null ? money(it.purchaseCost) : <span className="text-gray-300">—</span>}
+                                              <td className="px-2.5 py-1.5 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                  <input type="number" placeholder="₹/unit"
+                                                    value={itemCostDrafts[it.itemId] ?? (it.purchaseCostPerUnit ?? '')}
+                                                    onChange={e => setItemCostDrafts(d => ({ ...d, [it.itemId]: e.target.value }))}
+                                                    className="w-20 border border-gray-200 rounded-lg px-1.5 py-1 text-right text-xs focus:outline-none focus:border-red-400" />
+                                                  <button onClick={() => saveItemCost(o, it)} disabled={!!savingItemCost[it.itemId]}
+                                                    className="text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 px-1.5 py-1 rounded disabled:opacity-50">
+                                                    {savingItemCost[it.itemId] ? '…' : 'Save'}
+                                                  </button>
+                                                </div>
+                                                {it.isBillOverride
+                                                  ? <p className="text-[9px] text-red-500 mt-0.5">Bill-specific override</p>
+                                                  : it.purchaseCostPerUnit != null && <p className="text-[9px] text-gray-400 mt-0.5">From day-level entry</p>}
                                               </td>
-                                              <td className="px-2.5 py-1.5 text-right text-gray-600">{money(it.loadmanCost)}</td>
+                                              <td className="px-2.5 py-1.5 text-right text-gray-600">
+                                                {money(it.loadmanCost)}
+                                                {!it.loadmanEligible && <p className="text-[9px] text-gray-400">not eligible{it.unit !== 'kg' ? ' (not kg)' : ' (<₹200)'}</p>}
+                                              </td>
                                               <td className="px-2.5 py-1.5 text-right font-bold text-gray-700">{money(it.totalProcurement)}</td>
                                               <td className="px-2.5 py-1.5 text-gray-500 whitespace-nowrap">{it.procuredBy || '—'}</td>
                                             </tr>
@@ -378,7 +417,8 @@ export default function PNLTab() {
                                       </table>
                                     </div>
                                     <p className="text-[10px] text-gray-400 mt-1">
-                                      Loadman cost = day's loadman charge ÷ total quantity for the day ({money(dayReport.loadmanPerUnitRate)}/unit) × this item's quantity. Purchase cost comes from the Procurement Cost Entry table above.
+                                      Loadman cost = day's loadman charge ÷ total eligible quantity for the day ({money(dayReport.loadmanPerUnitRate)}/kg) × this item's quantity — only applies to kg-sold items worth ₹200+ per bill, never bunches, pieces, or small low-value lines.
+                                      Purchase cost defaults to the day-level Procurement Cost Entry table above, unless overridden here for this specific bill.
                                     </p>
                                   </div>
                                   <div onClick={e => e.stopPropagation()}>
