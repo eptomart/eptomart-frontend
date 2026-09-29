@@ -342,20 +342,44 @@ export default function PNLTab() {
                           {isExp && (
                             <tr className="bg-gray-50/70">
                               <td colSpan={9} className="px-4 py-3">
-                                <div className="grid md:grid-cols-2 gap-4">
+                                <div className="grid md:grid-cols-[1.6fr_1fr] gap-4">
                                   <div>
-                                    <p className="text-[11px] font-bold text-gray-500 uppercase mb-1.5">Items</p>
-                                    <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-                                      {o.items.map((it, i) => (
-                                        <div key={i} className="flex justify-between items-center px-3 py-2 text-sm">
-                                          <div>
-                                            <span className="text-gray-700 font-medium">{it.name}</span>
-                                            <span className="text-gray-400 text-xs ml-1.5">{it.quantity} {it.unit} × ₹{it.orderPrice.toFixed(2)}</span>
-                                          </div>
-                                          <span className="font-bold text-gray-700 shrink-0">{money(it.revenue)}</span>
-                                        </div>
-                                      ))}
+                                    <p className="text-[11px] font-bold text-gray-500 uppercase mb-1.5">Items — cost breakdown</p>
+                                    <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+                                      <table className="w-full text-xs">
+                                        <thead>
+                                          <tr className="bg-gray-50 text-left text-[10px] text-gray-500 uppercase">
+                                            <th className="px-2.5 py-1.5">Item</th>
+                                            <th className="px-2.5 py-1.5 text-right">Qty</th>
+                                            <th className="px-2.5 py-1.5 text-right">Order Price</th>
+                                            <th className="px-2.5 py-1.5 text-right">Revenue</th>
+                                            <th className="px-2.5 py-1.5 text-right">Purchase Cost</th>
+                                            <th className="px-2.5 py-1.5 text-right">Loadman Cost</th>
+                                            <th className="px-2.5 py-1.5 text-right">Total Procurement</th>
+                                            <th className="px-2.5 py-1.5">Procured By</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                          {o.items.map((it, i) => (
+                                            <tr key={i}>
+                                              <td className="px-2.5 py-1.5 font-medium text-gray-700 whitespace-nowrap">{it.name}</td>
+                                              <td className="px-2.5 py-1.5 text-right text-gray-600 whitespace-nowrap">{it.quantity} {it.unit}</td>
+                                              <td className="px-2.5 py-1.5 text-right text-gray-600">₹{it.orderPrice.toFixed(2)}</td>
+                                              <td className="px-2.5 py-1.5 text-right font-bold text-gray-700">{money(it.revenue)}</td>
+                                              <td className="px-2.5 py-1.5 text-right text-gray-600">
+                                                {it.purchaseCostPerUnit != null ? money(it.purchaseCost) : <span className="text-gray-300">—</span>}
+                                              </td>
+                                              <td className="px-2.5 py-1.5 text-right text-gray-600">{money(it.loadmanCost)}</td>
+                                              <td className="px-2.5 py-1.5 text-right font-bold text-gray-700">{money(it.totalProcurement)}</td>
+                                              <td className="px-2.5 py-1.5 text-gray-500 whitespace-nowrap">{it.procuredBy || '—'}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
                                     </div>
+                                    <p className="text-[10px] text-gray-400 mt-1">
+                                      Loadman cost = day's loadman charge ÷ total quantity for the day ({money(dayReport.loadmanPerUnitRate)}/unit) × this item's quantity. Purchase cost comes from the Procurement Cost Entry table above.
+                                    </p>
                                   </div>
                                   <div onClick={e => e.stopPropagation()}>
                                     <p className="text-[11px] font-bold text-gray-500 uppercase mb-1.5">Order Costs (editable)</p>
