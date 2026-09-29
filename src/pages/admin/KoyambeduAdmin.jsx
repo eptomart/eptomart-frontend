@@ -1438,6 +1438,11 @@ export default function KoyambeduAdmin() {
   // on load, since usually the whole list goes out together.
   const [procSelected,     setProcSelected]     = useState({});
   const [procSupplierName, setProcSupplierName] = useState('');
+  // Per-order breakdown shown under each item (e.g. "Ooty Carrot 4kg" ->
+  // "a 1kg, b 2kg, c 1kg") in both the shared text and the printed list.
+  // Unchecked (default) = anonymous letters, so customer identity is never
+  // exposed to the supplier unless admin explicitly opts in.
+  const [procIncludeNames, setProcIncludeNames] = useState(false);
 
   const fetchProcurement = async () => {
     setProcLoading(true);
@@ -1560,14 +1565,53 @@ export default function KoyambeduAdmin() {
 
   const selectedProcProducts = () => (procData?.products || []).filter(p => procSelectedQty(p) > 0);
 
+  // Which order lines are actually selected for a product (mirrors
+  // procSelectedQty's filtering, but returns the lines themselves).
+  const procSelectedOrders = (p) => (p.orders || []).filter(o => procSelected[p.productKey]?.[o.orderId]);
+
+  // Assigns every distinct contributing order a short, stable letter label
+  // (a, b, c, … z, aa, ab, …) — same order gets the same letter everywhere
+  // in this share/print, so the supplier can tell "a's 1kg of carrot" and
+  // "a's 2kg of tomato" belong to the same customer without ever seeing a
+  // real name. Assignment order is alphabetical by orderId, so it's stable
+  // across re-renders and between the share text and the printed list.
+  const buildOrderLetterMap = (items) => {
+    const ids = new Set();
+    for (const p of items) for (const o of procSelectedOrders(p)) ids.add(o.orderId);
+    const sorted = [...ids].sort();
+    const letters = 'abcdefghijklmnopqrstuvwxyz';
+    const map = {};
+    sorted.forEach((id, i) => {
+      let n = i, label = '';
+      do { label = letters[n % 26] + label; n = Math.floor(n / 26) - 1; } while (n >= 0);
+      map[id] = label;
+    });
+    return map;
+  };
+
+  // Per-order breakdown line for one item, e.g. "a 1.00kg, b 2.00kg" (or
+  // real names when procIncludeNames is on) — only shown when more than one
+  // order actually contributes to this item, same threshold the on-screen
+  // per-order sub-checkboxes already use.
+  const procBreakdownLine = (p, orderLetterMap) => {
+    const lines = procSelectedOrders(p);
+    if (lines.length <= 1) return '';
+    return lines
+      .map(o => `${procIncludeNames ? (o.customerName || o.orderId) : orderLetterMap[o.orderId]} ${o.quantity.toFixed(2)}${p.unit}`)
+      .join(', ');
+  };
+
   // Builds the supplier-facing plain-text list — a friendly Eptomart
   // greeting, then ONLY the selected item names + selected qty/unit + optional
-  // packing note, grouped by category. No prices, no order counts, no
-  // customer data of any kind.
+  // packing note, grouped by category, plus an optional per-order breakdown
+  // (real customer names or anonymous letters per procIncludeNames). Still
+  // no prices, no order IDs, no phone numbers — only what procIncludeNames
+  // explicitly opts into.
   const buildSupplierShareText = () => {
     if (!procData) return '';
     const items = selectedProcProducts();
     const groups = groupProcByCategory(items);
+    const orderLetterMap = buildOrderLetterMap(items);
     const dateLabel = new Date(procDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
     const greeting = procSupplierName.trim()
       ? `Hi ${procSupplierName.trim()}, greetings from Eptomart! 🌿`
@@ -1580,11 +1624,69 @@ export default function KoyambeduAdmin() {
       lines.push('', `${g.icon} *${g.category}*`);
       for (const p of g.items) {
         lines.push(`• ${p.productName}${p.gradeName ? ` (${p.gradeName})` : ''} — ${procSelectedQty(p).toFixed(2)} ${p.unit}`);
+        const breakdown = procBreakdownLine(p, orderLetterMap);
+        if (breakdown) lines.push(`   ↳ ${breakdown}`);
         if (p.packingNote?.trim()) lines.push(`   ↳ Pack as: ${p.packingNote.trim()}`);
       }
     }
     lines.push('', `Total items: ${items.length}`, '', 'Thank you! 🙏 — Team Eptomart');
     return lines.join('\n');
+  };
+
+  // Printable version of the same list — same category grouping, same
+  // per-order breakdown, same procIncludeNames toggle — opened in a new
+  // window and sent straight to the browser's print dialog. Separate from
+  // the existing Koyambedu "Printer" tab (which prints packing/order slips
+  // for fulfillment) — this is specifically the supplier-facing procurement
+  // list, so it doesn't touch that tab or its code at all.
+  const printProcurementList = () => {
+    const items = selectedProcProducts();
+    if (items.length === 0) { toast.error('Select at least one item to print'); return; }
+    const groups = groupProcByCategory(items);
+    const orderLetterMap = buildOrderLetterMap(items);
+    const dateLabel = new Date(procDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const sectionsHtml = groups.map(g => `
+      <h3>${g.icon} ${g.category}</h3>
+      <table>
+        <thead><tr><th>Item</th><th>Qty</th><th>Breakdown</th></tr></thead>
+        <tbody>
+          ${g.items.map(p => `
+            <tr>
+              <td>${p.productName}${p.gradeName ? ` (${p.gradeName})` : ''}</td>
+              <td>${procSelectedQty(p).toFixed(2)} ${p.unit}</td>
+              <td class="breakdown">${procBreakdownLine(p, orderLetterMap)}</td>
+            </tr>
+            ${p.packingNote?.trim() ? `<tr><td colspan="3" class="packing-note">↳ Pack as: ${p.packingNote.trim()}</td></tr>` : ''}
+          `).join('')}
+        </tbody>
+      </table>
+    `).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Procurement List — ${dateLabel}</title>
+      <style>
+        body { font-family: Arial, Helvetica, sans-serif; padding: 24px; color: #222; }
+        h1 { font-size: 18px; margin: 0 0 2px; }
+        h3 { font-size: 13px; margin: 16px 0 6px; color: #065f46; }
+        p.meta { font-size: 12px; color: #666; margin: 0 0 12px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 8px; }
+        th { text-align: left; border-bottom: 2px solid #333; padding: 4px 6px; }
+        td { border-bottom: 1px solid #eee; padding: 4px 6px; vertical-align: top; }
+        td.breakdown { color: #555; font-size: 11px; }
+        td.packing-note { font-size: 11px; color: #b45309; font-style: italic; border-bottom: 1px solid #eee; }
+        .footer { margin-top: 16px; font-size: 11px; color: #888; }
+      </style></head><body>
+      <h1>Eptomart — Procurement List</h1>
+      <p class="meta">${dateLabel}${procSupplierName.trim() ? ` &middot; Supplier: ${procSupplierName.trim()}` : ''}${!procIncludeNames ? ' &middot; Customer identity anonymized (a, b, c…)' : ''}</p>
+      ${sectionsHtml}
+      <p class="footer">Total items: ${items.length}</p>
+    </body></html>`;
+
+    const win = window.open('', '_blank', 'width=800,height=900');
+    if (!win) { toast.error('Pop-up blocked — allow pop-ups to print'); return; }
+    win.document.write(html);
+    win.document.close();
+    win.onload = () => win.print();
   };
 
   const recordProcurementShare = async (via) => {
@@ -4331,7 +4433,15 @@ export default function KoyambeduAdmin() {
                     <input type="text" value={procSupplierName} onChange={e => setProcSupplierName(e.target.value)}
                       placeholder="e.g. Murugan Traders"
                       className="w-full mb-3 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500" />
-                    <p className="text-[11px] text-gray-400">Select which items — and even which specific orders within an item — go to this supplier. Only item names, quantities, and packing instructions are shared: no prices, order values, or customer details.</p>
+                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-1 cursor-pointer select-none">
+                      <input type="checkbox" checked={procIncludeNames} onChange={e => setProcIncludeNames(e.target.checked)}
+                        className="accent-purple-600" />
+                      Show customer name in the per-order breakdown
+                    </label>
+                    <p className="text-[11px] text-gray-400">
+                      When an item comes from more than one order, both the shared text and the printed list break it down per order (e.g. "Ooty Carrot 4kg = a 1kg, b 2kg, c 1kg").
+                      {procIncludeNames ? ' Real customer names will be shown.' : ' Customers are shown as anonymous letters (a, b, c…) instead of their name.'}
+                    </p>
                   </div>
 
                   {groupProcByCategory(procData.products).map((g, gi) => (
@@ -4420,6 +4530,10 @@ export default function KoyambeduAdmin() {
                         <button onClick={copyShareText} disabled={procSharing}
                           className="flex-1 border-2 border-gray-200 text-gray-700 font-bold text-sm py-3 rounded-xl active:scale-95 transition disabled:opacity-50">
                           📋 Copy Text
+                        </button>
+                        <button onClick={printProcurementList}
+                          className="flex-1 border-2 border-gray-200 text-gray-700 font-bold text-sm py-3 rounded-xl active:scale-95 transition">
+                          🖨️ Print
                         </button>
                       </div>
                     </>
