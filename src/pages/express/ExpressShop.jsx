@@ -37,7 +37,7 @@ export default function ExpressShop() {
       navigate('/express/location');
       return;
     }
-    api.get(`/express/stores/${selectedStore._id}/catalogue`)
+    api.get(`/express/stores/${selectedStore._id}/online-catalogue`)
       .then(({ data }) => setCatalogue(data.catalogue || []))
       .catch(() => toast.error('Failed to load products'))
       .finally(() => setLoading(false));

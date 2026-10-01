@@ -25,6 +25,7 @@ const TABS = [
   { key: 'pos',        label: 'POS Users',   Icon: FiUsers },
   { key: 'products',   label: 'Products',    Icon: FiPackage },
   { key: 'allocation', label: 'Store Inventory', Icon: FiBox },
+  { key: 'online',     label: 'Online Catalog', Icon: FiEye },
   { key: 'expenses',   label: 'Expenses',    Icon: FiDollarSign },
   { key: 'carts',      label: 'Carts',       Icon: FiShoppingCart },
   { key: 'margin',     label: 'Settings', Icon: FiSliders },
@@ -65,6 +66,7 @@ export default function ExpressAdmin() {
       {tab === 'pos'       && <POSUsersTab stores={stores} />}
       {tab === 'products'   && <ProductsTab />}
       {tab === 'allocation' && <StoreInventoryTab stores={stores} />}
+      {tab === 'online'     && <OnlineCatalogTab stores={stores} />}
       {tab === 'expenses'   && <ExpensesTab stores={stores} />}
       {tab === 'carts'      && <CartsTab />}
       {tab === 'margin'     && <MarginConfigTab stores={stores} />}
@@ -870,6 +872,139 @@ function ProductsTab() {
 // actions. A "Stock Report" section below shows every addition (by admin)
 // and loss (reported by the Store Manager) for the selected store.
 // ══════════════════════════════════════════════
+// ── Online Catalog ──────────────────────────────────────────────────────
+// Every active Koyambedu Daily product is a candidate for every store — no
+// "link into Express" step needed first. Admin just picks which ones to
+// show online for THIS store, at what price (Koyambedu's own price is shown
+// alongside purely as a wholesale reference point). Deliberately separate
+// from the Store Inventory tab above: toggling a product on here never
+// touches stock, the manager dashboard, or the POS terminal — it only
+// controls what the customer-facing Express shop displays and at what
+// price. One "Save All" action for the whole screen, not a click per row.
+function OnlineCatalogTab({ stores }) {
+  const [storeId, setStoreId] = useState('');
+  const [storeName, setStoreName] = useState('');
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [drafts, setDrafts] = useState({}); // koyambeduProductId -> { isEnabled, price }
+  const [saving, setSaving] = useState(false);
+
+  const loadCatalog = () => {
+    if (!storeId) { setItems([]); return; }
+    setLoading(true);
+    api.get(`/express/admin/stores/${storeId}/online-catalog`)
+      .then(r => { setItems(r.data.items || []); setStoreName(r.data.store?.name || ''); setDrafts({}); })
+      .catch(() => toast.error('Failed to load online catalog'))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { loadCatalog(); }, [storeId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const rows = items.filter(it => !search.trim() || it.name.toLowerCase().includes(search.trim().toLowerCase()));
+
+  const draftFor = (id) => drafts[id] || {};
+  const setDraft = (id, patch) => setDrafts(d => ({ ...d, [id]: { ...d[id], ...patch } }));
+
+  const saveAll = async () => {
+    if (!storeId) return toast.error('Select a store first');
+    const changed = Object.entries(drafts).filter(([, v]) => v.isEnabled !== undefined || v.price !== undefined);
+    if (!changed.length) return toast('Nothing changed to save', { icon: 'ℹ️' });
+
+    const payload = changed.map(([koyambeduProductId, v]) => {
+      const row = items.find(it => String(it.koyambeduProductId) === koyambeduProductId);
+      return {
+        koyambeduProductId,
+        isEnabled: v.isEnabled ?? row?.isEnabled ?? false,
+        price: v.price !== undefined ? (v.price === '' ? null : Number(v.price)) : row?.price,
+      };
+    });
+
+    setSaving(true);
+    try {
+      await api.patch(`/express/admin/stores/${storeId}/online-catalog`, { items: payload });
+      toast.success(`Saved ${payload.length} item${payload.length === 1 ? '' : 's'}`);
+      loadCatalog();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to save online catalog');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border p-4">
+      <h3 className="font-bold text-gray-800 mb-1">Online Catalog</h3>
+      <p className="text-xs text-gray-500 mb-4">
+        Every Koyambedu Daily product is listed here automatically. Tick "Online" and set a price to make it appear
+        in the Express shop for this store — Koyambedu's own price is shown only as a reference, it does not have to
+        match. Leaving a product unticked keeps it out of the online shop without affecting anything else.
+      </p>
+
+      <div className="flex flex-col sm:flex-row gap-2 mb-4">
+        <select value={storeId} onChange={e => setStoreId(e.target.value)} className="border rounded-lg px-3 py-2 text-sm sm:w-64">
+          <option value="">Select a store…</option>
+          {stores.map(s => <option key={s._id} value={s._id}>{s.name} ({s.code})</option>)}
+        </select>
+        {storeId && (
+          <input placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)}
+            className="border rounded-lg px-3 py-2 text-sm flex-1" />
+        )}
+        {storeId && (
+          <button onClick={saveAll} disabled={saving}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 shrink-0">
+            {saving ? 'Saving…' : 'Save All'}
+          </button>
+        )}
+      </div>
+
+      {!storeId ? (
+        <p className="text-sm text-gray-400 py-6 text-center">Select a store to manage its online catalog.</p>
+      ) : loading ? (
+        <p className="text-sm text-gray-400 py-6 text-center">Loading…</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
+                <th className="px-3 py-2">Product</th>
+                <th className="px-3 py-2 text-right">Wholesale Price (Koyambedu)</th>
+                <th className="px-3 py-2 text-center">Online</th>
+                <th className="px-3 py-2 text-right">Online Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(row => {
+                const d = draftFor(row.koyambeduProductId);
+                const isEnabled = d.isEnabled ?? row.isEnabled;
+                return (
+                  <tr key={row.koyambeduProductId} className="border-t border-gray-100">
+                    <td className="px-3 py-2 font-medium text-gray-700">{row.name} <span className="text-gray-400 font-normal">· {row.unit}</span></td>
+                    <td className="px-3 py-2 text-right text-gray-500">₹{row.wholesalePrice.toFixed(2)}</td>
+                    <td className="px-3 py-2 text-center">
+                      <input type="checkbox" checked={isEnabled}
+                        onChange={e => setDraft(row.koyambeduProductId, { isEnabled: e.target.checked })}
+                        className="w-4 h-4 accent-indigo-600" />
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <input type="number" placeholder="₹"
+                        value={d.price ?? (row.price ?? '')}
+                        onChange={e => setDraft(row.koyambeduProductId, { price: e.target.value })}
+                        className="w-24 border border-gray-200 rounded-lg px-2 py-1 text-right focus:outline-none focus:border-indigo-400" />
+                    </td>
+                  </tr>
+                );
+              })}
+              {rows.length === 0 && (
+                <tr><td colSpan={4} className="text-center text-gray-400 py-6">No products found</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StoreInventoryTab({ stores }) {
   const [storeId, setStoreId] = useState('');
   const [products, setProducts] = useState([]);       // master Express catalogue

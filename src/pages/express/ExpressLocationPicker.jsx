@@ -102,6 +102,15 @@ export default function ExpressLocationPicker() {
   const [searchBusy, setSearchBusy] = useState(false);
   const [showSugg, setShowSugg] = useState(false);
 
+  // Store-chooser step — shown after a delivery location is confirmed,
+  // instead of silently auto-picking the nearest store. Every active store
+  // is listed (nearest first when we have lat/lng) and the customer taps
+  // the one they want.
+  const [activeStores, setActiveStores] = useState([]);
+  const [loadingStores, setLoadingStores] = useState(false);
+  const [storesMessage, setStoresMessage] = useState(null);
+  const [selectingStoreId, setSelectingStoreId] = useState(null);
+
   // New-address save form, shown after confirming a pin in 'pin' mode
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [saveForm, setSaveForm] = useState({ label: 'Home', fullName: user?.name || '', phone: user?.phone || '' });
@@ -198,25 +207,36 @@ export default function ExpressLocationPicker() {
     );
   }, []);
 
-  // ── Nearest-store lookup, shared by both modes ───────────────────────
-  const checkAndProceed = async (lat, lng, storeSuccessMsg) => {
+  // ── Store chooser, shared by both modes ──────────────────────────────
+  // Lists every active store (nearest first) for the customer to pick from,
+  // rather than auto-selecting the nearest one.
+  const checkAndProceed = async (lat, lng) => {
+    setLoadingStores(true);
+    setStoresMessage(null);
     try {
-      const { data } = await api.post('/express/nearest-store', { lat, lng });
+      const { data } = await api.get('/express/active-stores', { params: { lat, lng } });
       if (data.expressDisabled) {
-        toast.error('Eptomart Express is currently unavailable.');
-        return { ok: false, message: 'Eptomart Express is currently unavailable.' };
+        return { ok: false, message: data.message || 'Eptomart Express is currently unavailable.' };
       }
-      if (!data.withinRange) {
-        return { ok: false, message: data.message || "You're outside our Express delivery range." };
+      if (!data.stores?.length) {
+        return { ok: false, message: 'No Eptomart Express stores are currently active.' };
       }
-      setSelectedStore(data.store);
-      toast.success(storeSuccessMsg || `Delivering from our ${data.store.name} store`);
-      navigate('/express/shop');
+      setActiveStores(data.stores);
+      setMode('stores');
       return { ok: true };
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to check delivery availability');
+      toast.error(err?.response?.data?.message || 'Failed to load stores');
       return { ok: false };
+    } finally {
+      setLoadingStores(false);
     }
+  };
+
+  const chooseStore = (store) => {
+    setSelectingStoreId(store._id);
+    setSelectedStore(store);
+    toast.success(`Delivering from our ${store.name} store`);
+    navigate('/express/shop');
   };
 
   // ── List mode: pick a saved address ──────────────────────────────────
@@ -347,6 +367,59 @@ export default function ExpressLocationPicker() {
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-indigo-200 text-indigo-600 font-bold text-sm hover:bg-indigo-50">
               <FiPlus size={15} /> Add New Address
             </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════ STORE CHOOSER ══════════════════════════
+  if (mode === 'stores') {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-3 sm:p-6">
+        <div className="relative w-full max-w-md max-h-[85vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+          <div className="flex items-center gap-2 px-4 pt-4 pb-2 shrink-0">
+            <button onClick={() => setMode(addresses.length > 0 ? 'list' : 'pin')}
+              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-gray-100 active:bg-gray-200">
+              <FiArrowLeft size={17} className="text-gray-700" />
+            </button>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <FiZap className="text-amber-500 shrink-0" size={15} />
+              <span className="font-bold text-gray-800 text-sm truncate">Choose a store</span>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 pb-4">
+            {storesMessage && (
+              <div className="mb-3 p-3 rounded-xl bg-amber-50 border border-amber-200">
+                <p className="text-sm text-amber-800 font-semibold">{storesMessage}</p>
+              </div>
+            )}
+
+            {loadingStores ? (
+              <p className="text-sm text-gray-400 py-6 text-center">Loading stores…</p>
+            ) : activeStores.length === 0 ? (
+              <p className="text-sm text-gray-400 py-6 text-center">No Express stores are active right now.</p>
+            ) : (
+              <div className="grid gap-2">
+                {activeStores.map(store => (
+                  <button key={store._id} onClick={() => chooseStore(store)} disabled={selectingStoreId === store._id}
+                    className="w-full text-left border rounded-2xl p-3 active:bg-gray-50 disabled:opacity-50">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-bold text-gray-900 text-sm truncate">{store.name}</p>
+                        <p className="text-xs text-gray-500 line-clamp-2">{[store.address, store.city].filter(Boolean).join(', ')}</p>
+                      </div>
+                      {store.distanceKm != null && (
+                        <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-indigo-50 text-indigo-600">
+                          {store.distanceKm} km
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
