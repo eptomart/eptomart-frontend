@@ -632,7 +632,7 @@ function ExpressBanner({ onReady }) {
               logo+NEW badge (top) and the Shop CTA (bottom), each sitting on
               its own translucent backing for legibility against the photo. */}
           <img src="/images/express-delivery-rider.png" alt="Eptomart Express — Express Delivery, Fast, Safe, Right to Your Door"
-            className="absolute inset-0 w-full h-full object-cover" />
+            className="exp-rider-img absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(12,26,58,0.55) 0%, rgba(12,26,58,0.05) 28%, rgba(12,26,58,0.05) 65%, rgba(12,26,58,0.65) 100%)' }} />
 
           <div className="promo-shine" />

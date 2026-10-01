@@ -698,6 +698,22 @@
   border-radius: 8px;
 }
 
+/* ── Express Home banner rider (Home.jsx ExpressBanner) ───────────
+   The rider photo is static, so a subtle bounce + lean mimics riding
+   over a road — scaled up slightly first so the transform never reveals
+   empty edges inside the rounded card. */
+@keyframes exp-rider-bounce {
+  0%, 100%  { transform: scale(1.06) translateY(0) rotate(0deg); }
+  50%       { transform: scale(1.06) translateY(-4px) rotate(-0.8deg); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .exp-rider-img {
+    animation: exp-rider-bounce 1.3s ease-in-out infinite;
+    transform-origin: 55% 75%;
+    will-change: transform;
+  }
+}
+
 /* ── Express hero banner carousel (ExpressShop.jsx) ──────────────
    Entrance pop-in (staggered per card), a light sweep of shine across
    each card, and a pulsing type pill (Flash Sale / Lowest Price) so the
