@@ -703,8 +703,8 @@
    over a road — scaled up slightly first so the transform never reveals
    empty edges inside the rounded card. */
 @keyframes exp-rider-bounce {
-  0%, 100%  { transform: scale(1.06) translateY(0) rotate(0deg); }
-  50%       { transform: scale(1.06) translateY(-4px) rotate(-0.8deg); }
+  0%, 100%  { transform: scale(1.03) translateY(0) rotate(0deg); }
+  50%       { transform: scale(1.03) translateY(-2px) rotate(-0.4deg); }
 }
 @media (prefers-reduced-motion: no-preference) {
   .exp-rider-img {
