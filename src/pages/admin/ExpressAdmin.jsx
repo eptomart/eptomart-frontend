@@ -18,6 +18,16 @@ import {
 import api from '../../utils/api';
 import { isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected, printPluList } from '../../utils/expressThermalPrinter';
 
+// Express's own category list — entirely separate from Koyambedu Daily's
+// categories (free-text on ExpressProduct.category, not a KoyambeduCategory
+// ref). "Combos" is fixed/reserved: every combo is auto-filed under it
+// (see CreateProductTab) so the customer-facing shop can always group combos
+// together regardless of what else an admin adds here later.
+const EXPRESS_CATEGORIES = [
+  'Vegetables', 'Fruits', 'Dairy & Eggs', 'Groceries', 'Snacks & Beverages',
+  'Bakery', 'Meat & Seafood', 'Household', 'Personal Care', 'Combos',
+];
+
 const TABS = [
   { key: 'dashboard',  label: 'Dashboard',   Icon: FiGrid },
   { key: 'stores',     label: 'Stores',      Icon: FiMapPin },
@@ -802,10 +812,11 @@ function ProductsTab() {
           <div key={p._id} className="bg-white border rounded-xl p-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                {p.koyambeduProduct?.images?.[0]?.url && <img src={p.koyambeduProduct.images[0].url} alt="" className="w-10 h-10 rounded object-cover shrink-0" />}
+                {(p.koyambeduProduct?.images?.[0]?.url || p.image) && <img src={p.koyambeduProduct?.images?.[0]?.url || p.image} alt="" className="w-10 h-10 rounded object-cover shrink-0" />}
                 <div className="min-w-0">
                   <p className="font-bold text-gray-800 truncate flex items-center gap-1.5">
-                    {p.koyambeduProduct?.name || '(linked product not found)'}
+                    {p.koyambeduProduct?.name || p.name || '(unnamed product)'}
+                    {!p.koyambeduProduct && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{p.isCombo ? 'Combo' : 'Native'}</span>}
                     {p.isActive === false && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Inactive</span>}
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.plu != null ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400'}`}>
                       PLU {p.plu != null ? p.plu : '—'}
@@ -914,7 +925,7 @@ function OnlineCatalogTab({ stores, reload }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [drafts, setDrafts] = useState({}); // koyambeduProductId -> { isEnabled, price }
+  const [drafts, setDrafts] = useState({}); // rowId (koyambeduProductId or expressProductId) -> { isEnabled, price }
   const [saving, setSaving] = useState(false);
   const [togglingShop, setTogglingShop] = useState(false);
 
@@ -947,6 +958,10 @@ function OnlineCatalogTab({ stores, reload }) {
   };
   useEffect(() => { loadCatalog(); }, [storeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Generic row id works for both a Koyambedu-linked row and a fully-native
+  // Express product/combo row — exactly one of the two ids is ever present.
+  const rowId = (it) => String(it.koyambeduProductId || it.expressProductId);
+
   const rows = items.filter(it => !search.trim() || it.name.toLowerCase().includes(search.trim().toLowerCase()));
 
   const draftFor = (id) => drafts[id] || {};
@@ -957,10 +972,11 @@ function OnlineCatalogTab({ stores, reload }) {
     const changed = Object.entries(drafts).filter(([, v]) => v.isEnabled !== undefined || v.price !== undefined);
     if (!changed.length) return toast('Nothing changed to save', { icon: 'ℹ️' });
 
-    const payload = changed.map(([koyambeduProductId, v]) => {
-      const row = items.find(it => String(it.koyambeduProductId) === koyambeduProductId);
+    const payload = changed.map(([id, v]) => {
+      const row = items.find(it => rowId(it) === id);
+      const base = row?.source === 'native' ? { expressProductId: id } : { koyambeduProductId: id };
       return {
-        koyambeduProductId,
+        ...base,
         isEnabled: v.isEnabled ?? row?.isEnabled ?? false,
         price: v.price !== undefined ? (v.price === '' ? null : Number(v.price)) : row?.price,
       };
@@ -982,10 +998,11 @@ function OnlineCatalogTab({ stores, reload }) {
     <div className="bg-white rounded-2xl border p-4">
       <h3 className="font-bold text-gray-800 mb-1">Online Catalog</h3>
       <p className="text-xs text-gray-500 mb-4">
-        Every Koyambedu Daily product is listed here automatically. Tick "Online" to make it appear in the Express
-        shop for this store — Koyambedu's own price is shown only as a reference, it does not have to match. If you
-        don't type a price, it defaults to wholesale + 15%; type your own number anytime to override it. Leaving a
-        product unticked keeps it out of the online shop without affecting anything else.
+        Every Koyambedu Daily product, plus every Express-native product/combo created in "Create Product/Combo",
+        is listed here automatically. Tick "Online" to make it appear in the Express shop for this store — the
+        wholesale/base cost shown is only a reference, it does not have to match. If you don't type a price, it
+        defaults to cost + 15%; type your own number anytime to override it. Leaving a product unticked keeps it
+        out of the online shop without affecting anything else.
       </p>
 
       <div className="flex flex-col sm:flex-row gap-2 mb-3">
@@ -1036,19 +1053,28 @@ function OnlineCatalogTab({ stores, reload }) {
             <thead>
               <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
                 <th className="px-3 py-2">Product</th>
-                <th className="px-3 py-2 text-right">Wholesale Price (Koyambedu)</th>
+                <th className="px-3 py-2 text-right">Wholesale / Base Cost</th>
                 <th className="px-3 py-2 text-center">Online</th>
                 <th className="px-3 py-2 text-right">Online Price</th>
               </tr>
             </thead>
             <tbody>
               {rows.map(row => {
-                const d = draftFor(row.koyambeduProductId);
+                const id = rowId(row);
+                const d = draftFor(id);
                 const isEnabled = d.isEnabled ?? row.isEnabled;
                 return (
-                  <tr key={row.koyambeduProductId} className="border-t border-gray-100">
-                    <td className="px-3 py-2 font-medium text-gray-700">{row.name} <span className="text-gray-400 font-normal">· {row.unit}</span></td>
-                    <td className="px-3 py-2 text-right text-gray-500">₹{row.wholesalePrice.toFixed(2)}</td>
+                  <tr key={id} className="border-t border-gray-100">
+                    <td className="px-3 py-2 font-medium text-gray-700">
+                      {row.name} <span className="text-gray-400 font-normal">· {row.unit}</span>
+                      {row.source === 'native' && (
+                        <span className="ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 align-middle">
+                          {row.isCombo ? 'Combo' : 'Native'}
+                        </span>
+                      )}
+                      {row.category && <span className="block text-[10px] text-gray-400 font-normal">{row.category}</span>}
+                    </td>
+                    <td className="px-3 py-2 text-right text-gray-500">₹{(row.wholesalePrice || 0).toFixed(2)}</td>
                     <td className="px-3 py-2 text-center">
                       <input type="checkbox" checked={isEnabled}
                         onChange={e => {
@@ -1060,14 +1086,14 @@ function OnlineCatalogTab({ stores, reload }) {
                           if (checked && d.price === undefined && row.price == null) {
                             patch.price = (Math.round(row.wholesalePrice * 1.15 * 100) / 100).toFixed(2);
                           }
-                          setDraft(row.koyambeduProductId, patch);
+                          setDraft(id, patch);
                         }}
                         className="w-4 h-4 accent-indigo-600" />
                     </td>
                     <td className="px-3 py-2 text-right">
                       <input type="number" placeholder="Default: +15%"
                         value={d.price ?? (row.price ?? '')}
-                        onChange={e => setDraft(row.koyambeduProductId, { price: e.target.value })}
+                        onChange={e => setDraft(id, { price: e.target.value })}
                         className="w-28 border border-gray-200 rounded-lg px-2 py-1 text-right focus:outline-none focus:border-indigo-400" />
                     </td>
                   </tr>
@@ -1087,26 +1113,21 @@ function OnlineCatalogTab({ stores, reload }) {
 // ══════════════════════════════════════════════
 // CREATE PRODUCT / COMBO TAB
 // Lets the Express admin create a brand-new product (or a combo bundling
-// several existing products) directly, without a developer. Rather than
-// inventing a parallel product system, this is a thin "bridge" into
-// Koyambedu Daily's own already-proven product-create endpoint
-// (POST /koyambedu/admin/sellers/:sellerId/products) — the exact same one
-// Koyambedu's own admin/seller-admin UI uses to create combos
-// (isCombo + comboContents). The instant a product is created this way it
-// is "active" in Koyambedu Daily's catalogue, which automatically makes it
-// a candidate in the Online Catalog tab above (every active Koyambedu
-// product is a candidate there) — so the very next step for the admin is
-// to flip it "Online" and set/confirm its Express price there. This keeps
-// the entire cart/pricing/order/POS/invoice pipeline (which only knows
-// ExpressOnlineListing + ExpressProduct, both referencing koyambeduProduct)
-// completely untouched — zero new models, zero new risk to it.
+// several existing Express products) entirely within Express — this never
+// touches Koyambedu Daily's catalogue, sellers, or categories in any way.
+// Posts to Express's own native-product endpoint (POST
+// /express/admin/products/native), creating a standalone ExpressProduct
+// with koyambeduProduct left absent. The combo-contents picker searches
+// Express's OWN catalogue (GET /express/admin/products/native/search,
+// which covers both native and Koyambedu-linked Express products) — so a
+// combo can bundle either kind, but the search itself never calls into
+// Koyambedu Daily. Once created, the product/combo shows up automatically
+// in the Online Catalog tab (source: 'native') to be switched on per store.
+// Category here is a simple free-text field scoped to Express only — see
+// EXPRESS_CATEGORIES below for the fixed list including "Combos".
 // ══════════════════════════════════════════════
 function CreateProductTab() {
-  const [sellers, setSellers] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loadingMeta, setLoadingMeta] = useState(true);
-
-  const blankForm = { sellerId: '', categoryId: '', name: '', unit: 'kg', currentPrice: '', description: '', isCombo: false };
+  const blankForm = { name: '', category: '', unit: 'kg', procurementBaseCost: '', description: '', isCombo: false };
   const [form, setForm] = useState(blankForm);
   const [comboContents, setComboContents] = useState([]); // [{ product, name, unit, qty }]
   const [comboSearch, setComboSearch] = useState('');
@@ -1115,22 +1136,13 @@ function CreateProductTab() {
   const [saving, setSaving] = useState(false);
   const [recentlyCreated, setRecentlyCreated] = useState([]);
 
-  useEffect(() => {
-    setLoadingMeta(true);
-    Promise.all([
-      api.get('/koyambedu/admin/sellers', { params: { status: 'approved', limit: 200 } }).then(r => setSellers(r.data.sellers || [])).catch(() => {}),
-      api.get('/koyambedu/admin/categories').then(r => setCategories(r.data.categories || [])).catch(() => {}),
-    ]).finally(() => setLoadingMeta(false));
-  }, []);
-
-  // Debounced search against Koyambedu's own catalogue, same pattern as the
-  // combo-contents picker in KoyambeduVariantProductForm.jsx — picking a
-  // product snapshots its name/unit at selection time.
+  // Debounced search against Express's OWN catalogue (native + Koyambedu-
+  // linked Express products) — never Koyambedu Daily directly.
   useEffect(() => {
     if (!comboSearch || comboSearch.length < 2) { setComboResults([]); return; }
     setComboSearching(true);
     const t = setTimeout(() => {
-      api.get('/koyambedu/admin/products', { params: { search: comboSearch } })
+      api.get('/express/admin/products/native/search', { params: { search: comboSearch } })
         .then(r => setComboResults((r.data.products || []).slice(0, 8)))
         .catch(() => setComboResults([]))
         .finally(() => setComboSearching(false));
@@ -1146,28 +1158,27 @@ function CreateProductTab() {
   const updateComboQty = (productId, qty) => setComboContents(c => c.map(i => i.product === productId ? { ...i, qty } : i));
   const removeComboItem = (productId) => setComboContents(c => c.filter(i => i.product !== productId));
 
-  const resetForm = () => { setForm(blankForm); setComboContents([]); setComboSearch(''); setComboResults([]); };
+  const resetForm = () => { setForm({ ...blankForm, category: form.isCombo ? 'Combos' : '' }); setComboContents([]); setComboSearch(''); setComboResults([]); };
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.sellerId) return toast.error('Choose a seller to list this product under');
-    if (!form.categoryId || !form.name) return toast.error('Category and name are required');
-    if (!form.isCombo && !form.currentPrice) return toast.error('Price is required for a standalone product');
+    if (!form.name) return toast.error('Product name is required');
+    if (!form.procurementBaseCost) return toast.error('Base/procurement cost is required — Express’s margin engine prices off this');
     if (form.isCombo && comboContents.length === 0) return toast.error('Add at least one item to the combo');
 
     setSaving(true);
     try {
       const payload = {
-        categoryId: form.categoryId,
         name: form.name,
+        category: form.isCombo ? 'Combos' : (form.category || undefined),
         unit: form.unit,
         description: form.description,
-        currentPrice: form.isCombo ? (form.currentPrice || undefined) : Number(form.currentPrice),
+        procurementBaseCost: Number(form.procurementBaseCost),
         isCombo: form.isCombo,
         comboContents: form.isCombo ? comboContents.map(c => ({ product: c.product, name: c.name, unit: c.unit, qty: Number(c.qty) || 0 })) : [],
       };
-      const { data } = await api.post(`/koyambedu/admin/sellers/${form.sellerId}/products`, payload);
-      toast.success(`"${form.name}" created — go to Online Catalog to enable it for Express and set its price.`);
+      const { data } = await api.post('/express/admin/products/native', payload);
+      toast.success(`"${form.name}" created — go to Online Catalog to enable it for a store and set its price.`);
       setRecentlyCreated(c => [{ _id: data.product._id, name: data.product.name, isCombo: form.isCombo }, ...c].slice(0, 5));
       resetForm();
     } catch (err) {
@@ -1177,61 +1188,57 @@ function CreateProductTab() {
     }
   };
 
-  if (loadingMeta) return <p className="text-sm text-gray-400">Loading…</p>;
-
   return (
     <div className="grid gap-4 max-w-2xl">
       <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-800">
-        Create a brand-new product, or a combo bundling several existing products, without needing a developer.
-        After creating it here, go to <strong>Online Catalog</strong> to switch it on for a store and set its Express price
-        (new items default to a +15% markup, which you can override).
+        Create a brand-new product, or a combo bundling several existing Express products, entirely within Express —
+        this never touches Koyambedu Daily's catalogue. After creating it here, go to <strong>Online Catalog</strong> to
+        switch it on for a store and set its Express price (new items default to a +15% markup over base cost, which
+        you can override).
       </div>
 
       <form onSubmit={submit} className="bg-white border rounded-xl p-4 grid gap-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="text-xs font-semibold text-gray-500">List under seller
-            <select value={form.sellerId} onChange={e => setForm(f => ({ ...f, sellerId: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm w-full mt-1">
-              <option value="">Choose seller…</option>
-              {sellers.map(s => <option key={s._id} value={s._id}>{s.businessName || s.ownerName || s._id}</option>)}
-            </select>
-          </label>
-          <label className="text-xs font-semibold text-gray-500">Category
-            <select value={form.categoryId} onChange={e => setForm(f => ({ ...f, categoryId: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm w-full mt-1">
-              <option value="">Choose category…</option>
-              {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
-            </select>
-          </label>
-        </div>
-
         <label className="text-xs font-semibold text-gray-500">Product name
           <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Sunday Veg Combo" className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
         </label>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="text-xs font-semibold text-gray-500">Category {form.isCombo && <span className="font-normal text-gray-400">(auto: Combos)</span>}
+            <select value={form.isCombo ? 'Combos' : form.category} disabled={form.isCombo}
+              onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+              className="border rounded-lg px-3 py-2 text-sm w-full mt-1 disabled:bg-gray-100 disabled:text-gray-400">
+              <option value="">Choose category…</option>
+              {EXPRESS_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
           <label className="text-xs font-semibold text-gray-500">Unit
             <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm w-full mt-1">
               {['kg', 'g', 'piece', 'bunch', 'dozen', 'litre'].map(u => <option key={u} value={u}>{u}</option>)}
             </select>
           </label>
-          <label className="text-xs font-semibold text-gray-500">Price (₹) {form.isCombo && <span className="font-normal text-gray-400">— optional for combos</span>}
-            <input type="number" value={form.currentPrice} onChange={e => setForm(f => ({ ...f, currentPrice: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
-          </label>
         </div>
+
+        <label className="text-xs font-semibold text-gray-500">Base / procurement cost (₹)
+          <input type="number" value={form.procurementBaseCost} onChange={e => setForm(f => ({ ...f, procurementBaseCost: e.target.value }))}
+            placeholder="What it costs Express to procure/pack this" className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+        </label>
 
         <label className="text-xs font-semibold text-gray-500">Description (optional)
           <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
         </label>
 
         <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-          <input type="checkbox" checked={form.isCombo} onChange={e => setForm(f => ({ ...f, isCombo: e.target.checked }))} className="w-4 h-4 accent-indigo-600" />
-          This is a combo (bundles several existing products)
+          <input type="checkbox" checked={form.isCombo}
+            onChange={e => setForm(f => ({ ...f, isCombo: e.target.checked, category: e.target.checked ? 'Combos' : f.category }))}
+            className="w-4 h-4 accent-indigo-600" />
+          This is a combo (bundles several existing Express products)
         </label>
 
         {form.isCombo && (
           <div className="border rounded-xl p-3 bg-gray-50">
             <p className="text-xs font-bold text-gray-600 mb-2">Combo contents</p>
             <div className="relative mb-2">
-              <input value={comboSearch} onChange={e => setComboSearch(e.target.value)} placeholder="Search a Koyambedu product to add…"
+              <input value={comboSearch} onChange={e => setComboSearch(e.target.value)} placeholder="Search an Express product to add…"
                 className="border rounded-lg px-3 py-2 text-sm w-full" />
               {comboSearching && <span className="absolute right-3 top-2.5 text-xs text-gray-400">Searching…</span>}
               {comboResults.length > 0 && (
@@ -1638,7 +1645,7 @@ function StoreInventoryTab({ stores }) {
             <div key={l._id} className="flex items-center justify-between px-3 py-2 text-xs">
               <div className="min-w-0">
                 <p className="font-semibold text-gray-700 truncate">
-                  {l.product?.koyambeduProduct?.name || 'Product'} —{' '}
+                  {l.product?.koyambeduProduct?.name || l.product?.name || 'Product'} —{' '}
                   <span className={l.type === 'addition' ? 'text-green-600' : 'text-red-600'}>
                     {l.type === 'addition' ? '+' : '−'}{l.qty}
                   </span> ({l.previousQty} → {l.newQty})
@@ -1656,12 +1663,12 @@ function StoreInventoryTab({ stores }) {
         <div className="grid gap-2">
           {rows.map(row => (
             <div key={row.product._id} className="bg-white border rounded-xl p-3 flex flex-wrap items-center gap-3">
-              {row.product.koyambeduProduct?.images?.[0]?.url && (
-                <img src={row.product.koyambeduProduct.images[0].url} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+              {(row.product.koyambeduProduct?.images?.[0]?.url || row.product.image) && (
+                <img src={row.product.koyambeduProduct?.images?.[0]?.url || row.product.image} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
               )}
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-gray-800 text-sm truncate flex items-center gap-1.5">
-                  {row.product.koyambeduProduct?.name || '(linked product not found)'}
+                  {row.product.koyambeduProduct?.name || row.product.name || '(unnamed product)'}
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${row.product.plu != null ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400'}`}>
                     PLU {row.product.plu != null ? row.product.plu : '—'}
                   </span>
