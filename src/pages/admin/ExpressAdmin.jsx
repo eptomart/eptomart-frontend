@@ -1913,6 +1913,7 @@ function MarginConfigTab({ stores }) {
         minOrderForFreeDelivery: config.minOrderForFreeDelivery,
         deliveryFeeBelowMinimum: config.deliveryFeeBelowMinimum,
         customOrderPhone: config.customOrderPhone,
+        deliveryTimeTiers: config.deliveryTimeTiers,
       });
       toast.success('Margin config saved');
       load();
@@ -1931,6 +1932,20 @@ function MarginConfigTab({ stores }) {
       load();
     } catch { toast.error('Failed to recompute logistics cost'); }
   };
+
+  // Admin-configurable delivery TIME tiers by distance — fully dynamic, not
+  // hardcoded (e.g. <=4km->30min, <=10km->45min, beyond->60min). Stored on
+  // config.deliveryTimeTiers (ExpressMarginConfig), evaluated server-side
+  // by expressPricingService.computeDeliveryEta for every quote/store list.
+  const updateTier = (i, patch) => setConfig(c => ({
+    ...c, deliveryTimeTiers: c.deliveryTimeTiers.map((t, idx) => idx === i ? { ...t, ...patch } : t),
+  }));
+  const addTier = () => setConfig(c => ({
+    ...c, deliveryTimeTiers: [...(c.deliveryTimeTiers || []), { maxDistanceKm: '', etaMinutes: '' }],
+  }));
+  const removeTier = (i) => setConfig(c => ({
+    ...c, deliveryTimeTiers: c.deliveryTimeTiers.filter((_, idx) => idx !== i),
+  }));
 
   const toggleEnabled = async () => {
     try {
@@ -2021,6 +2036,43 @@ function MarginConfigTab({ stores }) {
         <button onClick={save} disabled={saving} className="mt-3 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
           {saving ? 'Saving…' : 'Save Delivery Rules'}
         </button>
+      </div>
+
+      <div className="bg-white border rounded-xl p-4">
+        <h2 className="font-bold text-gray-700 mb-1">Delivery Time Estimates</h2>
+        <p className="text-xs text-gray-500 mb-3">
+          Quote the customer an estimated delivery time based on how far they are from the store. Tiers are
+          evaluated in order — e.g. within 4 km → 30 min, within 10 km → 45 min, beyond that (up to Max Delivery
+          Distance above) → 60 min. Add as many tiers as you like; a customer beyond the farthest tier still gets
+          that tier's estimate rather than none at all.
+        </p>
+        <div className="grid gap-2 mb-3">
+          {(config.deliveryTimeTiers || []).map((tier, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 shrink-0">Within</span>
+              <input type="number" value={tier.maxDistanceKm} onChange={e => updateTier(i, { maxDistanceKm: e.target.value })}
+                placeholder="km" className="w-20 border rounded-lg px-2 py-1.5 text-sm" />
+              <span className="text-xs text-gray-500 shrink-0">km →</span>
+              <input type="number" value={tier.etaMinutes} onChange={e => updateTier(i, { etaMinutes: e.target.value })}
+                placeholder="min" className="w-20 border rounded-lg px-2 py-1.5 text-sm" />
+              <span className="text-xs text-gray-500 shrink-0">min</span>
+              <button type="button" onClick={() => removeTier(i)} className="ml-auto text-red-400 hover:text-red-600">
+                <FiX size={14} />
+              </button>
+            </div>
+          ))}
+          {(!config.deliveryTimeTiers || config.deliveryTimeTiers.length === 0) && (
+            <p className="text-xs text-gray-400">No tiers configured — customers won't see a delivery time estimate.</p>
+          )}
+        </div>
+        <button type="button" onClick={addTier} className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 mb-3">
+          <FiPlus size={12} /> Add tier
+        </button>
+        <div>
+          <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
+            {saving ? 'Saving…' : 'Save Delivery Time Tiers'}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white border rounded-xl p-4">

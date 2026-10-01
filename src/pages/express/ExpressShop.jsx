@@ -71,6 +71,11 @@ export default function ExpressShop() {
       <div className="flex items-center gap-2 mb-1">
         <img src="/images/express-logo.png" alt="Eptomart Express" className="w-7 h-7 rounded-full object-cover shrink-0" />
         <h1 className="text-xl font-black text-indigo-900">Eptomart Express</h1>
+        {selectedStore?.estimatedDeliveryMinutes != null && (
+          <span className="ml-auto flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 shrink-0">
+            Delivery in ~{selectedStore.estimatedDeliveryMinutes} min
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-1 text-xs text-gray-500 mb-4 flex-wrap">
         <FiMapPin size={12} className="shrink-0" />

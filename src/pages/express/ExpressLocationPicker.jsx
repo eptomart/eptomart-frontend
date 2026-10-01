@@ -447,9 +447,16 @@ export default function ExpressLocationPicker() {
                       {selectingStoreId === store._id ? (
                         <div className="shrink-0 w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin mt-0.5" />
                       ) : store.distanceKm != null ? (
-                        <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-indigo-50 text-indigo-600">
-                          {store.distanceKm} km
-                        </span>
+                        <div className="shrink-0 flex flex-col items-end gap-1">
+                          <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-indigo-50 text-indigo-600">
+                            {store.distanceKm} km
+                          </span>
+                          {store.estimatedDeliveryMinutes != null && (
+                            <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">
+                              ~{store.estimatedDeliveryMinutes} min
+                            </span>
+                          )}
+                        </div>
                       ) : null}
                     </div>
                   </button>

@@ -299,7 +299,14 @@ export default function ExpressCheckout() {
 
       {quote && (
         <div className="bg-white border rounded-xl p-4 mb-4">
-          <h2 className="font-bold text-gray-700 text-sm mb-2">Order Summary</h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="font-bold text-gray-700 text-sm">Order Summary</h2>
+            {quote.estimatedDeliveryMinutes != null && (
+              <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">
+                Delivery in ~{quote.estimatedDeliveryMinutes} min
+              </span>
+            )}
+          </div>
           {quote.items.map((it, i) => (
             <div key={i} className="flex justify-between text-sm text-gray-600 mb-1">
               <span>{it.name} × {it.quantity}</span>
