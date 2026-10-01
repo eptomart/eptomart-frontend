@@ -64,11 +64,22 @@ export default function ExpressShop() {
         <FiZap className="text-amber-500" size={20} />
         <h1 className="text-xl font-black text-indigo-900">Eptomart Express</h1>
       </div>
-      <button onClick={() => navigate('/express/location')}
-        className="flex items-center gap-1.5 text-xs text-gray-500 mb-4 hover:text-indigo-600 transition">
-        <FiMapPin size={12} />
-        Delivering from <span className="font-bold text-gray-700">{selectedStore?.name || 'your area'}</span> · Change location
-      </button>
+      <div className="flex items-center gap-1 text-xs text-gray-500 mb-4 flex-wrap">
+        <FiMapPin size={12} className="shrink-0" />
+        <span>Delivering from</span>
+        <button onClick={() => navigate('/express/location?mode=stores')}
+          className="font-bold text-gray-700 underline decoration-dotted decoration-gray-300 hover:text-indigo-600 hover:decoration-indigo-400 transition">
+          {selectedStore?.name || 'your area'}
+        </button>
+        <span>·</span>
+        <button onClick={() => navigate('/express/location?mode=stores')} className="hover:text-indigo-600 transition">
+          Change store
+        </button>
+        <span>·</span>
+        <button onClick={() => navigate('/express/location')} className="hover:text-indigo-600 transition">
+          Change location
+        </button>
+      </div>
 
       {cart.largeOrderWarning && (
         <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2">

@@ -18,7 +18,7 @@
 // or when the customer explicitly taps "Change location" from the shop.
 // ============================================
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { FiSearch, FiMapPin, FiArrowLeft, FiX, FiCheck, FiZap, FiPlus, FiEdit2, FiTrash2, FiHome } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
@@ -75,11 +75,17 @@ function geocodeAddressText(addr) {
 
 export default function ExpressLocationPicker() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { setSelectedStore } = useExpressCart();
   const { user, loadUser } = useAuth();
 
   const addresses = user?.addresses || [];
-  const [mode, setMode] = useState(addresses.length > 0 ? 'list' : 'pin');
+  // Deep link from the shop page's "Change store" action (?mode=stores) —
+  // jumps straight to the store chooser using the customer's last-known
+  // location, skipping the address/pin flow entirely since they're not
+  // trying to change where they're delivering to, just which store serves it.
+  const directStoreEntry = searchParams.get('mode') === 'stores';
+  const [mode, setMode] = useState(directStoreEntry ? 'stores' : (addresses.length > 0 ? 'list' : 'pin'));
   const [checkingId, setCheckingId] = useState(null); // address._id currently being resolved (list mode)
 
   const mapDivRef = useRef(null);
@@ -209,16 +215,21 @@ export default function ExpressLocationPicker() {
 
   // ── Store chooser, shared by both modes ──────────────────────────────
   // Lists every active store (nearest first) for the customer to pick from,
-  // rather than auto-selecting the nearest one.
+  // rather than auto-selecting the nearest one. lat/lng are optional — when
+  // omitted (e.g. the "Change store" deep link below, which isn't changing
+  // location at all) the backend just sorts stores alphabetically instead
+  // of by distance.
   const checkAndProceed = async (lat, lng) => {
     setLoadingStores(true);
     setStoresMessage(null);
     try {
       const { data } = await api.get('/express/active-stores', { params: { lat, lng } });
       if (data.expressDisabled) {
+        setStoresMessage(data.message || 'Eptomart Express is currently unavailable.');
         return { ok: false, message: data.message || 'Eptomart Express is currently unavailable.' };
       }
       if (!data.stores?.length) {
+        setStoresMessage('No Eptomart Express stores are currently active.');
         return { ok: false, message: 'No Eptomart Express stores are currently active.' };
       }
       setActiveStores(data.stores);
@@ -231,6 +242,13 @@ export default function ExpressLocationPicker() {
       setLoadingStores(false);
     }
   };
+
+  // Direct "Change store" entry (see directStoreEntry above) — fetch the
+  // store list immediately on mount, no address step in between.
+  useEffect(() => {
+    if (directStoreEntry) checkAndProceed();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const chooseStore = (store) => {
     setSelectingStoreId(store._id);
@@ -379,7 +397,7 @@ export default function ExpressLocationPicker() {
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-3 sm:p-6">
         <div className="relative w-full max-w-md max-h-[85vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col">
           <div className="flex items-center gap-2 px-4 pt-4 pb-2 shrink-0">
-            <button onClick={() => setMode(addresses.length > 0 ? 'list' : 'pin')}
+            <button onClick={() => directStoreEntry ? navigate(-1) : setMode(addresses.length > 0 ? 'list' : 'pin')}
               className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-gray-100 active:bg-gray-200">
               <FiArrowLeft size={17} className="text-gray-700" />
             </button>

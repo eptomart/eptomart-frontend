@@ -66,7 +66,7 @@ export default function ExpressAdmin() {
       {tab === 'pos'       && <POSUsersTab stores={stores} />}
       {tab === 'products'   && <ProductsTab />}
       {tab === 'allocation' && <StoreInventoryTab stores={stores} />}
-      {tab === 'online'     && <OnlineCatalogTab stores={stores} />}
+      {tab === 'online'     && <OnlineCatalogTab stores={stores} reload={loadStores} />}
       {tab === 'expenses'   && <ExpensesTab stores={stores} />}
       {tab === 'carts'      && <CartsTab />}
       {tab === 'margin'     && <MarginConfigTab stores={stores} />}
@@ -881,7 +881,7 @@ function ProductsTab() {
 // touches stock, the manager dashboard, or the POS terminal — it only
 // controls what the customer-facing Express shop displays and at what
 // price. One "Save All" action for the whole screen, not a click per row.
-function OnlineCatalogTab({ stores }) {
+function OnlineCatalogTab({ stores, reload }) {
   const [storeId, setStoreId] = useState('');
   const [storeName, setStoreName] = useState('');
   const [items, setItems] = useState([]);
@@ -889,6 +889,26 @@ function OnlineCatalogTab({ stores }) {
   const [search, setSearch] = useState('');
   const [drafts, setDrafts] = useState({}); // koyambeduProductId -> { isEnabled, price }
   const [saving, setSaving] = useState(false);
+  const [togglingShop, setTogglingShop] = useState(false);
+
+  // Looked up from the shared `stores` list (kept in sync by the parent's
+  // reload()) rather than its own state, so it always reflects the latest
+  // toggle without a second round-trip.
+  const selectedStore = stores.find(s => s._id === storeId);
+
+  const toggleOnlineShop = async () => {
+    if (!storeId) return;
+    setTogglingShop(true);
+    try {
+      await api.patch(`/express/admin/stores/${storeId}/toggle-online-shop`);
+      toast.success(selectedStore?.onlineShopEnabled ? 'Online shop turned OFF for this store' : 'Online shop turned ON for this store');
+      reload?.();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update online shop status');
+    } finally {
+      setTogglingShop(false);
+    }
+  };
 
   const loadCatalog = () => {
     if (!storeId) { setItems([]); return; }
@@ -935,12 +955,13 @@ function OnlineCatalogTab({ stores }) {
     <div className="bg-white rounded-2xl border p-4">
       <h3 className="font-bold text-gray-800 mb-1">Online Catalog</h3>
       <p className="text-xs text-gray-500 mb-4">
-        Every Koyambedu Daily product is listed here automatically. Tick "Online" and set a price to make it appear
-        in the Express shop for this store — Koyambedu's own price is shown only as a reference, it does not have to
-        match. Leaving a product unticked keeps it out of the online shop without affecting anything else.
+        Every Koyambedu Daily product is listed here automatically. Tick "Online" to make it appear in the Express
+        shop for this store — Koyambedu's own price is shown only as a reference, it does not have to match. If you
+        don't type a price, it defaults to wholesale + 15%; type your own number anytime to override it. Leaving a
+        product unticked keeps it out of the online shop without affecting anything else.
       </p>
 
-      <div className="flex flex-col sm:flex-row gap-2 mb-4">
+      <div className="flex flex-col sm:flex-row gap-2 mb-3">
         <select value={storeId} onChange={e => setStoreId(e.target.value)} className="border rounded-lg px-3 py-2 text-sm sm:w-64">
           <option value="">Select a store…</option>
           {stores.map(s => <option key={s._id} value={s._id}>{s.name} ({s.code})</option>)}
@@ -956,6 +977,27 @@ function OnlineCatalogTab({ stores }) {
           </button>
         )}
       </div>
+
+      {storeId && (
+        <div className="flex items-center justify-between gap-3 mb-4 p-3 rounded-xl border bg-gray-50">
+          <div>
+            <p className="text-sm font-bold text-gray-700">Online Shop — {selectedStore?.name}</p>
+            <p className="text-xs text-gray-500">
+              Master switch for this store's customer-facing online shop — separate from the Store Active switch
+              (Stores tab), which controls POS/in-person business. Turning this off hides the store from the Express
+              app's store list entirely, even if individual products below are ticked online.
+            </p>
+          </div>
+          <button onClick={toggleOnlineShop} disabled={togglingShop}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold shrink-0 disabled:opacity-50"
+            style={selectedStore?.onlineShopEnabled
+              ? { background: '#dcfce7', color: '#16a34a' }
+              : { background: '#fee2e2', color: '#dc2626' }}>
+            {selectedStore?.onlineShopEnabled ? <FiToggleRight size={18} /> : <FiToggleLeft size={18} />}
+            {togglingShop ? 'Updating…' : selectedStore?.onlineShopEnabled ? 'Online Shop: ON' : 'Online Shop: OFF'}
+          </button>
+        </div>
+      )}
 
       {!storeId ? (
         <p className="text-sm text-gray-400 py-6 text-center">Select a store to manage its online catalog.</p>
@@ -982,14 +1024,24 @@ function OnlineCatalogTab({ stores }) {
                     <td className="px-3 py-2 text-right text-gray-500">₹{row.wholesalePrice.toFixed(2)}</td>
                     <td className="px-3 py-2 text-center">
                       <input type="checkbox" checked={isEnabled}
-                        onChange={e => setDraft(row.koyambeduProductId, { isEnabled: e.target.checked })}
+                        onChange={e => {
+                          const checked = e.target.checked;
+                          const patch = { isEnabled: checked };
+                          // Pre-fill a default +15% markup over wholesale the moment a
+                          // product is switched online with no price set yet — admin
+                          // can still type their own number before (or after) saving.
+                          if (checked && d.price === undefined && row.price == null) {
+                            patch.price = (Math.round(row.wholesalePrice * 1.15 * 100) / 100).toFixed(2);
+                          }
+                          setDraft(row.koyambeduProductId, patch);
+                        }}
                         className="w-4 h-4 accent-indigo-600" />
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <input type="number" placeholder="₹"
+                      <input type="number" placeholder="Default: +15%"
                         value={d.price ?? (row.price ?? '')}
                         onChange={e => setDraft(row.koyambeduProductId, { price: e.target.value })}
-                        className="w-24 border border-gray-200 rounded-lg px-2 py-1 text-right focus:outline-none focus:border-indigo-400" />
+                        className="w-28 border border-gray-200 rounded-lg px-2 py-1 text-right focus:outline-none focus:border-indigo-400" />
                     </td>
                   </tr>
                 );
