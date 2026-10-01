@@ -36,6 +36,10 @@ export default function ExpressShop() {
   // products; once an item is in the cart its stepper increments/decrements
   // by whatever step is currently selected here.
   const [weightStep, setWeightStep] = useState({});
+  // Admin-created hero banners (flash sale / lowest-price / custom) — see
+  // ExpressAdmin's Hero Banners tab. Independent of the store/catalogue
+  // fetch below since banners aren't store-specific.
+  const [banners, setBanners] = useState([]);
 
   useEffect(() => {
     if (!selectedStore?._id) {
@@ -50,6 +54,7 @@ export default function ExpressShop() {
       .catch(() => toast.error('Failed to load products'))
       .finally(() => setLoading(false));
     fetchCart();
+    api.get('/express/banners').then(({ data }) => setBanners(data.banners || [])).catch(() => {});
   }, [selectedStore]);
 
   const qtyInCart = (productId) => cart.items?.find(i => String(i.product) === String(productId))?.quantity || 0;
@@ -93,6 +98,41 @@ export default function ExpressShop() {
           Change location
         </button>
       </div>
+
+      {banners.length > 0 && (
+        <div className="flex gap-3 overflow-x-auto pb-1 mb-4 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide">
+          {banners.map(b => (
+            <Link key={b._id} to={b.linkTo || '/express/shop'}
+              className="relative shrink-0 w-[85%] sm:w-80 h-28 rounded-2xl overflow-hidden snap-start active:scale-[0.98] transition-transform"
+              style={!b.image ? { background: `linear-gradient(135deg, ${b.gradientFrom}, ${b.gradientTo})` } : undefined}>
+              {b.image && (
+                <>
+                  <img src={b.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                </>
+              )}
+              <div className="relative z-10 h-full flex flex-col justify-end p-3">
+                {b.type === 'flash-sale' && (
+                  <span className="self-start mb-1 bg-amber-400 text-amber-900 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full">
+                    Flash Sale
+                  </span>
+                )}
+                {b.type === 'lowest-price' && (
+                  <span className="self-start mb-1 bg-emerald-400 text-emerald-900 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full">
+                    Lowest Price
+                  </span>
+                )}
+                <p className="text-white font-black text-sm leading-tight line-clamp-1" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>
+                  {b.title}
+                </p>
+                {b.subtitle && (
+                  <p className="text-white/85 text-[11px] leading-snug line-clamp-1">{b.subtitle}</p>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
 
       {storeStatus.isPaused && (
         <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2">

@@ -37,6 +37,7 @@ const TABS = [
   { key: 'allocation', label: 'Store Inventory', Icon: FiBox },
   { key: 'online',     label: 'Online Catalog', Icon: FiEye },
   { key: 'create',     label: 'Create Product/Combo', Icon: FiPlus },
+  { key: 'banners',    label: 'Hero Banners', Icon: FiZap },
   { key: 'expenses',   label: 'Expenses',    Icon: FiDollarSign },
   { key: 'carts',      label: 'Carts',       Icon: FiShoppingCart },
   { key: 'margin',     label: 'Settings', Icon: FiSliders },
@@ -79,6 +80,7 @@ export default function ExpressAdmin() {
       {tab === 'allocation' && <StoreInventoryTab stores={stores} />}
       {tab === 'online'     && <OnlineCatalogTab stores={stores} reload={loadStores} />}
       {tab === 'create'     && <CreateProductTab />}
+      {tab === 'banners'    && <BannersTab />}
       {tab === 'expenses'   && <ExpensesTab stores={stores} />}
       {tab === 'carts'      && <CartsTab />}
       {tab === 'margin'     && <MarginConfigTab stores={stores} />}
@@ -1316,6 +1318,247 @@ function CreateProductTab() {
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
+// HERO BANNERS TAB
+// Create/schedule/toggle/delete promotional banners shown at the top of
+// the Express storefront (flash sale with start/end timings, lowest-price
+// promos, or any custom announcement). Scheduling is purely a display
+// window — see ExpressBanner.js and the customer getActiveBanners
+// endpoint, which auto-filters to isActive + within-window banners, so a
+// flash-sale banner set up ahead of time appears/disappears on its own.
+// ══════════════════════════════════════════════
+const BANNER_TYPES = [
+  { value: 'flash-sale',   label: 'Flash Sale' },
+  { value: 'lowest-price', label: 'Lowest Price' },
+  { value: 'custom',       label: 'Custom' },
+];
+
+// Datetime-local <input> needs 'YYYY-MM-DDTHH:mm' in LOCAL time, not the ISO
+// string (which is UTC) the backend returns — without this conversion the
+// edit form silently shows the wrong time to the admin.
+const toDatetimeLocal = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+function BannersTab() {
+  const [banners, setBanners] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const blankForm = {
+    title: '', subtitle: '', type: 'custom', gradientFrom: '#4338ca', gradientTo: '#7c3aed',
+    linkTo: '/express/shop', ctaText: 'Shop Now', startAt: '', endAt: '', isActive: true,
+  };
+  const [form, setForm] = useState(blankForm);
+  const [imageFile, setImageFile] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    api.get('/express/admin/banners').then(r => setBanners(r.data.banners || [])).catch(() => {}).finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, []);
+
+  const resetForm = () => { setForm(blankForm); setImageFile(null); setEditingId(null); };
+
+  const startEdit = (b) => {
+    setEditingId(b._id);
+    setForm({
+      title: b.title, subtitle: b.subtitle || '', type: b.type, gradientFrom: b.gradientFrom, gradientTo: b.gradientTo,
+      linkTo: b.linkTo, ctaText: b.ctaText, startAt: toDatetimeLocal(b.startAt), endAt: toDatetimeLocal(b.endAt),
+      isActive: b.isActive,
+    });
+    setImageFile(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.title.trim()) return toast.error('Title is required');
+    setSaving(true);
+    try {
+      const fd = new FormData();
+      Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+      if (imageFile) fd.append('image', imageFile);
+
+      if (editingId) {
+        await api.put(`/express/admin/banners/${editingId}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        toast.success('Banner updated');
+      } else {
+        await api.post('/express/admin/banners', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        toast.success('Banner created');
+      }
+      resetForm();
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to save banner');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleActive = async (id) => {
+    try {
+      await api.patch(`/express/admin/banners/${id}/toggle`);
+      load();
+    } catch { toast.error('Failed to toggle banner'); }
+  };
+
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const remove = async (id) => {
+    try {
+      await api.delete(`/express/admin/banners/${id}`);
+      toast.success('Banner deleted');
+      setConfirmDeleteId(null);
+      load();
+    } catch { toast.error('Failed to delete banner'); }
+  };
+
+  const isLive = (b) => {
+    if (!b.isActive) return false;
+    const now = Date.now();
+    if (b.startAt && new Date(b.startAt).getTime() > now) return false;
+    if (b.endAt && new Date(b.endAt).getTime() < now) return false;
+    return true;
+  };
+
+  return (
+    <div className="grid gap-4 max-w-3xl">
+      <form onSubmit={submit} className="bg-white border rounded-xl p-4 grid gap-3">
+        <h3 className="font-bold text-gray-800">{editingId ? 'Edit Banner' : 'Create a New Banner'}</h3>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="text-xs font-semibold text-gray-500">Title
+            <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              placeholder="e.g. Flash Sale — 30% Off Fruits" className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+          </label>
+          <label className="text-xs font-semibold text-gray-500">Type
+            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm w-full mt-1">
+              {BANNER_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </label>
+        </div>
+
+        <label className="text-xs font-semibold text-gray-500">Subtitle (optional)
+          <input value={form.subtitle} onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))}
+            placeholder="e.g. Today only, 6 PM – 9 PM" className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+        </label>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="text-xs font-semibold text-gray-500">Starts at (optional)
+            <input type="datetime-local" value={form.startAt} onChange={e => setForm(f => ({ ...f, startAt: e.target.value }))}
+              className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+          </label>
+          <label className="text-xs font-semibold text-gray-500">Ends at (optional)
+            <input type="datetime-local" value={form.endAt} onChange={e => setForm(f => ({ ...f, endAt: e.target.value }))}
+              className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+          </label>
+        </div>
+        <p className="text-[11px] text-gray-400 -mt-1">
+          Leave both blank for an always-on banner (still controlled by the Active toggle). Set either to schedule a
+          flash sale ahead of time — it will appear and disappear automatically.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="text-xs font-semibold text-gray-500">Background gradient — from
+            <input type="color" value={form.gradientFrom} onChange={e => setForm(f => ({ ...f, gradientFrom: e.target.value }))}
+              className="border rounded-lg w-full h-9 mt-1" />
+          </label>
+          <label className="text-xs font-semibold text-gray-500">Background gradient — to
+            <input type="color" value={form.gradientTo} onChange={e => setForm(f => ({ ...f, gradientTo: e.target.value }))}
+              className="border rounded-lg w-full h-9 mt-1" />
+          </label>
+        </div>
+        <label className="text-xs font-semibold text-gray-500">Photo (optional — overrides the gradient when set)
+          <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] || null)}
+            className="border rounded-lg px-3 py-2 text-sm w-full mt-1 bg-white" />
+        </label>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="text-xs font-semibold text-gray-500">Button text
+            <input value={form.ctaText} onChange={e => setForm(f => ({ ...f, ctaText: e.target.value }))}
+              className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+          </label>
+          <label className="text-xs font-semibold text-gray-500">Links to
+            <input value={form.linkTo} onChange={e => setForm(f => ({ ...f, linkTo: e.target.value }))}
+              placeholder="/express/shop" className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+          </label>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} className="w-4 h-4 accent-indigo-600" />
+          Active
+        </label>
+
+        <div className="flex gap-2">
+          <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
+            {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Create Banner'}
+          </button>
+          {editingId && (
+            <button type="button" onClick={resetForm} className="px-4 py-2 rounded-lg border text-sm font-semibold text-gray-600">
+              Cancel
+            </button>
+          )}
+        </div>
+      </form>
+
+      <div className="bg-white border rounded-xl p-4">
+        <h3 className="font-bold text-gray-800 mb-3">All Banners</h3>
+        {loading ? (
+          <p className="text-sm text-gray-400">Loading…</p>
+        ) : banners.length === 0 ? (
+          <p className="text-sm text-gray-400 py-6 text-center">No banners created yet.</p>
+        ) : (
+          <div className="grid gap-2">
+            {banners.map(b => (
+              <div key={b._id} className="border rounded-xl p-3 flex items-center gap-3">
+                <div className="w-16 h-10 rounded-lg shrink-0 overflow-hidden"
+                  style={!b.image ? { background: `linear-gradient(135deg, ${b.gradientFrom}, ${b.gradientTo})` } : undefined}>
+                  {b.image && <img src={b.image} alt="" className="w-full h-full object-cover" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="font-bold text-gray-800 text-sm truncate">{b.title}</p>
+                    <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                      {BANNER_TYPES.find(t => t.value === b.type)?.label || b.type}
+                    </span>
+                    {isLive(b) ? (
+                      <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">Live</span>
+                    ) : b.isActive ? (
+                      <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Scheduled</span>
+                    ) : (
+                      <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Off</span>
+                    )}
+                  </div>
+                  {(b.startAt || b.endAt) && (
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      {b.startAt ? new Date(b.startAt).toLocaleString() : 'No start'} → {b.endAt ? new Date(b.endAt).toLocaleString() : 'No end'}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => toggleActive(b._id)} title={b.isActive ? 'Turn off' : 'Turn on'}
+                    className="p-2 rounded-lg hover:bg-gray-50">
+                    {b.isActive ? <FiToggleRight size={16} className="text-green-600" /> : <FiToggleLeft size={16} className="text-gray-400" />}
+                  </button>
+                  <button onClick={() => startEdit(b)} className="p-2 rounded-lg hover:bg-gray-50 text-gray-500"><FiEdit2 size={14} /></button>
+                  {confirmDeleteId === b._id ? (
+                    <button onClick={() => remove(b._id)} className="px-2 py-1 rounded-lg bg-red-600 text-white text-[11px] font-bold">Confirm?</button>
+                  ) : (
+                    <button onClick={() => setConfirmDeleteId(b._id)} className="p-2 rounded-lg hover:bg-red-50 text-red-400"><FiTrash2 size={14} /></button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
