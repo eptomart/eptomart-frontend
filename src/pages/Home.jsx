@@ -645,7 +645,10 @@ function ExpressBanner({ onReady }) {
               maskImage: 'linear-gradient(to right, black 0%, black 34%, transparent 46%)',
               WebkitMaskImage: 'linear-gradient(to right, black 0%, black 34%, transparent 46%)',
             }} />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(12,26,58,0.55) 0%, rgba(12,26,58,0.05) 28%, rgba(12,26,58,0.05) 65%, rgba(12,26,58,0.65) 100%)' }} />
+          {/* Just a faint bottom-only fade — the pill already carries its
+              own dark backdrop for legibility, so the rest of the photo no
+              longer needs a dark wash muting its colours. */}
+          <div className="absolute inset-x-0 bottom-0 h-12" style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(12,26,58,0.35) 100%)' }} />
 
           <div className="promo-shine" />
 
