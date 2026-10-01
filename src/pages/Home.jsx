@@ -625,14 +625,17 @@ function ExpressBanner({ onReady }) {
         <div className="sob-inner promo-card relative overflow-hidden rounded-[13px] h-full px-3 py-2.5 md:px-4 md:py-3"
           style={{ background: 'linear-gradient(145deg, #0c1a3a 0%, #1e3a8a 55%, #2563eb 100%)' }}>
 
-          {/* "Express Delivery" badge graphic — large sticker peeling off the
-              bottom-right corner (bled slightly past the card edge, given a
-              gentle tilt) so it reads as a bold visual rather than a tiny,
-              easy-to-miss chip. Content column stays up top where the
-              sticker never reaches, so nothing overlaps. */}
-          <div className="absolute -right-2 -bottom-2 w-[62%] sm:w-[56%] md:w-[50%] aspect-[16/9] rounded-xl overflow-hidden bg-white shadow-xl rotate-[-3deg]"
+          {/* "Express Delivery" hero graphic (rider + clock + wordmark) —
+              large sticker peeling off the bottom-right corner, bled past
+              the card edge with a gentle tilt, so it reads as a bold visual
+              rather than a tiny, easy-to-miss chip. It's a complete creative
+              with its own text, so it needs no overlay from us — the content
+              column (logo/title/CTA) stays up top-left where it never
+              reaches. aspect-[3/2] matches the source image exactly (no
+              cropping). */}
+          <div className="absolute -right-2 -bottom-2 w-[68%] sm:w-[62%] md:w-[56%] aspect-[3/2] rounded-xl overflow-hidden bg-white shadow-xl rotate-[-2deg]"
             style={{ border: '2px solid rgba(255,255,255,0.55)' }}>
-            <img src="/images/express-delivery-badge.png" alt="Express Delivery" className="w-full h-full object-cover" />
+            <img src="/images/express-delivery-rider.png" alt="Express Delivery — Fast, Safe, Right to Your Door" className="w-full h-full object-cover" />
           </div>
 
           <div className="sob-orb sob-orb-a" />
@@ -662,7 +665,7 @@ function ExpressBanner({ onReady }) {
 
             <div className="flex-1" />
 
-            <div className="flex justify-start mt-1.5 pr-[46%] sm:pr-[40%] md:pr-[34%]">
+            <div className="flex justify-start mt-1.5 pr-[52%] sm:pr-[46%] md:pr-[40%]">
               <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg"
                 style={{ color: '#1e3a8a' }}>
                 Shop <FiArrowRight size={11} className="sob-cta-arrow" />
