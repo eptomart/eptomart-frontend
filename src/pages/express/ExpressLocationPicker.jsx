@@ -437,8 +437,12 @@ export default function ExpressLocationPicker() {
                           {i === 0 && store.distanceKm != null && (
                             <span className="shrink-0 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600">Nearest</span>
                           )}
+                          {store.isPaused && (
+                            <span className="shrink-0 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Busy</span>
+                          )}
                         </div>
                         <p className="text-xs text-gray-500 line-clamp-2">{[store.address, store.city].filter(Boolean).join(', ')}</p>
+                        {store.isPaused && <p className="text-[11px] text-amber-600 italic mt-0.5 line-clamp-1">{store.pauseMessage}</p>}
                       </div>
                       {selectingStoreId === store._id ? (
                         <div className="shrink-0 w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin mt-0.5" />

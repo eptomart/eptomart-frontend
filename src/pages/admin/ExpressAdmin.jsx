@@ -13,7 +13,7 @@ import {
   FiZap, FiMapPin, FiUsers, FiUserCheck, FiPackage, FiSliders, FiBox,
   FiClipboard, FiPlus, FiToggleLeft, FiToggleRight, FiEdit2, FiTrash2, FiX, FiCheck,
   FiGrid, FiDollarSign, FiShoppingCart, FiEye, FiTrendingUp, FiTrendingDown, FiFileText,
-  FiBluetooth, FiPrinter,
+  FiBluetooth, FiPrinter, FiPauseCircle, FiPlayCircle,
 } from 'react-icons/fi';
 import api from '../../utils/api';
 import { isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected, printPluList } from '../../utils/expressThermalPrinter';
@@ -26,6 +26,7 @@ const TABS = [
   { key: 'products',   label: 'Products',    Icon: FiPackage },
   { key: 'allocation', label: 'Store Inventory', Icon: FiBox },
   { key: 'online',     label: 'Online Catalog', Icon: FiEye },
+  { key: 'create',     label: 'Create Product/Combo', Icon: FiPlus },
   { key: 'expenses',   label: 'Expenses',    Icon: FiDollarSign },
   { key: 'carts',      label: 'Carts',       Icon: FiShoppingCart },
   { key: 'margin',     label: 'Settings', Icon: FiSliders },
@@ -67,6 +68,7 @@ export default function ExpressAdmin() {
       {tab === 'products'   && <ProductsTab />}
       {tab === 'allocation' && <StoreInventoryTab stores={stores} />}
       {tab === 'online'     && <OnlineCatalogTab stores={stores} reload={loadStores} />}
+      {tab === 'create'     && <CreateProductTab />}
       {tab === 'expenses'   && <ExpensesTab stores={stores} />}
       {tab === 'carts'      && <CartsTab />}
       {tab === 'margin'     && <MarginConfigTab stores={stores} />}
@@ -199,6 +201,24 @@ function StoresTab({ stores, reload }) {
     }
   };
 
+  const togglePause = async (s) => {
+    let message = null;
+    if (!s.isPaused) {
+      message = window.prompt(
+        "Message to show customers while this store is paused (optional):",
+        "We're currently busy with existing orders — we'll be back online shortly!"
+      );
+      if (message === null) return; // cancelled
+    }
+    try {
+      await api.patch(`/express/admin/stores/${s._id}/toggle-pause`, { message });
+      toast.success(s.isPaused ? 'Store resumed — taking new orders again' : 'Store put on hold — customers will see the busy message');
+      reload();
+    } catch {
+      toast.error('Failed to update hold status');
+    }
+  };
+
   const openEdit = (s) => {
     setEditId(s._id);
     setEditForm({
@@ -264,14 +284,21 @@ function StoresTab({ stores, reload }) {
           <div key={s._id} className="bg-white border rounded-xl p-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
-                <p className="font-bold text-gray-800">{s.name} <span className="text-xs text-gray-400 font-normal">({s.code})</span></p>
+                <p className="font-bold text-gray-800">{s.name} <span className="text-xs text-gray-400 font-normal">({s.code})</span>
+                  {s.isPaused && <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold align-middle">ON HOLD</span>}
+                </p>
                 <p className="text-xs text-gray-500">{s.address}{s.city ? `, ${s.city}` : ''} {s.pincode}</p>
                 <p className="text-xs text-gray-400">Manager: {s.storeManager?.name || 'Not assigned'}</p>
                 <p className="text-xs text-gray-400">{s.location?.lat}, {s.location?.lng}</p>
+                {s.isPaused && <p className="text-xs text-amber-600 mt-1 italic">&ldquo;{s.pauseMessage}&rdquo;</p>}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <button onClick={() => openEdit(s)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
                   <FiEdit2 size={12} /> Edit
+                </button>
+                <button onClick={() => togglePause(s)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${s.isPaused ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {s.isPaused ? <FiPlayCircle size={16} /> : <FiPauseCircle size={16} />} {s.isPaused ? 'Resume Orders' : 'Hold (Busy)'}
                 </button>
                 <button onClick={() => toggleActive(s._id)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${s.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -1057,6 +1084,203 @@ function OnlineCatalogTab({ stores, reload }) {
   );
 }
 
+// ══════════════════════════════════════════════
+// CREATE PRODUCT / COMBO TAB
+// Lets the Express admin create a brand-new product (or a combo bundling
+// several existing products) directly, without a developer. Rather than
+// inventing a parallel product system, this is a thin "bridge" into
+// Koyambedu Daily's own already-proven product-create endpoint
+// (POST /koyambedu/admin/sellers/:sellerId/products) — the exact same one
+// Koyambedu's own admin/seller-admin UI uses to create combos
+// (isCombo + comboContents). The instant a product is created this way it
+// is "active" in Koyambedu Daily's catalogue, which automatically makes it
+// a candidate in the Online Catalog tab above (every active Koyambedu
+// product is a candidate there) — so the very next step for the admin is
+// to flip it "Online" and set/confirm its Express price there. This keeps
+// the entire cart/pricing/order/POS/invoice pipeline (which only knows
+// ExpressOnlineListing + ExpressProduct, both referencing koyambeduProduct)
+// completely untouched — zero new models, zero new risk to it.
+// ══════════════════════════════════════════════
+function CreateProductTab() {
+  const [sellers, setSellers] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loadingMeta, setLoadingMeta] = useState(true);
+
+  const blankForm = { sellerId: '', categoryId: '', name: '', unit: 'kg', currentPrice: '', description: '', isCombo: false };
+  const [form, setForm] = useState(blankForm);
+  const [comboContents, setComboContents] = useState([]); // [{ product, name, unit, qty }]
+  const [comboSearch, setComboSearch] = useState('');
+  const [comboResults, setComboResults] = useState([]);
+  const [comboSearching, setComboSearching] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [recentlyCreated, setRecentlyCreated] = useState([]);
+
+  useEffect(() => {
+    setLoadingMeta(true);
+    Promise.all([
+      api.get('/koyambedu/admin/sellers', { params: { status: 'approved', limit: 200 } }).then(r => setSellers(r.data.sellers || [])).catch(() => {}),
+      api.get('/koyambedu/admin/categories').then(r => setCategories(r.data.categories || [])).catch(() => {}),
+    ]).finally(() => setLoadingMeta(false));
+  }, []);
+
+  // Debounced search against Koyambedu's own catalogue, same pattern as the
+  // combo-contents picker in KoyambeduVariantProductForm.jsx — picking a
+  // product snapshots its name/unit at selection time.
+  useEffect(() => {
+    if (!comboSearch || comboSearch.length < 2) { setComboResults([]); return; }
+    setComboSearching(true);
+    const t = setTimeout(() => {
+      api.get('/koyambedu/admin/products', { params: { search: comboSearch } })
+        .then(r => setComboResults((r.data.products || []).slice(0, 8)))
+        .catch(() => setComboResults([]))
+        .finally(() => setComboSearching(false));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [comboSearch]);
+
+  const addComboItem = (p) => {
+    if (comboContents.some(c => c.product === p._id)) return;
+    setComboContents(c => [...c, { product: p._id, name: p.name, unit: p.unit, qty: 1 }]);
+    setComboSearch(''); setComboResults([]);
+  };
+  const updateComboQty = (productId, qty) => setComboContents(c => c.map(i => i.product === productId ? { ...i, qty } : i));
+  const removeComboItem = (productId) => setComboContents(c => c.filter(i => i.product !== productId));
+
+  const resetForm = () => { setForm(blankForm); setComboContents([]); setComboSearch(''); setComboResults([]); };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.sellerId) return toast.error('Choose a seller to list this product under');
+    if (!form.categoryId || !form.name) return toast.error('Category and name are required');
+    if (!form.isCombo && !form.currentPrice) return toast.error('Price is required for a standalone product');
+    if (form.isCombo && comboContents.length === 0) return toast.error('Add at least one item to the combo');
+
+    setSaving(true);
+    try {
+      const payload = {
+        categoryId: form.categoryId,
+        name: form.name,
+        unit: form.unit,
+        description: form.description,
+        currentPrice: form.isCombo ? (form.currentPrice || undefined) : Number(form.currentPrice),
+        isCombo: form.isCombo,
+        comboContents: form.isCombo ? comboContents.map(c => ({ product: c.product, name: c.name, unit: c.unit, qty: Number(c.qty) || 0 })) : [],
+      };
+      const { data } = await api.post(`/koyambedu/admin/sellers/${form.sellerId}/products`, payload);
+      toast.success(`"${form.name}" created — go to Online Catalog to enable it for Express and set its price.`);
+      setRecentlyCreated(c => [{ _id: data.product._id, name: data.product.name, isCombo: form.isCombo }, ...c].slice(0, 5));
+      resetForm();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to create product');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loadingMeta) return <p className="text-sm text-gray-400">Loading…</p>;
+
+  return (
+    <div className="grid gap-4 max-w-2xl">
+      <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-800">
+        Create a brand-new product, or a combo bundling several existing products, without needing a developer.
+        After creating it here, go to <strong>Online Catalog</strong> to switch it on for a store and set its Express price
+        (new items default to a +15% markup, which you can override).
+      </div>
+
+      <form onSubmit={submit} className="bg-white border rounded-xl p-4 grid gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="text-xs font-semibold text-gray-500">List under seller
+            <select value={form.sellerId} onChange={e => setForm(f => ({ ...f, sellerId: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm w-full mt-1">
+              <option value="">Choose seller…</option>
+              {sellers.map(s => <option key={s._id} value={s._id}>{s.businessName || s.ownerName || s._id}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-semibold text-gray-500">Category
+            <select value={form.categoryId} onChange={e => setForm(f => ({ ...f, categoryId: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm w-full mt-1">
+              <option value="">Choose category…</option>
+              {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+            </select>
+          </label>
+        </div>
+
+        <label className="text-xs font-semibold text-gray-500">Product name
+          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Sunday Veg Combo" className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+        </label>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="text-xs font-semibold text-gray-500">Unit
+            <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm w-full mt-1">
+              {['kg', 'g', 'piece', 'bunch', 'dozen', 'litre'].map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-semibold text-gray-500">Price (₹) {form.isCombo && <span className="font-normal text-gray-400">— optional for combos</span>}
+            <input type="number" value={form.currentPrice} onChange={e => setForm(f => ({ ...f, currentPrice: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+          </label>
+        </div>
+
+        <label className="text-xs font-semibold text-gray-500">Description (optional)
+          <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+        </label>
+
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <input type="checkbox" checked={form.isCombo} onChange={e => setForm(f => ({ ...f, isCombo: e.target.checked }))} className="w-4 h-4 accent-indigo-600" />
+          This is a combo (bundles several existing products)
+        </label>
+
+        {form.isCombo && (
+          <div className="border rounded-xl p-3 bg-gray-50">
+            <p className="text-xs font-bold text-gray-600 mb-2">Combo contents</p>
+            <div className="relative mb-2">
+              <input value={comboSearch} onChange={e => setComboSearch(e.target.value)} placeholder="Search a Koyambedu product to add…"
+                className="border rounded-lg px-3 py-2 text-sm w-full" />
+              {comboSearching && <span className="absolute right-3 top-2.5 text-xs text-gray-400">Searching…</span>}
+              {comboResults.length > 0 && (
+                <div className="absolute z-10 left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {comboResults.map(p => (
+                    <button type="button" key={p._id} onClick={() => addComboItem(p)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 border-b last:border-b-0">
+                      {p.name} <span className="text-gray-400">· {p.unit}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="grid gap-2">
+              {comboContents.map(item => (
+                <div key={item.product} className="flex items-center gap-2 bg-white border rounded-lg px-2 py-1.5">
+                  <span className="flex-1 text-sm text-gray-700 truncate">{item.name}</span>
+                  <input type="number" value={item.qty} onChange={e => updateComboQty(item.product, e.target.value)}
+                    className="w-20 border rounded px-2 py-1 text-xs text-right" />
+                  <span className="text-xs text-gray-400 w-10">{item.unit}</span>
+                  <button type="button" onClick={() => removeComboItem(item.product)} className="text-red-400 hover:text-red-600"><FiX size={14} /></button>
+                </div>
+              ))}
+              {comboContents.length === 0 && <p className="text-xs text-gray-400">No items added yet.</p>}
+            </div>
+          </div>
+        )}
+
+        <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50 w-fit">
+          {saving ? 'Creating…' : form.isCombo ? 'Create Combo' : 'Create Product'}
+        </button>
+      </form>
+
+      {recentlyCreated.length > 0 && (
+        <div className="bg-white border rounded-xl p-4">
+          <h3 className="font-bold text-gray-700 text-sm mb-2">Just created</h3>
+          <ul className="text-sm text-gray-600 grid gap-1">
+            {recentlyCreated.map(p => (
+              <li key={p._id} className="flex items-center gap-1.5">
+                <FiCheck className="text-green-600" size={13} /> {p.name} {p.isCombo && <span className="text-xs text-indigo-500 font-semibold">(combo)</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StoreInventoryTab({ stores }) {
   const [storeId, setStoreId] = useState('');
   const [products, setProducts] = useState([]);       // master Express catalogue
@@ -1646,6 +1870,10 @@ function MarginConfigTab({ stores }) {
         largeOrderThresholdKg: config.largeOrderThresholdKg,
         largeOrderAction: config.largeOrderAction,
         maxDeliveryDistanceKm: config.maxDeliveryDistanceKm,
+        freeDeliveryRadiusKm: config.freeDeliveryRadiusKm,
+        minOrderForFreeDelivery: config.minOrderForFreeDelivery,
+        deliveryFeeBelowMinimum: config.deliveryFeeBelowMinimum,
+        customOrderPhone: config.customOrderPhone,
       });
       toast.success('Margin config saved');
       load();
@@ -1723,6 +1951,36 @@ function MarginConfigTab({ stores }) {
         </div>
         <button onClick={save} disabled={saving} className="mt-3 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
           {saving ? 'Saving…' : 'Save Margin Config'}
+        </button>
+      </div>
+
+      <div className="bg-white border rounded-xl p-4">
+        <h2 className="font-bold text-gray-700 mb-1">Delivery Fee Rules</h2>
+        <p className="text-xs text-gray-500 mb-3">
+          Within the free radius, delivery is always free. Beyond it, delivery stays free if the order
+          meets the minimum — otherwise the flat fee below is charged. Beyond Max Delivery Distance
+          (set above), customers are offered the &ldquo;call for custom order&rdquo; option instead of checkout.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <label className="text-xs font-semibold text-gray-500">Free Delivery Radius (km)
+            <input type="number" value={config.freeDeliveryRadiusKm} onChange={e => setConfig(c => ({ ...c, freeDeliveryRadiusKm: e.target.value }))}
+              className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+          </label>
+          <label className="text-xs font-semibold text-gray-500">Minimum Order for Free Delivery (₹)
+            <input type="number" value={config.minOrderForFreeDelivery} onChange={e => setConfig(c => ({ ...c, minOrderForFreeDelivery: e.target.value }))}
+              className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+          </label>
+          <label className="text-xs font-semibold text-gray-500">Delivery Fee Below Minimum (₹)
+            <input type="number" value={config.deliveryFeeBelowMinimum} onChange={e => setConfig(c => ({ ...c, deliveryFeeBelowMinimum: e.target.value }))}
+              className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+          </label>
+          <label className="text-xs font-semibold text-gray-500 sm:col-span-3">Custom Order Phone (shown to customers beyond Max Delivery Distance)
+            <input type="text" placeholder="e.g. +91 98765 43210" value={config.customOrderPhone || ''} onChange={e => setConfig(c => ({ ...c, customOrderPhone: e.target.value }))}
+              className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+          </label>
+        </div>
+        <button onClick={save} disabled={saving} className="mt-3 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
+          {saving ? 'Saving…' : 'Save Delivery Rules'}
         </button>
       </div>
 

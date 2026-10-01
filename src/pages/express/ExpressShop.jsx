@@ -8,7 +8,7 @@
 // ============================================
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { FiZap, FiMapPin, FiShoppingCart, FiPlus, FiMinus, FiAlertTriangle } from 'react-icons/fi';
+import { FiZap, FiMapPin, FiShoppingCart, FiPlus, FiMinus, FiAlertTriangle, FiPauseCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 import { useExpressCart } from '../../context/ExpressCartContext';
@@ -27,6 +27,11 @@ export default function ExpressShop() {
   const { selectedStore, cart, fetchCart, addToCart, updateItem } = useExpressCart();
   const [catalogue, setCatalogue] = useState([]);
   const [loading, setLoading] = useState(true);
+  // isPaused/pauseMessage come fresh from the online-catalogue response (not
+  // the possibly-stale selectedStore in context) so a store put on hold
+  // after the customer picked it is still reflected without a refetch of
+  // the store list.
+  const [storeStatus, setStoreStatus] = useState({ isPaused: false, pauseMessage: null });
   // productId -> chosen kg step (default 1kg). Only relevant for unit==='kg'
   // products; once an item is in the cart its stepper increments/decrements
   // by whatever step is currently selected here.
@@ -38,7 +43,10 @@ export default function ExpressShop() {
       return;
     }
     api.get(`/express/stores/${selectedStore._id}/online-catalogue`)
-      .then(({ data }) => setCatalogue(data.catalogue || []))
+      .then(({ data }) => {
+        setCatalogue(data.catalogue || []);
+        setStoreStatus({ isPaused: !!data.store?.isPaused, pauseMessage: data.store?.pauseMessage || null });
+      })
       .catch(() => toast.error('Failed to load products'))
       .finally(() => setLoading(false));
     fetchCart();
@@ -80,6 +88,16 @@ export default function ExpressShop() {
           Change location
         </button>
       </div>
+
+      {storeStatus.isPaused && (
+        <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2">
+          <FiPauseCircle className="text-amber-600 shrink-0 mt-0.5" size={16} />
+          <div>
+            <p className="text-sm font-bold text-amber-800">We'll be back shortly!</p>
+            <p className="text-xs text-amber-700 mt-0.5">{storeStatus.pauseMessage || "We're currently busy with existing orders — we'll be back online shortly!"}</p>
+          </div>
+        </div>
+      )}
 
       {cart.largeOrderWarning && (
         <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2">
@@ -127,15 +145,15 @@ export default function ExpressShop() {
                 )}
 
                 {qty === 0 ? (
-                  <button onClick={() => handleAdd(product._id, product.unit)} disabled={stockQty === 0}
+                  <button onClick={() => handleAdd(product._id, product.unit)} disabled={stockQty === 0 || storeStatus.isPaused}
                     className="mt-auto w-full py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-40">
-                    {stockQty === 0 ? 'Out of stock' : 'Add'}
+                    {storeStatus.isPaused ? 'Store busy' : stockQty === 0 ? 'Out of stock' : 'Add'}
                   </button>
                 ) : (
                   <div className="mt-auto flex items-center justify-between bg-indigo-50 rounded-lg px-2 py-1.5">
-                    <button onClick={() => handleQtyChange(product._id, product.unit, -1)} className="text-indigo-700"><FiMinus size={14} /></button>
+                    <button onClick={() => handleQtyChange(product._id, product.unit, -1)} disabled={storeStatus.isPaused} className="text-indigo-700 disabled:opacity-40"><FiMinus size={14} /></button>
                     <span className="font-bold text-sm text-indigo-900">{qty}{isKg ? ' kg' : ''}</span>
-                    <button onClick={() => handleQtyChange(product._id, product.unit, 1)} className="text-indigo-700"><FiPlus size={14} /></button>
+                    <button onClick={() => handleQtyChange(product._id, product.unit, 1)} disabled={storeStatus.isPaused} className="text-indigo-700 disabled:opacity-40"><FiPlus size={14} /></button>
                   </div>
                 )}
               </div>
@@ -151,9 +169,9 @@ export default function ExpressShop() {
               <p className="text-xs text-gray-500">{cart.itemCount} item(s) · {cart.totalWeightKg} kg</p>
               <p className="font-bold text-gray-800">₹{cart.subtotal}</p>
             </div>
-            <button onClick={() => navigate('/express/checkout')}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700">
-              <FiShoppingCart size={16} /> Checkout
+            <button onClick={() => navigate('/express/checkout')} disabled={storeStatus.isPaused}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 disabled:opacity-40">
+              <FiShoppingCart size={16} /> {storeStatus.isPaused ? 'Store busy' : 'Checkout'}
             </button>
           </div>
         </div>

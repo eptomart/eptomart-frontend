@@ -17,7 +17,7 @@
 // ============================================
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiZap, FiAlertTriangle, FiCheck, FiClock, FiSun } from 'react-icons/fi';
+import { FiZap, FiAlertTriangle, FiCheck, FiClock, FiSun, FiPhoneCall, FiPauseCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 import { useExpressCart } from '../../context/ExpressCartContext';
@@ -76,6 +76,10 @@ export default function ExpressCheckout() {
   const [quote, setQuote] = useState(null);
   const [quoting, setQuoting] = useState(false);
   const [placing, setPlacing] = useState(false);
+  // Special-case errors from /express/quote and /express/orders/create-razorpay:
+  // outOfRange -> show a "call us for a custom order" CTA instead of a generic toast;
+  // storePaused -> show a busy banner instead of a generic toast.
+  const [checkoutBlock, setCheckoutBlock] = useState(null); // { type: 'outOfRange'|'storePaused', message, distanceKm, maxDeliveryDistanceKm, customOrderPhone }
 
   useEffect(() => { fetchCart(); }, []);
 
@@ -118,13 +122,21 @@ export default function ExpressCheckout() {
     if (!address.addressLine || !address.phone || !address.name) return toast.error('Please fill in name, phone and address');
     if (!slot) return toast.error('Please pick a delivery slot');
     setQuoting(true);
+    setCheckoutBlock(null);
     try {
       const { data } = await api.post('/express/quote', {
         deliveryAddress: { ...address, lat: address.lat ?? selectedStore?.location?.lat, lng: address.lng ?? selectedStore?.location?.lng },
       });
       setQuote(data);
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to price your order');
+      const d = err?.response?.data;
+      if (d?.outOfRange) {
+        setCheckoutBlock({ type: 'outOfRange', message: d.message, distanceKm: d.distanceKm, maxDeliveryDistanceKm: d.maxDeliveryDistanceKm, customOrderPhone: d.customOrderPhone });
+      } else if (d?.storePaused) {
+        setCheckoutBlock({ type: 'storePaused', message: d.message });
+      } else {
+        toast.error(d?.message || 'Failed to price your order');
+      }
     } finally {
       setQuoting(false);
     }
@@ -177,7 +189,16 @@ export default function ExpressCheckout() {
       });
       rzp.open();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to start checkout');
+      const d = err?.response?.data;
+      if (d?.outOfRange) {
+        setCheckoutBlock({ type: 'outOfRange', message: d.message, distanceKm: d.distanceKm, maxDeliveryDistanceKm: d.maxDeliveryDistanceKm, customOrderPhone: d.customOrderPhone });
+        setQuote(null);
+      } else if (d?.storePaused) {
+        setCheckoutBlock({ type: 'storePaused', message: d.message });
+        setQuote(null);
+      } else {
+        toast.error(d?.message || 'Failed to start checkout');
+      }
     } finally {
       setPlacing(false);
     }
@@ -253,6 +274,29 @@ export default function ExpressCheckout() {
         {quoting ? 'Calculating…' : 'Get Price'}
       </button>
 
+      {checkoutBlock?.type === 'storePaused' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex items-start gap-3">
+          <FiPauseCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
+          <div>
+            <p className="font-bold text-amber-800 text-sm">We'll be back shortly!</p>
+            <p className="text-xs text-amber-700 mt-0.5">{checkoutBlock.message}</p>
+          </div>
+        </div>
+      )}
+
+      {checkoutBlock?.type === 'outOfRange' && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4">
+          <p className="font-bold text-indigo-900 text-sm">You're a bit far for regular delivery</p>
+          <p className="text-xs text-indigo-700 mt-0.5">{checkoutBlock.message}</p>
+          {checkoutBlock.customOrderPhone && (
+            <a href={`tel:${checkoutBlock.customOrderPhone.replace(/\s+/g, '')}`}
+              className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold">
+              <FiPhoneCall size={14} /> Call for a custom order: {checkoutBlock.customOrderPhone}
+            </a>
+          )}
+        </div>
+      )}
+
       {quote && (
         <div className="bg-white border rounded-xl p-4 mb-4">
           <h2 className="font-bold text-gray-700 text-sm mb-2">Order Summary</h2>
@@ -262,6 +306,19 @@ export default function ExpressCheckout() {
               <span>₹{it.lineTotal}</span>
             </div>
           ))}
+          <div className="flex justify-between text-sm text-gray-600 pt-2 border-t mt-2">
+            <span>Subtotal</span>
+            <span>₹{quote.subtotal}</span>
+          </div>
+          <div className="flex justify-between text-sm text-gray-600 mb-1">
+            <span>Delivery Fee{quote.distanceKm != null ? ` (${quote.distanceKm} km)` : ''}</span>
+            <span>{quote.deliveryFee > 0 ? `₹${quote.deliveryFee}` : 'FREE'}</span>
+          </div>
+          {quote.deliveryFee > 0 && quote.minOrderForFreeDelivery != null && (
+            <p className="text-[11px] text-gray-400 mb-1">
+              Order ₹{quote.minOrderForFreeDelivery}+ or stay within {quote.freeDeliveryRadiusKm} km for free delivery.
+            </p>
+          )}
           <div className="flex justify-between font-bold text-gray-800 pt-2 border-t mt-2">
             <span>Total ({quote.totalWeightKg} kg)</span>
             <span>₹{quote.total}</span>
