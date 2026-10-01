@@ -626,15 +626,15 @@ function ExpressBanner({ onReady }) {
           style={{ background: 'linear-gradient(145deg, #0c1a3a 0%, #1e3a8a 55%, #2563eb 100%)' }}>
 
           {/* "Express Delivery" hero graphic (rider + clock + wordmark) —
-              large sticker peeling off the bottom-right corner, bled past
-              the card edge with a gentle tilt, so it reads as a bold visual
-              rather than a tiny, easy-to-miss chip. It's a complete creative
-              with its own text, so it needs no overlay from us — the content
-              column (logo/title/CTA) stays up top-left where it never
-              reaches. aspect-[3/2] matches the source image exactly (no
-              cropping). */}
-          <div className="absolute -right-2 -bottom-2 w-[68%] sm:w-[62%] md:w-[56%] aspect-[3/2] rounded-xl overflow-hidden bg-white shadow-xl rotate-[-2deg]"
-            style={{ border: '2px solid rgba(255,255,255,0.55)' }}>
+              docked bottom-right, capped by BOTH a width % (for the narrow
+              shared-row layout) and an absolute max-width in px (so it can't
+              balloon in size — and climb up far enough to cover the title —
+              when this banner happens to render at full card width with no
+              siblings). EVERY text row below (title + CTA) carries the same
+              right padding as the image's width, so the two can never
+              overlap no matter how wide or narrow the card ends up being. */}
+          <div className="absolute right-1 bottom-1 w-[46%] sm:w-[40%] md:w-[36%] aspect-[3/2] rounded-xl overflow-hidden bg-white shadow-xl"
+            style={{ border: '2px solid rgba(255,255,255,0.55)', maxWidth: 190 }}>
             <img src="/images/express-delivery-rider.png" alt="Express Delivery — Fast, Safe, Right to Your Door" className="w-full h-full object-cover" />
           </div>
 
@@ -642,7 +642,7 @@ function ExpressBanner({ onReady }) {
           <div className="promo-shine" />
           <span className="promo-spark promo-spark-1 w-1.5 h-1.5 bg-amber-300" style={{ left: '8%', top: '18%' }} />
 
-          <div className="relative z-10 flex flex-col h-full">
+          <div className="relative z-10 flex flex-col h-full pr-[50%] sm:pr-[44%] md:pr-[40%]">
             <div className="flex items-center justify-between gap-2">
               <div className="promo-icon-wrap flex-shrink-0 flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-2xl overflow-hidden"
                 style={{ background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.35)' }}>
@@ -665,7 +665,7 @@ function ExpressBanner({ onReady }) {
 
             <div className="flex-1" />
 
-            <div className="flex justify-start mt-1.5 pr-[52%] sm:pr-[46%] md:pr-[40%]">
+            <div className="flex justify-start mt-1.5">
               <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg"
                 style={{ color: '#1e3a8a' }}>
                 Shop <FiArrowRight size={11} className="sob-cta-arrow" />

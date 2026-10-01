@@ -13,10 +13,26 @@ import {
   FiZap, FiMapPin, FiUsers, FiUserCheck, FiPackage, FiSliders, FiBox,
   FiClipboard, FiPlus, FiToggleLeft, FiToggleRight, FiEdit2, FiTrash2, FiX, FiCheck,
   FiGrid, FiDollarSign, FiShoppingCart, FiEye, FiTrendingUp, FiTrendingDown, FiFileText,
-  FiBluetooth, FiPrinter, FiPauseCircle, FiPlayCircle,
+  FiBluetooth, FiPrinter, FiPauseCircle, FiPlayCircle, FiLink2,
 } from 'react-icons/fi';
 import api from '../../utils/api';
 import { isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected, printPluList } from '../../utils/expressThermalPrinter';
+
+// Shareable customer-facing link for a single Express product — used by the
+// "Copy Link" button on the Product Catalogue so an admin can drop it
+// straight into a Hero Banner's "Links to" field, or share it with a
+// customer/on social media. Falls back to a manual prompt when the
+// clipboard API is blocked (older browsers, non-HTTPS contexts).
+const copyExpressProductLink = (productId) => {
+  const url = `${window.location.origin}/express/product/${productId}`;
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(url)
+      .then(() => toast.success('Product link copied'))
+      .catch(() => window.prompt('Copy this link:', url));
+  } else {
+    window.prompt('Copy this link:', url);
+  }
+};
 
 // Express's own category list — entirely separate from Koyambedu Daily's
 // categories (free-text on ExpressProduct.category, not a KoyambeduCategory
@@ -833,6 +849,11 @@ function ProductsTab() {
               <div className="flex gap-1.5 shrink-0">
                 <button onClick={() => loadPreview(p._id)} className="px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
                   Preview Price
+                </button>
+                <button onClick={() => copyExpressProductLink(p._id)}
+                  title="Copy a shareable link — paste into a Hero Banner's 'Links to' field, or share directly"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50 text-indigo-600 border-indigo-200">
+                  <FiLink2 size={12} /> Copy Link
                 </button>
                 <button onClick={() => openPluEdit(p)} className="px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
                   Set PLU
