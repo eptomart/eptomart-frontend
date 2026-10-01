@@ -193,6 +193,83 @@ function DashboardTab({ stores }) {
 }
 
 // ══════════════════════════════════════════════
+// HOLD WAITLIST — who tried to check out while this store's checkout was
+// on hold, so Admin can call them back once it reopens. Rendered inline
+// under a store card when Admin clicks the "X customers waiting" chip.
+// ══════════════════════════════════════════════
+function HoldWaitlistPanel({ storeId, onChanged }) {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [callingId, setCallingId] = useState(null);
+
+  const load = () => {
+    setLoading(true);
+    api.get(`/express/admin/stores/${storeId}/hold-waitlist`)
+      .then(r => setEntries(r.data.entries || []))
+      .catch(() => toast.error('Failed to load waitlist'))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, [storeId]);
+
+  const toggleCalled = async (entry) => {
+    setCallingId(entry._id);
+    try {
+      await api.patch(`/express/admin/hold-waitlist/${entry._id}/called-back`, { calledBack: !entry.calledBack });
+      load();
+      onChanged?.(); // refresh the parent's pending-count badge too
+    } catch {
+      toast.error('Failed to update');
+    } finally {
+      setCallingId(null);
+    }
+  };
+
+  return (
+    <div className="mt-2 border rounded-xl p-3 bg-gray-50">
+      {loading ? (
+        <p className="text-xs text-gray-400">Loading…</p>
+      ) : entries.length === 0 ? (
+        <p className="text-xs text-gray-400">No one has hit the checkout gate for this store yet.</p>
+      ) : (
+        <div className="grid gap-2">
+          {entries.map(e => (
+            <div key={e._id} className={`flex items-start justify-between gap-3 p-2.5 rounded-lg ${e.calledBack ? 'bg-white opacity-60' : 'bg-white shadow-sm'}`}>
+              <div className="min-w-0">
+                <p className="font-bold text-gray-800 text-sm flex items-center gap-1.5 flex-wrap">
+                  {e.name || 'Unnamed customer'}
+                  {e.attempts > 1 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                      tried {e.attempts}×
+                    </span>
+                  )}
+                </p>
+                {e.phone && (
+                  <a href={`tel:${e.phone.replace(/\s+/g, '')}`} className="text-xs text-indigo-600 font-semibold underline decoration-dotted">
+                    {e.phone}
+                  </a>
+                )}
+                {e.cartSummary?.length > 0 && (
+                  <p className="text-[11px] text-gray-400 mt-0.5 truncate">
+                    {e.cartSummary.map(c => `${c.name} (${c.quantity}${c.unit === 'kg' ? 'kg' : ''})`).join(', ')}
+                    {e.estimatedTotal > 0 ? ` · ~₹${e.estimatedTotal}` : ''}
+                  </p>
+                )}
+                <p className="text-[10px] text-gray-400 mt-0.5">Last tried {new Date(e.lastAttemptAt).toLocaleString('en-IN')}</p>
+              </div>
+              <button onClick={() => toggleCalled(e)} disabled={callingId === e._id}
+                className={`shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold disabled:opacity-50
+                  ${e.calledBack ? 'bg-gray-100 text-gray-500' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}>
+                <FiCheck size={12} /> {e.calledBack ? 'Called back' : 'Mark called'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
 // STORES TAB
 // ══════════════════════════════════════════════
 function StoresTab({ stores, reload }) {
@@ -233,19 +310,23 @@ function StoresTab({ stores, reload }) {
     let message = null;
     if (!s.isPaused) {
       message = window.prompt(
-        "Message to show customers while this store is paused (optional):",
-        "We're currently busy with existing orders — we'll be back online shortly!"
+        "Message to show customers while checkout is on hold (optional) — browsing and adding to cart stay open regardless:",
+        "We're experiencing high demand right now — we'll open orders again shortly!"
       );
       if (message === null) return; // cancelled
     }
     try {
       await api.patch(`/express/admin/stores/${s._id}/toggle-pause`, { message });
-      toast.success(s.isPaused ? 'Store resumed — taking new orders again' : 'Store put on hold — customers will see the busy message');
+      toast.success(s.isPaused
+        ? 'Checkout reopened — taking orders again'
+        : 'Checkout put on hold — customers can still browse & add to cart, and we\'re logging who tries to check out so you can call them back');
       reload();
     } catch {
       toast.error('Failed to update hold status');
     }
   };
+
+  const [waitlistStoreId, setWaitlistStoreId] = useState(null); // which store's waitlist panel is open
 
   const openEdit = (s) => {
     setEditId(s._id);
@@ -324,9 +405,14 @@ function StoresTab({ stores, reload }) {
                 <button onClick={() => openEdit(s)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
                   <FiEdit2 size={12} /> Edit
                 </button>
+                {/* The main action for this feature — bigger, bolder, and
+                    unambiguous about what it does: solid amber when live
+                    (impossible to miss), outlined-but-clear when off. */}
                 <button onClick={() => togglePause(s)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${s.isPaused ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
-                  {s.isPaused ? <FiPlayCircle size={16} /> : <FiPauseCircle size={16} />} {s.isPaused ? 'Resume Orders' : 'Hold (Busy)'}
+                  className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black shadow-sm transition
+                    ${s.isPaused ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-white border-2 border-amber-300 text-amber-700 hover:bg-amber-50'}`}>
+                  {s.isPaused ? <FiPlayCircle size={18} /> : <FiPauseCircle size={18} />}
+                  {s.isPaused ? 'Reopen Checkout' : 'Hold Checkout'}
                 </button>
                 <button onClick={() => toggleActive(s._id)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${s.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -334,6 +420,19 @@ function StoresTab({ stores, reload }) {
                 </button>
               </div>
             </div>
+
+            {/* Who's waiting to order — shown whenever anyone has hit the
+                checkout gate for this store, whether it's paused right now
+                or was earlier (the list survives a resume so nothing is
+                lost before Admin gets a chance to call back). */}
+            {s.pendingWaitlistCount > 0 && (
+              <button onClick={() => setWaitlistStoreId(id => id === s._id ? null : s._id)}
+                className="mt-2 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold hover:bg-indigo-100">
+                <FiUsers size={13} />
+                {s.pendingWaitlistCount} {s.pendingWaitlistCount === 1 ? 'customer' : 'customers'} waiting to order — {waitlistStoreId === s._id ? 'hide list' : 'view & call back'}
+              </button>
+            )}
+            {waitlistStoreId === s._id && <HoldWaitlistPanel storeId={s._id} onChanged={reload} />}
 
             {editId === s._id && (
               <div className="mt-3 pt-3 border-t grid grid-cols-1 sm:grid-cols-2 gap-2">

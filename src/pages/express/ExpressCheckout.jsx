@@ -278,8 +278,9 @@ export default function ExpressCheckout() {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex items-start gap-3">
           <FiPauseCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
           <div>
-            <p className="font-bold text-amber-800 text-sm">We'll be back shortly!</p>
+            <p className="font-bold text-amber-800 text-sm">High demand — we'll open orders again shortly!</p>
             <p className="text-xs text-amber-700 mt-0.5">{checkoutBlock.message}</p>
+            <p className="text-xs text-amber-600 mt-1.5">We've noted you're waiting — we'll call you once we're back online.</p>
           </div>
         </div>
       )}
