@@ -632,9 +632,9 @@ function ExpressBanner({ onReady }) {
 
           <div className="relative z-10 flex flex-col h-full">
             <div className="flex items-center justify-between gap-2">
-              <div className="promo-icon-wrap flex-shrink-0 flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-2xl"
+              <div className="promo-icon-wrap flex-shrink-0 flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-2xl overflow-hidden"
                 style={{ background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.35)' }}>
-                <FiZap size={16} className="text-amber-300" />
+                <img src="/images/express-logo.png" alt="Eptomart Express" className="w-full h-full object-cover" />
               </div>
               <span className="bg-amber-400 text-amber-900 text-[8px] md:text-[9px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full flex-shrink-0">
                 New
