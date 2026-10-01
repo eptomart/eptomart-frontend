@@ -45,15 +45,18 @@ export default function PNLTab() {
   const [dayReport, setDayReport] = useState(null);
   const [dayLoading, setDayLoading] = useState(false);
   const [loadmanDraft, setLoadmanDraft] = useState('');
+  const [loadmanPaidByDraft, setLoadmanPaidByDraft] = useState('');
   const [savingLoadman, setSavingLoadman] = useState(false);
   const [costDrafts, setCostDrafts] = useState({}); // productKey -> purchaseCostPerUnit draft (day-level, all bills at once)
-  const [procuredByDrafts, setProcuredByDrafts] = useState({}); // productKey -> manually-typed "procured by" name
+  const [procuredByDrafts, setProcuredByDrafts] = useState({}); // productKey -> selected "procured by" name
   const [savingCost, setSavingCost] = useState({}); // productKey -> bool
+  const [savingAllCosts, setSavingAllCosts] = useState(false);
   const [itemCostDrafts, setItemCostDrafts] = useState({}); // itemId -> bill-specific purchaseCostPerUnit draft
   const [savingItemCost, setSavingItemCost] = useState({}); // itemId -> bool
-  const [orderCostDrafts, setOrderCostDrafts] = useState({}); // orderId -> { platformFeeCost, transportCost, packingCost, razorpayDeduction }
+  const [orderCostDrafts, setOrderCostDrafts] = useState({}); // orderId -> { transportCost, packingCost }
   const [savingOrderCost, setSavingOrderCost] = useState({});
   const [expandedOrder, setExpandedOrder] = useState(null);
+  const [procurers, setProcurers] = useState([]); // maintained dropdown list for "Procured By"
 
   // ── Range view state ────────────────────────
   const initialRange = currentQuarterRange();
@@ -69,12 +72,24 @@ export default function PNLTab() {
       const { data } = await api.get(`/koyambedu/admin/pnl/day?cycle=${cycle}`);
       setDayReport(data);
       setLoadmanDraft(String(data.loadmanCharge || ''));
+      setLoadmanPaidByDraft(data.loadmanPaidBy || '');
+      // Row drafts are stale once a fresh report loads — clear them so the
+      // inputs fall back to showing the just-saved server values instead of
+      // leftover text from before the save.
+      setCostDrafts({});
+      setProcuredByDrafts({});
     } catch {
       toast.error('Failed to load P&L for this date');
     } finally { setDayLoading(false); }
   }, [cycle]);
 
   useEffect(() => { if (view === 'day') loadDay(); }, [view, loadDay]);
+
+  // Maintained "Procured By" dropdown — loaded once, grows automatically
+  // whenever a new name is used (see registerProcurerName on the backend).
+  useEffect(() => {
+    api.get('/koyambedu/admin/procurers').then(({ data }) => setProcurers(data.names || [])).catch(() => {});
+  }, []);
 
   const loadRange = useCallback(async () => {
     setRangeLoading(true);
@@ -91,7 +106,9 @@ export default function PNLTab() {
   const saveLoadman = async () => {
     setSavingLoadman(true);
     try {
-      await api.patch('/koyambedu/admin/pnl/daily-expense', { cycle, loadmanCharge: Number(loadmanDraft) || 0 });
+      await api.patch('/koyambedu/admin/pnl/daily-expense', {
+        cycle, loadmanCharge: Number(loadmanDraft) || 0, loadmanPaidBy: loadmanPaidByDraft.trim(),
+      });
       toast.success('Loadman charge saved');
       loadDay();
     } catch {
@@ -109,9 +126,8 @@ export default function PNLTab() {
         cycle, productKey: row.productKey, productName: row.productName,
         gradeKey: row.gradeKey, gradeName: row.gradeName,
         ...(costDraft !== undefined ? { purchaseCostPerUnit: costDraft === '' ? null : Number(costDraft) } : {}),
-        // Procured By is typed in by admin here — no longer auto-filled
-        // from whoever is logged in. Always sent (even unchanged) so an
-        // admin can clear it back to blank.
+        // Procured By is picked from the maintained dropdown — always sent
+        // (even unchanged) so an admin can clear it back to blank.
         purchasedByName: (nameDraft ?? row.procuredBy ?? '').trim(),
         purchased: true,
       });
@@ -120,6 +136,34 @@ export default function PNLTab() {
     } catch {
       toast.error('Failed to save cost');
     } finally { setSavingCost(s => ({ ...s, [row.productKey]: false })); }
+  };
+
+  // Saves every row of the Procurement Cost Entry table in one request —
+  // the per-row Save button is still there for a quick single edit, but a
+  // 20-30 product day no longer means 20-30 separate clicks.
+  const saveAllCosts = async () => {
+    if (!dayReport) return;
+    const items = dayReport.itemRollup
+      .filter(row => costDrafts[row.productKey] !== undefined || procuredByDrafts[row.productKey] !== undefined)
+      .map(row => ({
+        productKey: row.productKey, productName: row.productName,
+        gradeKey: row.gradeKey, gradeName: row.gradeName,
+        ...(costDrafts[row.productKey] !== undefined
+          ? { purchaseCostPerUnit: costDrafts[row.productKey] === '' ? null : Number(costDrafts[row.productKey]) }
+          : {}),
+        ...(procuredByDrafts[row.productKey] !== undefined
+          ? { purchasedByName: procuredByDrafts[row.productKey].trim() }
+          : {}),
+      }));
+    if (!items.length) { toast('Nothing changed to save', { icon: 'ℹ️' }); return; }
+    setSavingAllCosts(true);
+    try {
+      await api.patch('/koyambedu/admin/reports/procurement-confirmed/bulk', { cycle, items });
+      toast.success(`Saved ${items.length} row${items.length === 1 ? '' : 's'}`);
+      loadDay();
+    } catch {
+      toast.error('Failed to save rows');
+    } finally { setSavingAllCosts(false); }
   };
 
   // Bill-specific override — enter procurement cost for ONE item on ONE
@@ -141,15 +185,18 @@ export default function PNLTab() {
     } finally { setSavingItemCost(s => ({ ...s, [item.itemId]: false })); }
   };
 
+  // Admin only ever enters two real out-of-pocket costs per bill now —
+  // actual transportation and packing. Platform fee is already part of the
+  // revenue figure (the customer paid it, Eptomart kept it) and Razorpay's
+  // cut is computed automatically from the payment method, so neither is
+  // a manual field anymore.
   const saveOrderCosts = async (order) => {
     const draft = orderCostDrafts[order._id] || {};
     setSavingOrderCost(s => ({ ...s, [order._id]: true }));
     try {
       await api.patch(`/koyambedu/admin/orders/${order._id}/costs`, {
-        transportCharge:   draft.transportCost   ?? order.transportCost,
-        packingCharge:     draft.packingCost     ?? order.packingCost,
-        platformFeeCost:   draft.platformFeeCost ?? order.platformFeeCost,
-        razorpayDeduction: draft.razorpayDeduction ?? order.razorpayDeduction,
+        transportCharge: draft.transportCost ?? order.transportCost,
+        packingCharge:   draft.packingCost   ?? order.packingCost,
       });
       toast.success(`${order.orderId} costs saved`);
       loadDay();
@@ -176,6 +223,10 @@ export default function PNLTab() {
 
   return (
     <div className="space-y-4">
+      {/* Shared "Procured By" suggestions for every datalist-backed input below */}
+      <datalist id="pnl-procurer-names">
+        {procurers.map(name => <option key={name} value={name} />)}
+      </datalist>
       <div className="bg-white rounded-2xl border border-gray-200 p-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h2 className="font-bold text-gray-800">💰 Profit &amp; Loss</h2>
@@ -213,6 +264,12 @@ export default function PNLTab() {
                     placeholder="e.g. 1000"
                     className="border border-gray-200 rounded-xl px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-red-400" />
                 </div>
+                <div>
+                  <label className="text-xs text-gray-500 font-medium block mb-1">Paid by</label>
+                  <input type="text" value={loadmanPaidByDraft} onChange={e => setLoadmanPaidByDraft(e.target.value)}
+                    placeholder="Who paid the loadman?"
+                    className="border border-gray-200 rounded-xl px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-red-400" />
+                </div>
                 <button onClick={saveLoadman} disabled={savingLoadman}
                   className="bg-gray-800 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-gray-900 disabled:opacity-50">
                   {savingLoadman ? 'Saving…' : 'Save'}
@@ -247,9 +304,15 @@ export default function PNLTab() {
 
               {/* Item-wise procurement cost entry — Table 2 style */}
               <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
-                <div className="px-4 pt-3 pb-1">
-                  <h3 className="font-bold text-gray-700 text-sm">Procurement Cost Entry (per product, per day)</h3>
-                  <p className="text-[11px] text-gray-400">Enter what was actually paid to the supplier per unit, and type in who procured it.</p>
+                <div className="px-4 pt-3 pb-1 flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="font-bold text-gray-700 text-sm">Procurement Cost Entry (per product, per day)</h3>
+                    <p className="text-[11px] text-gray-400">Enter what was actually paid to the supplier per unit, and pick who procured it.</p>
+                  </div>
+                  <button onClick={saveAllCosts} disabled={savingAllCosts}
+                    className="shrink-0 text-xs font-bold text-white bg-gray-800 hover:bg-gray-900 px-3 py-1.5 rounded-lg disabled:opacity-50">
+                    {savingAllCosts ? 'Saving…' : 'Save All Changed Rows'}
+                  </button>
                 </div>
                 <table className="w-full text-sm">
                   <thead>
@@ -279,7 +342,9 @@ export default function PNLTab() {
                         <td className="px-3 py-2 text-right text-gray-600">{money(row.loadmanCost)}</td>
                         <td className="px-3 py-2 text-right font-bold text-gray-700">{money(row.totalProcurement)}</td>
                         <td className="px-3 py-2">
-                          <input type="text" placeholder="Who procured this?"
+                          {/* Maintained dropdown (datalist) — pick an existing name in one
+                              click, or type a new one and it joins the list for next time. */}
+                          <input type="text" list="pnl-procurer-names" placeholder="Who procured this?"
                             value={procuredByDrafts[row.productKey] ?? (row.procuredBy ?? '')}
                             onChange={e => setProcuredByDrafts(d => ({ ...d, [row.productKey]: e.target.value }))}
                             className="w-32 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-red-400" />
@@ -342,9 +407,8 @@ export default function PNLTab() {
                   <thead>
                     <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
                       <th className="px-3 py-2">Order</th>
-                      <th className="px-3 py-2 text-right">Revenue</th>
+                      <th className="px-3 py-2 text-right">Amount Paid by Customer</th>
                       <th className="px-3 py-2 text-right">Procurement</th>
-                      <th className="px-3 py-2 text-right">Platform</th>
                       <th className="px-3 py-2 text-right">Transport</th>
                       <th className="px-3 py-2 text-right">Packing</th>
                       <th className="px-3 py-2 text-right">Razorpay</th>
@@ -365,9 +429,11 @@ export default function PNLTab() {
                               {o.orderId}
                               <div className="text-xs font-normal text-gray-400">{o.customerName}</div>
                             </td>
-                            <td className="px-3 py-2 text-right text-gray-600">{money(o.revenue)}</td>
+                            <td className="px-3 py-2 text-right text-gray-600">
+                              {money(o.revenue)}
+                              {o.couponCode && <div className="text-[10px] font-normal text-emerald-600">code: {o.couponCode}</div>}
+                            </td>
                             <td className="px-3 py-2 text-right text-gray-600">{money(o.totalProcurement)}</td>
-                            <td className="px-3 py-2 text-right text-gray-600">{money(o.platformFeeCost)}</td>
                             <td className="px-3 py-2 text-right text-gray-600">{money(o.transportCost)}</td>
                             <td className="px-3 py-2 text-right text-gray-600">{money(o.packingCost)}</td>
                             <td className="px-3 py-2 text-right text-gray-600">{money(o.razorpayDeduction)}</td>
@@ -376,7 +442,7 @@ export default function PNLTab() {
                           </tr>
                           {isExp && (
                             <tr className="bg-gray-50/70">
-                              <td colSpan={9} className="px-4 py-3">
+                              <td colSpan={8} className="px-4 py-3">
                                 <div className="grid md:grid-cols-[1.6fr_1fr] gap-4">
                                   <div>
                                     <p className="text-[11px] font-bold text-gray-500 uppercase mb-1.5">Items — cost breakdown</p>
@@ -433,13 +499,22 @@ export default function PNLTab() {
                                     </p>
                                   </div>
                                   <div onClick={e => e.stopPropagation()}>
+                                    <p className="text-[11px] font-bold text-gray-500 uppercase mb-1.5">What the customer paid</p>
+                                    <div className="bg-white rounded-xl border border-gray-200 p-3 space-y-1 text-xs mb-3">
+                                      <div className="flex justify-between"><span className="text-gray-500">Items</span><span className="text-gray-700">{money(o.itemsSubtotal)}</span></div>
+                                      <div className="flex justify-between"><span className="text-gray-500">Delivery fee</span><span className="text-gray-700">{money(o.pricingBreakdown?.deliveryCharge)}</span></div>
+                                      <div className="flex justify-between"><span className="text-gray-500">Platform fee</span><span className="text-gray-700">{money(o.pricingBreakdown?.platformFee)}</span></div>
+                                      <div className="flex justify-between"><span className="text-gray-500">Packing/logistics fee</span><span className="text-gray-700">{money(o.pricingBreakdown?.packingLogisticsFee)}</span></div>
+                                      {o.pricingBreakdown?.discount > 0 && (
+                                        <div className="flex justify-between"><span className="text-gray-500">Discount{o.couponCode ? ` (${o.couponCode})` : ''}</span><span className="text-red-500">-{money(o.pricingBreakdown.discount)}</span></div>
+                                      )}
+                                      <div className="flex justify-between border-t border-gray-100 pt-1 font-bold"><span className="text-gray-600">Total paid by customer</span><span className="text-gray-800">{money(o.revenue)}</span></div>
+                                    </div>
                                     <p className="text-[11px] font-bold text-gray-500 uppercase mb-1.5">Order Costs (editable)</p>
                                     <div className="bg-white rounded-xl border border-gray-200 p-3 space-y-2">
                                       {[
-                                        ['platformFeeCost', 'Platform Fee'],
                                         ['transportCost', 'Transportation'],
                                         ['packingCost', 'Packing Bag'],
-                                        ['razorpayDeduction', 'Razorpay Deduction'],
                                       ].map(([key, label]) => (
                                         <div key={key} className="flex items-center justify-between gap-2">
                                           <label className="text-xs text-gray-500">{label}</label>
@@ -449,6 +524,10 @@ export default function PNLTab() {
                                             className="w-28 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400" />
                                         </div>
                                       ))}
+                                      <div className="flex items-center justify-between gap-2">
+                                        <label className="text-xs text-gray-500">Razorpay Deduction (auto)</label>
+                                        <span className="w-28 text-sm text-right text-gray-500">{money(o.razorpayDeduction)}</span>
+                                      </div>
                                       <button onClick={() => saveOrderCosts(o)} disabled={!!savingOrderCost[o._id]}
                                         className="w-full mt-1 text-xs font-bold text-white bg-gray-800 hover:bg-gray-900 px-2.5 py-1.5 rounded-lg disabled:opacity-50">
                                         {savingOrderCost[o._id] ? 'Saving…' : 'Save Costs'}
@@ -463,7 +542,7 @@ export default function PNLTab() {
                       );
                     })}
                     {dayReport.orders.length === 0 && (
-                      <tr><td colSpan={9} className="text-center text-gray-400 py-8">No confirmed orders for this date</td></tr>
+                      <tr><td colSpan={8} className="text-center text-gray-400 py-8">No confirmed orders for this date</td></tr>
                     )}
                   </tbody>
                 </table>
