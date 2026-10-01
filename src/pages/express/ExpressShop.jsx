@@ -6,7 +6,7 @@
 // location picker. Surfaces the 12kg large-order warning inline in the
 // cart summary (spec section 10). No checkout yet — Phase 3.
 // ============================================
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FiZap, FiMapPin, FiShoppingCart, FiPlus, FiMinus, FiAlertTriangle, FiPauseCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
@@ -40,6 +40,12 @@ export default function ExpressShop() {
   // ExpressAdmin's Hero Banners tab. Independent of the store/catalogue
   // fetch below since banners aren't store-specific.
   const [banners, setBanners] = useState([]);
+  // Category filter chips, derived live from whatever categories are
+  // actually present in this store's catalogue (both native Express
+  // categories and whatever a linked Koyambedu product carries) — never a
+  // hardcoded list, so a store with no combos simply shows no Combos chip.
+  const [activeCategory, setActiveCategory] = useState('All');
+  const productGridRef = useRef(null);
 
   useEffect(() => {
     if (!selectedStore?._id) {
@@ -56,6 +62,32 @@ export default function ExpressShop() {
     fetchCart();
     api.get('/express/banners').then(({ data }) => setBanners(data.banners || [])).catch(() => {});
   }, [selectedStore]);
+
+  // "Combos" is always surfaced as its own chip whenever any combo exists,
+  // even if a particular combo's category text isn't literally "Combos"
+  // (e.g. a Koyambedu-linked combo) — matched by isCombo, not just the
+  // category string, so it never silently disappears.
+  const categories = useMemo(() => {
+    const names = new Set();
+    let hasCombo = false;
+    catalogue.forEach(({ product }) => {
+      if (product.isCombo) hasCombo = true;
+      else if (product.category) names.add(product.category);
+    });
+    const sorted = [...names].sort((a, b) => a.localeCompare(b));
+    return ['All', ...sorted, ...(hasCombo ? ['Combos'] : [])];
+  }, [catalogue]);
+
+  const filteredCatalogue = useMemo(() => {
+    if (activeCategory === 'All') return catalogue;
+    if (activeCategory === 'Combos') return catalogue.filter(({ product }) => product.isCombo);
+    return catalogue.filter(({ product }) => product.category === activeCategory);
+  }, [catalogue, activeCategory]);
+
+  const selectCategory = (cat) => {
+    setActiveCategory(cat);
+    productGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const qtyInCart = (productId) => cart.items?.find(i => String(i.product) === String(productId))?.quantity || 0;
   const stepFor = (productId) => weightStep[productId] ?? 1;
@@ -134,6 +166,20 @@ export default function ExpressShop() {
         </div>
       )}
 
+      {!loading && categories.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 mb-4 -mx-4 px-4 scrollbar-hide">
+          {categories.map(cat => (
+            <button key={cat} onClick={() => selectCategory(cat)}
+              className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold border transition"
+              style={activeCategory === cat
+                ? { background: '#4338ca', color: '#fff', borderColor: '#4338ca' }
+                : { background: '#fff', color: '#4b5563', borderColor: '#e5e7eb' }}>
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
+
       {storeStatus.isPaused && (
         <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2">
           <FiPauseCircle className="text-amber-600 shrink-0 mt-0.5" size={16} />
@@ -167,9 +213,11 @@ export default function ExpressShop() {
         </div>
       ) : catalogue.length === 0 ? (
         <p className="text-sm text-gray-400">No products available at this store right now.</p>
+      ) : filteredCatalogue.length === 0 ? (
+        <p ref={productGridRef} className="text-sm text-gray-400">No products in "{activeCategory}" right now.</p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {catalogue.map(({ product, pricePerUnit, stockQty }) => {
+        <div ref={productGridRef} className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {filteredCatalogue.map(({ product, pricePerUnit, stockQty }) => {
             const qty = qtyInCart(product._id);
             const isKg = product.unit === 'kg';
             return (
