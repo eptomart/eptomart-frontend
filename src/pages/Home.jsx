@@ -622,50 +622,39 @@ function ExpressBanner({ onReady }) {
   return (
     <Link to="/express" className="sob-wrap tap-ripple block h-full active:scale-[0.98] transition-transform">
       <div className="sob-border h-full">
-        <div className="sob-inner promo-card relative overflow-hidden rounded-[13px] h-full px-3 py-2.5 md:px-4 md:py-3"
-          style={{ background: 'linear-gradient(145deg, #0c1a3a 0%, #1e3a8a 55%, #2563eb 100%)' }}>
+        <div className="sob-inner promo-card relative overflow-hidden rounded-[13px] h-full">
 
-          {/* "Express Delivery" hero graphic (rider + clock + wordmark) —
-              docked bottom-right, capped by BOTH a width % (for the narrow
-              shared-row layout) and an absolute max-width in px (so it can't
-              balloon in size — and climb up far enough to cover the title —
-              when this banner happens to render at full card width with no
-              siblings). EVERY text row below (title + CTA) carries the same
-              right padding as the image's width, so the two can never
-              overlap no matter how wide or narrow the card ends up being. */}
-          <div className="absolute right-1 bottom-1 w-[46%] sm:w-[40%] md:w-[36%] aspect-[3/2] rounded-xl overflow-hidden bg-white shadow-xl"
-            style={{ border: '2px solid rgba(255,255,255,0.55)', maxWidth: 190 }}>
-            <img src="/images/express-delivery-rider.png" alt="Express Delivery — Fast, Safe, Right to Your Door" className="w-full h-full object-cover" />
-          </div>
+          {/* The rider/clock/wordmark graphic IS the banner now — filling
+              the whole card like a photo, not a small docked sticker. It
+              already carries its own "EXPRESS DELIVERY — Fast, Safe, Right
+              to Your Door" branding, so there's no separate title text
+              competing with it for space; we only overlay the tiny
+              logo+NEW badge (top) and the Shop CTA (bottom), each sitting on
+              its own translucent backing for legibility against the photo. */}
+          <img src="/images/express-delivery-rider.png" alt="Eptomart Express — Express Delivery, Fast, Safe, Right to Your Door"
+            className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(12,26,58,0.55) 0%, rgba(12,26,58,0.05) 28%, rgba(12,26,58,0.05) 65%, rgba(12,26,58,0.65) 100%)' }} />
 
-          <div className="sob-orb sob-orb-a" />
           <div className="promo-shine" />
-          <span className="promo-spark promo-spark-1 w-1.5 h-1.5 bg-amber-300" style={{ left: '8%', top: '18%' }} />
 
-          <div className="relative z-10 flex flex-col h-full pr-[50%] sm:pr-[44%] md:pr-[40%]">
+          <div className="relative z-10 flex flex-col h-full p-2.5 md:p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="promo-icon-wrap flex-shrink-0 flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-2xl overflow-hidden"
-                style={{ background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.35)' }}>
-                <img src="/images/express-logo.png" alt="Eptomart Express" className="w-full h-full object-cover" />
+              <div className="flex items-center gap-1.5 bg-black/35 backdrop-blur-sm rounded-full pl-1 pr-2.5 py-1">
+                <div className="promo-icon-wrap flex-shrink-0 flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden bg-white">
+                  <img src="/images/express-logo.png" alt="" className="w-full h-full object-cover" />
+                </div>
+                <span className="text-white font-black text-[11px] md:text-xs leading-none" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                  Eptomart Express
+                </span>
               </div>
               <span className="bg-amber-400 text-amber-900 text-[8px] md:text-[9px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full flex-shrink-0">
                 New
               </span>
             </div>
 
-            <div className="promo-title mt-1.5">
-              <p className="text-white font-black text-[13px] md:text-[15px] leading-tight line-clamp-2"
-                style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
-                Eptomart Express
-              </p>
-              <p className="text-blue-100/85 text-[10px] md:text-[11px] mt-0.5 leading-snug hidden sm:block line-clamp-1">
-                Same-day delivery from your nearest store.
-              </p>
-            </div>
-
             <div className="flex-1" />
 
-            <div className="flex justify-start mt-1.5">
+            <div className="flex justify-start">
               <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg"
                 style={{ color: '#1e3a8a' }}>
                 Shop <FiArrowRight size={11} className="sob-cta-arrow" />
