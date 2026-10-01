@@ -64,8 +64,10 @@ export default function ExpressShop() {
         <FiZap className="text-amber-500" size={20} />
         <h1 className="text-xl font-black text-indigo-900">Eptomart Express</h1>
       </div>
-      <button onClick={() => navigate('/express/location')} className="flex items-center gap-1.5 text-xs text-gray-500 mb-4 hover:text-indigo-600">
-        <FiMapPin size={12} /> Delivering to your area · Change location
+      <button onClick={() => navigate('/express/location')}
+        className="flex items-center gap-1.5 text-xs text-gray-500 mb-4 hover:text-indigo-600 transition">
+        <FiMapPin size={12} />
+        Delivering from <span className="font-bold text-gray-700">{selectedStore?.name || 'your area'}</span> · Change location
       </button>
 
       {cart.largeOrderWarning && (
@@ -79,7 +81,16 @@ export default function ExpressShop() {
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-400">Loading products…</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <div key={i} className="bg-white border rounded-xl p-3 flex flex-col animate-pulse">
+              <div className="w-full aspect-square rounded-lg bg-gray-100 mb-2" />
+              <div className="h-3 w-4/5 rounded bg-gray-200 mb-2" />
+              <div className="h-2.5 w-2/5 rounded bg-gray-100 mb-2" />
+              <div className="h-7 w-full rounded-lg bg-gray-100 mt-auto" />
+            </div>
+          ))}
+        </div>
       ) : catalogue.length === 0 ? (
         <p className="text-sm text-gray-400">No products available at this store right now.</p>
       ) : (
@@ -88,7 +99,7 @@ export default function ExpressShop() {
             const qty = qtyInCart(product._id);
             const isKg = product.unit === 'kg';
             return (
-              <div key={product._id} className="bg-white border rounded-xl p-3 flex flex-col">
+              <div key={product._id} className="bg-white border rounded-xl p-3 flex flex-col transition hover:shadow-md">
                 <div className="w-full aspect-square rounded-lg bg-gray-100 mb-2 flex items-center justify-center overflow-hidden">
                   {product.image
                     ? <img src={product.image} alt={product.name} className="w-full h-full object-cover" />

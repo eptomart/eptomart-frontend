@@ -110,6 +110,7 @@ export default function ExpressLocationPicker() {
   const [loadingStores, setLoadingStores] = useState(false);
   const [storesMessage, setStoresMessage] = useState(null);
   const [selectingStoreId, setSelectingStoreId] = useState(null);
+  const [detectingGPS, setDetectingGPS] = useState(false);
 
   // New-address save form, shown after confirming a pin in 'pin' mode
   const [showSaveForm, setShowSaveForm] = useState(false);
@@ -239,6 +240,30 @@ export default function ExpressLocationPicker() {
     navigate('/express/shop');
   };
 
+  // ── One-tap GPS location — the fastest path into the store chooser,
+  // skipping both the saved-address list and the manual map pin entirely.
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Location access is not supported on this device');
+      return;
+    }
+    setDetectingGPS(true);
+    setOutOfRange(null);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        const result = await checkAndProceed(lat, lng);
+        if (!result.ok && result.message) setOutOfRange({ message: result.message });
+        setDetectingGPS(false);
+      },
+      () => {
+        toast.error('Could not detect your location — allow location access or pick one manually');
+        setDetectingGPS(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  };
+
   // ── List mode: pick a saved address ──────────────────────────────────
   const deliverToAddress = async (addr) => {
     setCheckingId(addr._id);
@@ -336,6 +361,20 @@ export default function ExpressLocationPicker() {
               </div>
             )}
 
+            <button onClick={useCurrentLocation} disabled={detectingGPS}
+              className="w-full flex items-center gap-3 p-3 mb-3 rounded-2xl text-left transition active:scale-[0.98] disabled:opacity-70"
+              style={{ background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)', border: '1px solid #c7d2fe' }}>
+              <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: '#4f46e5' }}>
+                {detectingGPS
+                  ? <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  : <FiMapPin className="text-white" size={16} />}
+              </div>
+              <div className="min-w-0">
+                <p className="font-extrabold text-indigo-900 text-sm">{detectingGPS ? 'Finding you…' : 'Use my current location'}</p>
+                <p className="text-xs text-indigo-500">{detectingGPS ? 'Hang tight, almost there' : 'Fastest way to start shopping'}</p>
+              </div>
+            </button>
+
             <div className="grid gap-2 mb-3">
               {addresses.map(addr => (
                 <div key={addr._id} className="border rounded-2xl p-3">
@@ -397,24 +436,38 @@ export default function ExpressLocationPicker() {
             )}
 
             {loadingStores ? (
-              <p className="text-sm text-gray-400 py-6 text-center">Loading stores…</p>
+              <div className="grid gap-2">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="border rounded-2xl p-3 animate-pulse">
+                    <div className="h-3.5 w-2/5 rounded bg-gray-200 mb-2" />
+                    <div className="h-3 w-4/5 rounded bg-gray-100" />
+                  </div>
+                ))}
+              </div>
             ) : activeStores.length === 0 ? (
               <p className="text-sm text-gray-400 py-6 text-center">No Express stores are active right now.</p>
             ) : (
               <div className="grid gap-2">
-                {activeStores.map(store => (
-                  <button key={store._id} onClick={() => chooseStore(store)} disabled={selectingStoreId === store._id}
-                    className="w-full text-left border rounded-2xl p-3 active:bg-gray-50 disabled:opacity-50">
+                {activeStores.map((store, i) => (
+                  <button key={store._id} onClick={() => chooseStore(store)} disabled={selectingStoreId != null}
+                    className="w-full text-left border rounded-2xl p-3 transition active:scale-[0.98] active:bg-gray-50 disabled:opacity-50">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="font-bold text-gray-900 text-sm truncate">{store.name}</p>
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <p className="font-bold text-gray-900 text-sm truncate">{store.name}</p>
+                          {i === 0 && store.distanceKm != null && (
+                            <span className="shrink-0 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600">Nearest</span>
+                          )}
+                        </div>
                         <p className="text-xs text-gray-500 line-clamp-2">{[store.address, store.city].filter(Boolean).join(', ')}</p>
                       </div>
-                      {store.distanceKm != null && (
+                      {selectingStoreId === store._id ? (
+                        <div className="shrink-0 w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin mt-0.5" />
+                      ) : store.distanceKm != null ? (
                         <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-indigo-50 text-indigo-600">
                           {store.distanceKm} km
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </button>
                 ))}
@@ -443,6 +496,14 @@ export default function ExpressLocationPicker() {
         </div>
 
         <div className="px-3 pb-2 shrink-0 relative z-20">
+          <button onClick={useCurrentLocation} disabled={detectingGPS}
+            className="w-full flex items-center justify-center gap-2 py-2 mb-2 rounded-xl font-bold text-xs text-indigo-600 disabled:opacity-70"
+            style={{ background: '#eef2ff' }}>
+            {detectingGPS
+              ? <div className="w-3.5 h-3.5 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+              : <FiMapPin size={13} />}
+            {detectingGPS ? 'Finding you…' : 'Use my current location'}
+          </button>
           <div className="relative">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" size={15} />
             <input
