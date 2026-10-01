@@ -625,21 +625,21 @@ function ExpressBanner({ onReady }) {
         <div className="sob-inner promo-card relative overflow-hidden rounded-[13px] h-full px-3 py-2.5 md:px-4 md:py-3"
           style={{ background: 'linear-gradient(145deg, #0c1a3a 0%, #1e3a8a 55%, #2563eb 100%)' }}>
 
-          {/* "Express Delivery" badge graphic, docked to the right edge on a
-              white card so its own white background reads as an intentional
-              sticker rather than a mismatched box — same right-side-visual
-              placement as FruitBasketBanner's photo, adapted for a flat
-              graphic instead of a full-bleed photo. */}
-          <div className="absolute right-1.5 top-1/2 -translate-y-1/2 w-[34%] sm:w-[30%] md:w-[26%] aspect-[16/9] rounded-xl overflow-hidden bg-white shadow-lg"
-            style={{ border: '1px solid rgba(255,255,255,0.4)' }}>
-            <img src="/images/express-delivery-badge.png" alt="Express Delivery" className="w-full h-full object-contain p-1" />
+          {/* "Express Delivery" badge graphic — large sticker peeling off the
+              bottom-right corner (bled slightly past the card edge, given a
+              gentle tilt) so it reads as a bold visual rather than a tiny,
+              easy-to-miss chip. Content column stays up top where the
+              sticker never reaches, so nothing overlaps. */}
+          <div className="absolute -right-2 -bottom-2 w-[62%] sm:w-[56%] md:w-[50%] aspect-[16/9] rounded-xl overflow-hidden bg-white shadow-xl rotate-[-3deg]"
+            style={{ border: '2px solid rgba(255,255,255,0.55)' }}>
+            <img src="/images/express-delivery-badge.png" alt="Express Delivery" className="w-full h-full object-cover" />
           </div>
 
           <div className="sob-orb sob-orb-a" />
           <div className="promo-shine" />
           <span className="promo-spark promo-spark-1 w-1.5 h-1.5 bg-amber-300" style={{ left: '8%', top: '18%' }} />
 
-          <div className="relative z-10 flex flex-col h-full pr-[38%] sm:pr-[34%] md:pr-[30%]">
+          <div className="relative z-10 flex flex-col h-full">
             <div className="flex items-center justify-between gap-2">
               <div className="promo-icon-wrap flex-shrink-0 flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-2xl overflow-hidden"
                 style={{ background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.35)' }}>
@@ -650,7 +650,7 @@ function ExpressBanner({ onReady }) {
               </span>
             </div>
 
-            <div className="promo-title mt-1.5 flex-1">
+            <div className="promo-title mt-1.5">
               <p className="text-white font-black text-[13px] md:text-[15px] leading-tight line-clamp-2"
                 style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
                 Eptomart Express
@@ -660,7 +660,9 @@ function ExpressBanner({ onReady }) {
               </p>
             </div>
 
-            <div className="flex justify-start mt-1.5">
+            <div className="flex-1" />
+
+            <div className="flex justify-start mt-1.5 pr-[46%] sm:pr-[40%] md:pr-[34%]">
               <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg"
                 style={{ color: '#1e3a8a' }}>
                 Shop <FiArrowRight size={11} className="sob-cta-arrow" />
