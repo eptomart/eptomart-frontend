@@ -627,19 +627,31 @@ function ExpressBanner({ onReady }) {
           {/* The rider/clock/wordmark graphic IS the banner now — filling
               the whole card like a photo, not a small docked sticker. It
               already carries its own "EXPRESS DELIVERY — Fast, Safe, Right
-              to Your Door" branding, so there's no separate title text
-              competing with it for space; we only overlay the tiny
-              logo+NEW badge (top) and the Shop CTA (bottom), each sitting on
-              its own translucent backing for legibility against the photo. */}
+              to Your Door" branding and its own "tap to shop" affordance
+              (the whole card is the Link), so the only overlay left is the
+              logo+name pill, bottom-center.
+
+              Base layer is fully static. A second copy of the SAME image
+              sits on top, masked (soft fade, not a hard edge) to only its
+              left ~45% — roughly where the rider+bike sit — and only that
+              masked copy carries the bounce animation. Everything to the
+              right (the wordmark/clock, which live in the static base layer
+              underneath) never moves. */}
           <img src="/images/express-delivery-rider.png" alt="Eptomart Express — Express Delivery, Fast, Safe, Right to Your Door"
-            className="exp-rider-img absolute inset-0 w-full h-full object-cover" />
+            className="absolute inset-0 w-full h-full object-cover" />
+          <img src="/images/express-delivery-rider.png" alt="" aria-hidden="true"
+            className="exp-rider-img absolute inset-0 w-full h-full object-cover"
+            style={{
+              maskImage: 'linear-gradient(to right, black 0%, black 38%, transparent 58%)',
+              WebkitMaskImage: 'linear-gradient(to right, black 0%, black 38%, transparent 58%)',
+            }} />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(12,26,58,0.55) 0%, rgba(12,26,58,0.05) 28%, rgba(12,26,58,0.05) 65%, rgba(12,26,58,0.65) 100%)' }} />
 
           <div className="promo-shine" />
 
           <div className="relative z-10 flex flex-col h-full p-2.5 md:p-3">
-            {/* Logo+name pill centered up top (clear of the rider, who sits
-                lower in the frame) — no more "New" badge. */}
+            <div className="flex-1" />
+
             <div className="flex justify-center">
               <div className="flex items-center gap-1.5 bg-black/35 backdrop-blur-sm rounded-full pl-1 pr-2.5 py-1">
                 <div className="promo-icon-wrap flex-shrink-0 flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden bg-white">
@@ -649,15 +661,6 @@ function ExpressBanner({ onReady }) {
                   Eptomart Express
                 </span>
               </div>
-            </div>
-
-            <div className="flex-1" />
-
-            <div className="flex justify-start">
-              <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg"
-                style={{ color: '#1e3a8a' }}>
-                Shop <FiArrowRight size={11} className="sob-cta-arrow" />
-              </span>
             </div>
           </div>
         </div>
