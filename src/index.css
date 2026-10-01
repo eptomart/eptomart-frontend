@@ -709,7 +709,7 @@
 @media (prefers-reduced-motion: no-preference) {
   .exp-rider-img {
     animation: exp-rider-bounce 1.3s ease-in-out infinite;
-    transform-origin: 55% 75%;
+    transform-origin: 24% 78%;
     will-change: transform;
   }
 }

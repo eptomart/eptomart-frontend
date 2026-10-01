@@ -642,8 +642,8 @@ function ExpressBanner({ onReady }) {
           <img src="/images/express-delivery-rider.png" alt="" aria-hidden="true"
             className="exp-rider-img absolute inset-0 w-full h-full object-cover"
             style={{
-              maskImage: 'linear-gradient(to right, black 0%, black 38%, transparent 58%)',
-              WebkitMaskImage: 'linear-gradient(to right, black 0%, black 38%, transparent 58%)',
+              maskImage: 'linear-gradient(to right, black 0%, black 28%, transparent 40%)',
+              WebkitMaskImage: 'linear-gradient(to right, black 0%, black 28%, transparent 40%)',
             }} />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(12,26,58,0.55) 0%, rgba(12,26,58,0.05) 28%, rgba(12,26,58,0.05) 65%, rgba(12,26,58,0.65) 100%)' }} />
 
