@@ -49,7 +49,6 @@ export default function PNLTab() {
   const [savingLoadman, setSavingLoadman] = useState(false);
   const [costDrafts, setCostDrafts] = useState({}); // productKey -> purchaseCostPerUnit draft (day-level, all bills at once)
   const [procuredByDrafts, setProcuredByDrafts] = useState({}); // productKey -> selected "procured by" name
-  const [savingCost, setSavingCost] = useState({}); // productKey -> bool
   const [savingAllCosts, setSavingAllCosts] = useState(false);
   const [itemCostDrafts, setItemCostDrafts] = useState({}); // itemId -> bill-specific purchaseCostPerUnit draft
   const [savingItemCost, setSavingItemCost] = useState({}); // itemId -> bool
@@ -103,6 +102,20 @@ export default function PNLTab() {
 
   useEffect(() => { if (view === 'range') loadRange(); }, [view, loadRange]);
 
+  // "Procured By" is a strict dropdown, so a brand-new person has to be
+  // added to the maintained list once before they show up as an option.
+  const addProcurer = async () => {
+    const name = window.prompt('Add a new name to the Procured By list:');
+    if (!name || !name.trim()) return;
+    try {
+      const { data } = await api.post('/koyambedu/admin/procurers', { name: name.trim() });
+      setProcurers(data.names || []);
+      toast.success(`${name.trim()} added`);
+    } catch {
+      toast.error('Failed to add name');
+    }
+  };
+
   const saveLoadman = async () => {
     setSavingLoadman(true);
     try {
@@ -116,46 +129,21 @@ export default function PNLTab() {
     } finally { setSavingLoadman(false); }
   };
 
-  const saveCost = async (row) => {
-    const costDraft = costDrafts[row.productKey];
-    const nameDraft = procuredByDrafts[row.productKey];
-    if (costDraft === undefined && nameDraft === undefined) return;
-    setSavingCost(s => ({ ...s, [row.productKey]: true }));
-    try {
-      await api.patch('/koyambedu/admin/reports/procurement-confirmed/item', {
-        cycle, productKey: row.productKey, productName: row.productName,
-        gradeKey: row.gradeKey, gradeName: row.gradeName,
-        ...(costDraft !== undefined ? { purchaseCostPerUnit: costDraft === '' ? null : Number(costDraft) } : {}),
-        // Procured By is picked from the maintained dropdown — always sent
-        // (even unchanged) so an admin can clear it back to blank.
-        purchasedByName: (nameDraft ?? row.procuredBy ?? '').trim(),
-        purchased: true,
-      });
-      toast.success(`${row.productName} saved`);
-      loadDay();
-    } catch {
-      toast.error('Failed to save cost');
-    } finally { setSavingCost(s => ({ ...s, [row.productKey]: false })); }
-  };
-
-  // Saves every row of the Procurement Cost Entry table in one request —
-  // the per-row Save button is still there for a quick single edit, but a
-  // 20-30 product day no longer means 20-30 separate clicks.
+  // Single save action for the whole Procurement Cost Entry table — no
+  // per-row Save button. Sends every row's current value (draft if the
+  // admin touched it, otherwise whatever was already saved) in one request.
   const saveAllCosts = async () => {
     if (!dayReport) return;
-    const items = dayReport.itemRollup
-      .filter(row => costDrafts[row.productKey] !== undefined || procuredByDrafts[row.productKey] !== undefined)
-      .map(row => ({
-        productKey: row.productKey, productName: row.productName,
-        gradeKey: row.gradeKey, gradeName: row.gradeName,
-        ...(costDrafts[row.productKey] !== undefined
-          ? { purchaseCostPerUnit: costDrafts[row.productKey] === '' ? null : Number(costDrafts[row.productKey]) }
-          : {}),
-        ...(procuredByDrafts[row.productKey] !== undefined
-          ? { purchasedByName: procuredByDrafts[row.productKey].trim() }
-          : {}),
-      }));
-    if (!items.length) { toast('Nothing changed to save', { icon: 'ℹ️' }); return; }
+    const items = dayReport.itemRollup.map(row => ({
+      productKey: row.productKey, productName: row.productName,
+      gradeKey: row.gradeKey, gradeName: row.gradeName,
+      purchaseCostPerUnit: (() => {
+        const v = costDrafts[row.productKey] ?? row.purchaseCostPerUnit ?? '';
+        return v === '' ? null : Number(v);
+      })(),
+      purchasedByName: (procuredByDrafts[row.productKey] ?? row.procuredBy ?? '').trim(),
+    }));
+    if (!items.length) { toast('No products to save for this date', { icon: 'ℹ️' }); return; }
     setSavingAllCosts(true);
     try {
       await api.patch('/koyambedu/admin/reports/procurement-confirmed/bulk', { cycle, items });
@@ -223,10 +211,6 @@ export default function PNLTab() {
 
   return (
     <div className="space-y-4">
-      {/* Shared "Procured By" suggestions for every datalist-backed input below */}
-      <datalist id="pnl-procurer-names">
-        {procurers.map(name => <option key={name} value={name} />)}
-      </datalist>
       <div className="bg-white rounded-2xl border border-gray-200 p-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h2 className="font-bold text-gray-800">💰 Profit &amp; Loss</h2>
@@ -309,10 +293,16 @@ export default function PNLTab() {
                     <h3 className="font-bold text-gray-700 text-sm">Procurement Cost Entry (per product, per day)</h3>
                     <p className="text-[11px] text-gray-400">Enter what was actually paid to the supplier per unit, and pick who procured it.</p>
                   </div>
-                  <button onClick={saveAllCosts} disabled={savingAllCosts}
-                    className="shrink-0 text-xs font-bold text-white bg-gray-800 hover:bg-gray-900 px-3 py-1.5 rounded-lg disabled:opacity-50">
-                    {savingAllCosts ? 'Saving…' : 'Save All Changed Rows'}
-                  </button>
+                  <div className="shrink-0 flex items-center gap-2">
+                    <button onClick={addProcurer}
+                      className="text-xs font-bold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-lg">
+                      + Add Person
+                    </button>
+                    <button onClick={saveAllCosts} disabled={savingAllCosts}
+                      className="text-xs font-bold text-white bg-gray-800 hover:bg-gray-900 px-3 py-1.5 rounded-lg disabled:opacity-50">
+                      {savingAllCosts ? 'Saving…' : 'Save All'}
+                    </button>
+                  </div>
                 </div>
                 <table className="w-full text-sm">
                   <thead>
@@ -324,7 +314,6 @@ export default function PNLTab() {
                       <th className="px-3 py-2 text-right">Loadman Cost</th>
                       <th className="px-3 py-2 text-right">Total Procurement</th>
                       <th className="px-3 py-2">Procured By</th>
-                      <th className="px-3 py-2"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -342,23 +331,21 @@ export default function PNLTab() {
                         <td className="px-3 py-2 text-right text-gray-600">{money(row.loadmanCost)}</td>
                         <td className="px-3 py-2 text-right font-bold text-gray-700">{money(row.totalProcurement)}</td>
                         <td className="px-3 py-2">
-                          {/* Maintained dropdown (datalist) — pick an existing name in one
-                              click, or type a new one and it joins the list for next time. */}
-                          <input type="text" list="pnl-procurer-names" placeholder="Who procured this?"
+                          {/* Strict dropdown — only names from the maintained list.
+                              No per-row save; the one "Save All" button above persists
+                              every row's selection at once. */}
+                          <select
                             value={procuredByDrafts[row.productKey] ?? (row.procuredBy ?? '')}
                             onChange={e => setProcuredByDrafts(d => ({ ...d, [row.productKey]: e.target.value }))}
-                            className="w-32 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-red-400" />
-                        </td>
-                        <td className="px-3 py-2">
-                          <button onClick={() => saveCost(row)} disabled={!!savingCost[row.productKey]}
-                            className="text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-2.5 py-1 rounded-lg disabled:opacity-50">
-                            {savingCost[row.productKey] ? 'Saving…' : 'Save'}
-                          </button>
+                            className="w-32 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-red-400 bg-white">
+                            <option value="">— Select —</option>
+                            {procurers.map(name => <option key={name} value={name}>{name}</option>)}
+                          </select>
                         </td>
                       </tr>
                     ))}
                     {dayReport.itemRollup.length === 0 && (
-                      <tr><td colSpan={8} className="text-center text-gray-400 py-6">No confirmed orders for this date</td></tr>
+                      <tr><td colSpan={7} className="text-center text-gray-400 py-6">No confirmed orders for this date</td></tr>
                     )}
                   </tbody>
                 </table>
