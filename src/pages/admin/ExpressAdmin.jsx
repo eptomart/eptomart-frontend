@@ -1135,6 +1135,29 @@ function CreateProductTab() {
   const [comboSearching, setComboSearching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [recentlyCreated, setRecentlyCreated] = useState([]);
+  const [generatingDesc, setGeneratingDesc] = useState(false);
+
+  // AI-assisted description — POST /express/admin/products/generate-description
+  // (Claude, same helper as the Fruit Basket admin's generator). Pure text
+  // generator: fills the Description field only, nothing is saved yet.
+  const generateDescription = async () => {
+    if (!form.name) return toast.error('Enter a product name first');
+    setGeneratingDesc(true);
+    try {
+      const { data } = await api.post('/express/admin/products/generate-description', {
+        name: form.name,
+        category: form.isCombo ? 'Combos' : form.category,
+        unit: form.unit,
+        isCombo: form.isCombo,
+        comboContents: form.isCombo ? comboContents : undefined,
+      });
+      setForm(f => ({ ...f, description: data.description }));
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not generate description');
+    } finally {
+      setGeneratingDesc(false);
+    }
+  };
 
   // Debounced search against Express's OWN catalogue (native + Koyambedu-
   // linked Express products) — never Koyambedu Daily directly.
@@ -1223,9 +1246,18 @@ function CreateProductTab() {
             placeholder="What it costs Express to procure/pack this" className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
         </label>
 
-        <label className="text-xs font-semibold text-gray-500">Description (optional)
-          <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
-        </label>
+        <div>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-gray-500">Description (optional)</label>
+            <button type="button" onClick={generateDescription} disabled={generatingDesc || !form.name}
+              className="flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 disabled:opacity-40 disabled:hover:text-indigo-600">
+              <FiZap size={11} /> {generatingDesc ? 'Generating…' : 'Generate with AI'}
+            </button>
+          </div>
+          <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3}
+            placeholder="Write your own, or click Generate with AI once you've entered a name"
+            className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+        </div>
 
         <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
           <input type="checkbox" checked={form.isCombo}
