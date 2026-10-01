@@ -222,12 +222,14 @@ export default function ExpressShop() {
             const isKg = product.unit === 'kg';
             return (
               <div key={product._id} className="bg-white border rounded-xl p-3 flex flex-col transition hover:shadow-md">
-                <div className="w-full aspect-square rounded-lg bg-gray-100 mb-2 flex items-center justify-center overflow-hidden">
-                  {product.image
-                    ? <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                    : <FiZap className="text-gray-300" size={24} />}
-                </div>
-                <p className="font-bold text-sm text-gray-800 truncate">{product.name}</p>
+                <Link to={`/express/product/${product._id}`} className="block">
+                  <div className="w-full aspect-square rounded-lg bg-gray-100 mb-2 flex items-center justify-center overflow-hidden">
+                    {product.image
+                      ? <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                      : <FiZap className="text-gray-300" size={24} />}
+                  </div>
+                  <p className="font-bold text-sm text-gray-800 truncate">{product.name}</p>
+                </Link>
                 <p className="text-xs text-gray-400 mb-2">₹{pricePerUnit}/{product.unit}</p>
 
                 {isKg && qty === 0 && (

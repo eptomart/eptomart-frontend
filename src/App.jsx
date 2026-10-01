@@ -79,6 +79,7 @@ const AdminFruitBaskets       = lazy(() => import('./pages/admin/FruitBasketAdmi
 const AdminExpress            = lazy(() => import('./pages/admin/ExpressAdmin'));
 const ExpressLocationPicker   = lazy(() => import('./pages/express/ExpressLocationPicker'));
 const ExpressShop             = lazy(() => import('./pages/express/ExpressShop'));
+const ExpressProductDetail    = lazy(() => import('./pages/express/ExpressProductDetail'));
 const ExpressCheckout         = lazy(() => import('./pages/express/ExpressCheckout'));
 const ExpressMyOrders         = lazy(() => import('./pages/express/ExpressMyOrders'));
 const ExpressManagerLogin     = lazy(() => import('./pages/express/manager/ExpressManagerLogin'));
@@ -329,6 +330,7 @@ function AppRoutes() {
           <Route path="/express"           element={<ExpressEntry />} />
           <Route path="/express/location"  element={<ExpressLocationPicker />} />
           <Route path="/express/shop"      element={<ExpressShop />} />
+          <Route path="/express/product/:productId" element={<ExpressProductDetail />} />
           <Route path="/express/checkout"  element={<ProtectedRoute><ExpressCheckout /></ProtectedRoute>} />
           <Route path="/express/my-orders" element={<ProtectedRoute><ExpressMyOrders /></ProtectedRoute>} />
           <Route path="/express/manager/login" element={<ExpressManagerLogin />} />
