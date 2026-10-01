@@ -38,7 +38,7 @@ const ProfitBadge = ({ value, size = 'base' }) => {
 };
 
 export default function PNLTab() {
-  const [view, setView] = useState('day'); // 'day' | 'range'
+  const [view, setView] = useState('day'); // 'day' | 'range' | 'margin'
 
   // ── Day view state ──────────────────────────
   const [cycle, setCycle] = useState(todayStr());
@@ -65,6 +65,12 @@ export default function PNLTab() {
   const [rangeReport, setRangeReport] = useState(null);
   const [rangeLoading, setRangeLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+
+  // ── Margin Report view state ────────────────
+  const [marginFrom, setMarginFrom] = useState(initialRange.from);
+  const [marginTo, setMarginTo] = useState(initialRange.to);
+  const [marginReport, setMarginReport] = useState(null);
+  const [marginLoading, setMarginLoading] = useState(false);
 
   const loadDay = useCallback(async () => {
     setDayLoading(true);
@@ -102,6 +108,18 @@ export default function PNLTab() {
   }, [rangeFrom, rangeTo]);
 
   useEffect(() => { if (view === 'range') loadRange(); }, [view, loadRange]);
+
+  const loadMarginReport = useCallback(async () => {
+    setMarginLoading(true);
+    try {
+      const { data } = await api.get(`/koyambedu/admin/pnl/margin-report?from=${marginFrom}&to=${marginTo}`);
+      setMarginReport(data);
+    } catch {
+      toast.error('Failed to load margin report');
+    } finally { setMarginLoading(false); }
+  }, [marginFrom, marginTo]);
+
+  useEffect(() => { if (view === 'margin') loadMarginReport(); }, [view, loadMarginReport]);
 
   // "Procured By" is a strict dropdown, so a brand-new person has to be
   // added to the maintained list once before they show up as an option.
@@ -224,11 +242,15 @@ export default function PNLTab() {
               className={`px-4 py-1.5 text-sm font-bold ${view === 'range' ? 'bg-red-600 text-white' : 'bg-white text-gray-600'}`}>
               Quarter / Range
             </button>
+            <button onClick={() => setView('margin')}
+              className={`px-4 py-1.5 text-sm font-bold ${view === 'margin' ? 'bg-red-600 text-white' : 'bg-white text-gray-600'}`}>
+              ⚠️ Margin Alerts
+            </button>
           </div>
         </div>
       </div>
 
-      {view === 'day' ? (
+      {view === 'day' && (
         <>
           <div className="bg-white rounded-2xl border border-gray-200 p-4">
             <div className="flex flex-wrap items-end gap-3">
@@ -288,6 +310,51 @@ export default function PNLTab() {
                   <ProfitBadge value={dayReport.dayProfit} size="lg" />
                 </div>
               </div>
+
+              {/* Margin & price alerts — products that made little or no money
+                  today, with a suggested selling price for tomorrow's listing. */}
+              {dayReport.marginAlerts?.length > 0 && (
+                <div className="bg-amber-50 rounded-2xl border border-amber-200 overflow-x-auto">
+                  <div className="px-4 pt-3 pb-1">
+                    <h3 className="font-bold text-amber-800 text-sm">⚠️ Margin &amp; Price Alerts — {dayReport.marginAlerts.length} product{dayReport.marginAlerts.length === 1 ? '' : 's'} need attention</h3>
+                    <p className="text-[11px] text-amber-700">Sold today for little or no profit above what it actually cost. Suggested price is what it'd need to sell at tomorrow (at today's cost) for a healthy margin.</p>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-amber-100/60 text-left text-xs text-amber-700 uppercase">
+                        <th className="px-3 py-2">Product</th>
+                        <th className="px-3 py-2 text-right">Qty Sold</th>
+                        <th className="px-3 py-2 text-right">Selling Price/Unit</th>
+                        <th className="px-3 py-2 text-right">Cost/Unit</th>
+                        <th className="px-3 py-2 text-right">Margin</th>
+                        <th className="px-3 py-2">Status</th>
+                        <th className="px-3 py-2 text-right">Suggested Price (tomorrow)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dayReport.marginAlerts.map(row => (
+                        <tr key={row.productKey} className="border-t border-amber-200/60">
+                          <td className="px-3 py-2 font-medium text-gray-700">{row.productName}{row.gradeName ? ` (${row.gradeName})` : ''}</td>
+                          <td className="px-3 py-2 text-right text-gray-600">{row.totalQty} {row.unit}</td>
+                          <td className="px-3 py-2 text-right text-gray-600">₹{row.sellingPricePerUnit.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right text-gray-600">₹{row.costPerUnit.toFixed(2)}</td>
+                          <td className={`px-3 py-2 text-right font-bold ${row.alertLevel === 'loss' ? 'text-red-600' : 'text-amber-600'}`}>
+                            {money(row.margin)} ({row.marginPercent.toFixed(1)}%)
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${row.alertLevel === 'loss' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                              {row.alertLevel === 'loss' ? 'NO PROFIT / LOSS' : 'LOW MARGIN'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-right font-bold text-gray-800">
+                            {row.suggestedPricePerUnit != null ? `₹${row.suggestedPricePerUnit.toFixed(2)}` : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               {/* Item-wise procurement cost entry — Table 2 style */}
               <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
@@ -550,7 +617,9 @@ export default function PNLTab() {
             </>
           )}
         </>
-      ) : (
+      )}
+
+      {view === 'range' && (
         <>
           <div className="bg-white rounded-2xl border border-gray-200 p-4">
             <div className="flex flex-wrap items-end gap-3">
@@ -625,6 +694,84 @@ export default function PNLTab() {
                 </table>
               </div>
             </>
+          )}
+        </>
+      )}
+
+      {view === 'margin' && (
+        <>
+          <div className="bg-white rounded-2xl border border-gray-200 p-4">
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <label className="text-xs text-gray-500 font-medium block mb-1">From</label>
+                <input type="date" value={marginFrom} onChange={e => setMarginFrom(e.target.value)}
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 font-medium block mb-1">To</label>
+                <input type="date" value={marginTo} onChange={e => setMarginTo(e.target.value)}
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+              </div>
+              <button onClick={loadMarginReport} disabled={marginLoading}
+                className="bg-red-600 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-red-700 disabled:opacity-50">
+                {marginLoading ? 'Loading…' : 'Search'}
+              </button>
+              <p className="text-[11px] text-gray-400">Which products are actually making money over this range, worst first</p>
+            </div>
+          </div>
+
+          {marginReport && (
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
+              <div className="px-4 pt-3 pb-1">
+                <h3 className="font-bold text-gray-700 text-sm">
+                  Product Margins — {marginReport.alerts.length} of {marginReport.products.length} product{marginReport.products.length === 1 ? '' : 's'} need a price review
+                </h3>
+                <p className="text-[11px] text-gray-400">Sorted worst margin first. A product flagged here across several days — not just a one-off — is the one that genuinely needs repricing.</p>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
+                    <th className="px-3 py-2">Product</th>
+                    <th className="px-3 py-2 text-right">Days Sold</th>
+                    <th className="px-3 py-2 text-right">Qty Sold</th>
+                    <th className="px-3 py-2 text-right">Avg Selling Price/Unit</th>
+                    <th className="px-3 py-2 text-right">Avg Cost/Unit</th>
+                    <th className="px-3 py-2 text-right">Margin</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2 text-right">Suggested Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {marginReport.products.map(row => (
+                    <tr key={row.productKey} className={`border-t border-gray-100 ${row.alertLevel !== 'ok' ? 'bg-amber-50/60' : ''}`}>
+                      <td className="px-3 py-2 font-medium text-gray-700">{row.productName}{row.gradeName ? ` (${row.gradeName})` : ''}</td>
+                      <td className="px-3 py-2 text-right text-gray-600">{row.daysSeen}</td>
+                      <td className="px-3 py-2 text-right text-gray-600">{row.totalQty.toFixed(2)} {row.unit}</td>
+                      <td className="px-3 py-2 text-right text-gray-600">₹{row.sellingPricePerUnit.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-right text-gray-600">₹{row.costPerUnit.toFixed(2)}</td>
+                      <td className={`px-3 py-2 text-right font-bold ${row.alertLevel === 'loss' ? 'text-red-600' : row.alertLevel === 'low' ? 'text-amber-600' : 'text-green-700'}`}>
+                        {money(row.margin)} ({row.marginPercent.toFixed(1)}%)
+                      </td>
+                      <td className="px-3 py-2">
+                        {row.alertLevel === 'ok' ? (
+                          <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">HEALTHY</span>
+                        ) : (
+                          <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${row.alertLevel === 'loss' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {row.alertLevel === 'loss' ? 'NO PROFIT / LOSS' : 'LOW MARGIN'}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right font-bold text-gray-800">
+                        {row.suggestedPricePerUnit != null ? `₹${row.suggestedPricePerUnit.toFixed(2)}` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                  {marginReport.products.length === 0 && (
+                    <tr><td colSpan={8} className="text-center text-gray-400 py-8">No confirmed orders in this range</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
         </>
       )}
