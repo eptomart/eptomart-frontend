@@ -638,15 +638,11 @@ function ExpressBanner({ onReady }) {
           <div className="promo-shine" />
 
           <div className="relative z-10 flex flex-col h-full p-2.5 md:p-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 bg-black/35 backdrop-blur-sm rounded-full pl-1 pr-2.5 py-1">
-                <div className="promo-icon-wrap flex-shrink-0 flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden bg-white">
-                  <img src="/images/express-logo.png" alt="" className="w-full h-full object-cover" />
-                </div>
-                <span className="text-white font-black text-[11px] md:text-xs leading-none" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-                  Eptomart Express
-                </span>
-              </div>
+            {/* Only the NEW badge sits up top (tucked in the corner, out of
+                the rider's way) — the logo+name pill moved down to the
+                bottom-right so the rider's helmet/face in the top-left of
+                the photo stays fully visible. */}
+            <div className="flex justify-end">
               <span className="bg-amber-400 text-amber-900 text-[8px] md:text-[9px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full flex-shrink-0">
                 New
               </span>
@@ -654,11 +650,19 @@ function ExpressBanner({ onReady }) {
 
             <div className="flex-1" />
 
-            <div className="flex justify-start">
+            <div className="flex items-center justify-between gap-2">
               <span className="sob-cta bg-white font-black text-[10.5px] md:text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg"
                 style={{ color: '#1e3a8a' }}>
                 Shop <FiArrowRight size={11} className="sob-cta-arrow" />
               </span>
+              <div className="flex items-center gap-1.5 bg-black/35 backdrop-blur-sm rounded-full pl-1 pr-2.5 py-1 shrink-0">
+                <div className="promo-icon-wrap flex-shrink-0 flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden bg-white">
+                  <img src="/images/express-logo.png" alt="" className="w-full h-full object-cover" />
+                </div>
+                <span className="text-white font-black text-[11px] md:text-xs leading-none" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                  Eptomart Express
+                </span>
+              </div>
             </div>
           </div>
         </div>
