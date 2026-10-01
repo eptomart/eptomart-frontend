@@ -56,6 +56,7 @@ export default function PNLTab() {
   const [savingOrderCost, setSavingOrderCost] = useState({});
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [procurers, setProcurers] = useState([]); // maintained dropdown list for "Procured By"
+  const [expandedProcurers, setExpandedProcurers] = useState({}); // name -> bool, product list shown on demand
 
   // ── Range view state ────────────────────────
   const initialRange = currentQuarterRange();
@@ -250,9 +251,11 @@ export default function PNLTab() {
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 font-medium block mb-1">Paid by</label>
-                  <input type="text" value={loadmanPaidByDraft} onChange={e => setLoadmanPaidByDraft(e.target.value)}
-                    placeholder="Who paid the loadman?"
-                    className="border border-gray-200 rounded-xl px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-red-400" />
+                  <select value={loadmanPaidByDraft} onChange={e => setLoadmanPaidByDraft(e.target.value)}
+                    className="border border-gray-200 rounded-xl px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-red-400 bg-white">
+                    <option value="">— Select —</option>
+                    {procurers.map(name => <option key={name} value={name}>{name}</option>)}
+                  </select>
                 </div>
                 <button onClick={saveLoadman} disabled={savingLoadman}
                   className="bg-gray-800 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-gray-900 disabled:opacity-50">
@@ -370,16 +373,26 @@ export default function PNLTab() {
                       </tr>
                     </thead>
                     <tbody>
-                      {dayReport.procuredByRollup.map(p => (
-                        <tr key={p.name} className="border-t border-gray-100">
-                          <td className="px-3 py-2 font-bold text-gray-700">{p.name}</td>
-                          <td className="px-3 py-2 text-right text-gray-600">{p.totalQty.toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right text-gray-600">{money(p.purchaseCost)}</td>
-                          <td className="px-3 py-2 text-right text-gray-600">{money(p.loadmanCost)}</td>
-                          <td className="px-3 py-2 text-right font-bold text-green-700">{money(p.amountPayable)}</td>
-                          <td className="px-3 py-2 text-gray-500 text-xs">{p.products.join(', ')}</td>
-                        </tr>
-                      ))}
+                      {dayReport.procuredByRollup.map(p => {
+                        const isOpen = !!expandedProcurers[p.name];
+                        return (
+                          <tr key={p.name} className="border-t border-gray-100">
+                            <td className="px-3 py-2 font-bold text-gray-700">{p.name}</td>
+                            <td className="px-3 py-2 text-right text-gray-600">{p.totalQty.toFixed(2)}</td>
+                            <td className="px-3 py-2 text-right text-gray-600">{money(p.purchaseCost)}</td>
+                            <td className="px-3 py-2 text-right text-gray-600">{money(p.loadmanCost)}</td>
+                            <td className="px-3 py-2 text-right font-bold text-green-700">{money(p.amountPayable)}</td>
+                            <td className="px-3 py-2 text-gray-500 text-xs">
+                              <button
+                                onClick={() => setExpandedProcurers(s => ({ ...s, [p.name]: !s[p.name] }))}
+                                className="text-red-600 font-bold hover:underline">
+                                {isOpen ? 'Hide' : `${p.products.length} product${p.products.length === 1 ? '' : 's'}`}
+                              </button>
+                              {isOpen && <div className="mt-1 text-gray-500">{p.products.join(', ')}</div>}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
