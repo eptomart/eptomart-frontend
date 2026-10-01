@@ -46,6 +46,12 @@ export default function ExpressShop() {
   // hardcoded list, so a store with no combos simply shows no Combos chip.
   const [activeCategory, setActiveCategory] = useState('All');
   const productGridRef = useRef(null);
+  // Hero banner carousel — auto-advances every 4.5s, pauses while the
+  // customer is actively swiping/touching it, resumes after they let go.
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const bannerScrollRef = useRef(null);
+  const bannerCardRefs = useRef([]);
+  const bannerTimerRef = useRef(null);
 
   useEffect(() => {
     if (!selectedStore?._id) {
@@ -88,6 +94,25 @@ export default function ExpressShop() {
     setActiveCategory(cat);
     productGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  // Auto-advance the hero banner carousel. Restarted (not just left running)
+  // whenever the customer touches/swipes it, so manual browsing never fights
+  // the auto-advance mid-gesture.
+  const restartBannerAutoplay = () => {
+    clearInterval(bannerTimerRef.current);
+    if (banners.length < 2) return;
+    bannerTimerRef.current = setInterval(() => {
+      setBannerIndex(i => (i + 1) % banners.length);
+    }, 4500);
+  };
+  useEffect(() => {
+    restartBannerAutoplay();
+    return () => clearInterval(bannerTimerRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [banners.length]);
+  useEffect(() => {
+    bannerCardRefs.current[bannerIndex]?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+  }, [bannerIndex]);
 
   const qtyInCart = (productId) => cart.items?.find(i => String(i.product) === String(productId))?.quantity || 0;
   const stepFor = (productId) => weightStep[productId] ?? 1;
@@ -132,38 +157,50 @@ export default function ExpressShop() {
       </div>
 
       {banners.length > 0 && (
-        <div className="flex gap-3 overflow-x-auto pb-1 mb-4 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide">
-          {banners.map(b => (
-            <Link key={b._id} to={b.linkTo || '/express/shop'}
-              className="relative shrink-0 w-[85%] sm:w-80 h-28 rounded-2xl overflow-hidden snap-start active:scale-[0.98] transition-transform"
-              style={!b.image ? { background: `linear-gradient(135deg, ${b.gradientFrom}, ${b.gradientTo})` } : undefined}>
-              {b.image && (
-                <>
-                  <img src={b.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                </>
-              )}
-              <div className="relative z-10 h-full flex flex-col justify-end p-3">
-                {b.type === 'flash-sale' && (
-                  <span className="self-start mb-1 bg-amber-400 text-amber-900 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full">
-                    Flash Sale
-                  </span>
+        <>
+          <div ref={bannerScrollRef} onTouchStart={restartBannerAutoplay} onMouseDown={restartBannerAutoplay}
+            className="flex gap-3 overflow-x-auto pb-1 mb-2 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide">
+            {banners.map((b, i) => (
+              <Link key={b._id} to={b.linkTo || '/express/shop'}
+                ref={el => (bannerCardRefs.current[i] = el)}
+                className="exp-banner-card relative shrink-0 w-[85%] sm:w-80 h-28 rounded-2xl overflow-hidden snap-start active:scale-[0.98] transition-transform"
+                style={{ ...(!b.image ? { background: `linear-gradient(135deg, ${b.gradientFrom}, ${b.gradientTo})` } : {}), animationDelay: `${i * 90}ms` }}>
+                {b.image && (
+                  <>
+                    <img src={b.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                  </>
                 )}
-                {b.type === 'lowest-price' && (
-                  <span className="self-start mb-1 bg-emerald-400 text-emerald-900 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full">
-                    Lowest Price
-                  </span>
-                )}
-                <p className="text-white font-black text-sm leading-tight line-clamp-1" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>
-                  {b.title}
-                </p>
-                {b.subtitle && (
-                  <p className="text-white/85 text-[11px] leading-snug line-clamp-1">{b.subtitle}</p>
-                )}
-              </div>
-            </Link>
-          ))}
-        </div>
+                <div className="exp-banner-shine" />
+                <div className="relative z-10 h-full flex flex-col justify-end p-3">
+                  {b.type === 'flash-sale' && (
+                    <span className="exp-banner-pill self-start mb-1 bg-amber-400 text-amber-900 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full">
+                      Flash Sale
+                    </span>
+                  )}
+                  {b.type === 'lowest-price' && (
+                    <span className="exp-banner-pill self-start mb-1 bg-emerald-400 text-emerald-900 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full">
+                      Lowest Price
+                    </span>
+                  )}
+                  <p className="text-white font-black text-sm leading-tight line-clamp-1" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>
+                    {b.title}
+                  </p>
+                  {b.subtitle && (
+                    <p className="text-white/85 text-[11px] leading-snug line-clamp-1">{b.subtitle}</p>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+          {banners.length > 1 && (
+            <div className="flex items-center justify-center gap-1.5 mb-4">
+              {banners.map((b, i) => (
+                <span key={b._id} className={`exp-banner-dot ${i === bannerIndex ? 'active' : ''}`} />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {!loading && categories.length > 1 && (

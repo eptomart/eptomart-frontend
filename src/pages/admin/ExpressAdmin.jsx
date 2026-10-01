@@ -1384,7 +1384,21 @@ function BannersTab() {
     setSaving(true);
     try {
       const fd = new FormData();
-      Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+      Object.entries(form).forEach(([k, v]) => {
+        // datetime-local gives "YYYY-MM-DDTHH:mm" in the ADMIN'S OWN local
+        // time with no timezone info. Sending that raw string let the
+        // server (which may run in a different timezone, e.g. UTC) re-parse
+        // it as ITS local time — silently shifting the scheduled time by
+        // whatever the UTC offset is. Converting to a real Date here (parsed
+        // correctly as the browser's local time) and sending .toISOString()
+        // fixes that: the stored instant now matches what the admin actually
+        // picked, regardless of what timezone the server runs in.
+        if (k === 'startAt' || k === 'endAt') {
+          fd.append(k, v ? new Date(v).toISOString() : '');
+        } else {
+          fd.append(k, v);
+        }
+      });
       if (imageFile) fd.append('image', imageFile);
 
       if (editingId) {
@@ -1451,14 +1465,28 @@ function BannersTab() {
         </label>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="text-xs font-semibold text-gray-500">Starts at (optional)
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-gray-500">Starts at (optional)</label>
+              {form.startAt && (
+                <button type="button" onClick={() => setForm(f => ({ ...f, startAt: '' }))}
+                  className="text-[10px] font-bold text-red-500 hover:underline">Clear</button>
+              )}
+            </div>
             <input type="datetime-local" value={form.startAt} onChange={e => setForm(f => ({ ...f, startAt: e.target.value }))}
               className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
-          </label>
-          <label className="text-xs font-semibold text-gray-500">Ends at (optional)
+          </div>
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-gray-500">Ends at (optional)</label>
+              {form.endAt && (
+                <button type="button" onClick={() => setForm(f => ({ ...f, endAt: '' }))}
+                  className="text-[10px] font-bold text-red-500 hover:underline">Clear</button>
+              )}
+            </div>
             <input type="datetime-local" value={form.endAt} onChange={e => setForm(f => ({ ...f, endAt: e.target.value }))}
               className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
-          </label>
+          </div>
         </div>
         <p className="text-[11px] text-gray-400 -mt-1">
           Leave both blank for an always-on banner (still controlled by the Active toggle). Set either to schedule a
