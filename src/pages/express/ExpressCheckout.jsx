@@ -17,7 +17,7 @@
 // ============================================
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiZap, FiAlertTriangle, FiCheck, FiClock, FiPhoneCall, FiPauseCircle } from 'react-icons/fi';
+import { FiZap, FiAlertTriangle, FiCheck, FiClock, FiPhoneCall, FiPauseCircle, FiChevronRight, FiEdit2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 import { useExpressCart } from '../../context/ExpressCartContext';
@@ -292,72 +292,96 @@ export default function ExpressCheckout() {
         <h1 className="text-xl font-black text-indigo-900">Checkout</h1>
       </div>
 
-      <div className="bg-white border rounded-xl p-4 mb-4">
-        <h2 className="font-bold text-gray-700 text-sm mb-2">Delivery Address</h2>
-        <SavedAddressPicker
-          addresses={user?.addresses || []}
-          selectedId={selectedAddrId}
-          onSelect={handleSelectSaved}
-          onNewAddress={handleNewAddress}
-        />
+      {/* ── Step 1: pick a delivery slot first — nothing else in checkout
+          (address, pricing, payment) shows until this is chosen. ── */}
+      {!slot ? (
+        <div className="bg-white border rounded-xl p-4 mb-4">
+          <h2 className="font-bold text-gray-700 text-sm mb-1 flex items-center gap-1.5"><FiClock size={14} /> Delivery Slot</h2>
+          <p className="text-xs text-gray-400 mb-3">Select a delivery slot to continue to checkout.</p>
 
-        {showManualForm && (
-          <div className="grid gap-3">
-            <input placeholder="Full name" value={address.name} onChange={e => setAddress(a => ({ ...a, name: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
-            <input placeholder="Phone" value={address.phone} onChange={e => setAddress(a => ({ ...a, phone: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
-            <input placeholder="Address" value={address.addressLine} onChange={e => setAddress(a => ({ ...a, addressLine: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
-            <div className="grid grid-cols-2 gap-3">
-              <input placeholder="City" value={address.city} onChange={e => setAddress(a => ({ ...a, city: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
-              <input placeholder="Pincode" value={address.pincode} onChange={e => setAddress(a => ({ ...a, pincode: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+          {quickSlot && (
+            <button onClick={() => { setSlot(quickSlot); setQuote(null); }}
+              className="w-full mb-3 flex items-center gap-3 px-3 py-3 rounded-xl border-2 text-left transition border-emerald-100 bg-emerald-50/40 hover:border-emerald-300">
+              <span className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                <FiZap size={16} className="text-white" />
+              </span>
+              <span>
+                <span className="block font-black text-sm text-emerald-800">Quick Delivery</span>
+                <span className="block text-xs text-emerald-600">Ready in ~{quickEtaMinutes} min — recommended</span>
+              </span>
+            </button>
+          )}
+
+          {todaySlots.length > 0 ? (
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                {quickSlot ? 'Or pick a time today' : 'Today'}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {todaySlots.map(s => <SlotButton key={s.key} s={s} />)}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          ) : !quickSlot && (
+            <p className="text-xs text-gray-400 mt-2">
+              {nextDayEnabled ? 'No more same-day delivery windows left for today.' : 'No more same-day delivery windows left for today — please check back tomorrow.'}
+            </p>
+          )}
 
-      <div className="bg-white border rounded-xl p-4 mb-4">
-        <h2 className="font-bold text-gray-700 text-sm mb-3 flex items-center gap-1.5"><FiClock size={14} /> Delivery Slot</h2>
+          {tomorrowSlots.length > 0 && (
+            <div className={todaySlots.length > 0 || quickSlot ? 'mt-3 pt-3 border-t border-gray-100' : ''}>
+              <p className="text-[10px] font-black uppercase tracking-wide text-gray-400 mb-1.5">Tomorrow</p>
+              <div className="grid grid-cols-2 gap-2">
+                {tomorrowSlots.map(s => <SlotButton key={s.key} s={s} />)}
+              </div>
+            </div>
+          )}
 
-        {quickSlot && (
-          <button onClick={() => { setSlot(quickSlot); setQuote(null); }}
-            className={`w-full mb-3 flex items-center gap-3 px-3 py-3 rounded-xl border-2 text-left transition ${
-              slot?.key === 'quick' ? 'border-emerald-500 bg-emerald-50' : 'border-emerald-100 bg-emerald-50/40 hover:border-emerald-300'
-            }`}>
-            <span className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
-              <FiZap size={16} className="text-white" />
+          {!quickSlot && todaySlots.length === 0 && tomorrowSlots.length === 0 && (
+            <p className="text-xs text-gray-400 mt-2">No delivery slots are available right now — please check back later.</p>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Chosen slot, shown as a compact confirmation bar once checkout
+              has moved on — tap to come back and change it. */}
+          <button onClick={() => { setSlot(null); setQuote(null); }}
+            className="w-full mb-4 flex items-center justify-between gap-2 px-4 py-3 rounded-xl border-2 border-indigo-100 bg-indigo-50 text-left">
+            <span className="flex items-center gap-2 min-w-0">
+              <FiClock size={15} className="text-indigo-600 shrink-0" />
+              <span className="text-sm font-bold text-indigo-900 truncate">
+                {slot.isQuick ? `Quick Delivery (~${quickEtaMinutes} min)` : `${slot.isNextDay ? 'Tomorrow' : 'Today'}, ${slot.label}`}
+              </span>
             </span>
-            <span>
-              <span className="block font-black text-sm text-emerald-800">Quick Delivery</span>
-              <span className="block text-xs text-emerald-600">Ready in ~{quickEtaMinutes} min — recommended</span>
+            <span className="flex items-center gap-1 text-xs font-bold text-indigo-600 shrink-0">
+              <FiEdit2 size={12} /> Change
             </span>
           </button>
-        )}
 
-        {todaySlots.length > 0 ? (
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
-              {quickSlot ? 'Or pick a time today' : 'Today'}
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {todaySlots.map(s => <SlotButton key={s.key} s={s} />)}
-            </div>
+          <div className="bg-white border rounded-xl p-4 mb-4">
+            <h2 className="font-bold text-gray-700 text-sm mb-2">Delivery Address</h2>
+            <SavedAddressPicker
+              addresses={user?.addresses || []}
+              selectedId={selectedAddrId}
+              onSelect={handleSelectSaved}
+              onNewAddress={handleNewAddress}
+            />
+
+            {showManualForm && (
+              <div className="grid gap-3">
+                <input placeholder="Full name" value={address.name} onChange={e => setAddress(a => ({ ...a, name: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <input placeholder="Phone" value={address.phone} onChange={e => setAddress(a => ({ ...a, phone: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <input placeholder="Address" value={address.addressLine} onChange={e => setAddress(a => ({ ...a, addressLine: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <div className="grid grid-cols-2 gap-3">
+                  <input placeholder="City" value={address.city} onChange={e => setAddress(a => ({ ...a, city: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                  <input placeholder="Pincode" value={address.pincode} onChange={e => setAddress(a => ({ ...a, pincode: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                </div>
+              </div>
+            )}
           </div>
-        ) : !quickSlot && (
-          <p className="text-xs text-gray-400 mt-2">
-            {nextDayEnabled ? 'No more same-day delivery windows left for today.' : 'No more same-day delivery windows left for today — please check back tomorrow.'}
-          </p>
-        )}
+        </>
+      )}
 
-        {tomorrowSlots.length > 0 && (
-          <div className={todaySlots.length > 0 || quickSlot ? 'mt-3 pt-3 border-t border-gray-100' : ''}>
-            <p className="text-[10px] font-black uppercase tracking-wide text-gray-400 mb-1.5">Tomorrow</p>
-            <div className="grid grid-cols-2 gap-2">
-              {tomorrowSlots.map(s => <SlotButton key={s.key} s={s} />)}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {quoting && (
+      {slot && quoting && (
         <div className="w-full mb-4 px-4 py-2.5 rounded-xl text-xs font-bold text-indigo-600 bg-indigo-50 flex items-center justify-center gap-2">
           <span className="w-3.5 h-3.5 rounded-full border-2 border-indigo-300 border-t-indigo-600 animate-spin" />
           Calculating price…
@@ -367,7 +391,7 @@ export default function ExpressCheckout() {
         <p className="text-xs text-gray-400 mb-4 text-center">Add your delivery address above to see the price.</p>
       )}
 
-      {checkoutBlock?.type === 'storePaused' && (
+      {slot && checkoutBlock?.type === 'storePaused' && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex items-start gap-3">
           <FiPauseCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
           <div>
@@ -378,7 +402,7 @@ export default function ExpressCheckout() {
         </div>
       )}
 
-      {checkoutBlock?.type === 'outOfRange' && (
+      {slot && checkoutBlock?.type === 'outOfRange' && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4">
           <p className="font-bold text-indigo-900 text-sm">You're a bit far for regular delivery</p>
           <p className="text-xs text-indigo-700 mt-0.5">{checkoutBlock.message}</p>
