@@ -146,6 +146,23 @@ export default function ExpressCheckout() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quickEtaMinutes]);
 
+  // Best available coordinates, recomputed fresh every render rather than
+  // ever being written INTO address.lat/lng — the first version of this fix
+  // baked the fallback directly into handleSelectSaved's setAddress call,
+  // which meant a saved address with no coordinates got permanently
+  // "poisoned" with the store's own location the moment it was selected
+  // (usually on mount, before device geolocation had any chance to
+  // resolve). Once address.lat held a non-null value, the old effect's
+  // `address.lat == null` guard was false forever, so it could never
+  // switch to the better deviceCoords source even after geolocation
+  // resolved a few seconds later — silently killing the Quick Delivery ETA
+  // for exactly the customers this was meant to fix. Deriving it fresh each
+  // render instead means it automatically improves as better sources
+  // become available: saved/typed coordinates > device location > store's
+  // own location as the last resort.
+  const effectiveLat = address.lat ?? deviceCoords?.lat ?? selectedStore?.location?.lat;
+  const effectiveLng = address.lng ?? deviceCoords?.lng ?? selectedStore?.location?.lng;
+
   // If the store's ETA was never populated (e.g. the customer reached
   // checkout without ExpressShop's own ETA refresh ever resolving — common
   // in the installed app's WKWebView, where navigator.geolocation's
@@ -155,14 +172,12 @@ export default function ExpressCheckout() {
   // geolocation anyway, since it's the real delivery point.
   useEffect(() => {
     if (!selectedStore?._id || selectedStore.estimatedDeliveryMinutes != null) return;
-    const lat = address.lat ?? deviceCoords?.lat;
-    const lng = address.lng ?? deviceCoords?.lng;
-    if (lat == null || lng == null) return;
-    api.get(`/express/stores/${selectedStore._id}/eta`, { params: { lat, lng } })
+    if (effectiveLat == null || effectiveLng == null) return;
+    api.get(`/express/stores/${selectedStore._id}/eta`, { params: { lat: effectiveLat, lng: effectiveLng } })
       .then(({ data }) => setSelectedStore({ ...selectedStore, distanceKm: data.distanceKm, estimatedDeliveryMinutes: data.estimatedDeliveryMinutes }))
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStore?._id, selectedStore?.estimatedDeliveryMinutes, address.lat, address.lng, deviceCoords]);
+  }, [selectedStore?._id, selectedStore?.estimatedDeliveryMinutes, effectiveLat, effectiveLng]);
 
   // Coupon — same universal /coupon/validate flow every other vertical's
   // checkout uses (Koyambedu/FruitBasket/EptoFresh), scoped to
@@ -221,7 +236,12 @@ export default function ExpressCheckout() {
       name: addr.fullName || '', phone: addr.phone || '',
       addressLine: [addr.addressLine1, addr.addressLine2].filter(Boolean).join(', '),
       city: addr.city || '', pincode: addr.pincode || '',
-      lat: addr.lat ?? deviceCoords?.lat ?? selectedStore?.location?.lat, lng: addr.lng ?? deviceCoords?.lng ?? selectedStore?.location?.lng,
+      // Deliberately NOT falling back to store/device coordinates here —
+      // keep address.lat/lng exactly what this saved address actually has
+      // (possibly undefined), so effectiveLat/effectiveLng above can keep
+      // substituting a better source as one becomes available instead of
+      // this being locked in permanently the moment the address is picked.
+      lat: addr.lat, lng: addr.lng,
     });
     setQuote(null);
   };
@@ -252,7 +272,7 @@ export default function ExpressCheckout() {
     setCheckoutBlock(null);
     try {
       const { data } = await api.post('/express/quote', {
-        deliveryAddress: { ...address, lat: address.lat ?? deviceCoords?.lat ?? selectedStore?.location?.lat, lng: address.lng ?? deviceCoords?.lng ?? selectedStore?.location?.lng },
+        deliveryAddress: { ...address, lat: effectiveLat, lng: effectiveLng },
         couponCode: couponApplied?.code || undefined,
       });
       setQuote(data);
@@ -326,7 +346,7 @@ export default function ExpressCheckout() {
     setPlacing(true);
     try {
       const { data } = await api.post('/express/orders/create-razorpay', {
-        deliveryAddress: { ...address, lat: address.lat ?? deviceCoords?.lat ?? selectedStore?.location?.lat, lng: address.lng ?? deviceCoords?.lng ?? selectedStore?.location?.lng },
+        deliveryAddress: { ...address, lat: effectiveLat, lng: effectiveLng },
         deliverySlot: { date: slot.date, label: slot.label, isNextDay: slot.isNextDay },
         couponCode: couponApplied?.code || undefined,
       });
