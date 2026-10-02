@@ -30,7 +30,7 @@ function loadRazorpayScript() {
     const s = document.createElement('script');
     s.src = 'https://checkout.razorpay.com/v1/checkout.js';
     s.onload = resolve;
-    s.onerror = reject;
+    s.onerror = () => reject(new Error('razorpay-script-failed'));
     document.body.appendChild(s);
   });
 }
@@ -130,6 +130,15 @@ export default function ExpressCheckout() {
   const [checkoutBlock, setCheckoutBlock] = useState(null); // { type: 'outOfRange'|'storePaused', message, distanceKm, maxDeliveryDistanceKm, customOrderPhone }
 
   useEffect(() => { fetchCart(); }, []);
+
+  // Load the Razorpay widget script as soon as this page opens rather than
+  // waiting for the Pay tap — on a slow mobile connection that first script
+  // fetch could otherwise add a visible delay (or, worse, briefly make a tap
+  // on Pay look like it did nothing) between the tap and the payment sheet
+  // actually appearing. By the time the customer reaches Pay, window.Razorpay
+  // is normally already available and loadRazorpayScript() below resolves
+  // instantly.
+  useEffect(() => { loadRazorpayScript().catch(() => {}); }, []);
 
   useEffect(() => {
     if (!selectedStore?._id) navigate('/express/location');
@@ -232,7 +241,27 @@ export default function ExpressCheckout() {
         return;
       }
 
-      await loadRazorpayScript();
+      try {
+        await loadRazorpayScript();
+      } catch {
+        // Most likely cause on a phone: no/flaky internet right at this
+        // moment, or the script request got blocked (ad/tracker blocker,
+        // restrictive network). Surface this distinctly from a generic
+        // failure so it's clear retrying (once online) is the fix.
+        toast.error('Could not load the payment screen — check your internet connection and try again.');
+        setPlacing(false);
+        return;
+      }
+      if (!window.Razorpay) {
+        // Script reported success but the global still isn't there — treat
+        // the same as a load failure rather than letting the tap silently
+        // do nothing.
+        toast.error('Payment screen failed to load. Please try again.');
+        setPlacing(false);
+        return;
+      }
+
+      let settled = false;
       const rzp = new window.Razorpay({
         key: data.keyId,
         amount: Math.round(data.amount * 100),
@@ -241,6 +270,7 @@ export default function ExpressCheckout() {
         name: 'Eptomart Express',
         description: 'Same-day delivery order',
         handler: async (resp) => {
+          settled = true;
           try {
             await api.post('/express/orders/verify-payment', {
               orderId: data.orderId,
@@ -252,11 +282,23 @@ export default function ExpressCheckout() {
             navigate('/express/my-orders');
           } catch {
             toast.error('Payment verification failed');
+          } finally {
+            setPlacing(false);
           }
+        },
+        modal: {
+          // Without this, `placing` stayed true forever if the customer
+          // closed the payment sheet without paying (button stuck showing
+          // "Placing order…" until they refreshed the page).
+          ondismiss: () => { if (!settled) setPlacing(false); },
         },
         prefill: { name: address.name, contact: address.phone },
         theme: { color: '#4f46e5' },
       });
+      // Keep the button disabled (via `placing`, still true here) while the
+      // payment sheet is open, instead of flipping back to normal the
+      // instant open() returns — matches every other vertical's checkout
+      // and avoids a tap landing on "Pay" again mid-flow.
       rzp.open();
     } catch (err) {
       const d = err?.response?.data;
@@ -267,9 +309,9 @@ export default function ExpressCheckout() {
         setCheckoutBlock({ type: 'storePaused', message: d.message });
         setQuote(null);
       } else {
+        console.error('[ExpressCheckout.placeOrder]', err);
         toast.error(d?.message || 'Failed to start checkout');
       }
-    } finally {
       setPlacing(false);
     }
   };
