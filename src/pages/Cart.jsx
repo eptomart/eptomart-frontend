@@ -190,6 +190,16 @@ export default function Cart() {
   const [variantPickerItem, setVariantPickerItem] = useState(null);
   const [activeTab,        setActiveTab]         = useState(null);
 
+  // The Koyambedu/Fruit Basket/Express carts live on the server and start
+  // out as empty ({items: [], itemCount: 0}) until this page's own
+  // fetchCart() calls below resolve — so on a fresh page load (the main
+  // Eptomart cart, by contrast, reads straight from localStorage and is
+  // correct immediately), the page used to render its "cart is empty"
+  // screen for a moment and then pop to the real items once the fetches
+  // came back. cartsReady gates that: nothing renders as empty until all
+  // three have reported in at least once.
+  const [cartsReady, setCartsReady] = useState(false);
+
   // Combo minimum-order override — if the Koyambedu cart contains a combo
   // item (and the combo feature is on), the combo's own minimum order value
   // applies to the WHOLE cart instead of the normal ₹799 default, mirroring
@@ -207,7 +217,10 @@ export default function Cart() {
   // into just `minOrderValue`) — not an object, so no `.value` here.
   const kbdMinOrder     = kbdComboActive ? (comboStatus?.minOrderValue ?? 0) : KBD_MIN_ORDER;
 
-  useEffect(() => { kbdFetchCart(); fbFetchCart(); exFetchCart(); }, []);
+  useEffect(() => {
+    Promise.allSettled([kbdFetchCart(), fbFetchCart(), exFetchCart()]).finally(() => setCartsReady(true));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Map vertical id → item count
   const itemCounts = {
@@ -249,6 +262,23 @@ export default function Cart() {
     updateItemVariant(variantPickerItem.cartItemId, variant.price, vLabel, variant.stock);
     setVariantPickerItem(null);
   };
+
+  // ── Loading state ──────────────────────────────────────
+  // Shown only until the server-backed carts have reported in once, so a
+  // cart that actually has items never flashes the "empty" screen first.
+  if (!cartsReady) {
+    return (
+      <>
+        <Helmet><title>Cart — Eptomart</title></Helmet>
+        <Navbar />
+        <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+          <span className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-primary-500 animate-spin" />
+          <p className="text-sm text-gray-400">Loading your cart…</p>
+        </div>
+        <Footer />
+      </>
+    );
+  }
 
   // ── Empty state ────────────────────────────────────────
   if (totalCount === 0) {
