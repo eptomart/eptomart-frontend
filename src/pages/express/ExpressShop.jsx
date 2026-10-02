@@ -81,29 +81,33 @@ export default function ExpressShop() {
   // known at all, in which case it was never computed and the badge just
   // never showed) — then cached in localStorage indefinitely. Returning
   // customers could be shown a stale estimate, or none at all. Here we
-  // silently refresh it from the browser's already-granted location, with
-  // no permission prompt (if location access isn't already granted, this
-  // just quietly does nothing and the cached/absent value is left as-is).
+  // silently refresh it from the browser's location.
+  //
+  // This used to be gated behind navigator.permissions.query({name:
+  // 'geolocation'}) so it would never surface a permission prompt — but
+  // Safari/WebKit (which is what the installed app's webview runs on)
+  // doesn't support the Permissions API for geolocation at all, so that
+  // check was silently bailing out on every single load there, even though
+  // it worked fine in Chrome. getCurrentPosition itself doesn't need the
+  // Permissions API — it just won't prompt again once the customer has
+  // already granted (or denied) location access, which they did already
+  // when picking a store, so dropping the gate is safe.
   useEffect(() => {
     if (!selectedStore?._id || !navigator.geolocation) return;
-    if (!navigator.permissions?.query) return;
     let cancelled = false;
-    navigator.permissions.query({ name: 'geolocation' }).then(status => {
-      if (cancelled || status.state !== 'granted') return;
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (cancelled) return;
+        api.get(`/express/stores/${selectedStore._id}/eta`, {
+          params: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+        }).then(({ data }) => {
           if (cancelled) return;
-          api.get(`/express/stores/${selectedStore._id}/eta`, {
-            params: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-          }).then(({ data }) => {
-            if (cancelled) return;
-            setSelectedStore({ ...selectedStore, distanceKm: data.distanceKm, estimatedDeliveryMinutes: data.estimatedDeliveryMinutes });
-          }).catch(() => {});
-        },
-        () => {}, // denied/unavailable — leave whatever we already have
-        { maximumAge: 5 * 60 * 1000, timeout: 5000 },
-      );
-    }).catch(() => {});
+          setSelectedStore({ ...selectedStore, distanceKm: data.distanceKm, estimatedDeliveryMinutes: data.estimatedDeliveryMinutes });
+        }).catch(() => {});
+      },
+      () => {}, // denied/unavailable — leave whatever we already have
+      { maximumAge: 5 * 60 * 1000, timeout: 5000 },
+    );
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStore?._id]);

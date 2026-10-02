@@ -10,6 +10,7 @@ import {
   FiArrowRight, FiSearch, FiZap, FiChevronRight, FiMic, FiX,
   FiStar, FiClock, FiTruck, FiShield, FiCheckCircle, FiRefreshCw,
   FiTag, FiPhone, FiPackage, FiMapPin, FiGrid, FiEye, FiTrendingDown, FiGift,
+  FiShoppingCart,
 } from 'react-icons/fi';
 import {
   FaShoppingBasket, FaPepperHot, FaCookieBite, FaSeedling, FaWineBottle,
@@ -18,6 +19,7 @@ import {
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import { useExpressCart } from '../context/ExpressCartContext';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import api from '../utils/api';
@@ -609,15 +611,23 @@ function FruitBasketBanner({ onReady }) {
 // ══════════════════════════════════════════════════════════════
 function ExpressBanner({ onReady }) {
   const [enabled, setEnabled] = useState(false);
+  // Shows how many items are already waiting in the customer's Express
+  // cart right on this banner — previously that only became visible once
+  // they'd actually tapped through into /express, so a filled cart looked
+  // indistinguishable from an empty one from the home page.
+  const { cart, fetchCart } = useExpressCart();
 
   useEffect(() => {
     api.get('/express/status')
       .then(r => { const v = !!r.data?.isEnabled; setEnabled(v); onReady?.(v); })
       .catch(() => { setEnabled(false); onReady?.(false); });
+    fetchCart();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!enabled) return null;
+
+  const itemCount = cart?.itemCount || 0;
 
   return (
     <Link to="/express" className="sob-wrap tap-ripple block h-full active:scale-[0.98] transition-transform">
@@ -652,6 +662,16 @@ function ExpressBanner({ onReady }) {
 
           <div className="promo-shine" />
 
+          {/* Cart badge — shows a filled Express cart right here on the home
+              page, instead of only revealing it once the customer actually
+              opens Express. */}
+          {itemCount > 0 && (
+            <div className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-indigo-600 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-lg">
+              <FiShoppingCart size={10} />
+              {itemCount} item{itemCount !== 1 ? 's' : ''} in cart
+            </div>
+          )}
+
           <div className="relative z-10 flex flex-col h-full p-2.5 md:p-3">
             <div className="flex-1" />
 
@@ -661,7 +681,7 @@ function ExpressBanner({ onReady }) {
                   <img src="/images/express-logo.png" alt="" className="w-full h-full object-cover" />
                 </div>
                 <span className="text-white font-black text-[11px] md:text-xs leading-none whitespace-nowrap" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-                  Eptomart Express
+                  {itemCount > 0 ? `Resume cart (${itemCount})` : 'Eptomart Express'}
                 </span>
               </div>
             </div>
