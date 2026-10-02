@@ -424,6 +424,21 @@ export default function KoyambeduAdmin() {
   const [catImgUploading, setCatImgUploading] = useState(false);
   const [catSaving,    setCatSaving]    = useState(false);
 
+  // Customer quick-glance popover (order count / approx spend for a buyer)
+  const [customerGlance, setCustomerGlance] = useState(null); // { loading, data, error }
+  const openCustomerGlance = (order) => {
+    const buyerId = order.buyer?._id || order.buyer;
+    const phone = order.buyer?.phone || order.shippingAddress?.phone || '';
+    if (!buyerId && !phone) return;
+    setCustomerGlance({ loading: true, data: null, error: null });
+    const params = new URLSearchParams();
+    if (buyerId) params.set('buyerId', buyerId);
+    if (phone) params.set('phone', phone);
+    api.get(`/koyambedu/admin/customers/glance?${params}`)
+      .then(r => setCustomerGlance({ loading: false, data: r.data.customer, error: null }))
+      .catch(() => setCustomerGlance({ loading: false, data: null, error: 'Failed to load customer summary' }));
+  };
+
   // Order update modal
   const [updateModal, setUpdateModal] = useState(null);
   const [newStatus,    setNewStatus]  = useState('');
@@ -2074,7 +2089,13 @@ export default function KoyambeduAdmin() {
                               <span className="text-[9px] font-black tracking-wide bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">DEMO</span>
                             )}
                           </p>
-                          <p className="text-xs text-gray-500">{order.buyer?.name} · {order.buyer?.phone}</p>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openCustomerGlance(order); }}
+                            className="text-xs text-gray-500 hover:text-green-700 hover:underline text-left"
+                            title="Quick glance: customer order history"
+                          >
+                            {order.buyer?.name} · {order.buyer?.phone} <span className="text-gray-400">👁</span>
+                          </button>
                           {order.deliveryDate && (
                             <p className="text-xs text-blue-600">📅 {new Date(order.deliveryDate).toLocaleDateString('en-IN',{day:'numeric',month:'short'})} · {order.deliverySlot}</p>
                           )}
@@ -3228,6 +3249,49 @@ export default function KoyambeduAdmin() {
                 {decliningItem.loading ? 'Processing…' : 'Decline & Credit Wallet'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {customerGlance && (
+        <div className="fixed inset-0 bg-black/50 z-[9996] flex items-center justify-center p-4" onClick={() => setCustomerGlance(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-xs p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-800 text-sm flex items-center gap-1.5">👤 Customer Quick Glance</h3>
+              <button onClick={() => setCustomerGlance(null)} className="text-gray-400 text-lg leading-none">&times;</button>
+            </div>
+            {customerGlance.loading && <p className="text-sm text-gray-400 py-4 text-center">Loading…</p>}
+            {customerGlance.error && <p className="text-sm text-red-500 py-4 text-center">{customerGlance.error}</p>}
+            {customerGlance.data && (
+              <div className="space-y-2.5">
+                <div>
+                  <p className="font-bold text-gray-800 text-sm">{customerGlance.data.name || 'Unknown'}</p>
+                  <p className="text-xs text-gray-500">{customerGlance.data.phone}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-green-50 rounded-xl px-3 py-2.5 text-center">
+                    <p className="text-lg font-black text-green-700">{customerGlance.data.totalOrders}</p>
+                    <p className="text-[10px] text-green-600 font-semibold uppercase tracking-wide">Orders so far</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-xl px-3 py-2.5 text-center">
+                    <p className="text-lg font-black text-blue-700">₹{customerGlance.data.totalSpent?.toLocaleString('en-IN')}</p>
+                    <p className="text-[10px] text-blue-600 font-semibold uppercase tracking-wide">Approx. spend</p>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500 space-y-1 pt-1 border-t border-gray-100">
+                  <p>Avg. order value: <span className="font-semibold text-gray-700">₹{customerGlance.data.avgOrderValue?.toLocaleString('en-IN')}</span></p>
+                  {customerGlance.data.cancelledOrders > 0 && (
+                    <p>Cancelled orders: <span className="font-semibold text-gray-700">{customerGlance.data.cancelledOrders}</span></p>
+                  )}
+                  {customerGlance.data.lastOrderAt && (
+                    <p>Last ordered: <span className="font-semibold text-gray-700">{new Date(customerGlance.data.lastOrderAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span></p>
+                  )}
+                  {customerGlance.data.firstOrderAt && (
+                    <p>Customer since: <span className="font-semibold text-gray-700">{new Date(customerGlance.data.firstOrderAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span></p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
