@@ -335,7 +335,10 @@ export default function ExpressCheckout() {
         )}
       </div>
 
-      <button onClick={getQuote} disabled={quoting} className="w-full mb-4 px-4 py-2.5 rounded-lg border text-sm font-semibold disabled:opacity-50 bg-white">
+      <button onClick={getQuote} disabled={quoting}
+        className="w-full mb-4 px-4 py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-60 transition active:scale-[0.98]"
+        style={{ background: 'linear-gradient(135deg, #4f46e5, #4338ca)' }}>
+        {quoting && <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />}
         {quoting ? 'Calculating…' : 'Get Price'}
       </button>
 
@@ -412,9 +415,12 @@ export default function ExpressCheckout() {
 
       {quote && (
         <button onClick={placeOrder} disabled={placing}
-          className="fixed bottom-4 left-4 right-4 max-w-lg mx-auto py-4 rounded-2xl font-extrabold text-white text-base flex items-center justify-center gap-2 disabled:opacity-50"
-          style={{ background: 'linear-gradient(135deg, #4f46e5, #4338ca)' }}>
-          <FiCheck size={20} /> {placing ? 'Placing order…' : `Pay ₹${quote.total}`}
+          className="above-bottom-nav fixed left-4 right-4 max-w-lg mx-auto py-4 rounded-2xl font-extrabold text-white text-base flex items-center justify-center gap-2 disabled:opacity-50 z-[9970] shadow-2xl"
+          style={{ background: 'linear-gradient(135deg, #4f46e5, #4338ca)', marginBottom: '1rem' }}>
+          {placing
+            ? <span className="w-5 h-5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+            : <FiCheck size={20} />}
+          {placing ? 'Placing order…' : `Pay ₹${quote.total}`}
         </button>
       )}
     </div>
