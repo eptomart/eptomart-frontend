@@ -31,7 +31,7 @@ const weightOptionsFor = (minOrderQty) => {
 
 export default function ExpressShop() {
   const navigate = useNavigate();
-  const { selectedStore, cart, fetchCart, addToCart, updateItem } = useExpressCart();
+  const { selectedStore, setSelectedStore, cart, fetchCart, addToCart, updateItem } = useExpressCart();
   const [catalogue, setCatalogue] = useState([]);
   const [loading, setLoading] = useState(true);
   // isPaused/pauseMessage come fresh from the online-catalogue response (not
@@ -75,6 +75,38 @@ export default function ExpressShop() {
     fetchCart();
     api.get('/express/banners').then(({ data }) => setBanners(data.banners || [])).catch(() => {});
   }, [selectedStore]);
+
+  // The "Delivery in ~X min" badge was computed once, at the moment the
+  // customer picked their store (or picked from the list with no location
+  // known at all, in which case it was never computed and the badge just
+  // never showed) — then cached in localStorage indefinitely. Returning
+  // customers could be shown a stale estimate, or none at all. Here we
+  // silently refresh it from the browser's already-granted location, with
+  // no permission prompt (if location access isn't already granted, this
+  // just quietly does nothing and the cached/absent value is left as-is).
+  useEffect(() => {
+    if (!selectedStore?._id || !navigator.geolocation) return;
+    if (!navigator.permissions?.query) return;
+    let cancelled = false;
+    navigator.permissions.query({ name: 'geolocation' }).then(status => {
+      if (cancelled || status.state !== 'granted') return;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (cancelled) return;
+          api.get(`/express/stores/${selectedStore._id}/eta`, {
+            params: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+          }).then(({ data }) => {
+            if (cancelled) return;
+            setSelectedStore({ ...selectedStore, distanceKm: data.distanceKm, estimatedDeliveryMinutes: data.estimatedDeliveryMinutes });
+          }).catch(() => {});
+        },
+        () => {}, // denied/unavailable — leave whatever we already have
+        { maximumAge: 5 * 60 * 1000, timeout: 5000 },
+      );
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStore?._id]);
 
   // "Combos" is always surfaced as its own chip whenever any combo exists,
   // even if a particular combo's category text isn't literally "Combos"
@@ -280,14 +312,25 @@ export default function ExpressShop() {
                 </Link>
                 <p className="text-xs text-gray-400 mb-2">₹{pricePerUnit}/{product.unit}</p>
 
-                {isKg && qty === 0 && (
-                  <>
-                    <select value={stepFor(product._id, minOrderQty)} onChange={e => setWeightStep(w => ({ ...w, [product._id]: Number(e.target.value) }))}
-                      className="mb-1 border rounded-lg px-2 py-1 text-xs">
-                      {weightOptions.map(s => <option key={s.kg} value={s.kg}>{s.label}</option>)}
-                    </select>
-                    <p className="text-[10px] text-gray-400 mb-1.5">Min order: {formatWeight(minOrderQty)}</p>
-                  </>
+                {/* Pack-size selector stays visible and editable even once the
+                    item is in the cart (it used to disappear after the first
+                    Add, leaving the customer stuck incrementing by whatever
+                    size they happened to pick first, with no way to tell what
+                    each +/- tap was adding) — so the customer can switch from
+                    adding 250 g at a time to 1 kg at a time without having to
+                    remove the item and start over. */}
+                {isKg && (
+                  <select value={stepFor(product._id, minOrderQty)} onChange={e => setWeightStep(w => ({ ...w, [product._id]: Number(e.target.value) }))}
+                    className="mb-1 border rounded-lg px-2 py-1 text-xs">
+                    {weightOptions.map(s => <option key={s.kg} value={s.kg}>{s.label}</option>)}
+                  </select>
+                )}
+                {isKg && (
+                  <p className="text-[10px] text-gray-400 mb-1.5">
+                    {qty === 0
+                      ? `Min order: ${formatWeight(minOrderQty)}`
+                      : `+/- adjusts by ${formatWeight(stepFor(product._id, minOrderQty))}`}
+                  </p>
                 )}
 
                 {/* Browsing and building a cart stay fully usable even while
@@ -299,10 +342,12 @@ export default function ExpressShop() {
                     {stockQty === 0 ? 'Out of stock' : 'Add'}
                   </button>
                 ) : (
-                  <div className="mt-auto flex items-center justify-between bg-indigo-50 rounded-lg px-2 py-1.5">
-                    <button onClick={() => handleQtyChange(product._id, product.unit, -1, minOrderQty)} className="text-indigo-700"><FiMinus size={14} /></button>
+                  <div className="mt-auto flex items-center justify-between bg-indigo-50 rounded-lg px-1 py-1">
+                    <button onClick={() => handleQtyChange(product._id, product.unit, -1, minOrderQty)}
+                      className="w-7 h-7 rounded-md flex items-center justify-center bg-white text-indigo-700 shadow-sm active:scale-90 transition"><FiMinus size={14} /></button>
                     <span className="font-bold text-sm text-indigo-900">{qty}{isKg ? ' kg' : ''}</span>
-                    <button onClick={() => handleQtyChange(product._id, product.unit, 1, minOrderQty)} className="text-indigo-700"><FiPlus size={14} /></button>
+                    <button onClick={() => handleQtyChange(product._id, product.unit, 1, minOrderQty)}
+                      className="w-7 h-7 rounded-md flex items-center justify-center bg-white text-indigo-700 shadow-sm active:scale-90 transition"><FiPlus size={14} /></button>
                   </div>
                 )}
               </div>

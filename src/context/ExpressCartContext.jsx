@@ -8,7 +8,7 @@
 // This context is purely additive — it does not touch any other
 // vertical's cart context or state.
 // ============================================
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useRef } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 
@@ -66,17 +66,32 @@ export const ExpressCartProvider = ({ children }) => {
     }
   }, [selectedStore]);
 
-  const updateItem = useCallback(async (productId, quantity) => {
-    setLoading(true);
-    try {
-      const { data } = await api.put('/express/cart', { productId, quantity });
-      setCart(data.cart);
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to update cart');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Quantity +/- taps used to fire a network round-trip (and a loading
+  // state flip) on every single tap, which made rapid tapping feel sluggish
+  // and could even race two in-flight requests against each other. Now the
+  // displayed quantity updates instantly (optimistic), and the actual save
+  // is debounced per product so a burst of taps collapses into one request
+  // once the customer pauses, instead of one request per tap.
+  const updateTimers = useRef({});
+  const updateItem = useCallback((productId, quantity) => {
+    setCart(c => ({
+      ...c,
+      items: c.items.map(i => String(i.product) === String(productId) ? { ...i, quantity } : i),
+    }));
+
+    clearTimeout(updateTimers.current[productId]);
+    updateTimers.current[productId] = setTimeout(async () => {
+      try {
+        const { data } = await api.put('/express/cart', { productId, quantity });
+        setCart(data.cart);
+      } catch (err) {
+        toast.error(err?.response?.data?.message || 'Failed to update cart');
+        fetchCart(); // re-sync with the server since the optimistic value may now be wrong
+      } finally {
+        delete updateTimers.current[productId];
+      }
+    }, 350);
+  }, [fetchCart]);
 
   const clearCart = useCallback(async () => {
     setCart({ items: [], itemCount: 0, subtotal: 0, totalWeightKg: 0, largeOrderWarning: false });
