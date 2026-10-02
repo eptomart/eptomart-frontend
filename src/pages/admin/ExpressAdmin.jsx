@@ -13,7 +13,7 @@ import {
   FiZap, FiMapPin, FiUsers, FiUserCheck, FiPackage, FiSliders, FiBox,
   FiClipboard, FiPlus, FiToggleLeft, FiToggleRight, FiEdit2, FiTrash2, FiX, FiCheck,
   FiGrid, FiDollarSign, FiShoppingCart, FiEye, FiTrendingUp, FiTrendingDown, FiFileText,
-  FiBluetooth, FiPrinter, FiPauseCircle, FiPlayCircle, FiLink2,
+  FiBluetooth, FiPrinter, FiPauseCircle, FiPlayCircle, FiLink2, FiClock,
 } from 'react-icons/fi';
 import api from '../../utils/api';
 import { isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected, printPluList } from '../../utils/expressThermalPrinter';
@@ -269,6 +269,99 @@ function HoldWaitlistPanel({ storeId, onChanged }) {
   );
 }
 
+// Per-store delivery slot configuration — which same-day windows this store
+// offers (independently of every other store), their hours/labels, and
+// whether this store also offers next-day delivery. Falls back to a
+// sensible default set of windows if the store hasn't got any configured
+// yet (mirrors ExpressStore's own schema defaults).
+const DEFAULT_SLOT_WINDOWS = [
+  { startHour: 9,  endHour: 12, label: '9:00 AM - 12:00 PM', enabled: true },
+  { startHour: 12, endHour: 15, label: '12:00 PM - 3:00 PM', enabled: true },
+  { startHour: 15, endHour: 18, label: '3:00 PM - 6:00 PM', enabled: true },
+  { startHour: 18, endHour: 21, label: '6:00 PM - 9:00 PM', enabled: true },
+];
+
+function DeliverySlotsPanel({ store, onChanged }) {
+  const initial = store.deliverySlots?.windows?.length ? store.deliverySlots.windows : DEFAULT_SLOT_WINDOWS;
+  const [windows, setWindows] = useState(initial.map(w => ({ ...w })));
+  const [nextDayEnabled, setNextDayEnabled] = useState(!!store.deliverySlots?.nextDayEnabled);
+  const [saving, setSaving] = useState(false);
+
+  const toggleWindow = (idx) => {
+    setWindows(ws => ws.map((w, i) => i === idx ? { ...w, enabled: !w.enabled } : w));
+  };
+  const updateWindow = (idx, field, value) => {
+    setWindows(ws => ws.map((w, i) => i === idx ? { ...w, [field]: value } : w));
+  };
+  const addWindow = () => {
+    setWindows(ws => [...ws, { startHour: 9, endHour: 12, label: 'New window', enabled: true }]);
+  };
+  const removeWindow = (idx) => {
+    setWindows(ws => ws.filter((_, i) => i !== idx));
+  };
+
+  const save = async () => {
+    const clean = windows.filter(w => w.label?.trim() && Number(w.endHour) > Number(w.startHour));
+    if (!clean.length) return toast.error('At least one valid delivery window is required');
+    setSaving(true);
+    try {
+      await api.patch(`/express/admin/stores/${store._id}/delivery-slots`, {
+        windows: clean.map(w => ({ startHour: Number(w.startHour), endHour: Number(w.endHour), label: w.label.trim(), enabled: !!w.enabled })),
+        nextDayEnabled,
+      });
+      toast.success('Delivery slots updated');
+      onChanged?.();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update delivery slots');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t grid gap-2.5">
+      <p className="text-xs text-gray-500">Turn individual time windows on/off for this store, and allow next-day scheduling if this store can take advance orders.</p>
+      <div className="grid gap-1.5">
+        {windows.map((w, idx) => (
+          <div key={idx} className="flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-2">
+            <button onClick={() => toggleWindow(idx)}
+              className={`shrink-0 ${w.enabled ? 'text-green-600' : 'text-gray-300'}`}>
+              {w.enabled ? <FiToggleRight size={20} /> : <FiToggleLeft size={20} />}
+            </button>
+            <input type="number" min={0} max={23} value={w.startHour}
+              onChange={e => updateWindow(idx, 'startHour', e.target.value)}
+              className="w-14 border rounded-lg px-2 py-1 text-xs" title="Start hour (24h)" />
+            <span className="text-xs text-gray-400">to</span>
+            <input type="number" min={1} max={24} value={w.endHour}
+              onChange={e => updateWindow(idx, 'endHour', e.target.value)}
+              className="w-14 border rounded-lg px-2 py-1 text-xs" title="End hour (24h)" />
+            <input type="text" value={w.label}
+              onChange={e => updateWindow(idx, 'label', e.target.value)}
+              className="flex-1 min-w-0 border rounded-lg px-2 py-1 text-xs" placeholder="Label shown to customer" />
+            <button onClick={() => removeWindow(idx)} className="shrink-0 text-gray-300 hover:text-red-500">
+              <FiTrash2 size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button onClick={addWindow} className="flex items-center gap-1 text-xs font-semibold text-indigo-600 w-fit">
+        <FiPlus size={12} /> Add window
+      </button>
+
+      <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mt-1">
+        <button onClick={() => setNextDayEnabled(v => !v)} className={nextDayEnabled ? 'text-green-600' : 'text-gray-300'}>
+          {nextDayEnabled ? <FiToggleRight size={20} /> : <FiToggleLeft size={20} />}
+        </button>
+        Offer next-day delivery at this store
+      </label>
+
+      <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50 w-fit">
+        {saving ? 'Saving…' : 'Save Delivery Slots'}
+      </button>
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════
 // STORES TAB
 // ══════════════════════════════════════════════
@@ -327,6 +420,7 @@ function StoresTab({ stores, reload }) {
   };
 
   const [waitlistStoreId, setWaitlistStoreId] = useState(null); // which store's waitlist panel is open
+  const [slotsStoreId, setSlotsStoreId] = useState(null); // which store's delivery-slots panel is open
 
   const openEdit = (s) => {
     setEditId(s._id);
@@ -414,12 +508,18 @@ function StoresTab({ stores, reload }) {
                   {s.isPaused ? <FiPlayCircle size={18} /> : <FiPauseCircle size={18} />}
                   {s.isPaused ? 'Reopen Checkout' : 'Hold Checkout'}
                 </button>
+                <button onClick={() => setSlotsStoreId(id => id === s._id ? null : s._id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
+                  <FiClock size={13} /> Delivery Slots
+                </button>
                 <button onClick={() => toggleActive(s._id)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${s.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                   {s.isActive ? <FiToggleRight size={16} /> : <FiToggleLeft size={16} />} {s.isActive ? 'Active' : 'Inactive'}
                 </button>
               </div>
             </div>
+
+            {slotsStoreId === s._id && <DeliverySlotsPanel store={s} onChanged={reload} />}
 
             {/* Who's waiting to order — shown whenever anyone has hit the
                 checkout gate for this store, whether it's paused right now

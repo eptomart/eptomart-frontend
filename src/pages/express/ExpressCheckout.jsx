@@ -35,25 +35,39 @@ function loadRazorpayScript() {
   });
 }
 
-// Express is a same-day-delivery vertical — checkout only ever offers
-// TODAY's windows, never a next-day fallback (that's what Koyambedu Daily
-// is for). Only windows whose end time is still ahead of "now" are shown.
-const SLOT_WINDOWS = [
-  { startHour: 9,  endHour: 12, label: '9:00 AM - 12:00 PM' },
-  { startHour: 12, endHour: 15, label: '12:00 PM - 3:00 PM' },
-  { startHour: 15, endHour: 18, label: '3:00 PM - 6:00 PM' },
-  { startHour: 18, endHour: 21, label: '6:00 PM - 9:00 PM' },
+// Delivery windows + next-day availability are configured per store by the
+// admin (ExpressStore.deliverySlots) so each store can offer only the
+// windows it can actually staff, and opt in to next-day delivery
+// independently of every other store. This fallback list is only used if a
+// store hasn't got deliverySlots yet (e.g. a stale cached selection from
+// before this feature existed) — it mirrors the schema's own defaults.
+const DEFAULT_WINDOWS = [
+  { startHour: 9,  endHour: 12, label: '9:00 AM - 12:00 PM', enabled: true },
+  { startHour: 12, endHour: 15, label: '12:00 PM - 3:00 PM', enabled: true },
+  { startHour: 15, endHour: 18, label: '3:00 PM - 6:00 PM', enabled: true },
+  { startHour: 18, endHour: 21, label: '6:00 PM - 9:00 PM', enabled: true },
 ];
 
-function buildSlots() {
+function buildSlots(store) {
+  const windows = (store?.deliverySlots?.windows?.length ? store.deliverySlots.windows : DEFAULT_WINDOWS)
+    .filter(w => w.enabled !== false);
+  const nextDayEnabled = !!store?.deliverySlots?.nextDayEnabled;
+
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
+  const tomorrowStr = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
 
-  const todaySlots = SLOT_WINDOWS
+  // Only windows still ahead of "now" are offered for today.
+  const todaySlots = windows
     .filter(w => w.endHour > now.getHours() + now.getMinutes() / 60)
     .map(w => ({ date: todayStr, label: w.label, isNextDay: false, key: `today-${w.label}` }));
 
-  return { todaySlots, todayStr };
+  // Tomorrow offers every enabled window regardless of current time.
+  const tomorrowSlots = nextDayEnabled
+    ? windows.map(w => ({ date: tomorrowStr, label: w.label, isNextDay: true, key: `tomorrow-${w.label}` }))
+    : [];
+
+  return { todaySlots, tomorrowSlots, todayStr, nextDayEnabled };
 }
 
 export default function ExpressCheckout() {
@@ -65,7 +79,7 @@ export default function ExpressCheckout() {
   const [address, setAddress] = useState({ name: '', phone: '', addressLine: '', city: '', pincode: '' });
   const [showManualForm, setShowManualForm] = useState(true);
 
-  const { todaySlots, todayStr } = useMemo(() => buildSlots(), []);
+  const { todaySlots, tomorrowSlots, todayStr, nextDayEnabled } = useMemo(() => buildSlots(selectedStore), [selectedStore]);
   const [slot, setSlot] = useState(null);
 
   // Admin's distance-based quick-delivery estimate for this store (e.g.
@@ -254,7 +268,7 @@ export default function ExpressCheckout() {
       </div>
 
       <div className="bg-white border rounded-xl p-4 mb-4">
-        <h2 className="font-bold text-gray-700 text-sm mb-3 flex items-center gap-1.5"><FiClock size={14} /> Delivery — Today Only</h2>
+        <h2 className="font-bold text-gray-700 text-sm mb-3 flex items-center gap-1.5"><FiClock size={14} /> Delivery Slot</h2>
 
         {quickSlot && (
           <button onClick={() => { setSlot(quickSlot); setQuote(null); }}
@@ -273,13 +287,26 @@ export default function ExpressCheckout() {
 
         {todaySlots.length > 0 ? (
           <div>
-            {quickSlot && <p className="text-[10px] font-black uppercase tracking-wide text-gray-400 mb-1.5">Or pick a time today</p>}
+            <p className="text-[10px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+              {quickSlot ? 'Or pick a time today' : 'Today'}
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {todaySlots.map(s => <SlotButton key={s.key} s={s} />)}
             </div>
           </div>
         ) : !quickSlot && (
-          <p className="text-xs text-gray-400 mt-2">No more same-day delivery windows left for today — please check back tomorrow.</p>
+          <p className="text-xs text-gray-400 mt-2">
+            {nextDayEnabled ? 'No more same-day delivery windows left for today.' : 'No more same-day delivery windows left for today — please check back tomorrow.'}
+          </p>
+        )}
+
+        {tomorrowSlots.length > 0 && (
+          <div className={todaySlots.length > 0 || quickSlot ? 'mt-3 pt-3 border-t border-gray-100' : ''}>
+            <p className="text-[10px] font-black uppercase tracking-wide text-gray-400 mb-1.5">Tomorrow</p>
+            <div className="grid grid-cols-2 gap-2">
+              {tomorrowSlots.map(s => <SlotButton key={s.key} s={s} />)}
+            </div>
+          </div>
         )}
       </div>
 
