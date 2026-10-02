@@ -365,6 +365,58 @@ function DeliverySlotsPanel({ store, onChanged }) {
   );
 }
 
+// Per-store minimum-order delivery fee. Applies irrespective of distance —
+// a customer right next to the store ordering below the minimum pays this
+// exact fee just like a customer further away (see computeDeliveryFee in
+// expressPricingService.js on the backend). Defaults mirror the schema's
+// own defaults (₹199 / ₹29) for a store that hasn't been configured yet.
+function DeliveryFeePanel({ store, onChanged }) {
+  const [minOrder, setMinOrder] = useState(store.deliveryFeeConfig?.minOrderForFreeDelivery ?? 199);
+  const [fee, setFee] = useState(store.deliveryFeeConfig?.deliveryFeeBelowMinimum ?? 29);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    const minOrderNum = Number(minOrder), feeNum = Number(fee);
+    if (!Number.isFinite(minOrderNum) || minOrderNum < 0 || !Number.isFinite(feeNum) || feeNum < 0) {
+      return toast.error('Enter valid non-negative numbers');
+    }
+    setSaving(true);
+    try {
+      await api.patch(`/express/admin/stores/${store._id}/delivery-fee`, {
+        minOrderForFreeDelivery: minOrderNum, deliveryFeeBelowMinimum: feeNum,
+      });
+      toast.success('Delivery fee rule updated');
+      onChanged?.();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update delivery fee rule');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t grid gap-2.5">
+      <p className="text-xs text-gray-500">
+        Applies to every order at this store regardless of the customer&rsquo;s distance — orders below
+        the minimum are charged the fee, orders at or above it get free delivery.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label className="text-xs font-semibold text-gray-500">Minimum Order for Free Delivery (₹)
+          <input type="number" min={0} value={minOrder} onChange={e => setMinOrder(e.target.value)}
+            className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+        </label>
+        <label className="text-xs font-semibold text-gray-500">Delivery Fee Below Minimum (₹)
+          <input type="number" min={0} value={fee} onChange={e => setFee(e.target.value)}
+            className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+        </label>
+      </div>
+      <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50 w-fit">
+        {saving ? 'Saving…' : 'Save Delivery Fee'}
+      </button>
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════
 // STORES TAB
 // ══════════════════════════════════════════════
@@ -424,6 +476,7 @@ function StoresTab({ stores, reload }) {
 
   const [waitlistStoreId, setWaitlistStoreId] = useState(null); // which store's waitlist panel is open
   const [slotsStoreId, setSlotsStoreId] = useState(null); // which store's delivery-slots panel is open
+  const [feeStoreId, setFeeStoreId] = useState(null); // which store's delivery-fee panel is open
 
   const openEdit = (s) => {
     setEditId(s._id);
@@ -515,6 +568,10 @@ function StoresTab({ stores, reload }) {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
                   <FiClock size={13} /> Delivery Slots
                 </button>
+                <button onClick={() => setFeeStoreId(id => id === s._id ? null : s._id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
+                  <FiDollarSign size={13} /> Delivery Fee
+                </button>
                 <button onClick={() => toggleActive(s._id)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${s.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                   {s.isActive ? <FiToggleRight size={16} /> : <FiToggleLeft size={16} />} {s.isActive ? 'Active' : 'Inactive'}
@@ -523,6 +580,7 @@ function StoresTab({ stores, reload }) {
             </div>
 
             {slotsStoreId === s._id && <DeliverySlotsPanel store={s} onChanged={reload} />}
+            {feeStoreId === s._id && <DeliveryFeePanel store={s} onChanged={reload} />}
 
             {/* Who's waiting to order — shown whenever anyone has hit the
                 checkout gate for this store, whether it's paused right now
@@ -2403,9 +2461,6 @@ function MarginConfigTab({ stores }) {
         largeOrderThresholdKg: config.largeOrderThresholdKg,
         largeOrderAction: config.largeOrderAction,
         maxDeliveryDistanceKm: config.maxDeliveryDistanceKm,
-        freeDeliveryRadiusKm: config.freeDeliveryRadiusKm,
-        minOrderForFreeDelivery: config.minOrderForFreeDelivery,
-        deliveryFeeBelowMinimum: config.deliveryFeeBelowMinimum,
         customOrderPhone: config.customOrderPhone,
         deliveryTimeTiers: config.deliveryTimeTiers,
       });
@@ -2503,26 +2558,15 @@ function MarginConfigTab({ stores }) {
       </div>
 
       <div className="bg-white border rounded-xl p-4">
-        <h2 className="font-bold text-gray-700 mb-1">Delivery Fee Rules</h2>
+        <h2 className="font-bold text-gray-700 mb-1">Delivery Range</h2>
         <p className="text-xs text-gray-500 mb-3">
-          Within the free radius, delivery is always free. Beyond it, delivery stays free if the order
-          meets the minimum — otherwise the flat fee below is charged. Beyond Max Delivery Distance
-          (set above), customers are offered the &ldquo;call for custom order&rdquo; option instead of checkout.
+          Beyond Max Delivery Distance, customers are offered the &ldquo;call for custom order&rdquo; option
+          instead of checkout. The minimum-order delivery fee itself is now set per store — see each
+          store&rsquo;s &ldquo;Delivery Fee&rdquo; panel on the Stores tab, since it applies the same way
+          regardless of how far the customer is.
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <label className="text-xs font-semibold text-gray-500">Free Delivery Radius (km)
-            <input type="number" value={config.freeDeliveryRadiusKm} onChange={e => setConfig(c => ({ ...c, freeDeliveryRadiusKm: e.target.value }))}
-              className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
-          </label>
-          <label className="text-xs font-semibold text-gray-500">Minimum Order for Free Delivery (₹)
-            <input type="number" value={config.minOrderForFreeDelivery} onChange={e => setConfig(c => ({ ...c, minOrderForFreeDelivery: e.target.value }))}
-              className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
-          </label>
-          <label className="text-xs font-semibold text-gray-500">Delivery Fee Below Minimum (₹)
-            <input type="number" value={config.deliveryFeeBelowMinimum} onChange={e => setConfig(c => ({ ...c, deliveryFeeBelowMinimum: e.target.value }))}
-              className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
-          </label>
-          <label className="text-xs font-semibold text-gray-500 sm:col-span-3">Custom Order Phone (shown to customers beyond Max Delivery Distance)
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="text-xs font-semibold text-gray-500 sm:col-span-2">Custom Order Phone (shown to customers beyond Max Delivery Distance)
             <input type="text" placeholder="e.g. +91 98765 43210" value={config.customOrderPhone || ''} onChange={e => setConfig(c => ({ ...c, customOrderPhone: e.target.value }))}
               className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
           </label>

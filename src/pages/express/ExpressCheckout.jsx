@@ -392,7 +392,7 @@ export default function ExpressCheckout() {
           </div>
           {quote.deliveryFee > 0 && quote.minOrderForFreeDelivery != null && (
             <p className="text-[11px] text-gray-400 mb-1">
-              Order ₹{quote.minOrderForFreeDelivery}+ or stay within {quote.freeDeliveryRadiusKm} km for free delivery.
+              Orders below ₹{quote.minOrderForFreeDelivery} carry a ₹{quote.deliveryFeeBelowMinimum} delivery fee — order ₹{quote.minOrderForFreeDelivery}+ for free delivery.
             </p>
           )}
           <div className="flex justify-between font-bold text-gray-800 pt-2 border-t mt-2">
