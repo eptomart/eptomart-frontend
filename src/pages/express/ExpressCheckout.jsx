@@ -166,9 +166,21 @@ export default function ExpressCheckout() {
     setQuote(null);
   };
 
-  const getQuote = async () => {
-    if (!address.addressLine || !address.phone || !address.name) return toast.error('Please fill in name, phone and address');
-    if (!slot) return toast.error('Please pick a delivery slot');
+  // Price is fetched automatically (see the debounced effect below) the
+  // moment the address is filled in and a slot is picked — there's nothing
+  // left for the customer to decide by pressing a separate "Get Price"
+  // button, so that extra step was removed. silent=true (the auto-trigger
+  // path) skips the "please fill this in" toasts, since those fields are
+  // simply not ready yet rather than something the customer did wrong.
+  const getQuote = async ({ silent = false } = {}) => {
+    if (!address.addressLine || !address.phone || !address.name) {
+      if (!silent) toast.error('Please fill in name, phone and address');
+      return;
+    }
+    if (!slot) {
+      if (!silent) toast.error('Please pick a delivery slot');
+      return;
+    }
     setQuoting(true);
     setCheckoutBlock(null);
     try {
@@ -182,13 +194,23 @@ export default function ExpressCheckout() {
         setCheckoutBlock({ type: 'outOfRange', message: d.message, distanceKm: d.distanceKm, maxDeliveryDistanceKm: d.maxDeliveryDistanceKm, customOrderPhone: d.customOrderPhone });
       } else if (d?.storePaused) {
         setCheckoutBlock({ type: 'storePaused', message: d.message });
-      } else {
+      } else if (!silent) {
         toast.error(d?.message || 'Failed to price your order');
       }
     } finally {
       setQuoting(false);
     }
   };
+
+  // Auto-price as soon as name + phone + address + a delivery slot are all
+  // in place — debounced so it doesn't fire on every keystroke while the
+  // customer is still typing their address.
+  useEffect(() => {
+    if (!address.name || !address.phone || !address.addressLine || !slot) return;
+    const t = setTimeout(() => { getQuote({ silent: true }); }, 600);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address.name, address.phone, address.addressLine, address.city, address.pincode, slot]);
 
   const placeOrder = async () => {
     if (!quote) return toast.error('Please get a quote first');
@@ -335,12 +357,15 @@ export default function ExpressCheckout() {
         )}
       </div>
 
-      <button onClick={getQuote} disabled={quoting}
-        className="w-full mb-4 px-4 py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-60 transition active:scale-[0.98]"
-        style={{ background: 'linear-gradient(135deg, #4f46e5, #4338ca)' }}>
-        {quoting && <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />}
-        {quoting ? 'Calculating…' : 'Get Price'}
-      </button>
+      {quoting && (
+        <div className="w-full mb-4 px-4 py-2.5 rounded-xl text-xs font-bold text-indigo-600 bg-indigo-50 flex items-center justify-center gap-2">
+          <span className="w-3.5 h-3.5 rounded-full border-2 border-indigo-300 border-t-indigo-600 animate-spin" />
+          Calculating price…
+        </div>
+      )}
+      {!quoting && !quote && !checkoutBlock && slot && (!address.name || !address.phone || !address.addressLine) && (
+        <p className="text-xs text-gray-400 mb-4 text-center">Add your delivery address above to see the price.</p>
+      )}
 
       {checkoutBlock?.type === 'storePaused' && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex items-start gap-3">

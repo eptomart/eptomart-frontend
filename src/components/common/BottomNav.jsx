@@ -9,6 +9,7 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import { useFruitBasketCart } from '../../context/FruitBasketCartContext';
+import { useExpressCart } from '../../context/ExpressCartContext';
 
 export default function BottomNav() {
   // Publish the nav's REAL rendered height as --bottom-nav-h so content
@@ -40,6 +41,7 @@ export default function BottomNav() {
   const { cartCount }  = useCart();
   const { itemCount: kbdItemCount } = useKoyambeduCart();
   const { itemCount: fbItemCount }  = useFruitBasketCart();
+  const { itemCount: exItemCount }  = useExpressCart();
   const { isLoggedIn } = useAuth();
 
   const isActive = (path) => {
@@ -50,7 +52,7 @@ export default function BottomNav() {
   const tabs = [
     { id: 'home',       Icon: FiHome,         label: 'Home',       path: '/',           onClick: () => navigate('/') },
     { id: 'categories', Icon: FiGrid,          label: 'Categories', path: '/categories', onClick: () => navigate('/categories') },
-    { id: 'cart',       Icon: FiShoppingCart,  label: 'Cart',       path: '/cart',       onClick: () => navigate('/cart'),   badge: cartCount + kbdItemCount + fbItemCount },
+    { id: 'cart',       Icon: FiShoppingCart,  label: 'Cart',       path: '/cart',       onClick: () => navigate('/cart'),   badge: cartCount + kbdItemCount + fbItemCount + exItemCount },
     { id: 'orders',     Icon: FiPackage,        label: 'Orders',     path: '/orders',     onClick: () => navigate('/orders') },
     { id: 'profile',    Icon: FiUser,           label: isLoggedIn ? 'Profile' : 'Login',
                                                                      path: isLoggedIn ? '/profile' : '/login',

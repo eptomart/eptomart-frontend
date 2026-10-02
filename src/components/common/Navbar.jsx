@@ -11,6 +11,9 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
+import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
+import { useFruitBasketCart } from '../../context/FruitBasketCartContext';
+import { useExpressCart } from '../../context/ExpressCartContext';
 import api from '../../utils/api';
 
 const PAGE_TITLES = {
@@ -253,6 +256,10 @@ function MobileSearchOverlay({ onClose }) {
 export default function Navbar() {
   const { user, isLoggedIn, isAdmin, isSeller, isSuperAdmin, isKoyambeduSeller, isKoyambeduSA, logout } = useAuth();
   const { cartCount }     = useCart();
+  const { itemCount: kbdItemCount } = useKoyambeduCart();
+  const { itemCount: fbItemCount }  = useFruitBasketCart();
+  const { itemCount: exItemCount }  = useExpressCart();
+  const totalCartCount   = cartCount + kbdItemCount + fbItemCount + exItemCount;
   const { wishlistCount } = useWishlist();
 
   const [query,            setQuery]            = useState('');
@@ -463,9 +470,9 @@ export default function Navbar() {
               <button onClick={() => navigate('/cart')}
                 className="relative p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
                 <FiShoppingCart size={20} />
-                {cartCount > 0 && (
+                {totalCartCount > 0 && (
                   <span className="absolute -top-1 -right-1 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold" style={{ background: '#f4941c' }}>
-                    {cartCount > 9 ? '9+' : cartCount}
+                    {totalCartCount > 9 ? '9+' : totalCartCount}
                   </span>
                 )}
               </button>
@@ -494,7 +501,7 @@ export default function Navbar() {
                       <Link to="/orders" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}><FiPackage size={15} /> My Orders</Link>
                       <Link to="/cart" className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}>
                         <span className="flex items-center gap-3"><FiShoppingCart size={15} /> My Cart</span>
-                        {cartCount > 0 && <span className="text-xs font-bold text-white px-1.5 py-0.5 rounded-full" style={{ background: '#f4941c' }}>{cartCount}</span>}
+                        {totalCartCount > 0 && <span className="text-xs font-bold text-white px-1.5 py-0.5 rounded-full" style={{ background: '#f4941c' }}>{totalCartCount}</span>}
                       </Link>
                       <Link to="/wishlist" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-orange-50 text-sm text-gray-700" onClick={() => setShowUserMenu(false)}><FiHeart size={15} /> Wishlist</Link>
                       {(isSeller || isSuperAdmin) && (
