@@ -39,7 +39,20 @@
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  # geolocation=() and payment=() were blocking features this site actually
+  # uses for itself: every navigator.geolocation call site-wide (delivery
+  # address auto-fill, nearest-store detection, Express's ETA/Quick
+  # Delivery badge, the map pickers) was being silently vetoed by the
+  # browser at the HTTP-header level — an empty allowlist disables a
+  # feature for every context on the origin, including the page's own
+  # top-level JS, before any permission prompt can even appear. This is the
+  # real root cause behind the recurring "ETA badge never shows" reports.
+  # payment=() blocks the Payment Request API, which Razorpay's checkout.js
+  # uses on iOS Safari/WKWebView to detect Apple Pay — with it blocked,
+  # Razorpay's own payment-method detection can silently fail to complete,
+  # matching reports of the payment sheet never appearing specifically on
+  # iPhones. camera/microphone stay disabled since nothing on the site uses them.
+  Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=(self)
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-XSS-Protection: 1; mode=block
   Cross-Origin-Opener-Policy: same-origin

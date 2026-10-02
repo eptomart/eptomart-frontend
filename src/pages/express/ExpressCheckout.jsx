@@ -266,16 +266,21 @@ export default function ExpressCheckout() {
         setCheckoutBlock({ type: 'outOfRange', message: d.message, distanceKm: d.distanceKm, maxDeliveryDistanceKm: d.maxDeliveryDistanceKm, customOrderPhone: d.customOrderPhone });
       } else if (d?.storePaused) {
         setCheckoutBlock({ type: 'storePaused', message: d.message });
-      } else if (!err.response) {
-        // No response at all (network drop, timeout, flaky mobile-data
-        // handoff) — far more common inside the app than in a desktop
-        // Chrome tab. Previously this fell through silently on the
-        // auto-trigger path (silent=true), leaving the customer staring at
-        // a blank screen with no feedback after "Calculating price…"
-        // disappeared. Always surface this one, even when silent.
-        toast.error('Could not reach the server — check your internet connection and try again.');
-      } else if (!silent) {
-        toast.error(d?.message || 'Failed to price your order');
+      } else {
+        // Every other failure (network drop/timeout, 401, 500, a plain
+        // validation error from the backend) used to fall through to a
+        // toast that was suppressed on the auto-trigger path (silent=true)
+        // — leaving the customer staring at a blank screen with no
+        // feedback at all once "Calculating price…" disappeared, which is
+        // far more likely to happen on a flaky mobile connection (in-app)
+        // than on a desktop Chrome tab. Always render something persistent
+        // instead of relying on a toast that can be missed or suppressed.
+        setCheckoutBlock({
+          type: 'error',
+          message: !err.response
+            ? 'Could not reach the server — check your internet connection and try again.'
+            : (d?.message || 'Could not price your order. Please try again.'),
+        });
       }
     } finally {
       setQuoting(false);
@@ -535,6 +540,19 @@ export default function ExpressCheckout() {
             <p className="font-bold text-amber-800 text-sm">High demand — we'll open orders again shortly!</p>
             <p className="text-xs text-amber-700 mt-0.5">{checkoutBlock.message}</p>
             <p className="text-xs text-amber-600 mt-1.5">We've noted you're waiting — we'll call you once we're back online.</p>
+          </div>
+        </div>
+      )}
+
+      {slot && checkoutBlock?.type === 'error' && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 flex items-start gap-3">
+          <FiAlertTriangle className="text-red-600 shrink-0 mt-0.5" size={18} />
+          <div className="flex-1">
+            <p className="font-bold text-red-800 text-sm">Couldn't get your price</p>
+            <p className="text-xs text-red-700 mt-0.5">{checkoutBlock.message}</p>
+            <button onClick={() => getQuote()} className="mt-2 text-xs font-bold text-red-700 underline">
+              Try again
+            </button>
           </div>
         </div>
       )}
