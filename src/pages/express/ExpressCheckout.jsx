@@ -107,6 +107,31 @@ export default function ExpressCheckout() {
   const { todaySlots, tomorrowSlots, todayStr, nextDayEnabled } = useMemo(() => buildSlots(selectedStore), [selectedStore]);
   const [slot, setSlot] = useState(null);
 
+  // Device location, captured once on mount as a fallback source of
+  // coordinates for customers who type a manual address (which has no
+  // lat/lng fields at all) and have no saved address with coordinates
+  // either — without this, the delivery-address lat/lng silently fell back
+  // all the way to the STORE's own location (see getQuote/placeOrder
+  // below), which always computes as ~0 km from the store regardless of
+  // where the customer actually is, and also means the ETA-fallback effect
+  // below never has real coordinates to call /eta with, so "Quick
+  // Delivery" never appears for these customers. Uses the same
+  // watchdog-timeout pattern as ExpressShop's own ETA refresh, since
+  // getCurrentPosition's callback can simply never fire in the installed
+  // app's WKWebView when permission was never requested via a direct tap.
+  const [deviceCoords, setDeviceCoords] = useState(null);
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    let cancelled = false;
+    const watchdog = setTimeout(() => {}, 4000); // no fallback needed here — just avoid a hanging callback
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { clearTimeout(watchdog); if (!cancelled) setDeviceCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
+      () => clearTimeout(watchdog),
+      { maximumAge: 5 * 60 * 1000, timeout: 5000 },
+    );
+    return () => { cancelled = true; clearTimeout(watchdog); };
+  }, []);
+
   // Admin's distance-based quick-delivery estimate for this store (e.g.
   // "~30 min") — shown as the fast, recommended path, with the specific
   // time-window slots below it as the alternative for anyone who wants to
@@ -130,12 +155,14 @@ export default function ExpressCheckout() {
   // geolocation anyway, since it's the real delivery point.
   useEffect(() => {
     if (!selectedStore?._id || selectedStore.estimatedDeliveryMinutes != null) return;
-    if (address.lat == null || address.lng == null) return;
-    api.get(`/express/stores/${selectedStore._id}/eta`, { params: { lat: address.lat, lng: address.lng } })
+    const lat = address.lat ?? deviceCoords?.lat;
+    const lng = address.lng ?? deviceCoords?.lng;
+    if (lat == null || lng == null) return;
+    api.get(`/express/stores/${selectedStore._id}/eta`, { params: { lat, lng } })
       .then(({ data }) => setSelectedStore({ ...selectedStore, distanceKm: data.distanceKm, estimatedDeliveryMinutes: data.estimatedDeliveryMinutes }))
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStore?._id, selectedStore?.estimatedDeliveryMinutes, address.lat, address.lng]);
+  }, [selectedStore?._id, selectedStore?.estimatedDeliveryMinutes, address.lat, address.lng, deviceCoords]);
 
   // Coupon — same universal /coupon/validate flow every other vertical's
   // checkout uses (Koyambedu/FruitBasket/EptoFresh), scoped to
@@ -194,7 +221,7 @@ export default function ExpressCheckout() {
       name: addr.fullName || '', phone: addr.phone || '',
       addressLine: [addr.addressLine1, addr.addressLine2].filter(Boolean).join(', '),
       city: addr.city || '', pincode: addr.pincode || '',
-      lat: addr.lat ?? selectedStore?.location?.lat, lng: addr.lng ?? selectedStore?.location?.lng,
+      lat: addr.lat ?? deviceCoords?.lat ?? selectedStore?.location?.lat, lng: addr.lng ?? deviceCoords?.lng ?? selectedStore?.location?.lng,
     });
     setQuote(null);
   };
@@ -225,7 +252,7 @@ export default function ExpressCheckout() {
     setCheckoutBlock(null);
     try {
       const { data } = await api.post('/express/quote', {
-        deliveryAddress: { ...address, lat: address.lat ?? selectedStore?.location?.lat, lng: address.lng ?? selectedStore?.location?.lng },
+        deliveryAddress: { ...address, lat: address.lat ?? deviceCoords?.lat ?? selectedStore?.location?.lat, lng: address.lng ?? deviceCoords?.lng ?? selectedStore?.location?.lng },
         couponCode: couponApplied?.code || undefined,
       });
       setQuote(data);
@@ -294,7 +321,7 @@ export default function ExpressCheckout() {
     setPlacing(true);
     try {
       const { data } = await api.post('/express/orders/create-razorpay', {
-        deliveryAddress: { ...address, lat: address.lat ?? selectedStore?.location?.lat, lng: address.lng ?? selectedStore?.location?.lng },
+        deliveryAddress: { ...address, lat: address.lat ?? deviceCoords?.lat ?? selectedStore?.location?.lat, lng: address.lng ?? deviceCoords?.lng ?? selectedStore?.location?.lng },
         deliverySlot: { date: slot.date, label: slot.label, isNextDay: slot.isNextDay },
         couponCode: couponApplied?.code || undefined,
       });
