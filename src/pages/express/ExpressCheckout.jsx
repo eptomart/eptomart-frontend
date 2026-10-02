@@ -48,18 +48,43 @@ const DEFAULT_WINDOWS = [
   { startHour: 18, endHour: 21, label: '6:00 PM - 9:00 PM', enabled: true },
 ];
 
+// Delivery windows (9am, 12pm, etc.) are defined in IST — the store's own
+// timezone — but a customer's device clock/timezone can be set to anything
+// (wrong system time, a phone set to a different region, etc.). Reading
+// `new Date().getHours()` directly would then filter "today's" windows
+// against the WRONG current hour and could silently leave zero slots
+// available, with no obvious error to the customer. Computing the current
+// IST wall-clock time explicitly, regardless of device settings, avoids that.
+function getISTParts() {
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+  const parts = Object.fromEntries(fmt.formatToParts(new Date()).map(p => [p.type, p.value]));
+  return {
+    year: Number(parts.year), month: Number(parts.month), day: Number(parts.day),
+    hourFraction: Number(parts.hour) + Number(parts.minute) / 60,
+  };
+}
+
 function buildSlots(store) {
   const windows = (store?.deliverySlots?.windows?.length ? store.deliverySlots.windows : DEFAULT_WINDOWS)
     .filter(w => w.enabled !== false);
-  const nextDayEnabled = !!store?.deliverySlots?.nextDayEnabled;
+  // Defaults to true (not false) when a store has no deliverySlots saved yet
+  // at all — matches the schema's own default and ensures an
+  // admin-unconfigured store never dead-ends with zero delivery options.
+  const nextDayEnabled = store?.deliverySlots?.nextDayEnabled ?? true;
 
-  const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
-  const tomorrowStr = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
+  const { year, month, day, hourFraction } = getISTParts();
+  const pad = (n) => String(n).padStart(2, '0');
+  const todayStr = `${year}-${pad(month)}-${pad(day)}`;
+  const tomorrow = new Date(Date.UTC(year, month - 1, day + 1));
+  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
 
-  // Only windows still ahead of "now" are offered for today.
+  // Only windows still ahead of "now" (IST) are offered for today.
   const todaySlots = windows
-    .filter(w => w.endHour > now.getHours() + now.getMinutes() / 60)
+    .filter(w => w.endHour > hourFraction)
     .map(w => ({ date: todayStr, label: w.label, isNextDay: false, key: `today-${w.label}` }));
 
   // Tomorrow offers every enabled window regardless of current time.

@@ -284,7 +284,10 @@ const DEFAULT_SLOT_WINDOWS = [
 function DeliverySlotsPanel({ store, onChanged }) {
   const initial = store.deliverySlots?.windows?.length ? store.deliverySlots.windows : DEFAULT_SLOT_WINDOWS;
   const [windows, setWindows] = useState(initial.map(w => ({ ...w })));
-  const [nextDayEnabled, setNextDayEnabled] = useState(!!store.deliverySlots?.nextDayEnabled);
+  // Defaults to true when unset, matching ExpressStore's schema default —
+  // so the toggle here reflects what the customer actually sees rather than
+  // falsely showing OFF for a store that's never been saved.
+  const [nextDayEnabled, setNextDayEnabled] = useState(store.deliverySlots?.nextDayEnabled ?? true);
   const [saving, setSaving] = useState(false);
 
   const toggleWindow = (idx) => {
