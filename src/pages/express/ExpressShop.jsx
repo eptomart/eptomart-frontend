@@ -12,6 +12,7 @@ import { FiZap, FiMapPin, FiShoppingCart, FiPlus, FiMinus, FiAlertTriangle, FiPa
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 import { useExpressCart } from '../../context/ExpressCartContext';
+import { useAuth } from '../../context/AuthContext';
 
 // Weight sub-unit options for kg-priced produce — lets the customer pick a
 // smaller pack size than a full kilogram before adding to cart. Built per
@@ -32,6 +33,7 @@ const weightOptionsFor = (minOrderQty) => {
 export default function ExpressShop() {
   const navigate = useNavigate();
   const { selectedStore, setSelectedStore, cart, fetchCart, addToCart, updateItem } = useExpressCart();
+  const { user } = useAuth();
   const [catalogue, setCatalogue] = useState([]);
   const [loading, setLoading] = useState(true);
   // isPaused/pauseMessage come fresh from the online-catalogue response (not
@@ -93,24 +95,56 @@ export default function ExpressShop() {
   // already granted (or denied) location access, which they did already
   // when picking a store, so dropping the gate is safe.
   useEffect(() => {
-    if (!selectedStore?._id || !navigator.geolocation) return;
+    if (!selectedStore?._id) return;
     let cancelled = false;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        if (cancelled) return;
-        api.get(`/express/stores/${selectedStore._id}/eta`, {
-          params: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-        }).then(({ data }) => {
+
+    const fetchEta = (lat, lng) => {
+      if (cancelled) return;
+      api.get(`/express/stores/${selectedStore._id}/eta`, { params: { lat, lng } })
+        .then(({ data }) => {
           if (cancelled) return;
           setSelectedStore({ ...selectedStore, distanceKm: data.distanceKm, estimatedDeliveryMinutes: data.estimatedDeliveryMinutes });
-        }).catch(() => {});
+        })
+        .catch(() => {});
+    };
+
+    // Fall back to the customer's saved default address coordinates if
+    // geolocation doesn't come through — some WKWebView builds (the
+    // installed app) never fire getCurrentPosition's success OR error
+    // callback at all when the OS permission prompt was never triggered by
+    // a direct user tap (store selection via the saved-address or map-pin
+    // flow never touches navigator.geolocation), so relying on that
+    // callback alone can leave the ETA badge blank forever in the app even
+    // though it works fine in Chrome.
+    const fallbackToSavedAddress = () => {
+      if (cancelled) return;
+      const addrs = user?.addresses || [];
+      const def = addrs.find(a => a.isDefault) || addrs[0];
+      if (def?.lat != null && def?.lng != null) fetchEta(def.lat, def.lng);
+    };
+
+    if (!navigator.geolocation) {
+      fallbackToSavedAddress();
+      return () => { cancelled = true; };
+    }
+
+    // Our own timer, independent of the `timeout` option below — some
+    // WKWebView builds don't honor that option and simply never call either
+    // callback, which would otherwise leave this effect (and the badge)
+    // hanging indefinitely.
+    const watchdog = setTimeout(fallbackToSavedAddress, 4000);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        clearTimeout(watchdog);
+        if (cancelled) return;
+        fetchEta(pos.coords.latitude, pos.coords.longitude);
       },
-      () => {}, // denied/unavailable — leave whatever we already have
+      () => { clearTimeout(watchdog); fallbackToSavedAddress(); }, // denied/unavailable
       { maximumAge: 5 * 60 * 1000, timeout: 5000 },
     );
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(watchdog); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStore?._id]);
+  }, [selectedStore?._id, user]);
 
   // "Combos" is always surfaced as its own chip whenever any combo exists,
   // even if a particular combo's category text isn't literally "Combos"

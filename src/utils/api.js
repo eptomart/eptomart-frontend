@@ -9,6 +9,13 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  // Without a timeout, a request on a flaky mobile connection (far more
+  // common inside the installed app's webview than a desktop Chrome tab)
+  // can hang indefinitely with neither a resolved response nor a rejection
+  // — e.g. Express checkout's "Calculating price…" spinner never clearing
+  // and never showing an error either. 20s is generous enough for a slow
+  // connection while still eventually surfacing a failure.
+  timeout: 20000,
 });
 
 // Request interceptor — attach JWT
@@ -45,6 +52,7 @@ api.interceptors.response.use(
         '/eptofresh/orders', '/eptofresh/checkout',
         '/koyambedu/orders', '/koyambedu/checkout',
         '/uzhavar/my-orders',
+        '/express/checkout', '/express/my-orders',
         '/seller', '/admin',
       ];
       const path = window.location.pathname;

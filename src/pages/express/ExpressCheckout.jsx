@@ -97,7 +97,7 @@ function buildSlots(store) {
 
 export default function ExpressCheckout() {
   const navigate = useNavigate();
-  const { selectedStore, cart, fetchCart } = useExpressCart();
+  const { selectedStore, setSelectedStore, cart, fetchCart } = useExpressCart();
   const { user } = useAuth();
 
   const [selectedAddrId, setSelectedAddrId] = useState(null);
@@ -120,6 +120,22 @@ export default function ExpressCheckout() {
     if (quickSlot && !slot) setSlot(quickSlot);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quickEtaMinutes]);
+
+  // If the store's ETA was never populated (e.g. the customer reached
+  // checkout without ExpressShop's own ETA refresh ever resolving — common
+  // in the installed app's WKWebView, where navigator.geolocation's
+  // callback can simply never fire if permission was never requested via a
+  // direct user tap), fall back to the actual delivery address coordinates
+  // the moment they're known here. This is more reliable than device
+  // geolocation anyway, since it's the real delivery point.
+  useEffect(() => {
+    if (!selectedStore?._id || selectedStore.estimatedDeliveryMinutes != null) return;
+    if (address.lat == null || address.lng == null) return;
+    api.get(`/express/stores/${selectedStore._id}/eta`, { params: { lat: address.lat, lng: address.lng } })
+      .then(({ data }) => setSelectedStore({ ...selectedStore, distanceKm: data.distanceKm, estimatedDeliveryMinutes: data.estimatedDeliveryMinutes }))
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStore?._id, selectedStore?.estimatedDeliveryMinutes, address.lat, address.lng]);
 
   // Coupon — same universal /coupon/validate flow every other vertical's
   // checkout uses (Koyambedu/FruitBasket/EptoFresh), scoped to
@@ -223,6 +239,14 @@ export default function ExpressCheckout() {
         setCheckoutBlock({ type: 'outOfRange', message: d.message, distanceKm: d.distanceKm, maxDeliveryDistanceKm: d.maxDeliveryDistanceKm, customOrderPhone: d.customOrderPhone });
       } else if (d?.storePaused) {
         setCheckoutBlock({ type: 'storePaused', message: d.message });
+      } else if (!err.response) {
+        // No response at all (network drop, timeout, flaky mobile-data
+        // handoff) — far more common inside the app than in a desktop
+        // Chrome tab. Previously this fell through silently on the
+        // auto-trigger path (silent=true), leaving the customer staring at
+        // a blank screen with no feedback after "Calculating price…"
+        // disappeared. Always surface this one, even when silent.
+        toast.error('Could not reach the server — check your internet connection and try again.');
       } else if (!silent) {
         toast.error(d?.message || 'Failed to price your order');
       }
