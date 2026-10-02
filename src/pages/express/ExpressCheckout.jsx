@@ -121,6 +121,15 @@ export default function ExpressCheckout() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quickEtaMinutes]);
 
+  // Coupon — same universal /coupon/validate flow every other vertical's
+  // checkout uses (Koyambedu/FruitBasket/EptoFresh), scoped to
+  // platform: 'express'. The quote endpoint re-validates it server-side too,
+  // so a stale/expired code typed here never over/under-charges the actual
+  // amount paid.
+  const [couponCode, setCouponCode] = useState('');
+  const [couponApplied, setCouponApplied] = useState(null); // { code, discount }
+  const [couponLoading, setCouponLoading] = useState(false);
+
   const [quote, setQuote] = useState(null);
   const [quoting, setQuoting] = useState(false);
   const [placing, setPlacing] = useState(false);
@@ -129,7 +138,13 @@ export default function ExpressCheckout() {
   // storePaused -> show a busy banner instead of a generic toast.
   const [checkoutBlock, setCheckoutBlock] = useState(null); // { type: 'outOfRange'|'storePaused', message, distanceKm, maxDeliveryDistanceKm, customOrderPhone }
 
-  useEffect(() => { fetchCart(); }, []);
+  // `cart` defaults to itemCount: 0 until fetchCart() resolves — without
+  // cartChecked gating the redirect below, a fresh mount of this page (page
+  // reload, deep link, webview reload) would read that default as "cart is
+  // empty" and bounce straight to /express/shop before the fetch could prove
+  // otherwise, even when the customer genuinely has items in their cart.
+  const [cartChecked, setCartChecked] = useState(false);
+  useEffect(() => { fetchCart().finally(() => setCartChecked(true)); }, []);
 
   // Load the Razorpay widget script as soon as this page opens rather than
   // waiting for the Pay tap — on a slow mobile connection that first script
@@ -141,9 +156,9 @@ export default function ExpressCheckout() {
   useEffect(() => { loadRazorpayScript().catch(() => {}); }, []);
 
   useEffect(() => {
-    if (!selectedStore?._id) navigate('/express/location');
-    else if (!cart.itemCount) navigate('/express/shop');
-  }, [selectedStore, cart.itemCount]);
+    if (!selectedStore?._id) { navigate('/express/location'); return; }
+    if (cartChecked && !cart.itemCount) navigate('/express/shop');
+  }, [selectedStore, cart.itemCount, cartChecked]);
 
   // Default to the customer's saved default address, if any, so most
   // customers never have to type an address at all.
@@ -195,8 +210,13 @@ export default function ExpressCheckout() {
     try {
       const { data } = await api.post('/express/quote', {
         deliveryAddress: { ...address, lat: address.lat ?? selectedStore?.location?.lat, lng: address.lng ?? selectedStore?.location?.lng },
+        couponCode: couponApplied?.code || undefined,
       });
       setQuote(data);
+      // Server is the source of truth — if the coupon didn't actually apply
+      // (expired/limit reached since it was validated), drop it from the UI
+      // too instead of showing a discount that isn't real.
+      if (couponApplied && !data.couponCode) setCouponApplied(null);
     } catch (err) {
       const d = err?.response?.data;
       if (d?.outOfRange) {
@@ -211,6 +231,29 @@ export default function ExpressCheckout() {
     }
   };
 
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim();
+    if (!code) return;
+    setCouponLoading(true);
+    try {
+      const { data } = await api.post('/coupon/validate', {
+        code, orderAmount: quote?.subtotal || 0, platform: 'express',
+      });
+      if (data.success) {
+        setCouponApplied({ code: data.coupon.code, discount: data.discount });
+        setCouponCode(data.coupon.code);
+        toast.success(`Coupon applied! ₹${data.discount.toFixed(2)} off`);
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Invalid coupon');
+      setCouponApplied(null);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => { setCouponApplied(null); setCouponCode(''); };
+
   // Auto-price as soon as name + phone + address + a delivery slot are all
   // in place — debounced so it doesn't fire on every keystroke while the
   // customer is still typing their address.
@@ -219,7 +262,7 @@ export default function ExpressCheckout() {
     const t = setTimeout(() => { getQuote({ silent: true }); }, 600);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address.name, address.phone, address.addressLine, address.city, address.pincode, slot]);
+  }, [address.name, address.phone, address.addressLine, address.city, address.pincode, slot, couponApplied]);
 
   const placeOrder = async () => {
     if (!quote) return toast.error('Please get a quote first');
@@ -229,6 +272,7 @@ export default function ExpressCheckout() {
       const { data } = await api.post('/express/orders/create-razorpay', {
         deliveryAddress: { ...address, lat: address.lat ?? selectedStore?.location?.lat, lng: address.lng ?? selectedStore?.location?.lng },
         deliverySlot: { date: slot.date, label: slot.label, isNextDay: slot.isNextDay },
+        couponCode: couponApplied?.code || undefined,
       });
 
       if (data.demoMode) {
@@ -486,6 +530,37 @@ export default function ExpressCheckout() {
               Orders below ₹{quote.minOrderForFreeDelivery} carry a ₹{quote.deliveryFeeBelowMinimum} delivery fee — order ₹{quote.minOrderForFreeDelivery}+ for free delivery.
             </p>
           )}
+          {quote.couponDiscount > 0 && (
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-gray-600">Coupon ({quote.couponCode})</span>
+              <span className="font-semibold text-emerald-600">− ₹{quote.couponDiscount}</span>
+            </div>
+          )}
+
+          <div className="pt-2 border-t mt-2">
+            {couponApplied ? (
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-700 flex items-center gap-1">
+                  <FiCheck size={13} /> {couponApplied.code} applied
+                </span>
+                <button onClick={removeCoupon} className="text-xs font-bold text-gray-400 hover:text-gray-600">Remove</button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text" value={couponCode}
+                  onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                  placeholder="Enter coupon code"
+                  className="flex-1 border rounded-lg px-3 py-2 text-xs uppercase"
+                />
+                <button onClick={handleApplyCoupon} disabled={couponLoading || !couponCode.trim()}
+                  className="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold disabled:opacity-50">
+                  {couponLoading ? '…' : 'Apply'}
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-between font-bold text-gray-800 pt-2 border-t mt-2">
             <span>Total ({quote.totalWeightKg} kg)</span>
             <span>₹{quote.total}</span>
