@@ -17,7 +17,7 @@
 // ============================================
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiZap, FiAlertTriangle, FiCheck, FiClock, FiSun, FiPhoneCall, FiPauseCircle } from 'react-icons/fi';
+import { FiZap, FiAlertTriangle, FiCheck, FiClock, FiPhoneCall, FiPauseCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 import { useExpressCart } from '../../context/ExpressCartContext';
@@ -35,9 +35,9 @@ function loadRazorpayScript() {
   });
 }
 
-// Same-day delivery windows the store offers. Only windows whose end time
-// is still ahead of "now" are shown for today; all are always shown for
-// tomorrow (next-day).
+// Express is a same-day-delivery vertical — checkout only ever offers
+// TODAY's windows, never a next-day fallback (that's what Koyambedu Daily
+// is for). Only windows whose end time is still ahead of "now" are shown.
 const SLOT_WINDOWS = [
   { startHour: 9,  endHour: 12, label: '9:00 AM - 12:00 PM' },
   { startHour: 12, endHour: 15, label: '12:00 PM - 3:00 PM' },
@@ -48,17 +48,12 @@ const SLOT_WINDOWS = [
 function buildSlots() {
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
 
   const todaySlots = SLOT_WINDOWS
     .filter(w => w.endHour > now.getHours() + now.getMinutes() / 60)
     .map(w => ({ date: todayStr, label: w.label, isNextDay: false, key: `today-${w.label}` }));
 
-  const tomorrowSlots = SLOT_WINDOWS
-    .map(w => ({ date: tomorrowStr, label: w.label, isNextDay: true, key: `next-${w.label}` }));
-
-  return { todaySlots, tomorrowSlots };
+  return { todaySlots, todayStr };
 }
 
 export default function ExpressCheckout() {
@@ -70,8 +65,22 @@ export default function ExpressCheckout() {
   const [address, setAddress] = useState({ name: '', phone: '', addressLine: '', city: '', pincode: '' });
   const [showManualForm, setShowManualForm] = useState(true);
 
-  const { todaySlots, tomorrowSlots } = useMemo(() => buildSlots(), []);
+  const { todaySlots, todayStr } = useMemo(() => buildSlots(), []);
   const [slot, setSlot] = useState(null);
+
+  // Admin's distance-based quick-delivery estimate for this store (e.g.
+  // "~30 min") — shown as the fast, recommended path, with the specific
+  // time-window slots below it as the alternative for anyone who wants to
+  // schedule for later today instead. Pre-selected by default so a
+  // customer in a hurry can go straight from address to payment.
+  const quickEtaMinutes = selectedStore?.estimatedDeliveryMinutes ?? null;
+  const quickSlot = quickEtaMinutes != null
+    ? { key: 'quick', label: `Quick Delivery (~${quickEtaMinutes} min)`, date: todayStr, isNextDay: false, isQuick: true }
+    : null;
+  useEffect(() => {
+    if (quickSlot && !slot) setSlot(quickSlot);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickEtaMinutes]);
 
   const [quote, setQuote] = useState(null);
   const [quoting, setQuoting] = useState(false);
@@ -245,28 +254,32 @@ export default function ExpressCheckout() {
       </div>
 
       <div className="bg-white border rounded-xl p-4 mb-4">
-        <h2 className="font-bold text-gray-700 text-sm mb-3 flex items-center gap-1.5"><FiClock size={14} /> Delivery Slot</h2>
+        <h2 className="font-bold text-gray-700 text-sm mb-3 flex items-center gap-1.5"><FiClock size={14} /> Delivery — Today Only</h2>
 
-        {todaySlots.length > 0 && (
-          <div className="mb-3">
-            <p className="text-[10px] font-black uppercase tracking-wide text-gray-400 mb-1.5">Today</p>
+        {quickSlot && (
+          <button onClick={() => { setSlot(quickSlot); setQuote(null); }}
+            className={`w-full mb-3 flex items-center gap-3 px-3 py-3 rounded-xl border-2 text-left transition ${
+              slot?.key === 'quick' ? 'border-emerald-500 bg-emerald-50' : 'border-emerald-100 bg-emerald-50/40 hover:border-emerald-300'
+            }`}>
+            <span className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+              <FiZap size={16} className="text-white" />
+            </span>
+            <span>
+              <span className="block font-black text-sm text-emerald-800">Quick Delivery</span>
+              <span className="block text-xs text-emerald-600">Ready in ~{quickEtaMinutes} min — recommended</span>
+            </span>
+          </button>
+        )}
+
+        {todaySlots.length > 0 ? (
+          <div>
+            {quickSlot && <p className="text-[10px] font-black uppercase tracking-wide text-gray-400 mb-1.5">Or pick a time today</p>}
             <div className="grid grid-cols-2 gap-2">
               {todaySlots.map(s => <SlotButton key={s.key} s={s} />)}
             </div>
           </div>
-        )}
-
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-wide text-gray-400 mb-1.5 flex items-center gap-1">
-            <FiSun size={11} /> Tomorrow
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {tomorrowSlots.map(s => <SlotButton key={s.key} s={s} />)}
-          </div>
-        </div>
-
-        {todaySlots.length === 0 && (
-          <p className="text-xs text-gray-400 mt-2">No more same-day slots available today — please choose a slot for tomorrow.</p>
+        ) : !quickSlot && (
+          <p className="text-xs text-gray-400 mt-2">No more same-day delivery windows left for today — please check back tomorrow.</p>
         )}
       </div>
 
