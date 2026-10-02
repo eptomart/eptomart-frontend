@@ -14,13 +14,20 @@ import api from '../../utils/api';
 import { useExpressCart } from '../../context/ExpressCartContext';
 
 // Weight sub-unit options for kg-priced produce — lets the customer pick a
-// smaller pack size than a full kilogram before adding to cart, instead of
-// only ever being able to add/step by whole kilograms.
-const WEIGHT_STEPS = [
-  { label: '250 g', kg: 0.25 },
-  { label: '500 g', kg: 0.5 },
-  { label: '1 kg', kg: 1 },
-];
+// smaller pack size than a full kilogram before adding to cart. Built per
+// product from its admin-configured minOrderQty (e.g. radish starts at
+// 0.25 kg) rather than one fixed 250g/500g/1kg set for every product, so a
+// product the admin has set to only sell from, say, 1 kg upward never
+// offers a smaller option, while a product with a lower minimum still
+// offers that minimum plus a couple of larger steps and a 1 kg option.
+const formatWeight = (kg) => (kg < 1 ? `${Math.round(kg * 1000)} g` : `${kg % 1 === 0 ? kg : kg.toFixed(2)} kg`);
+const weightOptionsFor = (minOrderQty) => {
+  const base = Number(minOrderQty) > 0 ? Number(minOrderQty) : 0.25;
+  const candidates = [base, base * 2, base * 4, 1].filter(v => v >= base);
+  const rounded = candidates.map(v => Math.round(v * 1000) / 1000);
+  const unique = Array.from(new Set(rounded)).sort((a, b) => a - b);
+  return unique.map(kg => ({ kg, label: formatWeight(kg) }));
+};
 
 export default function ExpressShop() {
   const navigate = useNavigate();
@@ -115,14 +122,14 @@ export default function ExpressShop() {
   }, [bannerIndex]);
 
   const qtyInCart = (productId) => cart.items?.find(i => String(i.product) === String(productId))?.quantity || 0;
-  const stepFor = (productId) => weightStep[productId] ?? 1;
+  const stepFor = (productId, minOrderQty = 0.25) => weightStep[productId] ?? minOrderQty;
 
-  const handleAdd = (productId, unit) => addToCart(productId, unit === 'kg' ? stepFor(productId) : 1);
-  const handleQtyChange = (productId, unit, direction) => {
-    const step = unit === 'kg' ? stepFor(productId) : 1;
+  const handleAdd = (productId, unit, minOrderQty) => addToCart(productId, unit === 'kg' ? stepFor(productId, minOrderQty) : 1);
+  const handleQtyChange = (productId, unit, direction, minOrderQty) => {
+    const step = unit === 'kg' ? stepFor(productId, minOrderQty) : 1;
     const current = qtyInCart(productId);
     const next = Math.max(0, Math.round((current + direction * step) * 100) / 100);
-    if (current === 0 && direction > 0) return handleAdd(productId, unit);
+    if (current === 0 && direction > 0) return handleAdd(productId, unit, minOrderQty);
     updateItem(productId, next);
   };
 
@@ -259,6 +266,8 @@ export default function ExpressShop() {
           {filteredCatalogue.map(({ product, pricePerUnit, stockQty }) => {
             const qty = qtyInCart(product._id);
             const isKg = product.unit === 'kg';
+            const minOrderQty = product.minOrderQty || 0.25;
+            const weightOptions = isKg ? weightOptionsFor(minOrderQty) : [];
             return (
               <div key={product._id} className="bg-white border rounded-xl p-3 flex flex-col transition hover:shadow-md">
                 <Link to={`/express/product/${product._id}`} className="block">
@@ -272,25 +281,28 @@ export default function ExpressShop() {
                 <p className="text-xs text-gray-400 mb-2">₹{pricePerUnit}/{product.unit}</p>
 
                 {isKg && qty === 0 && (
-                  <select value={stepFor(product._id)} onChange={e => setWeightStep(w => ({ ...w, [product._id]: Number(e.target.value) }))}
-                    className="mb-1.5 border rounded-lg px-2 py-1 text-xs">
-                    {WEIGHT_STEPS.map(s => <option key={s.kg} value={s.kg}>{s.label}</option>)}
-                  </select>
+                  <>
+                    <select value={stepFor(product._id, minOrderQty)} onChange={e => setWeightStep(w => ({ ...w, [product._id]: Number(e.target.value) }))}
+                      className="mb-1 border rounded-lg px-2 py-1 text-xs">
+                      {weightOptions.map(s => <option key={s.kg} value={s.kg}>{s.label}</option>)}
+                    </select>
+                    <p className="text-[10px] text-gray-400 mb-1.5">Min order: {formatWeight(minOrderQty)}</p>
+                  </>
                 )}
 
                 {/* Browsing and building a cart stay fully usable even while
                     the store is on hold — only checkout (below) is gated,
                     so nobody loses the items they picked out while waiting. */}
                 {qty === 0 ? (
-                  <button onClick={() => handleAdd(product._id, product.unit)} disabled={stockQty === 0}
+                  <button onClick={() => handleAdd(product._id, product.unit, minOrderQty)} disabled={stockQty === 0}
                     className="mt-auto w-full py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-40">
                     {stockQty === 0 ? 'Out of stock' : 'Add'}
                   </button>
                 ) : (
                   <div className="mt-auto flex items-center justify-between bg-indigo-50 rounded-lg px-2 py-1.5">
-                    <button onClick={() => handleQtyChange(product._id, product.unit, -1)} className="text-indigo-700"><FiMinus size={14} /></button>
+                    <button onClick={() => handleQtyChange(product._id, product.unit, -1, minOrderQty)} className="text-indigo-700"><FiMinus size={14} /></button>
                     <span className="font-bold text-sm text-indigo-900">{qty}{isKg ? ' kg' : ''}</span>
-                    <button onClick={() => handleQtyChange(product._id, product.unit, 1)} className="text-indigo-700"><FiPlus size={14} /></button>
+                    <button onClick={() => handleQtyChange(product._id, product.unit, 1, minOrderQty)} className="text-indigo-700"><FiPlus size={14} /></button>
                   </div>
                 )}
               </div>

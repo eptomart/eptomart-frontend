@@ -883,7 +883,7 @@ function ProductsTab() {
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState(null); // the chosen Koyambedu product
-  const [form, setForm] = useState({ unit: 'kg', unitsPerKg: '', procurementBaseCost: '', customMarginPct: '' });
+  const [form, setForm] = useState({ unit: 'kg', unitsPerKg: '', procurementBaseCost: '', customMarginPct: '', minOrderQty: '' });
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState({}); // productId -> breakdown
   const [editId, setEditId] = useState(null);
@@ -924,6 +924,7 @@ function ProductsTab() {
       unitsPerKg: p.unitsPerKg ?? '',
       procurementBaseCost: p.procurementBaseCost ?? '',
       customMarginPct: p.customMarginPct ?? '',
+      minOrderQty: p.minOrderQty ?? '',
       isActive: p.isActive !== false,
     });
   };
@@ -936,6 +937,7 @@ function ProductsTab() {
         unitsPerKg: editForm.unitsPerKg === '' ? null : editForm.unitsPerKg,
         procurementBaseCost: editForm.procurementBaseCost,
         customMarginPct: editForm.customMarginPct === '' ? null : editForm.customMarginPct,
+        minOrderQty: editForm.minOrderQty === '' ? undefined : editForm.minOrderQty,
         isActive: editForm.isActive,
       });
       toast.success('Product updated');
@@ -1008,9 +1010,10 @@ function ProductsTab() {
         unitsPerKg: form.unitsPerKg || null,
         procurementBaseCost: form.procurementBaseCost,
         customMarginPct: form.customMarginPct || null,
+        minOrderQty: form.minOrderQty || null,
       });
       toast.success('Product linked to Express');
-      setForm({ unit: 'kg', unitsPerKg: '', procurementBaseCost: '', customMarginPct: '' });
+      setForm({ unit: 'kg', unitsPerKg: '', procurementBaseCost: '', customMarginPct: '', minOrderQty: '' });
       setSelected(null); setSearch(''); setShowForm(false);
       load();
     } catch (err) {
@@ -1076,6 +1079,11 @@ function ProductsTab() {
             onChange={e => setForm(f => ({ ...f, procurementBaseCost: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
           <input placeholder="Custom margin % (optional override)" value={form.customMarginPct}
             onChange={e => setForm(f => ({ ...f, customMarginPct: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+          <div>
+            <input type="number" step="0.01" min="0.01" placeholder="Min order qty (e.g. 0.25 for 250 g)" value={form.minOrderQty}
+              onChange={e => setForm(f => ({ ...f, minOrderQty: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm w-full" />
+            <p className="text-[10px] text-gray-400 mt-1">Smallest amount a customer can order (defaults to 0.25 kg). Only matters for kg/weight-based units.</p>
+          </div>
           <div className="sm:col-span-2 flex gap-2">
             <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
               {saving ? 'Saving…' : 'Link Product'}
@@ -1103,6 +1111,7 @@ function ProductsTab() {
                   <p className="text-xs text-gray-500">
                     ₹{p.procurementBaseCost}/{p.unit}{p.unitsPerKg ? ` · ${p.unitsPerKg} ${p.unit}s/kg` : ''}
                     {p.customMarginPct != null ? ` · Custom margin ${p.customMarginPct}%` : ''}
+                    {p.unit === 'kg' ? ` · Min order ${p.minOrderQty != null ? p.minOrderQty : 0.25} kg` : ''}
                   </p>
                 </div>
               </div>
@@ -1164,6 +1173,8 @@ function ProductsTab() {
                   onChange={e => setEditForm(f => ({ ...f, procurementBaseCost: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
                 <input placeholder="Custom margin % (optional)" value={editForm.customMarginPct}
                   onChange={e => setEditForm(f => ({ ...f, customMarginPct: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <input type="number" step="0.01" min="0.01" placeholder="Min order qty (e.g. 0.25)" value={editForm.minOrderQty}
+                  onChange={e => setEditForm(f => ({ ...f, minOrderQty: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
                 <button onClick={() => setEditForm(f => ({ ...f, isActive: !f.isActive }))}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold justify-center sm:col-span-2 ${editForm.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                   {editForm.isActive ? <FiToggleRight size={14} /> : <FiToggleLeft size={14} />} {editForm.isActive ? 'Active' : 'Inactive'}
@@ -1410,7 +1421,7 @@ function OnlineCatalogTab({ stores, reload }) {
 // EXPRESS_CATEGORIES below for the fixed list including "Combos".
 // ══════════════════════════════════════════════
 function CreateProductTab() {
-  const blankForm = { name: '', category: '', unit: 'kg', procurementBaseCost: '', description: '', isCombo: false };
+  const blankForm = { name: '', category: '', unit: 'kg', procurementBaseCost: '', minOrderQty: '', description: '', isCombo: false };
   const [form, setForm] = useState(blankForm);
   const [comboContents, setComboContents] = useState([]); // [{ product, name, unit, qty }]
   const [comboSearch, setComboSearch] = useState('');
@@ -1480,6 +1491,7 @@ function CreateProductTab() {
         unit: form.unit,
         description: form.description,
         procurementBaseCost: Number(form.procurementBaseCost),
+        minOrderQty: form.minOrderQty || undefined,
         isCombo: form.isCombo,
         comboContents: form.isCombo ? comboContents.map(c => ({ product: c.product, name: c.name, unit: c.unit, qty: Number(c.qty) || 0 })) : [],
       };
@@ -1528,6 +1540,14 @@ function CreateProductTab() {
           <input type="number" value={form.procurementBaseCost} onChange={e => setForm(f => ({ ...f, procurementBaseCost: e.target.value }))}
             placeholder="What it costs Express to procure/pack this" className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
         </label>
+
+        {form.unit === 'kg' && (
+          <label className="text-xs font-semibold text-gray-500">Min order quantity (kg)
+            <input type="number" step="0.01" min="0.01" value={form.minOrderQty} onChange={e => setForm(f => ({ ...f, minOrderQty: e.target.value }))}
+              placeholder="e.g. 0.25 for 250 g minimum" className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+            <span className="text-[10px] font-normal text-gray-400 block mt-0.5">Smallest amount a customer can order — defaults to 0.25 kg if left blank.</span>
+          </label>
+        )}
 
         <div>
           <div className="flex items-center justify-between">
@@ -1935,7 +1955,7 @@ function StoreInventoryTab({ stores }) {
   const [assignResults, setAssignResults] = useState([]);
   const [assignSearching, setAssignSearching] = useState(false);
   const [assignSelected, setAssignSelected] = useState(null); // chosen Koyambedu product
-  const [assignForm, setAssignForm] = useState({ unit: 'kg', procurementBaseCost: '', customMarginPct: '', stockQty: '', priceOverride: '', note: '' });
+  const [assignForm, setAssignForm] = useState({ unit: 'kg', procurementBaseCost: '', customMarginPct: '', minOrderQty: '', stockQty: '', priceOverride: '', note: '' });
   const [assignSaving, setAssignSaving] = useState(false);
 
   const assignAlreadyLinked = assignSelected && products.some(p => String(p.koyambeduProduct?._id) === String(assignSelected._id));
@@ -1961,7 +1981,7 @@ function StoreInventoryTab({ stores }) {
 
   const resetAssignForm = () => {
     setShowAssign(false); setAssignSelected(null); setAssignSearch('');
-    setAssignForm({ unit: 'kg', procurementBaseCost: '', customMarginPct: '', stockQty: '', priceOverride: '', note: '' });
+    setAssignForm({ unit: 'kg', procurementBaseCost: '', customMarginPct: '', minOrderQty: '', stockQty: '', priceOverride: '', note: '' });
   };
 
   const submitAssign = async (e) => {
@@ -1979,6 +1999,7 @@ function StoreInventoryTab({ stores }) {
         unit: assignForm.unit,
         procurementBaseCost: assignForm.procurementBaseCost || undefined,
         customMarginPct: assignForm.customMarginPct || null,
+        minOrderQty: assignForm.minOrderQty || undefined,
         stockQty: assignForm.stockQty || 0,
         note: assignForm.note || undefined,
       };
@@ -2204,6 +2225,10 @@ function StoreInventoryTab({ stores }) {
               <input placeholder="Custom margin % (optional)" value={assignForm.customMarginPct}
                 onChange={e => setAssignForm(f => ({ ...f, customMarginPct: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
             </>
+          )}
+          {assignForm.unit === 'kg' && (
+            <input type="number" step="0.01" min="0.01" placeholder="Min order qty, kg (e.g. 0.25 for 250 g)" value={assignForm.minOrderQty}
+              onChange={e => setAssignForm(f => ({ ...f, minOrderQty: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
           )}
           <input type="number" min="0" placeholder="Stock to add at this store" value={assignForm.stockQty}
             onChange={e => setAssignForm(f => ({ ...f, stockQty: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />

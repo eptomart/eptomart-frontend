@@ -14,11 +14,18 @@ import { FiArrowLeft, FiShoppingCart, FiMinus, FiPlus, FiZap, FiPackage, FiCheck
 import api from '../../utils/api';
 import { useExpressCart } from '../../context/ExpressCartContext';
 
-const WEIGHT_STEPS = [
-  { label: '250 g', kg: 0.25 },
-  { label: '500 g', kg: 0.5 },
-  { label: '1 kg', kg: 1 },
-];
+// Pack-size options are built per product from its admin-configured
+// minOrderQty (e.g. radish starts at 0.25 kg) rather than one fixed
+// 250g/500g/1kg set for every product — see the matching helper in
+// ExpressShop.jsx.
+const formatWeight = (kg) => (kg < 1 ? `${Math.round(kg * 1000)} g` : `${kg % 1 === 0 ? kg : kg.toFixed(2)} kg`);
+const weightOptionsFor = (minOrderQty) => {
+  const base = Number(minOrderQty) > 0 ? Number(minOrderQty) : 0.25;
+  const candidates = [base, base * 2, base * 4, 1].filter(v => v >= base);
+  const rounded = candidates.map(v => Math.round(v * 1000) / 1000);
+  const unique = Array.from(new Set(rounded)).sort((a, b) => a - b);
+  return unique.map(kg => ({ kg, label: formatWeight(kg) }));
+};
 
 export default function ExpressProductDetail() {
   const { productId } = useParams();
@@ -27,7 +34,7 @@ export default function ExpressProductDetail() {
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [weightKg, setWeightKg] = useState(1);
+  const [weightKg, setWeightKg] = useState(null);
 
   useEffect(() => {
     if (!selectedStore?._id) {
@@ -35,7 +42,12 @@ export default function ExpressProductDetail() {
       return;
     }
     api.get(`/express/stores/${selectedStore._id}/online-catalogue/${productId}`)
-      .then(({ data }) => setData(data))
+      .then(({ data }) => {
+        setData(data);
+        // Default the pack-size selector to this product's own minimum
+        // order quantity, not a one-size-fits-all 1 kg.
+        setWeightKg(data?.product?.minOrderQty || 0.25);
+      })
       .catch(() => toast.error('Product not found'))
       .finally(() => setLoading(false));
     fetchCart();
@@ -66,13 +78,15 @@ export default function ExpressProductDetail() {
 
   const { product, pricePerUnit, stockQty } = data;
   const isKg = product.unit === 'kg';
+  const minOrderQty = product.minOrderQty || 0.25;
+  const packKg = weightKg ?? minOrderQty;
   const qtyInCart = cart.items?.find(i => String(i.product) === String(product._id))?.quantity || 0;
   const outOfStock = stockQty === 0;
-  const total = isKg ? Math.round(pricePerUnit * weightKg) : pricePerUnit;
+  const total = isKg ? Math.round(pricePerUnit * packKg) : pricePerUnit;
 
-  const handleAdd = () => addToCart(product._id, isKg ? weightKg : 1);
+  const handleAdd = () => addToCart(product._id, isKg ? packKg : 1);
   const handleQtyChange = (direction) => {
-    const step = isKg ? weightKg : 1;
+    const step = isKg ? packKg : 1;
     const next = Math.max(0, Math.round((qtyInCart + direction * step) * 100) / 100);
     if (qtyInCart === 0 && direction > 0) return handleAdd();
     updateItem(product._id, next);
@@ -154,14 +168,15 @@ export default function ExpressProductDetail() {
           <div className="bg-white border rounded-2xl p-4">
             <p className="font-bold text-gray-800 text-sm mb-2">Pack size</p>
             <div className="flex gap-2">
-              {WEIGHT_STEPS.map(s => (
+              {weightOptionsFor(minOrderQty).map(s => (
                 <button key={s.kg} onClick={() => setWeightKg(s.kg)}
                   className="flex-1 py-2 rounded-lg text-xs font-bold border transition"
-                  style={weightKg === s.kg ? { background: '#4338ca', color: '#fff', borderColor: '#4338ca' } : { background: '#fff', color: '#4b5563', borderColor: '#e5e7eb' }}>
+                  style={packKg === s.kg ? { background: '#4338ca', color: '#fff', borderColor: '#4338ca' } : { background: '#fff', color: '#4b5563', borderColor: '#e5e7eb' }}>
                   {s.label}
                 </button>
               ))}
             </div>
+            <p className="text-[10px] text-gray-400 mt-2">Min order: {formatWeight(minOrderQty)}</p>
           </div>
         )}
       </div>
