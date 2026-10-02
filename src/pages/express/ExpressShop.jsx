@@ -67,15 +67,31 @@ export default function ExpressShop() {
       navigate('/express/location');
       return;
     }
-    api.get(`/express/stores/${selectedStore._id}/online-catalogue`)
-      .then(({ data }) => {
-        setCatalogue(data.catalogue || []);
-        setStoreStatus({ isPaused: !!data.store?.isPaused, pauseMessage: data.store?.pauseMessage || null });
-      })
-      .catch(() => toast.error('Failed to load products'))
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    const loadCatalogue = (showSpinner) => {
+      if (showSpinner) setLoading(true);
+      api.get(`/express/stores/${selectedStore._id}/online-catalogue`)
+        .then(({ data }) => {
+          if (cancelled) return;
+          setCatalogue(data.catalogue || []);
+          setStoreStatus({ isPaused: !!data.store?.isPaused, pauseMessage: data.store?.pauseMessage || null });
+        })
+        .catch(() => { if (!cancelled && showSpinner) toast.error('Failed to load products'); })
+        .finally(() => { if (!cancelled) setLoading(false); });
+    };
+    loadCatalogue(true);
     fetchCart();
     api.get('/express/banners').then(({ data }) => setBanners(data.banners || [])).catch(() => {});
+
+    // A customer already browsing when admin pauses/un-pauses the store
+    // (or flips the master switch) previously never saw that change — the
+    // catalogue/pause status was fetched exactly once, on mount, so the
+    // "we'll be back soon" banner only appeared after a reload. Poll
+    // quietly in the background (no spinner, no error toast — a single
+    // missed poll isn't worth bothering the customer about) so it shows up
+    // within a shop visit instead of requiring one.
+    const poll = setInterval(() => loadCatalogue(false), 30000);
+    return () => { cancelled = true; clearInterval(poll); };
   }, [selectedStore]);
 
   // The "Delivery in ~X min" badge was computed once, at the moment the
