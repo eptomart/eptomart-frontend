@@ -14,6 +14,43 @@ import api from '../../utils/api';
 import { useExpressCart } from '../../context/ExpressCartContext';
 import { useAuth } from '../../context/AuthContext';
 
+// Geocoding (address text -> lat/lng) via Google Maps — same helper
+// duplicated in ExpressCheckout.jsx (and the original in
+// ExpressLocationPicker.jsx). A saved address frequently has no lat/lng at
+// all (the global address book's manual-entry form never collected it),
+// so geocoding the text is what actually gets most customers a working ETA
+// badge — navigator.geolocation alone is not reliable enough in WKWebView
+// to be the only path.
+function loadGoogleMaps() {
+  return new Promise((resolve, reject) => {
+    if (window.google?.maps) { resolve(); return; }
+    api.get('/eptofresh/maps/config')
+      .then(({ data }) => {
+        if (!data.key) { reject(new Error('No key')); return; }
+        const cb = '__gmExpressShop_' + Date.now();
+        window[cb] = () => { resolve(); delete window[cb]; };
+        const s = document.createElement('script');
+        s.src = `https://maps.googleapis.com/maps/api/js?key=${data.key}&libraries=places&callback=${cb}`;
+        s.async = true;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      })
+      .catch(reject);
+  });
+}
+function geocodeAddressText(addr) {
+  return loadGoogleMaps().then(() => new Promise(resolve => {
+    const g = new window.google.maps.Geocoder();
+    const text = [addr.addressLine1, addr.addressLine2, addr.city, addr.pincode].filter(Boolean).join(', ');
+    if (!text) { resolve(null); return; }
+    g.geocode({ address: text }, (results, status) => {
+      if (status !== 'OK' || !results?.length) { resolve(null); return; }
+      const loc = results[0].geometry.location;
+      resolve({ lat: loc.lat(), lng: loc.lng() });
+    });
+  })).catch(() => null);
+}
+
 // Weight sub-unit options for kg-priced produce — lets the customer pick a
 // smaller pack size than a full kilogram before adding to cart. Built per
 // product from its admin-configured minOrderQty (e.g. radish starts at
@@ -136,7 +173,13 @@ export default function ExpressShop() {
       if (cancelled) return;
       const addrs = user?.addresses || [];
       const def = addrs.find(a => a.isDefault) || addrs[0];
-      if (def?.lat != null && def?.lng != null) fetchEta(def.lat, def.lng);
+      if (!def) return;
+      if (def.lat != null && def.lng != null) { fetchEta(def.lat, def.lng); return; }
+      // Most saved addresses have no lat/lng at all (the address-book's
+      // manual-entry form never collected it) — geocode the address text
+      // itself rather than giving up. This needs no device permission at
+      // all, so it's the most reliable path in the installed app.
+      geocodeAddressText(def).then(coords => { if (!cancelled && coords) fetchEta(coords.lat, coords.lng); });
     };
 
     if (!navigator.geolocation) {
@@ -211,11 +254,23 @@ export default function ExpressShop() {
   const stepFor = (productId, minOrderQty = 0.25) => weightStep[productId] ?? minOrderQty;
 
   const handleAdd = (productId, unit, minOrderQty) => addToCart(productId, unit === 'kg' ? stepFor(productId, minOrderQty) : 1);
-  const handleQtyChange = (productId, unit, direction, minOrderQty) => {
+  // Capped at stockQty right here in the UI — previously +/- had no ceiling
+  // at all, so a customer could keep tapping past what was actually in
+  // stock and only find out at checkout, where the mismatch read as a
+  // confusing error instead of the stepper simply refusing to go further.
+  // The server still validates independently (see expressCustomerController
+  // .updateCartItem) as the source of truth, but this stops the problem
+  // from ever being created in the first place.
+  const handleQtyChange = (productId, unit, direction, minOrderQty, stockQty) => {
     const step = unit === 'kg' ? stepFor(productId, minOrderQty) : 1;
     const current = qtyInCart(productId);
-    const next = Math.max(0, Math.round((current + direction * step) * 100) / 100);
     if (current === 0 && direction > 0) return handleAdd(productId, unit, minOrderQty);
+    const uncapped = Math.max(0, Math.round((current + direction * step) * 100) / 100);
+    const next = Math.min(uncapped, stockQty);
+    if (direction > 0 && next <= current) {
+      toast(`Only ${stockQty} ${unit === 'kg' ? 'kg' : ''} of this item in stock`.trim(), { icon: '📦' });
+      return;
+    }
     updateItem(productId, next);
   };
 
@@ -397,11 +452,12 @@ export default function ExpressShop() {
                   </button>
                 ) : (
                   <div className="mt-auto flex items-center justify-between bg-indigo-50 rounded-lg px-1 py-1">
-                    <button onClick={() => handleQtyChange(product._id, product.unit, -1, minOrderQty)}
+                    <button onClick={() => handleQtyChange(product._id, product.unit, -1, minOrderQty, stockQty)}
                       className="w-7 h-7 rounded-md flex items-center justify-center bg-white text-indigo-700 shadow-sm active:scale-90 transition"><FiMinus size={14} /></button>
                     <span className="font-bold text-sm text-indigo-900">{qty}{isKg ? ' kg' : ''}</span>
-                    <button onClick={() => handleQtyChange(product._id, product.unit, 1, minOrderQty)}
-                      className="w-7 h-7 rounded-md flex items-center justify-center bg-white text-indigo-700 shadow-sm active:scale-90 transition"><FiPlus size={14} /></button>
+                    <button onClick={() => handleQtyChange(product._id, product.unit, 1, minOrderQty, stockQty)}
+                      disabled={qty >= stockQty}
+                      className="w-7 h-7 rounded-md flex items-center justify-center bg-white text-indigo-700 shadow-sm active:scale-90 transition disabled:opacity-30 disabled:active:scale-100"><FiPlus size={14} /></button>
                   </div>
                 )}
               </div>

@@ -85,10 +85,18 @@ export default function ExpressProductDetail() {
   const total = isKg ? Math.round(pricePerUnit * packKg) : pricePerUnit;
 
   const handleAdd = () => addToCart(product._id, isKg ? packKg : 1);
+  // Capped at stockQty — see the matching fix in ExpressShop.jsx's own
+  // +/- stepper for why (previously nothing stopped a customer from
+  // stepping past what was actually in stock here either).
   const handleQtyChange = (direction) => {
     const step = isKg ? packKg : 1;
-    const next = Math.max(0, Math.round((qtyInCart + direction * step) * 100) / 100);
     if (qtyInCart === 0 && direction > 0) return handleAdd();
+    const uncapped = Math.max(0, Math.round((qtyInCart + direction * step) * 100) / 100);
+    const next = Math.min(uncapped, stockQty);
+    if (direction > 0 && next <= qtyInCart) {
+      toast(`Only ${stockQty}${isKg ? ' kg' : ''} of this item in stock`, { icon: '📦' });
+      return;
+    }
     updateItem(product._id, next);
   };
 
@@ -198,7 +206,7 @@ export default function ExpressProductDetail() {
               <div className="flex items-center justify-between bg-indigo-50 rounded-xl px-3 py-2.5 gap-4">
                 <button onClick={() => handleQtyChange(-1)} disabled={cartLoading} className="text-indigo-700 disabled:opacity-40"><FiMinus size={16} /></button>
                 <span className="font-bold text-base text-indigo-900">{qtyInCart}{isKg ? ' kg' : ''}</span>
-                <button onClick={() => handleQtyChange(1)} disabled={cartLoading} className="text-indigo-700 disabled:opacity-40"><FiPlus size={16} /></button>
+                <button onClick={() => handleQtyChange(1)} disabled={cartLoading || qtyInCart >= stockQty} className="text-indigo-700 disabled:opacity-40"><FiPlus size={16} /></button>
               </div>
             )}
           </div>

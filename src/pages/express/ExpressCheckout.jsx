@@ -24,6 +24,48 @@ import { useExpressCart } from '../../context/ExpressCartContext';
 import { useAuth } from '../../context/AuthContext';
 import SavedAddressPicker from '../../components/common/SavedAddressPicker';
 
+// Geocoding (address text -> lat/lng) via Google Maps — same pattern as
+// ExpressLocationPicker.jsx's own geocodeAddressText, duplicated locally
+// rather than imported since that file doesn't export these. This is the
+// PRIMARY source of coordinates for a manually-typed address, not a
+// last-resort fallback: WKWebView's support for navigator.geolocation is
+// known to be unreliable (the callback can simply never fire at all, no
+// matter how correctly the Permissions-Policy header or JS code is
+// written — see the watchdog-timeout workarounds elsewhere in this file
+// and in ExpressShop.jsx). Geocoding the address text the customer already
+// typed is a plain HTTPS API call with no device permission involved at
+// all, so it works identically on every platform — Chrome, Android,
+// iPhone — and needs nothing from the OS.
+function loadGoogleMaps() {
+  return new Promise((resolve, reject) => {
+    if (window.google?.maps) { resolve(); return; }
+    api.get('/eptofresh/maps/config')
+      .then(({ data }) => {
+        if (!data.key) { reject(new Error('No key')); return; }
+        const cb = '__gmExpressCheckout_' + Date.now();
+        window[cb] = () => { resolve(); delete window[cb]; };
+        const s = document.createElement('script');
+        s.src = `https://maps.googleapis.com/maps/api/js?key=${data.key}&libraries=places&callback=${cb}`;
+        s.async = true;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      })
+      .catch(reject);
+  });
+}
+function geocodeAddressText({ addressLine, city, pincode }) {
+  return loadGoogleMaps().then(() => new Promise(resolve => {
+    const g = new window.google.maps.Geocoder();
+    const text = [addressLine, city, pincode].filter(Boolean).join(', ');
+    if (!text) { resolve(null); return; }
+    g.geocode({ address: text }, (results, status) => {
+      if (status !== 'OK' || !results?.length) { resolve(null); return; }
+      const loc = results[0].geometry.location;
+      resolve({ lat: loc.lat(), lng: loc.lng() });
+    });
+  })).catch(() => null);
+}
+
 function loadRazorpayScript() {
   return new Promise((resolve, reject) => {
     if (window.Razorpay) return resolve();
@@ -132,19 +174,37 @@ export default function ExpressCheckout() {
     return () => { cancelled = true; clearTimeout(watchdog); };
   }, []);
 
+  // Geocode the typed/selected address text itself — the PRIMARY source of
+  // coordinates (ahead of device geolocation), since it needs no device
+  // permission at all and works identically on every platform. Debounced so
+  // it doesn't fire on every keystroke while the customer is still typing.
+  const [geocodedCoords, setGeocodedCoords] = useState(null);
+  useEffect(() => {
+    if (address.lat != null && address.lng != null) { setGeocodedCoords(null); return; } // already have real coords, nothing to geocode
+    if (!address.addressLine) return;
+    let cancelled = false;
+    const t = setTimeout(() => {
+      geocodeAddressText(address).then(coords => { if (!cancelled && coords) setGeocodedCoords(coords); });
+    }, 600);
+    return () => { cancelled = true; clearTimeout(t); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address.addressLine, address.city, address.pincode, address.lat, address.lng]);
+
   // Admin's distance-based quick-delivery estimate for this store (e.g.
   // "~30 min") — shown as the fast, recommended path, with the specific
   // time-window slots below it as the alternative for anyone who wants to
-  // schedule for later today instead. Pre-selected by default so a
-  // customer in a hurry can go straight from address to payment.
+  // schedule for later today instead.
+  //
+  // Deliberately NOT auto-selected: every checkout should land the customer
+  // on the slot-selection screen first and require an explicit tap (Quick
+  // Delivery or a specific window) before moving on to the address step —
+  // auto-picking Quick Delivery the instant its ETA loaded used to skip
+  // straight past this screen for anyone with a known ETA, which is the
+  // normal case, so most customers never actually saw it as a real choice.
   const quickEtaMinutes = selectedStore?.estimatedDeliveryMinutes ?? null;
   const quickSlot = quickEtaMinutes != null
     ? { key: 'quick', label: `Quick Delivery (~${quickEtaMinutes} min)`, date: todayStr, isNextDay: false, isQuick: true }
     : null;
-  useEffect(() => {
-    if (quickSlot && !slot) setSlot(quickSlot);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickEtaMinutes]);
 
   // Best available coordinates, recomputed fresh every render rather than
   // ever being written INTO address.lat/lng — the first version of this fix
@@ -158,10 +218,11 @@ export default function ExpressCheckout() {
   // resolved a few seconds later — silently killing the Quick Delivery ETA
   // for exactly the customers this was meant to fix. Deriving it fresh each
   // render instead means it automatically improves as better sources
-  // become available: saved/typed coordinates > device location > store's
-  // own location as the last resort.
-  const effectiveLat = address.lat ?? deviceCoords?.lat ?? selectedStore?.location?.lat;
-  const effectiveLng = address.lng ?? deviceCoords?.lng ?? selectedStore?.location?.lng;
+  // become available: saved/typed coordinates > geocoded address text >
+  // device location (least reliable in WKWebView) > store's own location
+  // as the very last resort.
+  const effectiveLat = address.lat ?? geocodedCoords?.lat ?? deviceCoords?.lat ?? selectedStore?.location?.lat;
+  const effectiveLng = address.lng ?? geocodedCoords?.lng ?? deviceCoords?.lng ?? selectedStore?.location?.lng;
 
   // If the store's ETA was never populated (e.g. the customer reached
   // checkout without ExpressShop's own ETA refresh ever resolving — common
