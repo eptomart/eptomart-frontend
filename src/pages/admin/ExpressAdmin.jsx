@@ -373,17 +373,35 @@ function DeliverySlotsPanel({ store, onChanged }) {
 function DeliveryFeePanel({ store, onChanged }) {
   const [minOrder, setMinOrder] = useState(store.deliveryFeeConfig?.minOrderForFreeDelivery ?? 199);
   const [fee, setFee] = useState(store.deliveryFeeConfig?.deliveryFeeBelowMinimum ?? 29);
+  // Hard delivery-range cutoff for THIS store — blank means "use the
+  // platform default from Settings", not zero.
+  const [maxKm, setMaxKm] = useState(store.deliveryFeeConfig?.maxDeliveryDistanceKm ?? '');
+  // Distance surcharge tiering — e.g. first 5 km free, then +₹18 every 2 km
+  // beyond that. chargePerStep left at 0 disables the surcharge entirely.
+  const [freeKm, setFreeKm] = useState(store.deliveryFeeConfig?.freeDeliveryDistanceKm ?? 5);
+  const [stepKm, setStepKm] = useState(store.deliveryFeeConfig?.distanceStepKm ?? 2);
+  const [chargePerStep, setChargePerStep] = useState(store.deliveryFeeConfig?.distanceChargePerStep ?? 0);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
     const minOrderNum = Number(minOrder), feeNum = Number(fee);
+    const maxKmNum = maxKm === '' ? null : Number(maxKm);
+    const freeKmNum = Number(freeKm), stepKmNum = Number(stepKm), chargeNum = Number(chargePerStep);
     if (!Number.isFinite(minOrderNum) || minOrderNum < 0 || !Number.isFinite(feeNum) || feeNum < 0) {
       return toast.error('Enter valid non-negative numbers');
+    }
+    if (maxKmNum != null && (!Number.isFinite(maxKmNum) || maxKmNum < 0)) {
+      return toast.error('Max delivery distance must be a non-negative number (or blank to use the platform default)');
+    }
+    if (!Number.isFinite(freeKmNum) || freeKmNum < 0 || !Number.isFinite(stepKmNum) || stepKmNum <= 0 || !Number.isFinite(chargeNum) || chargeNum < 0) {
+      return toast.error('Enter valid numbers for the distance surcharge fields');
     }
     setSaving(true);
     try {
       await api.patch(`/express/admin/stores/${store._id}/delivery-fee`, {
         minOrderForFreeDelivery: minOrderNum, deliveryFeeBelowMinimum: feeNum,
+        maxDeliveryDistanceKm: maxKmNum,
+        freeDeliveryDistanceKm: freeKmNum, distanceStepKm: stepKmNum, distanceChargePerStep: chargeNum,
       });
       toast.success('Delivery fee rule updated');
       onChanged?.();
@@ -410,6 +428,34 @@ function DeliveryFeePanel({ store, onChanged }) {
             className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
         </label>
       </div>
+
+      <p className="text-xs text-gray-500 pt-2 border-t">
+        Maximum delivery distance for this store — leave blank to use the platform-wide default set in Settings.
+      </p>
+      <label className="text-xs font-semibold text-gray-500">Max Delivery Distance (km)
+        <input type="number" min={0} placeholder="Platform default" value={maxKm} onChange={e => setMaxKm(e.target.value)}
+          className="border rounded-lg px-3 py-2 text-sm w-full mt-1 sm:w-48" />
+      </label>
+
+      <p className="text-xs text-gray-500 pt-2 border-t">
+        Distance surcharge, added on top of the fee above — e.g. first 5 km free, then +₹18 for every
+        additional 2 km. Leave &ldquo;Charge per Step&rdquo; at 0 to disable this surcharge.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <label className="text-xs font-semibold text-gray-500">Free Distance (km)
+          <input type="number" min={0} step="0.5" value={freeKm} onChange={e => setFreeKm(e.target.value)}
+            className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+        </label>
+        <label className="text-xs font-semibold text-gray-500">Step Size (km)
+          <input type="number" min={0.1} step="0.5" value={stepKm} onChange={e => setStepKm(e.target.value)}
+            className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+        </label>
+        <label className="text-xs font-semibold text-gray-500">Charge per Step (₹)
+          <input type="number" min={0} value={chargePerStep} onChange={e => setChargePerStep(e.target.value)}
+            className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+        </label>
+      </div>
+
       <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50 w-fit">
         {saving ? 'Saving…' : 'Save Delivery Fee'}
       </button>
@@ -883,7 +929,7 @@ function ProductsTab() {
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState(null); // the chosen Koyambedu product
-  const [form, setForm] = useState({ unit: 'kg', unitsPerKg: '', procurementBaseCost: '', customMarginPct: '', minOrderQty: '' });
+  const [form, setForm] = useState({ unit: 'kg', unitsPerKg: '', procurementBaseCost: '', customMarginPct: '', minOrderQty: '', maxOrderQty: '' });
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState({}); // productId -> breakdown
   const [editId, setEditId] = useState(null);
@@ -925,6 +971,7 @@ function ProductsTab() {
       procurementBaseCost: p.procurementBaseCost ?? '',
       customMarginPct: p.customMarginPct ?? '',
       minOrderQty: p.minOrderQty ?? '',
+      maxOrderQty: p.maxOrderQty ?? '',
       isActive: p.isActive !== false,
     });
   };
@@ -938,6 +985,7 @@ function ProductsTab() {
         procurementBaseCost: editForm.procurementBaseCost,
         customMarginPct: editForm.customMarginPct === '' ? null : editForm.customMarginPct,
         minOrderQty: editForm.minOrderQty === '' ? undefined : editForm.minOrderQty,
+        maxOrderQty: editForm.maxOrderQty === '' ? '' : editForm.maxOrderQty,
         isActive: editForm.isActive,
       });
       toast.success('Product updated');
@@ -1011,9 +1059,10 @@ function ProductsTab() {
         procurementBaseCost: form.procurementBaseCost,
         customMarginPct: form.customMarginPct || null,
         minOrderQty: form.minOrderQty || null,
+        maxOrderQty: form.maxOrderQty || null,
       });
       toast.success('Product linked to Express');
-      setForm({ unit: 'kg', unitsPerKg: '', procurementBaseCost: '', customMarginPct: '', minOrderQty: '' });
+      setForm({ unit: 'kg', unitsPerKg: '', procurementBaseCost: '', customMarginPct: '', minOrderQty: '', maxOrderQty: '' });
       setSelected(null); setSearch(''); setShowForm(false);
       load();
     } catch (err) {
@@ -1083,6 +1132,11 @@ function ProductsTab() {
             <input type="number" step="0.01" min="0.01" placeholder="Min order qty (e.g. 0.25 for 250 g)" value={form.minOrderQty}
               onChange={e => setForm(f => ({ ...f, minOrderQty: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm w-full" />
             <p className="text-[10px] text-gray-400 mt-1">Smallest amount a customer can order (defaults to 0.25 kg). Only matters for kg/weight-based units.</p>
+          </div>
+          <div>
+            <input type="number" step="0.01" min="0.01" placeholder="Max order qty per order (optional)" value={form.maxOrderQty}
+              onChange={e => setForm(f => ({ ...f, maxOrderQty: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm w-full" />
+            <p className="text-[10px] text-gray-400 mt-1">Cap on how much of this item one customer can buy per order (leave blank for no cap). Separate from stock.</p>
           </div>
           <div className="sm:col-span-2 flex gap-2">
             <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">
@@ -1175,6 +1229,8 @@ function ProductsTab() {
                   onChange={e => setEditForm(f => ({ ...f, customMarginPct: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
                 <input type="number" step="0.01" min="0.01" placeholder="Min order qty (e.g. 0.25)" value={editForm.minOrderQty}
                   onChange={e => setEditForm(f => ({ ...f, minOrderQty: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <input type="number" step="0.01" min="0.01" placeholder="Max order qty per order (optional)" value={editForm.maxOrderQty}
+                  onChange={e => setEditForm(f => ({ ...f, maxOrderQty: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
                 <button onClick={() => setEditForm(f => ({ ...f, isActive: !f.isActive }))}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold justify-center sm:col-span-2 ${editForm.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                   {editForm.isActive ? <FiToggleRight size={14} /> : <FiToggleLeft size={14} />} {editForm.isActive ? 'Active' : 'Inactive'}
@@ -1421,7 +1477,7 @@ function OnlineCatalogTab({ stores, reload }) {
 // EXPRESS_CATEGORIES below for the fixed list including "Combos".
 // ══════════════════════════════════════════════
 function CreateProductTab() {
-  const blankForm = { name: '', category: '', unit: 'kg', procurementBaseCost: '', minOrderQty: '', description: '', isCombo: false };
+  const blankForm = { name: '', category: '', unit: 'kg', procurementBaseCost: '', minOrderQty: '', maxOrderQty: '', description: '', isCombo: false };
   const [form, setForm] = useState(blankForm);
   const [comboContents, setComboContents] = useState([]); // [{ product, name, unit, qty }]
   const [comboSearch, setComboSearch] = useState('');
@@ -1492,6 +1548,7 @@ function CreateProductTab() {
         description: form.description,
         procurementBaseCost: Number(form.procurementBaseCost),
         minOrderQty: form.minOrderQty || undefined,
+        maxOrderQty: form.maxOrderQty || undefined,
         isCombo: form.isCombo,
         comboContents: form.isCombo ? comboContents.map(c => ({ product: c.product, name: c.name, unit: c.unit, qty: Number(c.qty) || 0 })) : [],
       };
@@ -1542,11 +1599,18 @@ function CreateProductTab() {
         </label>
 
         {form.unit === 'kg' && (
-          <label className="text-xs font-semibold text-gray-500">Min order quantity (kg)
-            <input type="number" step="0.01" min="0.01" value={form.minOrderQty} onChange={e => setForm(f => ({ ...f, minOrderQty: e.target.value }))}
-              placeholder="e.g. 0.25 for 250 g minimum" className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
-            <span className="text-[10px] font-normal text-gray-400 block mt-0.5">Smallest amount a customer can order — defaults to 0.25 kg if left blank.</span>
-          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="text-xs font-semibold text-gray-500">Min order quantity (kg)
+              <input type="number" step="0.01" min="0.01" value={form.minOrderQty} onChange={e => setForm(f => ({ ...f, minOrderQty: e.target.value }))}
+                placeholder="e.g. 0.25 for 250 g minimum" className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+              <span className="text-[10px] font-normal text-gray-400 block mt-0.5">Smallest amount a customer can order — defaults to 0.25 kg if left blank.</span>
+            </label>
+            <label className="text-xs font-semibold text-gray-500">Max order quantity per order (kg)
+              <input type="number" step="0.01" min="0.01" value={form.maxOrderQty} onChange={e => setForm(f => ({ ...f, maxOrderQty: e.target.value }))}
+                placeholder="Optional — no cap if blank" className="border rounded-lg px-3 py-2 text-sm w-full mt-1" />
+              <span className="text-[10px] font-normal text-gray-400 block mt-0.5">Caps how much one customer can order per order — separate from stock.</span>
+            </label>
+          </div>
         )}
 
         <div>
@@ -1955,7 +2019,7 @@ function StoreInventoryTab({ stores }) {
   const [assignResults, setAssignResults] = useState([]);
   const [assignSearching, setAssignSearching] = useState(false);
   const [assignSelected, setAssignSelected] = useState(null); // chosen Koyambedu product
-  const [assignForm, setAssignForm] = useState({ unit: 'kg', procurementBaseCost: '', customMarginPct: '', minOrderQty: '', stockQty: '', priceOverride: '', note: '' });
+  const [assignForm, setAssignForm] = useState({ unit: 'kg', procurementBaseCost: '', customMarginPct: '', minOrderQty: '', maxOrderQty: '', stockQty: '', priceOverride: '', note: '' });
   const [assignSaving, setAssignSaving] = useState(false);
 
   const assignAlreadyLinked = assignSelected && products.some(p => String(p.koyambeduProduct?._id) === String(assignSelected._id));
@@ -1981,7 +2045,7 @@ function StoreInventoryTab({ stores }) {
 
   const resetAssignForm = () => {
     setShowAssign(false); setAssignSelected(null); setAssignSearch('');
-    setAssignForm({ unit: 'kg', procurementBaseCost: '', customMarginPct: '', minOrderQty: '', stockQty: '', priceOverride: '', note: '' });
+    setAssignForm({ unit: 'kg', procurementBaseCost: '', customMarginPct: '', minOrderQty: '', maxOrderQty: '', stockQty: '', priceOverride: '', note: '' });
   };
 
   const submitAssign = async (e) => {
@@ -2000,6 +2064,7 @@ function StoreInventoryTab({ stores }) {
         procurementBaseCost: assignForm.procurementBaseCost || undefined,
         customMarginPct: assignForm.customMarginPct || null,
         minOrderQty: assignForm.minOrderQty || undefined,
+        maxOrderQty: assignForm.maxOrderQty || undefined,
         stockQty: assignForm.stockQty || 0,
         note: assignForm.note || undefined,
       };
@@ -2227,8 +2292,12 @@ function StoreInventoryTab({ stores }) {
             </>
           )}
           {assignForm.unit === 'kg' && (
-            <input type="number" step="0.01" min="0.01" placeholder="Min order qty, kg (e.g. 0.25 for 250 g)" value={assignForm.minOrderQty}
-              onChange={e => setAssignForm(f => ({ ...f, minOrderQty: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+            <>
+              <input type="number" step="0.01" min="0.01" placeholder="Min order qty, kg (e.g. 0.25 for 250 g)" value={assignForm.minOrderQty}
+                onChange={e => setAssignForm(f => ({ ...f, minOrderQty: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+              <input type="number" step="0.01" min="0.01" placeholder="Max order qty per order, kg (optional)" value={assignForm.maxOrderQty}
+                onChange={e => setAssignForm(f => ({ ...f, maxOrderQty: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+            </>
           )}
           <input type="number" min="0" placeholder="Stock to add at this store" value={assignForm.stockQty}
             onChange={e => setAssignForm(f => ({ ...f, stockQty: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />

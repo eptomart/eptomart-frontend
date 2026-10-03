@@ -79,22 +79,32 @@ export default function ExpressProductDetail() {
   const { product, pricePerUnit, stockQty } = data;
   const isKg = product.unit === 'kg';
   const minOrderQty = product.minOrderQty || 0.25;
+  // Merchant-set per-order cap (distinct from stock) — null/undefined means
+  // no cap, so the effective ceiling just falls back to stockQty.
+  const maxOrderQty = product.maxOrderQty;
+  const effectiveMax = maxOrderQty != null ? Math.min(stockQty, maxOrderQty) : stockQty;
   const packKg = weightKg ?? minOrderQty;
   const qtyInCart = cart.items?.find(i => String(i.product) === String(product._id))?.quantity || 0;
   const outOfStock = stockQty === 0;
   const total = isKg ? Math.round(pricePerUnit * packKg) : pricePerUnit;
 
   const handleAdd = () => addToCart(product._id, isKg ? packKg : 1);
-  // Capped at stockQty — see the matching fix in ExpressShop.jsx's own
-  // +/- stepper for why (previously nothing stopped a customer from
-  // stepping past what was actually in stock here either).
+  // Capped at min(stockQty, maxOrderQty) — see the matching fix in
+  // ExpressShop.jsx's own +/- stepper for why (previously nothing stopped a
+  // customer from stepping past what was actually in stock/allowed here
+  // either).
   const handleQtyChange = (direction) => {
     const step = isKg ? packKg : 1;
     if (qtyInCart === 0 && direction > 0) return handleAdd();
     const uncapped = Math.max(0, Math.round((qtyInCart + direction * step) * 100) / 100);
-    const next = Math.min(uncapped, stockQty);
+    const next = Math.min(uncapped, effectiveMax);
     if (direction > 0 && next <= qtyInCart) {
-      toast(`Only ${stockQty}${isKg ? ' kg' : ''} of this item in stock`, { icon: '📦' });
+      toast(
+        maxOrderQty != null && maxOrderQty < stockQty
+          ? `Max ${maxOrderQty}${isKg ? ' kg' : ''} of this item per order`
+          : `Only ${stockQty}${isKg ? ' kg' : ''} of this item in stock`,
+        { icon: '📦' }
+      );
       return;
     }
     updateItem(product._id, next);
@@ -206,7 +216,7 @@ export default function ExpressProductDetail() {
               <div className="flex items-center justify-between bg-indigo-50 rounded-xl px-3 py-2.5 gap-4">
                 <button onClick={() => handleQtyChange(-1)} disabled={cartLoading} className="text-indigo-700 disabled:opacity-40"><FiMinus size={16} /></button>
                 <span className="font-bold text-base text-indigo-900">{qtyInCart}{isKg ? ' kg' : ''}</span>
-                <button onClick={() => handleQtyChange(1)} disabled={cartLoading || qtyInCart >= stockQty} className="text-indigo-700 disabled:opacity-40"><FiPlus size={16} /></button>
+                <button onClick={() => handleQtyChange(1)} disabled={cartLoading || qtyInCart >= effectiveMax} className="text-indigo-700 disabled:opacity-40"><FiPlus size={16} /></button>
               </div>
             )}
           </div>

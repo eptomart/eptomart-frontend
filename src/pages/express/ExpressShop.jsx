@@ -254,21 +254,30 @@ export default function ExpressShop() {
   const stepFor = (productId, minOrderQty = 0.25) => weightStep[productId] ?? minOrderQty;
 
   const handleAdd = (productId, unit, minOrderQty) => addToCart(productId, unit === 'kg' ? stepFor(productId, minOrderQty) : 1);
-  // Capped at stockQty right here in the UI — previously +/- had no ceiling
-  // at all, so a customer could keep tapping past what was actually in
-  // stock and only find out at checkout, where the mismatch read as a
+  // Effective ceiling is whichever is tighter: physical stock, or the
+  // merchant-set per-order cap (maxOrderQty, null = no cap).
+  const effectiveMax = (stockQty, maxOrderQty) => maxOrderQty != null ? Math.min(stockQty, maxOrderQty) : stockQty;
+  // Capped at effectiveMax right here in the UI — previously +/- had no
+  // ceiling at all, so a customer could keep tapping past what was actually
+  // in stock and only find out at checkout, where the mismatch read as a
   // confusing error instead of the stepper simply refusing to go further.
   // The server still validates independently (see expressCustomerController
   // .updateCartItem) as the source of truth, but this stops the problem
   // from ever being created in the first place.
-  const handleQtyChange = (productId, unit, direction, minOrderQty, stockQty) => {
+  const handleQtyChange = (productId, unit, direction, minOrderQty, stockQty, maxOrderQty) => {
     const step = unit === 'kg' ? stepFor(productId, minOrderQty) : 1;
     const current = qtyInCart(productId);
     if (current === 0 && direction > 0) return handleAdd(productId, unit, minOrderQty);
+    const max = effectiveMax(stockQty, maxOrderQty);
     const uncapped = Math.max(0, Math.round((current + direction * step) * 100) / 100);
-    const next = Math.min(uncapped, stockQty);
+    const next = Math.min(uncapped, max);
     if (direction > 0 && next <= current) {
-      toast(`Only ${stockQty} ${unit === 'kg' ? 'kg' : ''} of this item in stock`.trim(), { icon: '📦' });
+      toast(
+        maxOrderQty != null && maxOrderQty < stockQty
+          ? `Max ${maxOrderQty} ${unit === 'kg' ? 'kg' : ''} of this item per order`.trim()
+          : `Only ${stockQty} ${unit === 'kg' ? 'kg' : ''} of this item in stock`.trim(),
+        { icon: '📦' }
+      );
       return;
     }
     updateItem(productId, next);
@@ -408,6 +417,8 @@ export default function ExpressShop() {
             const qty = qtyInCart(product._id);
             const isKg = product.unit === 'kg';
             const minOrderQty = product.minOrderQty || 0.25;
+            const maxOrderQty = product.maxOrderQty;
+            const addCeiling = effectiveMax(stockQty, maxOrderQty);
             const weightOptions = isKg ? weightOptionsFor(minOrderQty) : [];
             return (
               <div key={product._id} className="bg-white border rounded-xl p-3 flex flex-col transition hover:shadow-md">
@@ -452,11 +463,11 @@ export default function ExpressShop() {
                   </button>
                 ) : (
                   <div className="mt-auto flex items-center justify-between bg-indigo-50 rounded-lg px-1 py-1">
-                    <button onClick={() => handleQtyChange(product._id, product.unit, -1, minOrderQty, stockQty)}
+                    <button onClick={() => handleQtyChange(product._id, product.unit, -1, minOrderQty, stockQty, maxOrderQty)}
                       className="w-7 h-7 rounded-md flex items-center justify-center bg-white text-indigo-700 shadow-sm active:scale-90 transition"><FiMinus size={14} /></button>
                     <span className="font-bold text-sm text-indigo-900">{qty}{isKg ? ' kg' : ''}</span>
-                    <button onClick={() => handleQtyChange(product._id, product.unit, 1, minOrderQty, stockQty)}
-                      disabled={qty >= stockQty}
+                    <button onClick={() => handleQtyChange(product._id, product.unit, 1, minOrderQty, stockQty, maxOrderQty)}
+                      disabled={qty >= addCeiling}
                       className="w-7 h-7 rounded-md flex items-center justify-center bg-white text-indigo-700 shadow-sm active:scale-90 transition disabled:opacity-30 disabled:active:scale-100"><FiPlus size={14} /></button>
                   </div>
                 )}

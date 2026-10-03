@@ -675,9 +675,18 @@ export default function ExpressCheckout() {
             <span>Delivery Fee{quote.distanceKm != null ? ` (${quote.distanceKm} km)` : ''}</span>
             <span>{quote.deliveryFee > 0 ? `₹${quote.deliveryFee}` : 'FREE'}</span>
           </div>
-          {quote.deliveryFee > 0 && quote.minOrderForFreeDelivery != null && (
+          {quote.deliveryFee > 0 && quote.minOrderForFreeDelivery != null && quote.valueFee > 0 && (
             <p className="text-[11px] text-gray-400 mb-1">
               Orders below ₹{quote.minOrderForFreeDelivery} carry a ₹{quote.deliveryFeeBelowMinimum} delivery fee — order ₹{quote.minOrderForFreeDelivery}+ for free delivery.
+            </p>
+          )}
+          {/* Distance surcharge breakdown — only shown when this store has one
+              configured (distanceChargePerStep > 0) and it's actually kicked in
+              for this order, so the explanation always matches a non-zero charge. */}
+          {quote.distanceSurcharge > 0 && (
+            <p className="text-[11px] text-gray-400 mb-1">
+              Includes ₹{quote.distanceSurcharge} distance charge: first {quote.freeDeliveryDistanceKm} km free, then ₹{quote.distanceChargePerStep} for every {quote.distanceStepKm} km beyond that
+              {quote.distanceKm != null ? ` (you're ${quote.distanceKm} km away)` : ''}.
             </p>
           )}
           {quote.couponDiscount > 0 && (
