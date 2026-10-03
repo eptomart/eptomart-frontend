@@ -76,7 +76,7 @@ export default function ExpressProductDetail() {
     );
   }
 
-  const { product, pricePerUnit, stockQty } = data;
+  const { product, pricePerUnit, mrp, discountPercent, stockQty } = data;
   const isKg = product.unit === 'kg';
   const minOrderQty = product.minOrderQty || 0.25;
   // Merchant-set per-order cap (distinct from stock) — null/undefined means
@@ -87,6 +87,8 @@ export default function ExpressProductDetail() {
   const qtyInCart = cart.items?.find(i => String(i.product) === String(product._id))?.quantity || 0;
   const outOfStock = stockQty === 0;
   const total = isKg ? Math.round(pricePerUnit * packKg) : pricePerUnit;
+  const mrpTotal = mrp ? (isKg ? Math.round(mrp * packKg) : mrp) : null;
+  const showDiscount = mrp > pricePerUnit;
 
   const handleAdd = () => addToCart(product._id, isKg ? packKg : 1);
   // Capped at min(stockQty, maxOrderQty) — see the matching fix in
@@ -155,7 +157,15 @@ export default function ExpressProductDetail() {
             </span>
           )}
           <h1 className="font-extrabold text-gray-900 text-xl leading-tight">{product.name}</h1>
-          <p className="font-black text-2xl text-indigo-700 mt-2">₹{pricePerUnit}<span className="text-sm font-semibold text-gray-400">/{product.unit}</span></p>
+          <p className="font-black text-2xl text-indigo-700 mt-2 flex items-center gap-2 flex-wrap">
+            <span>₹{pricePerUnit}<span className="text-sm font-semibold text-gray-400">/{product.unit}</span></span>
+            {showDiscount && (
+              <>
+                <span className="text-base font-semibold text-gray-300 line-through">₹{mrp}</span>
+                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">{discountPercent}% off</span>
+              </>
+            )}
+          </p>
 
           {product.description && (
             <p className="mt-3 text-gray-500 text-sm leading-relaxed border-t pt-3">{product.description}</p>
@@ -205,7 +215,10 @@ export default function ExpressProductDetail() {
           <div className="max-w-2xl mx-auto flex items-center gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-[10px] text-gray-400 leading-none">{isKg ? `${weightKg} kg` : 'each'} · ₹{pricePerUnit}/{product.unit}</p>
-              <p className="font-black text-base text-gray-800">₹{total}</p>
+              <p className="font-black text-base text-gray-800 flex items-center gap-1.5">
+                <span>₹{total}</span>
+                {showDiscount && <span className="text-xs font-semibold text-gray-300 line-through">₹{mrpTotal}</span>}
+              </p>
             </div>
             {qtyInCart === 0 ? (
               <button onClick={handleAdd} disabled={cartLoading}

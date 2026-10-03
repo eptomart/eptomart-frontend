@@ -16,7 +16,7 @@ import {
   FiBluetooth, FiPrinter, FiPauseCircle, FiPlayCircle, FiLink2, FiClock,
 } from 'react-icons/fi';
 import api from '../../utils/api';
-import { isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected, printPluList } from '../../utils/expressThermalPrinter';
+import { isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected, printPluList, printReceipt } from '../../utils/expressThermalPrinter';
 
 // Shareable customer-facing link for a single Express product — used by the
 // "Copy Link" button on the Product Catalogue so an admin can drop it
@@ -46,6 +46,8 @@ const EXPRESS_CATEGORIES = [
 
 const TABS = [
   { key: 'dashboard',  label: 'Dashboard',   Icon: FiGrid },
+  { key: 'orders',     label: 'Orders',      Icon: FiFileText },
+  { key: 'pnl',        label: 'P&L',         Icon: FiTrendingUp },
   { key: 'stores',     label: 'Stores',      Icon: FiMapPin },
   { key: 'managers',   label: 'Managers',    Icon: FiUserCheck },
   { key: 'pos',        label: 'POS Users',   Icon: FiUsers },
@@ -89,6 +91,8 @@ export default function ExpressAdmin() {
       </div>
 
       {tab === 'dashboard'  && <DashboardTab stores={stores} />}
+      {tab === 'orders'     && <OrdersTab stores={stores} />}
+      {tab === 'pnl'        && <OrdersPnLTab stores={stores} />}
       {tab === 'stores'    && <StoresTab stores={stores} reload={loadStores} />}
       {tab === 'managers'  && <ManagersTab stores={stores} />}
       {tab === 'pos'       && <POSUsersTab stores={stores} />}
@@ -188,6 +192,348 @@ function DashboardTab({ stores }) {
         ))}
         {visits.length === 0 && <p className="text-sm text-gray-400 px-3 py-3">No visits recorded yet.</p>}
       </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
+// ORDERS TAB — admin-wide, cross-store view of every Express order.
+// Separate from the Store Manager's own dashboard (which is correctly
+// scoped to their one store) — this is the one place an admin can see,
+// filter, advance the status of, and print a bill for ANY store's order,
+// plus enter the per-bill transport/packing charge the P&L report below
+// is built from.
+// ══════════════════════════════════════════════
+const ORDER_STATUS_LABELS = {
+  placed: 'Placed', confirmed: 'Confirmed', preparing: 'Preparing',
+  out_for_delivery: 'Out for Delivery', delivered: 'Delivered', cancelled: 'Cancelled',
+};
+const ORDER_STATUS_COLORS = {
+  placed: { bg: '#f3f4f6', fg: '#4b5563' }, confirmed: { bg: '#dbeafe', fg: '#1d4ed8' },
+  preparing: { bg: '#fef3c7', fg: '#b45309' }, out_for_delivery: { bg: '#e0e7ff', fg: '#4338ca' },
+  delivered: { bg: '#dcfce7', fg: '#16a34a' }, cancelled: { bg: '#fee2e2', fg: '#dc2626' },
+};
+// Forward-only next step for the "Advance" button — mirrors ADMIN_ORDER_STEPS
+// in expressAdminController.js; cancelling is offered separately.
+const NEXT_ORDER_STEP = { placed: 'confirmed', confirmed: 'preparing', preparing: 'out_for_delivery', out_for_delivery: 'delivered' };
+
+function OrdersTab({ stores }) {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [storeId, setStoreId] = useState('');
+  const [status, setStatus] = useState('');
+  const [range, setRange] = useState({ from: '', to: '' });
+  const [search, setSearch] = useState('');
+  const [chargeDrafts, setChargeDrafts] = useState({}); // orderId -> { transportCharge, packingCharge }
+  const [savingCharges, setSavingCharges] = useState(null);
+  const [advancing, setAdvancing] = useState(null);
+  // Same shared Bluetooth connection as Store Inventory / Manager dashboard —
+  // connecting here (or there) covers "Print Bill" below either way.
+  const [printerConnected, setPrinterConnected] = useState(isPrinterConnected());
+  const [connectingPrinter, setConnectingPrinter] = useState(false);
+
+  const togglePrinterConnection = async () => {
+    if (printerConnected) { disconnectPrinter(); setPrinterConnected(false); return; }
+    if (!isBluetoothSupported()) return toast.error('Web Bluetooth is not supported in this browser — use Chrome/Edge on Android, Windows, macOS or ChromeOS.');
+    setConnectingPrinter(true);
+    try {
+      const { name } = await connectPrinter();
+      setPrinterConnected(true);
+      toast.success(`Connected to ${name}`);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to connect to printer');
+    } finally {
+      setConnectingPrinter(false);
+    }
+  };
+
+  const load = () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (storeId) params.set('storeId', storeId);
+    if (status) params.set('status', status);
+    if (range.from) params.set('from', range.from);
+    if (range.to) params.set('to', range.to);
+    if (search.trim()) params.set('search', search.trim());
+    api.get(`/express/admin/orders?${params.toString()}`)
+      .then(r => setOrders(r.data.orders || []))
+      .catch(() => toast.error('Failed to load orders'))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, [storeId, status, range.from, range.to]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Search is debounced separately so every keystroke doesn't re-fetch.
+  useEffect(() => { const t = setTimeout(load, 350); return () => clearTimeout(t); }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const advanceStatus = async (order) => {
+    const next = NEXT_ORDER_STEP[order.orderStatus];
+    if (!next) return;
+    setAdvancing(order._id);
+    try {
+      await api.patch(`/express/admin/orders/${order._id}/status`, { status: next });
+      toast.success(`Order marked ${ORDER_STATUS_LABELS[next]}`);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update status');
+    } finally {
+      setAdvancing(null);
+    }
+  };
+
+  const cancelOrder = async (order) => {
+    if (!window.confirm(`Cancel order ${order.orderId}? This cannot be undone.`)) return;
+    setAdvancing(order._id);
+    try {
+      await api.patch(`/express/admin/orders/${order._id}/status`, { status: 'cancelled', note: 'Cancelled by admin' });
+      toast.success('Order cancelled');
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to cancel order');
+    } finally {
+      setAdvancing(null);
+    }
+  };
+
+  const draftFor = (id) => chargeDrafts[id] || {};
+  const setChargeDraft = (id, patch) => setChargeDrafts(d => ({ ...d, [id]: { ...d[id], ...patch } }));
+
+  const saveCharges = async (order) => {
+    const d = draftFor(order._id);
+    if (d.transportCharge === undefined && d.packingCharge === undefined) return;
+    setSavingCharges(order._id);
+    try {
+      await api.patch(`/express/admin/orders/${order._id}/charges`, {
+        transportCharge: d.transportCharge, packingCharge: d.packingCharge,
+      });
+      toast.success('Bill charges saved');
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to save charges');
+    } finally {
+      setSavingCharges(null);
+    }
+  };
+
+  const printBill = (order) => {
+    printReceipt({
+      billNo: order.orderId,
+      dateStr: new Date(order.createdAt).toLocaleDateString('en-IN'),
+      timeLabel: new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+      storeName: order.store?.name || '',
+      customerName: order.buyer?.name || order.deliveryAddress?.name || 'Customer',
+      items: (order.items || []).map(it => ({ name: it.name, unit: it.unit, price: it.unitPrice, quantity: it.quantity })),
+      subtotal: order.pricing?.subtotal || 0,
+      discountPercent: 0,
+      discountAmount: order.pricing?.couponDiscount || 0,
+      total: order.pricing?.total || 0,
+    }).catch(() => toast.error('Failed to print — is the printer connected?'));
+  };
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h2 className="font-bold text-gray-700">Orders — All Stores</h2>
+        <div className="flex flex-wrap gap-2">
+          <input placeholder="Search order ID…" value={search} onChange={e => setSearch(e.target.value)}
+            className="border rounded-lg px-2.5 py-1.5 text-xs w-36" />
+          <select value={storeId} onChange={e => setStoreId(e.target.value)} className="border rounded-lg px-2.5 py-1.5 text-xs">
+            <option value="">All stores</option>
+            {stores.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+          </select>
+          <select value={status} onChange={e => setStatus(e.target.value)} className="border rounded-lg px-2.5 py-1.5 text-xs">
+            <option value="">All statuses</option>
+            {Object.entries(ORDER_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+          <input type="date" value={range.from} onChange={e => setRange(r => ({ ...r, from: e.target.value }))} className="border rounded-lg px-2.5 py-1.5 text-xs" />
+          <input type="date" value={range.to} onChange={e => setRange(r => ({ ...r, to: e.target.value }))} className="border rounded-lg px-2.5 py-1.5 text-xs" />
+          <button onClick={togglePrinterConnection} disabled={connectingPrinter}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
+            style={printerConnected ? { background: '#dcfce7', color: '#16a34a' } : { background: '#f3f4f6', color: '#4b5563' }}>
+            <FiBluetooth size={12} /> {connectingPrinter ? 'Connecting…' : printerConnected ? 'Printer Connected' : 'Connect Printer'}
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-gray-400 py-6 text-center">Loading…</p>
+      ) : orders.length === 0 ? (
+        <p className="text-sm text-gray-400 py-6 text-center">No orders found.</p>
+      ) : (
+        <div className="space-y-2">
+          {orders.map(order => {
+            const d = draftFor(order._id);
+            const color = ORDER_STATUS_COLORS[order.orderStatus] || ORDER_STATUS_COLORS.placed;
+            const next = NEXT_ORDER_STEP[order.orderStatus];
+            const isTerminal = order.orderStatus === 'cancelled' || order.orderStatus === 'delivered';
+            return (
+              <div key={order._id} className="bg-white border rounded-xl p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <div>
+                    <p className="font-bold text-sm text-gray-800">{order.orderId} <span className="text-gray-400 font-normal">· {order.store?.name || '—'}</span></p>
+                    <p className="text-xs text-gray-400">
+                      {order.buyer?.name || order.deliveryAddress?.name || 'Customer'} · {order.buyer?.phone || order.deliveryAddress?.phone || ''} ·{' '}
+                      {new Date(order.createdAt).toLocaleString('en-IN')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background: color.bg, color: color.fg }}>
+                      {ORDER_STATUS_LABELS[order.orderStatus] || order.orderStatus}
+                    </span>
+                    <span className="font-black text-sm text-gray-800">₹{order.pricing?.total ?? 0}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button onClick={() => printBill(order)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-700 hover:bg-gray-200">
+                    <FiPrinter size={12} /> Print Bill
+                  </button>
+                  {!isTerminal && next && (
+                    <button onClick={() => advanceStatus(order)} disabled={advancing === order._id}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                      {advancing === order._id ? 'Updating…' : `Mark ${ORDER_STATUS_LABELS[next]}`}
+                    </button>
+                  )}
+                  {!isTerminal && (
+                    <button onClick={() => cancelOrder(order)} disabled={advancing === order._id}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">
+                      Cancel
+                    </button>
+                  )}
+
+                  <div className="flex items-center gap-1 ml-auto">
+                    <label className="text-[10px] text-gray-400 font-semibold">Transport
+                      <input type="number" placeholder="₹" value={d.transportCharge ?? (order.pricing?.transportCharge ?? '')}
+                        onChange={e => setChargeDraft(order._id, { transportCharge: e.target.value })}
+                        className="w-16 border border-gray-200 rounded-lg px-1.5 py-1 text-xs ml-1" />
+                    </label>
+                    <label className="text-[10px] text-gray-400 font-semibold">Packing
+                      <input type="number" placeholder="₹" value={d.packingCharge ?? (order.pricing?.packingCharge ?? '')}
+                        onChange={e => setChargeDraft(order._id, { packingCharge: e.target.value })}
+                        className="w-16 border border-gray-200 rounded-lg px-1.5 py-1 text-xs ml-1" />
+                    </label>
+                    <button onClick={() => saveCharges(order)} disabled={savingCharges === order._id}
+                      className="px-2 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50">
+                      {savingCharges === order._id ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
+// P&L TAB — bill-wise + overall profit for Express online orders.
+// Reads /express/admin/orders-pnl (see adminOrdersPnL in
+// expressAdminController.js). Rows use the same transportCharge/
+// packingCharge the Orders tab lets the admin enter per bill — this tab is
+// read-only; to edit a bill's charges, use the Orders tab (changes show up
+// here immediately on reload).
+// ══════════════════════════════════════════════
+function OrdersPnLTab({ stores }) {
+  const [bills, setBills] = useState([]);
+  const [totals, setTotals] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [storeId, setStoreId] = useState('');
+  const [range, setRange] = useState({ from: '', to: '' });
+
+  const load = () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (storeId) params.set('storeId', storeId);
+    if (range.from) params.set('from', range.from);
+    if (range.to) params.set('to', range.to);
+    api.get(`/express/admin/orders-pnl?${params.toString()}`)
+      .then(r => { setBills(r.data.bills || []); setTotals(r.data.totals || null); })
+      .catch(() => toast.error('Failed to load P&L'))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, [storeId, range.from, range.to]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const Stat = ({ label, value, positive, negative }) => (
+    <div className="bg-white border rounded-xl p-4">
+      <p className="text-xs text-gray-400 font-semibold mb-1">{label}</p>
+      <p className={`text-xl font-black ${positive ? 'text-green-600' : negative ? 'text-red-600' : 'text-gray-800'}`}>{value}</p>
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h2 className="font-bold text-gray-700">Orders P&L — Bill-wise + Overall</h2>
+        <div className="flex flex-wrap gap-2">
+          <select value={storeId} onChange={e => setStoreId(e.target.value)} className="border rounded-lg px-2.5 py-1.5 text-xs">
+            <option value="">All stores</option>
+            {stores.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+          </select>
+          <input type="date" value={range.from} onChange={e => setRange(r => ({ ...r, from: e.target.value }))} className="border rounded-lg px-2.5 py-1.5 text-xs" />
+          <input type="date" value={range.to} onChange={e => setRange(r => ({ ...r, to: e.target.value }))} className="border rounded-lg px-2.5 py-1.5 text-xs" />
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-gray-400 py-6 text-center">Loading…</p>
+      ) : (
+        <>
+          {totals && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+              <Stat label="Revenue" value={`₹${totals.revenue}`} />
+              <Stat label="Procurement Cost" value={`₹${totals.itemsProcurementCost}`} />
+              <Stat label="Transport + Packing" value={`₹${Math.round((totals.transportCharge + totals.packingCharge) * 100) / 100}`} />
+              <Stat label="Razorpay Fee" value={`₹${totals.razorpayFee}`} />
+            </div>
+          )}
+          {totals && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
+              <Stat label="Overall Profit" value={`₹${totals.profit}`} positive={totals.profit >= 0} negative={totals.profit < 0} />
+              <Stat label="Bills" value={totals.billCount} />
+              <Stat label="Bills Missing Transport/Packing" value={totals.pendingChargesCount} negative={totals.pendingChargesCount > 0} />
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm bg-white border rounded-xl">
+              <thead>
+                <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
+                  <th className="px-3 py-2">Order</th>
+                  <th className="px-3 py-2">Store</th>
+                  <th className="px-3 py-2 text-right">Revenue</th>
+                  <th className="px-3 py-2 text-right">Procurement</th>
+                  <th className="px-3 py-2 text-right">Transport</th>
+                  <th className="px-3 py-2 text-right">Packing</th>
+                  <th className="px-3 py-2 text-right">Razorpay Fee</th>
+                  <th className="px-3 py-2 text-right">Profit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bills.map(b => (
+                  <tr key={b._id} className="border-t border-gray-100">
+                    <td className="px-3 py-2 font-medium text-gray-700">
+                      {b.orderId}
+                      {!b.chargesEntered && <span className="ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 align-middle">Pending charges</span>}
+                      <span className="block text-[10px] text-gray-400 font-normal">{new Date(b.createdAt).toLocaleDateString('en-IN')}</span>
+                    </td>
+                    <td className="px-3 py-2 text-gray-500">{b.store?.name || '—'}</td>
+                    <td className="px-3 py-2 text-right">₹{b.revenue}</td>
+                    <td className="px-3 py-2 text-right text-gray-500">₹{b.itemsProcurementCost}</td>
+                    <td className="px-3 py-2 text-right text-gray-500">₹{b.transportCharge}</td>
+                    <td className="px-3 py-2 text-right text-gray-500">₹{b.packingCharge}</td>
+                    <td className="px-3 py-2 text-right text-gray-500">₹{b.razorpayFee}</td>
+                    <td className={`px-3 py-2 text-right font-bold ${b.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{b.profit}</td>
+                  </tr>
+                ))}
+                {bills.length === 0 && (
+                  <tr><td colSpan={8} className="text-center text-gray-400 py-6">No paid orders in range</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1319,7 +1665,8 @@ function OnlineCatalogTab({ stores, reload }) {
 
   const saveAll = async () => {
     if (!storeId) return toast.error('Select a store first');
-    const changed = Object.entries(drafts).filter(([, v]) => v.isEnabled !== undefined || v.price !== undefined);
+    const changed = Object.entries(drafts).filter(([, v]) =>
+      v.isEnabled !== undefined || v.price !== undefined || v.mrp !== undefined || v.procurementBaseCost !== undefined);
     if (!changed.length) return toast('Nothing changed to save', { icon: 'ℹ️' });
 
     const payload = changed.map(([id, v]) => {
@@ -1329,6 +1676,13 @@ function OnlineCatalogTab({ stores, reload }) {
         ...base,
         isEnabled: v.isEnabled ?? row?.isEnabled ?? false,
         price: v.price !== undefined ? (v.price === '' ? null : Number(v.price)) : row?.price,
+        mrp: v.mrp !== undefined ? (v.mrp === '' ? null : Number(v.mrp)) : row?.mrp,
+        // Only sent when the admin actually typed something this round —
+        // omitting it (vs sending it as null/0) leaves the product's
+        // existing procurement cost untouched if they left it blank.
+        ...(v.procurementBaseCost !== undefined && v.procurementBaseCost !== ''
+          ? { procurementBaseCost: Number(v.procurementBaseCost) }
+          : {}),
       };
     });
 
@@ -1404,7 +1758,9 @@ function OnlineCatalogTab({ stores, reload }) {
               <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
                 <th className="px-3 py-2">Product</th>
                 <th className="px-3 py-2 text-right">Wholesale / Base Cost</th>
+                <th className="px-3 py-2 text-right">Procurement Cost</th>
                 <th className="px-3 py-2 text-center">Online</th>
+                <th className="px-3 py-2 text-right">MRP</th>
                 <th className="px-3 py-2 text-right">Online Price</th>
               </tr>
             </thead>
@@ -1425,6 +1781,13 @@ function OnlineCatalogTab({ stores, reload }) {
                       {row.category && <span className="block text-[10px] text-gray-400 font-normal">{row.category}</span>}
                     </td>
                     <td className="px-3 py-2 text-right text-gray-500">₹{(row.wholesalePrice || 0).toFixed(2)}</td>
+                    <td className="px-3 py-2 text-right">
+                      <input type="number" placeholder="Cost"
+                        value={d.procurementBaseCost ?? (row.procurementBaseCost || '')}
+                        onChange={e => setDraft(id, { procurementBaseCost: e.target.value })}
+                        title="Procurement cost for this item — enter it here while turning the item on, instead of the separate Products tab form."
+                        className="w-24 border border-gray-200 rounded-lg px-2 py-1 text-right focus:outline-none focus:border-indigo-400" />
+                    </td>
                     <td className="px-3 py-2 text-center">
                       <input type="checkbox" checked={isEnabled}
                         onChange={e => {
@@ -1441,6 +1804,13 @@ function OnlineCatalogTab({ stores, reload }) {
                         className="w-4 h-4 accent-indigo-600" />
                     </td>
                     <td className="px-3 py-2 text-right">
+                      <input type="number" placeholder="MRP"
+                        value={d.mrp ?? (row.mrp ?? '')}
+                        onChange={e => setDraft(id, { mrp: e.target.value })}
+                        title="Optional strike-through maximum price — shown to the customer as a discount when higher than the online price."
+                        className="w-24 border border-gray-200 rounded-lg px-2 py-1 text-right focus:outline-none focus:border-indigo-400" />
+                    </td>
+                    <td className="px-3 py-2 text-right">
                       <input type="number" placeholder="Default: +15%"
                         value={d.price ?? (row.price ?? '')}
                         onChange={e => setDraft(id, { price: e.target.value })}
@@ -1450,7 +1820,7 @@ function OnlineCatalogTab({ stores, reload }) {
                 );
               })}
               {rows.length === 0 && (
-                <tr><td colSpan={4} className="text-center text-gray-400 py-6">No products found</td></tr>
+                <tr><td colSpan={6} className="text-center text-gray-400 py-6">No products found</td></tr>
               )}
             </tbody>
           </table>
@@ -2557,6 +2927,7 @@ function MarginConfigTab({ stores }) {
         maxDeliveryDistanceKm: config.maxDeliveryDistanceKm,
         customOrderPhone: config.customOrderPhone,
         deliveryTimeTiers: config.deliveryTimeTiers,
+        platformFeeAmount: config.platformFeeAmount,
       });
       toast.success('Margin config saved');
       load();
@@ -2613,6 +2984,19 @@ function MarginConfigTab({ stores }) {
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold ${config.isEnabled ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}>
           {config.isEnabled ? <FiToggleRight size={16} /> : <FiToggleLeft size={16} />} {config.isEnabled ? 'ON' : 'OFF'}
         </button>
+      </div>
+
+      <div className="bg-white border rounded-xl p-4">
+        <h2 className="font-bold text-gray-700 mb-1">Platform Fee</h2>
+        <p className="text-xs text-gray-400 mb-3">
+          A flat fee charged to the customer at checkout, alongside the delivery fee — one amount for every Express
+          store. Set to 0 to disable it entirely.
+        </p>
+        <label className="text-xs font-semibold text-gray-500">Platform Fee (₹)
+          <input type="number" min={0} value={config.platformFeeAmount ?? 75}
+            onChange={e => setConfig(c => ({ ...c, platformFeeAmount: e.target.value }))}
+            className="border rounded-lg px-3 py-2 text-sm w-full mt-1 sm:w-48" />
+        </label>
       </div>
 
       <div className="bg-white border rounded-xl p-4">

@@ -689,6 +689,12 @@ export default function ExpressCheckout() {
               {quote.distanceKm != null ? ` (you're ${quote.distanceKm} km away)` : ''}.
             </p>
           )}
+          {quote.platformFee > 0 && (
+            <div className="flex justify-between text-sm text-gray-600 mb-1">
+              <span>Platform Fee</span>
+              <span>₹{quote.platformFee}</span>
+            </div>
+          )}
           {quote.couponDiscount > 0 && (
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-600">Coupon ({quote.couponCode})</span>

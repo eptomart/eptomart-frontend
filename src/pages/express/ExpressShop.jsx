@@ -413,7 +413,7 @@ export default function ExpressShop() {
         <p ref={productGridRef} className="text-sm text-gray-400">No products in "{activeCategory}" right now.</p>
       ) : (
         <div ref={productGridRef} className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {filteredCatalogue.map(({ product, pricePerUnit, stockQty }) => {
+          {filteredCatalogue.map(({ product, pricePerUnit, mrp, discountPercent, stockQty }) => {
             const qty = qtyInCart(product._id);
             const isKg = product.unit === 'kg';
             const minOrderQty = product.minOrderQty || 0.25;
@@ -430,7 +430,15 @@ export default function ExpressShop() {
                   </div>
                   <p className="font-bold text-sm text-gray-800 truncate">{product.name}</p>
                 </Link>
-                <p className="text-xs text-gray-400 mb-2">₹{pricePerUnit}/{product.unit}</p>
+                <p className="text-xs text-gray-400 mb-2 flex items-center gap-1 flex-wrap">
+                  <span>₹{pricePerUnit}/{product.unit}</span>
+                  {mrp > pricePerUnit && (
+                    <>
+                      <span className="line-through text-gray-300">₹{mrp}</span>
+                      <span className="text-[10px] font-bold text-emerald-600">{discountPercent}% off</span>
+                    </>
+                  )}
+                </p>
 
                 {/* Pack-size selector stays visible and editable even once the
                     item is in the cart (it used to disappear after the first
