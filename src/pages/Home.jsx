@@ -10,6 +10,7 @@ import {
   FiArrowRight, FiSearch, FiZap, FiChevronRight, FiMic, FiX,
   FiStar, FiClock, FiTruck, FiShield, FiCheckCircle, FiRefreshCw,
   FiTag, FiPhone, FiPackage, FiMapPin, FiGrid, FiEye, FiTrendingDown, FiGift,
+  FiPauseCircle,
 } from 'react-icons/fi';
 import {
   FaShoppingBasket, FaPepperHot, FaCookieBite, FaSeedling, FaWineBottle,
@@ -22,6 +23,7 @@ import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import api from '../utils/api';
 import { imgCard, imgThumb } from '../utils/cloudinary';
+import { useExpressCart } from '../context/ExpressCartContext';
 
 // ── Recently viewed (localStorage) ────────────────────────────
 const RV_KEY = 'eptomart_rv';
@@ -609,6 +611,12 @@ function FruitBasketBanner({ onReady }) {
 // ══════════════════════════════════════════════════════════════
 function ExpressBanner({ onReady }) {
   const [enabled, setEnabled] = useState(false);
+  // Only meaningful once the customer already has a store picked (same
+  // selectedStore the cart/checkout pages use) — someone who's never
+  // chosen an Express store yet has nothing to be "on hold" FOR, so this
+  // stays null and no notice is shown.
+  const { selectedStore } = useExpressCart();
+  const [holdNotice, setHoldNotice] = useState(null); // pauseMessage string, or null
 
   useEffect(() => {
     api.get('/express/status')
@@ -616,6 +624,16 @@ function ExpressBanner({ onReady }) {
       .catch(() => { setEnabled(false); onReady?.(false); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!selectedStore?._id) { setHoldNotice(null); return; }
+    api.get('/express/active-stores')
+      .then(r => {
+        const match = (r.data?.stores || []).find(s => String(s._id) === String(selectedStore._id));
+        setHoldNotice(match?.isPaused ? (match.pauseMessage || "We're experiencing high demand right now.") : null);
+      })
+      .catch(() => setHoldNotice(null));
+  }, [selectedStore?._id]);
 
   if (!enabled) return null;
 
@@ -653,6 +671,14 @@ function ExpressBanner({ onReady }) {
           <div className="promo-shine" />
 
           <div className="relative z-10 flex flex-col h-full p-2.5 md:p-3">
+            {holdNotice && (
+              <div className="flex items-center gap-1 bg-amber-500/90 backdrop-blur-sm rounded-full px-2 py-0.5 self-start max-w-[90%]">
+                <FiPauseCircle className="text-white shrink-0" size={11} />
+                <span className="text-white font-bold text-[9px] leading-tight truncate" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
+                  High demand — back shortly
+                </span>
+              </div>
+            )}
             <div className="flex-1" />
 
             <div className="flex justify-center">
