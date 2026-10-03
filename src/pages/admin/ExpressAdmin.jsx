@@ -279,6 +279,26 @@ function OrdersTab({ stores }) {
     }
   };
 
+  // Manual fallback for an order stuck at paymentStatus !== 'paid' even
+  // though Razorpay actually captured the money (customer's browser/app
+  // never completed the callback, and the payment.captured webhook also
+  // never reached us) — looks the payment up directly on Razorpay's side
+  // before marking anything paid. See adminManualVerifyExpressPayment.
+  const verifyStuckPayment = async (order) => {
+    const paymentId = window.prompt(`Enter the Razorpay Payment ID for order ${order.orderId} to verify and confirm it:`);
+    if (!paymentId?.trim()) return;
+    setAdvancing(order._id);
+    try {
+      await api.post(`/express/admin/orders/${order._id}/manual-verify-payment`, { razorpayPaymentId: paymentId.trim() });
+      toast.success('Payment verified — order confirmed');
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to verify payment');
+    } finally {
+      setAdvancing(null);
+    }
+  };
+
   const cancelOrder = async (order) => {
     if (!window.confirm(`Cancel order ${order.orderId}? This cannot be undone.`)) return;
     setAdvancing(order._id);
@@ -378,6 +398,11 @@ function OrdersTab({ stores }) {
                     <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background: color.bg, color: color.fg }}>
                       {ORDER_STATUS_LABELS[order.orderStatus] || order.orderStatus}
                     </span>
+                    {order.paymentStatus !== 'paid' && (
+                      <span className="text-xs font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">
+                        {order.paymentStatus === 'failed' ? 'Payment Failed' : 'Payment Pending'}
+                      </span>
+                    )}
                     <span className="font-black text-sm text-gray-800">₹{order.pricing?.total ?? 0}</span>
                   </div>
                 </div>
@@ -397,6 +422,13 @@ function OrdersTab({ stores }) {
                     <button onClick={() => cancelOrder(order)} disabled={advancing === order._id}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">
                       Cancel
+                    </button>
+                  )}
+                  {order.paymentStatus !== 'paid' && order.razorpayOrderId && !order.isDemoOrder && (
+                    <button onClick={() => verifyStuckPayment(order)} disabled={advancing === order._id}
+                      title="Order shows unpaid but the customer may have actually paid — look it up directly on Razorpay"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-50">
+                      Verify Payment
                     </button>
                   )}
 
