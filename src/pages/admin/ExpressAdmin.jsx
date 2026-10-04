@@ -52,6 +52,9 @@ const TABS = [
   { key: 'managers',   label: 'Managers',    Icon: FiUserCheck },
   { key: 'pos',        label: 'POS Users',   Icon: FiUsers },
   { key: 'products',   label: 'Products',    Icon: FiPackage },
+  { key: 'prodmgmt',   label: 'Product Management', Icon: FiSliders },
+  { key: 'copy',       label: 'Copy Items',  Icon: FiLink2 },
+  { key: 'messages',   label: 'Messages',    Icon: FiClipboard },
   { key: 'allocation', label: 'Store Inventory', Icon: FiBox },
   { key: 'online',     label: 'Online Catalog', Icon: FiEye },
   { key: 'create',     label: 'Create Product/Combo', Icon: FiPlus },
@@ -97,6 +100,9 @@ export default function ExpressAdmin() {
       {tab === 'managers'  && <ManagersTab stores={stores} />}
       {tab === 'pos'       && <POSUsersTab stores={stores} />}
       {tab === 'products'   && <ProductsTab />}
+      {tab === 'prodmgmt'   && <ProductManagementTab stores={stores} />}
+      {tab === 'copy'       && <CopyItemsTab stores={stores} />}
+      {tab === 'messages'   && <MessagesTab />}
       {tab === 'allocation' && <StoreInventoryTab stores={stores} />}
       {tab === 'online'     && <OnlineCatalogTab stores={stores} reload={loadStores} />}
       {tab === 'create'     && <CreateProductTab />}
@@ -566,6 +572,459 @@ function OrdersPnLTab({ stores }) {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
+// PRODUCT MANAGEMENT TAB — one place per store to switch items online/offline
+// and add stock, with filters. Reads the same merged list as the Online
+// Catalog tab (/online-catalog, now also carrying stockQty + productId) so
+// both tabs always agree. Activate/deactivate saves immediately (no
+// "Save All" step); add-stock uses the existing add-stock endpoint, so every
+// addition lands in the Stock Report like any other.
+// ══════════════════════════════════════════════
+function ProductManagementTab({ stores }) {
+  const [storeId, setStoreId] = useState('');
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [catFilter, setCatFilter] = useState('');
+  const [onlineFilter, setOnlineFilter] = useState('');
+  const [stockFilter, setStockFilter] = useState('');
+  const [addQty, setAddQty] = useState({});
+  const [busyId, setBusyId] = useState(null);
+  const [selected, setSelected] = useState(new Set());
+
+  const rowId = (it) => String(it.koyambeduProductId || it.expressProductId);
+
+  const load = () => {
+    if (!storeId) { setItems([]); return; }
+    setLoading(true);
+    api.get(`/express/admin/stores/${storeId}/online-catalog`)
+      .then(r => { setItems(r.data.items || []); setSelected(new Set()); })
+      .catch(() => toast.error('Failed to load products'))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, [storeId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const categories = [...new Set(items.map(it => it.category).filter(Boolean))].sort();
+  const rows = items
+    .filter(it => !search.trim() || it.name.toLowerCase().includes(search.trim().toLowerCase()))
+    .filter(it => !catFilter || it.category === catFilter)
+    .filter(it => !onlineFilter || (onlineFilter === 'on' ? it.isEnabled : !it.isEnabled))
+    .filter(it => !stockFilter
+      || (stockFilter === 'out' && it.stockQty <= 0)
+      || (stockFilter === 'low' && it.stockQty > 0 && it.stockQty <= 5)
+      || (stockFilter === 'in' && it.stockQty > 0));
+
+  const setOnline = async (list, isEnabled) => {
+    if (!list.length) return;
+    setBusyId(list.length === 1 ? rowId(list[0]) : 'bulk');
+    try {
+      const payload = list.map(it => ({
+        ...(it.source === 'native' ? { expressProductId: rowId(it) } : { koyambeduProductId: rowId(it) }),
+        isEnabled,
+        ...(it.price != null ? { price: it.price } : {}),
+      }));
+      await api.patch(`/express/admin/stores/${storeId}/online-catalog`, { items: payload });
+      toast.success(`${list.length} item${list.length === 1 ? '' : 's'} ${isEnabled ? 'activated' : 'deactivated'}`);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const addStock = async (it) => {
+    const qty = Number(addQty[rowId(it)]);
+    if (!Number.isFinite(qty) || qty <= 0) return toast.error('Enter a quantity greater than 0');
+    setBusyId(rowId(it));
+    try {
+      await api.post(`/express/admin/stores/${storeId}/products/${it.productId}/add-stock`, { qty });
+      toast.success(`Added ${qty} ${it.unit} of ${it.name}`);
+      setAddQty(q => ({ ...q, [rowId(it)]: '' }));
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to add stock');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const toggleSel = (id) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const allVisibleSelected = rows.length > 0 && rows.every(r => selected.has(rowId(r)));
+  const selectedRows = items.filter(it => selected.has(rowId(it)));
+
+  return (
+    <div className="bg-white rounded-2xl border p-4">
+      <h3 className="font-bold text-gray-800 mb-1">Product Management</h3>
+      <p className="text-xs text-gray-500 mb-4">
+        Switch items online/offline for a store and add stock in one place. Activating an item that has never been
+        stocked here creates it at this store with 0 stock — add stock right after. Prices, MRP and procurement cost
+        are edited in the Online Catalog tab.
+      </p>
+
+      <div className="flex flex-wrap gap-2 mb-3">
+        <select value={storeId} onChange={e => setStoreId(e.target.value)} className="border rounded-lg px-3 py-2 text-sm sm:w-56">
+          <option value="">Select a store…</option>
+          {stores.map(s => <option key={s._id} value={s._id}>{s.name} ({s.code})</option>)}
+        </select>
+        {storeId && <input placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)} className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[140px]" />}
+        {storeId && (
+          <select value={catFilter} onChange={e => setCatFilter(e.target.value)} className="border rounded-lg px-2 py-2 text-sm">
+            <option value="">All categories</option>
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
+        {storeId && (
+          <select value={onlineFilter} onChange={e => setOnlineFilter(e.target.value)} className="border rounded-lg px-2 py-2 text-sm">
+            <option value="">Active + Inactive</option>
+            <option value="on">Active only</option>
+            <option value="off">Inactive only</option>
+          </select>
+        )}
+        {storeId && (
+          <select value={stockFilter} onChange={e => setStockFilter(e.target.value)} className="border rounded-lg px-2 py-2 text-sm">
+            <option value="">All stock</option>
+            <option value="in">In stock</option>
+            <option value="low">Low (≤5)</option>
+            <option value="out">Out of stock</option>
+          </select>
+        )}
+      </div>
+
+      {storeId && selected.size > 0 && (
+        <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-indigo-50 text-sm">
+          <span className="font-semibold text-indigo-800">{selected.size} selected</span>
+          <button onClick={() => setOnline(selectedRows, true)} disabled={busyId === 'bulk'} className="px-3 py-1 rounded-lg bg-green-600 text-white text-xs font-bold disabled:opacity-50">Activate</button>
+          <button onClick={() => setOnline(selectedRows, false)} disabled={busyId === 'bulk'} className="px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-50">Deactivate</button>
+        </div>
+      )}
+
+      {!storeId ? (
+        <p className="text-sm text-gray-400 py-6 text-center">Select a store to manage its products.</p>
+      ) : loading ? (
+        <p className="text-sm text-gray-400 py-6 text-center">Loading…</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
+                <th className="px-3 py-2"><input type="checkbox" checked={allVisibleSelected}
+                  onChange={() => setSelected(allVisibleSelected ? new Set() : new Set(rows.map(rowId)))} className="accent-indigo-600" /></th>
+                <th className="px-3 py-2">Product</th>
+                <th className="px-3 py-2 text-right">Price</th>
+                <th className="px-3 py-2 text-right">Stock</th>
+                <th className="px-3 py-2 text-center">Status</th>
+                <th className="px-3 py-2 text-right">Add Stock</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(it => {
+                const id = rowId(it);
+                return (
+                  <tr key={id} className="border-t border-gray-100">
+                    <td className="px-3 py-2"><input type="checkbox" checked={selected.has(id)} onChange={() => toggleSel(id)} className="accent-indigo-600" /></td>
+                    <td className="px-3 py-2 font-medium text-gray-700">
+                      {it.name} <span className="text-gray-400 font-normal">· {it.unit}</span>
+                      {it.category && <span className="block text-[10px] text-gray-400 font-normal">{it.category}</span>}
+                    </td>
+                    <td className="px-3 py-2 text-right text-gray-600">{it.price != null ? `₹${it.price}` : '—'}</td>
+                    <td className={`px-3 py-2 text-right font-semibold ${it.stockQty <= 0 ? 'text-red-600' : it.stockQty <= 5 ? 'text-amber-600' : 'text-gray-700'}`}>{it.stockQty}</td>
+                    <td className="px-3 py-2 text-center">
+                      <button onClick={() => setOnline([it], !it.isEnabled)} disabled={busyId === id}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold disabled:opacity-50"
+                        style={it.isEnabled ? { background: '#dcfce7', color: '#16a34a' } : { background: '#f3f4f6', color: '#6b7280' }}>
+                        {it.isEnabled ? <FiToggleRight size={14} /> : <FiToggleLeft size={14} />}
+                        {it.isEnabled ? 'Active' : 'Inactive'}
+                      </button>
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <input type="number" min="0" placeholder="+ qty" value={addQty[id] ?? ''} disabled={!it.productId}
+                          title={it.productId ? '' : 'Activate this item first so it exists at the store'}
+                          onChange={e => setAddQty(q => ({ ...q, [id]: e.target.value }))}
+                          className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-right text-xs disabled:bg-gray-50" />
+                        <button onClick={() => addStock(it)} disabled={!it.productId || busyId === id}
+                          className="px-2 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white disabled:opacity-40">Add</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {rows.length === 0 && <tr><td colSpan={6} className="text-center text-gray-400 py-6">No products match</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
+// COPY ITEMS TAB — super admin copies one store's catalogue to other stores.
+// Copies listings (active/inactive, price, MRP) + inventory allocation
+// (availability, price override). Stock is never copied: every target starts
+// at 0. Existing items at a target are skipped unless "overwrite" is ticked.
+// ══════════════════════════════════════════════
+function CopyItemsTab({ stores }) {
+  const [sourceId, setSourceId] = useState('');
+  const [targets, setTargets] = useState(new Set());
+  const [items, setItems] = useState([]);
+  const [mode, setMode] = useState('all'); // 'all' | 'selected'
+  const [picked, setPicked] = useState(new Set());
+  const [search, setSearch] = useState('');
+  const [overwrite, setOverwrite] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    setItems([]); setPicked(new Set()); setResult(null);
+    if (!sourceId) return;
+    api.get(`/express/admin/stores/${sourceId}/online-catalog`)
+      .then(r => setItems((r.data.items || []).filter(it => it.productId && (it.isEnabled || it.price != null))))
+      .catch(() => toast.error('Failed to load source store items'));
+  }, [sourceId]);
+
+  const toggle = (setter, id) => setter(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const shown = items.filter(it => !search.trim() || it.name.toLowerCase().includes(search.trim().toLowerCase()));
+  const otherStores = stores.filter(s => s._id !== sourceId);
+
+  const run = async () => {
+    if (!sourceId) return toast.error('Choose a source store');
+    if (!targets.size) return toast.error('Choose at least one target store');
+    if (mode === 'selected' && !picked.size) return toast.error('Tick at least one item to copy');
+    const names = otherStores.filter(s => targets.has(s._id)).map(s => s.name).join(', ');
+    const what = mode === 'all' ? `ALL ${items.length} items` : `${picked.size} selected item(s)`;
+    if (!window.confirm(`Copy ${what} from ${stores.find(s => s._id === sourceId)?.name} to: ${names}?${overwrite ? '\n\nExisting items at the targets WILL be overwritten (price/MRP/status).' : '\n\nItems the targets already have will be skipped.'}\nStock is not copied.`)) return;
+    setBusy(true);
+    try {
+      const { data } = await api.post('/express/admin/stores/copy-items', {
+        sourceStoreId: sourceId, targetStoreIds: [...targets], overwrite,
+        productIds: mode === 'selected' ? items.filter(it => picked.has(String(it.productId))).map(it => it.productId) : undefined,
+      });
+      setResult(data.summary || []);
+      toast.success('Items copied');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to copy items');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border p-4">
+      <h3 className="font-bold text-gray-800 mb-1">Copy Items Between Stores</h3>
+      <p className="text-xs text-gray-500 mb-4">
+        Copies a store's online listings (active/inactive, selling price, MRP) and inventory setup to other stores so
+        you don't re-enter them. Stock quantities are never copied — each target store starts at 0 and adds its own.
+      </p>
+
+      <select value={sourceId} onChange={e => { setSourceId(e.target.value); setTargets(new Set()); }} className="border rounded-lg px-3 py-2 text-sm w-full sm:w-72 mb-3">
+        <option value="">Copy FROM (source store)…</option>
+        {stores.map(s => <option key={s._id} value={s._id}>{s.name} ({s.code})</option>)}
+      </select>
+
+      {sourceId && (
+        <>
+          <p className="text-xs font-semibold text-gray-500 mb-1">Copy TO (target stores)</p>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {otherStores.map(s => (
+              <label key={s._id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-sm cursor-pointer"
+                style={targets.has(s._id) ? { background: '#eef2ff', borderColor: '#818cf8' } : {}}>
+                <input type="checkbox" checked={targets.has(s._id)} onChange={() => toggle(setTargets, s._id)} className="accent-indigo-600" />
+                {s.name}
+              </label>
+            ))}
+            {otherStores.length === 0 && <p className="text-sm text-gray-400">No other stores exist yet.</p>}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 mb-3 text-sm">
+            <label className="flex items-center gap-1.5"><input type="radio" checked={mode === 'all'} onChange={() => setMode('all')} className="accent-indigo-600" /> All items ({items.length})</label>
+            <label className="flex items-center gap-1.5"><input type="radio" checked={mode === 'selected'} onChange={() => setMode('selected')} className="accent-indigo-600" /> Selected items only</label>
+            <label className="flex items-center gap-1.5 ml-auto"><input type="checkbox" checked={overwrite} onChange={e => setOverwrite(e.target.checked)} className="accent-red-600" /> Overwrite items target already has</label>
+          </div>
+
+          {mode === 'selected' && (
+            <div className="mb-3">
+              <input placeholder="Search items…" value={search} onChange={e => setSearch(e.target.value)} className="border rounded-lg px-3 py-2 text-sm w-full mb-2" />
+              <div className="max-h-64 overflow-y-auto border rounded-lg divide-y">
+                {shown.map(it => (
+                  <label key={it.productId} className="flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer hover:bg-gray-50">
+                    <input type="checkbox" checked={picked.has(String(it.productId))} onChange={() => toggle(setPicked, String(it.productId))} className="accent-indigo-600" />
+                    <span className="flex-1">{it.name} <span className="text-gray-400">· {it.unit}</span></span>
+                    <span className={`text-[10px] font-bold ${it.isEnabled ? 'text-green-600' : 'text-gray-400'}`}>{it.isEnabled ? 'Active' : 'Inactive'}</span>
+                    <span className="text-xs text-gray-500 w-14 text-right">{it.price != null ? `₹${it.price}` : '—'}</span>
+                  </label>
+                ))}
+                {shown.length === 0 && <p className="text-sm text-gray-400 px-3 py-4">No items</p>}
+              </div>
+            </div>
+          )}
+
+          <button onClick={run} disabled={busy} className="px-5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-50">
+            {busy ? 'Copying…' : 'Copy Items'}
+          </button>
+        </>
+      )}
+
+      {result && (
+        <div className="mt-4 border rounded-xl divide-y">
+          {result.map(r => (
+            <div key={r.storeId} className="px-3 py-2 text-sm flex flex-wrap justify-between gap-2">
+              <span className="font-semibold text-gray-700">{r.storeName}</span>
+              <span className="text-gray-500">{r.copied} copied · {r.updated} updated · {r.skipped} skipped</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
+// MESSAGES TAB — customer WhatsApp messages with an AI-drafted reply.
+// Nothing is ever sent automatically: the AI writes a draft addressed as
+// "Dear Mr./Ms. <First name>", the admin can switch Mr./Ms., edit freely, and
+// must press Confirm & Send, then confirm again on a preview, before it goes
+// out. Uses the existing inbox endpoints (list/reply) — Meta only allows
+// free-text replies within 24 hours of the customer's last message.
+// ══════════════════════════════════════════════
+function MessagesTab() {
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [active, setActive] = useState(null);       // selected inbound message
+  const [drafting, setDrafting] = useState(false);
+  const [draft, setDraft] = useState(null);         // { customerName, firstName, title }
+  const [text, setText] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    api.get('/koyambedu/admin/whatsapp/messages?limit=40')
+      .then(r => setMessages(r.data.messages || []))
+      .catch(() => toast.error('Failed to load messages'))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, []);
+
+  const greeting = (title, d) => {
+    const first = d?.firstName || d?.customerName || '';
+    return title ? `Dear ${title} ${first},` : `Dear ${first || 'Customer'},`;
+  };
+
+  const pick = (m) => { setActive(m); setDraft(null); setText(''); setConfirming(false); };
+
+  const makeDraft = async () => {
+    setDrafting(true);
+    try {
+      const { data } = await api.post('/express/admin/messages/draft-reply', { messageId: active._id });
+      setDraft({ customerName: data.customerName, firstName: data.firstName, title: data.title });
+      setText((data.draft || '').replace(/Dear\s*\{\{SALUTATION\}\},?/i, greeting(data.title, data)));
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not draft a reply');
+    } finally {
+      setDrafting(false);
+    }
+  };
+
+  const setTitle = (title) => {
+    setDraft(d => ({ ...d, title }));
+    setText(t => /^Dear [^\n]*,/.test(t) ? t.replace(/^Dear [^\n]*,/, greeting(title, draft)) : t);
+  };
+
+  const send = async () => {
+    setSending(true);
+    try {
+      await api.post(`/koyambedu/admin/whatsapp/messages/${active._id}/reply`, { text });
+      toast.success('Reply sent');
+      setActive(null); setDraft(null); setText(''); setConfirming(false);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to send');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const expired = active && (Date.now() - new Date(active.sentAt).getTime()) > 24 * 3600 * 1000;
+
+  return (
+    <div className="grid md:grid-cols-2 gap-4">
+      <div className="bg-white border rounded-2xl p-3">
+        <h3 className="font-bold text-gray-800 mb-2">Customer Messages</h3>
+        {loading ? <p className="text-sm text-gray-400">Loading…</p> : (
+          <div className="divide-y max-h-[70vh] overflow-y-auto">
+            {messages.map(m => (
+              <button key={m._id} onClick={() => pick(m)}
+                className={`w-full text-left px-2 py-2 hover:bg-gray-50 ${active?._id === m._id ? 'bg-indigo-50' : ''}`}>
+                <div className="flex justify-between gap-2">
+                  <span className="text-sm font-semibold text-gray-700 truncate">{m.profileName || m.from}</span>
+                  <span className="text-[10px] text-gray-400 shrink-0">{new Date(m.sentAt).toLocaleString('en-IN')}</span>
+                </div>
+                <p className="text-xs text-gray-500 truncate">{m.text || m.mediaCaption || `[${m.type}]`}</p>
+                {m.repliedAt && <span className="text-[10px] text-green-600 font-bold">Replied</span>}
+              </button>
+            ))}
+            {messages.length === 0 && <p className="text-sm text-gray-400 py-4">No messages yet.</p>}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white border rounded-2xl p-4">
+        {!active ? <p className="text-sm text-gray-400">Select a message to reply.</p> : (
+          <>
+            <p className="text-xs text-gray-400">{active.profileName || ''} · {active.from}</p>
+            <div className="mt-1 mb-3 p-3 rounded-xl bg-gray-50 text-sm text-gray-700 whitespace-pre-wrap">
+              {active.text || active.mediaCaption || `[${active.type} message]`}
+            </div>
+
+            {expired && <p className="text-xs text-amber-700 bg-amber-50 rounded-lg p-2 mb-3">This message is older than 24 hours, so WhatsApp only allows template messages — a free-text reply can't be sent.</p>}
+
+            {!draft ? (
+              <button onClick={makeDraft} disabled={drafting}
+                className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold disabled:opacity-50">
+                {drafting ? 'Drafting…' : '✨ Draft reply with AI'}
+              </button>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 mb-2 text-xs">
+                  <span className="text-gray-500">Address as:</span>
+                  {['Mr.', 'Ms.', ''].map(t => (
+                    <button key={t || 'none'} onClick={() => setTitle(t)}
+                      className="px-2.5 py-1 rounded-full font-bold border"
+                      style={draft.title === t ? { background: '#4338ca', color: '#fff', borderColor: '#4338ca' } : { color: '#6b7280' }}>
+                      {t || 'No title'}
+                    </button>
+                  ))}
+                  {draft.customerName && <span className="text-gray-400 ml-auto truncate">{draft.customerName}</span>}
+                </div>
+                <textarea value={text} onChange={e => setText(e.target.value)} rows={9}
+                  className="w-full border rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-400" />
+                {!confirming ? (
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={makeDraft} disabled={drafting} className="px-3 py-2 rounded-lg border text-sm font-semibold disabled:opacity-50">{drafting ? 'Drafting…' : 'Regenerate'}</button>
+                    <button onClick={() => setConfirming(true)} disabled={!text.trim() || expired}
+                      className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-bold disabled:opacity-40">Confirm &amp; Send…</button>
+                  </div>
+                ) : (
+                  <div className="mt-3 p-3 rounded-xl border-2 border-amber-300 bg-amber-50">
+                    <p className="text-sm font-bold text-amber-800 mb-1">Send this message to {active.profileName || active.from}?</p>
+                    <p className="text-xs text-gray-700 whitespace-pre-wrap bg-white rounded-lg p-2 mb-2">{text}</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setConfirming(false)} disabled={sending} className="px-3 py-1.5 rounded-lg border text-sm font-semibold">Back to edit</button>
+                      <button onClick={send} disabled={sending} className="px-4 py-1.5 rounded-lg bg-green-600 text-white text-sm font-bold disabled:opacity-50">{sending ? 'Sending…' : 'Yes, send now'}</button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -1690,7 +2149,18 @@ function OnlineCatalogTab({ stores, reload }) {
   // Express product/combo row — exactly one of the two ids is ever present.
   const rowId = (it) => String(it.koyambeduProductId || it.expressProductId);
 
-  const rows = items.filter(it => !search.trim() || it.name.toLowerCase().includes(search.trim().toLowerCase()));
+  const [catFilter, setCatFilter] = useState('');
+  const [onlineFilter, setOnlineFilter] = useState(''); // '' | 'on' | 'off'
+  const categories = [...new Set(items.map(it => it.category).filter(Boolean))].sort();
+
+  const rows = items
+    .filter(it => !search.trim() || it.name.toLowerCase().includes(search.trim().toLowerCase()))
+    .filter(it => !catFilter || it.category === catFilter)
+    .filter(it => {
+      if (!onlineFilter) return true;
+      const on = drafts[rowId(it)]?.isEnabled ?? it.isEnabled;
+      return onlineFilter === 'on' ? on : !on;
+    });
 
   const draftFor = (id) => drafts[id] || {};
   const setDraft = (id, patch) => setDrafts(d => ({ ...d, [id]: { ...d[id], ...patch } }));
@@ -1749,6 +2219,19 @@ function OnlineCatalogTab({ stores, reload }) {
         {storeId && (
           <input placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)}
             className="border rounded-lg px-3 py-2 text-sm flex-1" />
+        )}
+        {storeId && (
+          <select value={catFilter} onChange={e => setCatFilter(e.target.value)} className="border rounded-lg px-2 py-2 text-sm">
+            <option value="">All categories</option>
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
+        {storeId && (
+          <select value={onlineFilter} onChange={e => setOnlineFilter(e.target.value)} className="border rounded-lg px-2 py-2 text-sm">
+            <option value="">Online + Offline</option>
+            <option value="on">Online only</option>
+            <option value="off">Offline only</option>
+          </select>
         )}
         {storeId && (
           <button onClick={saveAll} disabled={saving}
@@ -2364,6 +2847,7 @@ function StoreInventoryTab({ stores }) {
   const [storeProducts, setStoreProducts] = useState([]); // this store's stock/availability rows
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [invFilter, setInvFilter] = useState({ stock: '', avail: '' });
   const [addDrafts, setAddDrafts] = useState({});       // productId -> { qty, note }
   const [addingId, setAddingId] = useState(null);
   const [priceDrafts, setPriceDrafts] = useState({});    // productId -> typed selling price
@@ -2525,7 +3009,14 @@ function StoreInventoryTab({ stores }) {
         autoPrice: existing?.autoPrice ?? null,
         addQty: addDrafts[p._id]?.qty ?? '',
       };
-    });
+    })
+    .filter(r => !invFilter.stock
+      || (invFilter.stock === 'out' && r.stockQty <= 0)
+      || (invFilter.stock === 'low' && r.stockQty > 0 && r.stockQty <= 5)
+      || (invFilter.stock === 'in' && r.stockQty > 0))
+    .filter(r => !invFilter.avail
+      || (invFilter.avail === 'available' && r.isAvailable)
+      || (invFilter.avail === 'hidden' && !r.isAvailable));
 
   // Manually set (or clear, with an empty value) the selling price for one
   // product at this store — rounds off whatever the margin engine computed.
@@ -2625,6 +3116,21 @@ function StoreInventoryTab({ stores }) {
         {storeId && (
           <input placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)}
             className="border rounded-lg px-3 py-2 text-sm flex-1" />
+        )}
+        {storeId && (
+          <select value={invFilter.stock} onChange={e => setInvFilter(f => ({ ...f, stock: e.target.value }))} className="border rounded-lg px-2 py-2 text-sm">
+            <option value="">All stock</option>
+            <option value="in">In stock</option>
+            <option value="low">Low (≤5)</option>
+            <option value="out">Out of stock</option>
+          </select>
+        )}
+        {storeId && (
+          <select value={invFilter.avail} onChange={e => setInvFilter(f => ({ ...f, avail: e.target.value }))} className="border rounded-lg px-2 py-2 text-sm">
+            <option value="">Available + Hidden</option>
+            <option value="available">Available only</option>
+            <option value="hidden">Hidden only</option>
+          </select>
         )}
         {storeId && (
           <button onClick={() => setLogsOpen(o => !o)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-semibold hover:bg-gray-50 shrink-0">
