@@ -862,14 +862,19 @@ function CopyItemsTab({ stores }) {
   const [picked, setPicked] = useState(new Set());
   const [search, setSearch] = useState('');
   const [overwrite, setOverwrite] = useState(false);
+  const [copyStock, setCopyStock] = useState(true);
+  const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
+
+  // Any change to the plan cancels a pending "Yes, copy" confirmation.
+  useEffect(() => { setConfirming(false); }, [sourceId, targets, mode, picked, overwrite, copyStock]);
 
   useEffect(() => {
     setItems([]); setPicked(new Set()); setResult(null);
     if (!sourceId) return;
     api.get(`/express/admin/stores/${sourceId}/online-catalog`)
-      .then(r => setItems((r.data.items || []).filter(it => it.productId && (it.isEnabled || it.price != null))))
+      .then(r => setItems((r.data.items || []).filter(it => it.productId && (it.isEnabled || it.price != null || it.stockQty > 0))))
       .catch(() => toast.error('Failed to load source store items'));
   }, [sourceId]);
 
@@ -881,13 +886,14 @@ function CopyItemsTab({ stores }) {
     if (!sourceId) return toast.error('Choose a source store');
     if (!targets.size) return toast.error('Choose at least one target store');
     if (mode === 'selected' && !picked.size) return toast.error('Tick at least one item to copy');
-    const names = otherStores.filter(s => targets.has(s._id)).map(s => s.name).join(', ');
-    const what = mode === 'all' ? `ALL ${items.length} items` : `${picked.size} selected item(s)`;
-    if (!window.confirm(`Copy ${what} from ${stores.find(s => s._id === sourceId)?.name} to: ${names}?${overwrite ? '\n\nExisting items at the targets WILL be overwritten (price/MRP/status).' : '\n\nItems the targets already have will be skipped.'}\nStock is not copied.`)) return;
+    // In-page confirmation (a browser confirm() popup is blocked inside app
+    // webviews, which silently cancelled every copy before).
+    if (!confirming) { setConfirming(true); return; }
+    setConfirming(false);
     setBusy(true);
     try {
       const { data } = await api.post('/express/admin/stores/copy-items', {
-        sourceStoreId: sourceId, targetStoreIds: [...targets], overwrite,
+        sourceStoreId: sourceId, targetStoreIds: [...targets], overwrite, copyStock,
         productIds: mode === 'selected' ? items.filter(it => picked.has(String(it.productId))).map(it => it.productId) : undefined,
       });
       setResult(data.summary || []);
@@ -903,8 +909,8 @@ function CopyItemsTab({ stores }) {
     <div className="bg-white rounded-2xl border p-4">
       <h3 className="font-bold text-gray-800 mb-1">Copy Items Between Stores</h3>
       <p className="text-xs text-gray-500 mb-4">
-        Copies a store's online listings (active/inactive, selling price, MRP) and inventory setup to other stores so
-        you don't re-enter them. Stock quantities are never copied — each target store starts at 0 and adds its own.
+        Copies a store's online listings (active/inactive, selling price, MRP), inventory setup and — unless you untick
+        it below — stock quantities, so the target store matches the source.
       </p>
 
       <select value={sourceId} onChange={e => { setSourceId(e.target.value); setTargets(new Set()); }} className="border rounded-lg px-3 py-2 text-sm w-full sm:w-72 mb-3">
@@ -949,9 +955,26 @@ function CopyItemsTab({ stores }) {
             </div>
           )}
 
-          <button onClick={run} disabled={busy} className="px-5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-50">
-            {busy ? 'Copying…' : 'Copy Items'}
-          </button>
+          <label className="flex items-center gap-1.5 text-sm mb-3">
+            <input type="checkbox" checked={copyStock} onChange={e => setCopyStock(e.target.checked)} className="accent-indigo-600" />
+            Copy stock quantities too (target will match the source exactly)
+          </label>
+
+          {confirming && (
+            <div className="mb-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-900">
+              Copy <b>{mode === 'all' ? `all ${items.length} items` : `${picked.size} selected item(s)`}</b> from{' '}
+              <b>{stores.find(s => s._id === sourceId)?.name}</b> to{' '}
+              <b>{otherStores.filter(s => targets.has(s._id)).map(s => s.name).join(', ')}</b>?{' '}
+              {overwrite ? 'Items the targets already have WILL be overwritten (price, MRP, status' : 'Items the targets already have will be skipped (price, MRP, status'}
+              {copyStock ? ' and stock' : ''}).
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button onClick={run} disabled={busy} className="px-5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-50">
+              {busy ? 'Copying…' : confirming ? 'Yes, copy now' : 'Copy Items'}
+            </button>
+            {confirming && <button onClick={() => setConfirming(false)} className="px-4 py-2 rounded-lg border text-sm text-gray-600">Cancel</button>}
+          </div>
         </>
       )}
 
