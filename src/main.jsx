@@ -32,6 +32,29 @@ function isChunkLoadError(error) {
   return CHUNK_ERROR_PATTERN.test(msg);
 }
 
+// A plain location.reload() in an iOS WKWebView / home-screen app often
+// re-serves the SAME cached index.html (which points at JS chunk files a new
+// deploy has deleted -> "'text/html' is not a valid JavaScript MIME type").
+// Navigating to the same URL with a throw-away query param forces a genuinely
+// fresh index.html, after clearing service workers + Cache Storage.
+function hardReload() {
+  const go = () => {
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.set('_r', Date.now().toString(36));
+      window.location.replace(u.toString());
+    } catch { window.location.reload(); }
+  };
+  const jobs = [];
+  if ('serviceWorker' in navigator) {
+    jobs.push(navigator.serviceWorker.getRegistrations().then(r => Promise.all(r.map(x => x.unregister()))).catch(() => {}));
+  }
+  if ('caches' in window) {
+    jobs.push(caches.keys().then(k => Promise.all(k.map(x => caches.delete(x)))).catch(() => {}));
+  }
+  Promise.race([Promise.all(jobs), new Promise(res => setTimeout(res, 1500))]).then(go);
+}
+
 function tryAutoReloadOnce() {
   try {
     if (sessionStorage.getItem(CHUNK_RELOAD_FLAG)) return false; // already tried this session
@@ -54,7 +77,7 @@ function tryAutoReloadOnce() {
       caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(() => {});
     }
 
-    window.location.reload();
+    hardReload();
     return true;
   } catch {
     return false; // sessionStorage unavailable (e.g. private mode) — fall through to manual UI
@@ -151,7 +174,7 @@ class ErrorBoundary extends React.Component {
             borderRadius: '4px',
           }}>{stack.slice(0, 800)}</pre>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => { try { sessionStorage.removeItem(CHUNK_RELOAD_FLAG); } catch {} hardReload(); }}
             style={{
               marginTop: '16px',
               padding: '10px 20px',
