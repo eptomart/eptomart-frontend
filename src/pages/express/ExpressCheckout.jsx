@@ -488,8 +488,22 @@ export default function ExpressCheckout() {
           // "Placing order…" until they refreshed the page).
           ondismiss: () => { if (!settled) setPlacing(false); },
         },
-        prefill: { name: address.name, contact: address.phone },
+        // Razorpay rejects some methods (UPI/cards) if the contact isn't a
+        // clean number — normalise to +91XXXXXXXXXX like a typed-in phone.
+        prefill: {
+          name: address.name,
+          contact: (() => { const d = String(address.phone || user?.phone || '').replace(/\D/g, '').slice(-10); return d.length === 10 ? `+91${d}` : undefined; })(),
+          email: user?.email || undefined,
+        },
         theme: { color: '#4f46e5' },
+      });
+      // Surface the REAL reason when Razorpay declines a payment (it used to
+      // fail silently inside the sheet with nothing logged on our side).
+      rzp.on('payment.failed', (resp) => {
+        const e = resp?.error || {};
+        console.error('[Razorpay payment.failed]', e);
+        const reason = [e.description, e.reason && `(${e.reason})`, e.code && `[${e.code}]`].filter(Boolean).join(' ');
+        toast.error(reason || 'Payment failed — please try another method', { duration: 8000 });
       });
       // Keep the button disabled (via `placing`, still true here) while the
       // payment sheet is open, instead of flipping back to normal the
