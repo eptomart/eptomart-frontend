@@ -78,6 +78,8 @@ export default function ExpressShop() {
   // after the customer picked it is still reflected without a refetch of
   // the store list.
   const [storeStatus, setStoreStatus] = useState({ isPaused: false, pauseMessage: null });
+  // Visit beacon so Admin → Visitors lists Express shop views with the user.
+  useEffect(() => { api.post('/express/visit', { page: '/shop' }).catch(() => {}); }, []);
   // productId -> chosen kg step (default 1kg). Only relevant for unit==='kg'
   // products; once an item is in the cart its stepper increments/decrements
   // by whatever step is currently selected here.

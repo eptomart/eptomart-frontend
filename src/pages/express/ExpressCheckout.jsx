@@ -274,6 +274,21 @@ export default function ExpressCheckout() {
   // instantly.
   useEffect(() => { loadRazorpayScript().catch(() => {}); }, []);
 
+  // Live hold status + visit beacon. The hold banner used to appear only after
+  // an address AND slot were filled and a quote was attempted — most customers
+  // never saw it. Fetch the store's live status on open and show it at once.
+  const [liveHold, setLiveHold] = useState(null); // { message } | null
+  useEffect(() => {
+    api.post('/express/visit', { page: '/checkout' }).catch(() => {});
+    if (!selectedStore?._id) return;
+    api.get('/express/active-stores')
+      .then(({ data }) => {
+        const s = (data.stores || []).find(x => String(x._id) === String(selectedStore._id));
+        setLiveHold(s?.isPaused ? { message: s.pauseMessage } : null);
+      })
+      .catch(() => {});
+  }, [selectedStore?._id]);
+
   useEffect(() => {
     if (!selectedStore?._id) { navigate('/express/location'); return; }
     if (cartChecked && !cart.itemCount) navigate('/express/shop');
@@ -614,7 +629,17 @@ export default function ExpressCheckout() {
         <p className="text-xs text-gray-400 mb-4 text-center">Add your delivery address above to see the price.</p>
       )}
 
-      {slot && checkoutBlock?.type === 'storePaused' && (
+      {liveHold && checkoutBlock?.type !== 'storePaused' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex items-start gap-3">
+          <FiPauseCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
+          <div>
+            <p className="font-bold text-amber-800 text-sm">Orders are on hold for now</p>
+            <p className="text-xs text-amber-700 mt-0.5">{liveHold.message || 'This store is not taking orders at the moment. Your cart is saved — you can check out once we are back.'}</p>
+          </div>
+        </div>
+      )}
+
+      {checkoutBlock?.type === 'storePaused' && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex items-start gap-3">
           <FiPauseCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
           <div>
