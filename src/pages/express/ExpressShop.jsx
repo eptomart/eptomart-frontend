@@ -67,6 +67,20 @@ const weightOptionsFor = (minOrderQty) => {
   return unique.map(kg => ({ kg, label: formatWeight(kg) }));
 };
 
+// Exact-quantity choices for a kg item already in the cart: every multiple of
+// the admin's minimum up to the ceiling (stock / per-order max), always
+// including 1 kg and the quantity currently in the cart. Lets a customer jump
+// straight from 250 g to 1 kg instead of tapping + four times.
+const qtyOptionsFor = (min, ceiling, current) => {
+  const m = Number(min) > 0 ? Number(min) : 0.25;
+  const set = new Set();
+  const limit = Math.min(ceiling, 25);
+  for (let q = m; q <= limit + 1e-9 && set.size < 60; q = Math.round((q + m) * 1000) / 1000) set.add(q);
+  if (1 >= m && 1 <= ceiling) set.add(1);
+  if (current > 0) set.add(current);
+  return [...set].sort((a, b) => a - b);
+};
+
 export default function ExpressShop() {
   const navigate = useNavigate();
   const { selectedStore, setSelectedStore, cart, fetchCart, addToCart, updateItem } = useExpressCart();
@@ -267,11 +281,16 @@ export default function ExpressShop() {
   // .updateCartItem) as the source of truth, but this stops the problem
   // from ever being created in the first place.
   const handleQtyChange = (productId, unit, direction, minOrderQty, stockQty, maxOrderQty) => {
-    const step = unit === 'kg' ? stepFor(productId, minOrderQty) : 1;
     const current = qtyInCart(productId);
+    // Once in the cart, +/- moves by the admin's minimum (e.g. 250 g); the
+    // pack-size picker is only for the first add. Use the exact-quantity
+    // dropdown to jump (e.g. 250 g -> 1 kg).
+    const step = unit === 'kg' ? (current > 0 ? minOrderQty : stepFor(productId, minOrderQty)) : 1;
     if (current === 0 && direction > 0) return handleAdd(productId, unit, minOrderQty);
     const max = effectiveMax(stockQty, maxOrderQty);
-    const uncapped = Math.max(0, Math.round((current + direction * step) * 100) / 100);
+    let uncapped = Math.max(0, Math.round((current + direction * step) * 100) / 100);
+    // Below the admin minimum means "remove", never a quantity under the minimum.
+    if (unit === 'kg' && uncapped > 0 && uncapped < minOrderQty) uncapped = 0;
     const next = Math.min(uncapped, max);
     if (direction > 0 && next <= current) {
       toast(
@@ -449,17 +468,24 @@ export default function ExpressShop() {
                     each +/- tap was adding) — so the customer can switch from
                     adding 250 g at a time to 1 kg at a time without having to
                     remove the item and start over. */}
-                {isKg && (
+                {isKg && qty === 0 && (
                   <select value={stepFor(product._id, minOrderQty)} onChange={e => setWeightStep(w => ({ ...w, [product._id]: Number(e.target.value) }))}
                     className="mb-1 border rounded-lg px-2 py-1 text-xs">
                     {weightOptions.map(s => <option key={s.kg} value={s.kg}>{s.label}</option>)}
                   </select>
                 )}
+                {isKg && qty > 0 && (
+                  // Exact quantity in the cart — pick 1 kg directly even if
+                  // 250 g is already added.
+                  <select value={qty} onChange={e => updateItem(product._id, Math.min(Number(e.target.value), addCeiling))}
+                    className="mb-1 border rounded-lg px-2 py-1 text-xs">
+                    {qtyOptionsFor(minOrderQty, addCeiling, qty).map(q => <option key={q} value={q}>{formatWeight(q)}</option>)}
+                  </select>
+                )}
                 {isKg && (
                   <p className="text-[10px] text-gray-400 mb-1.5">
-                    {qty === 0
-                      ? `Min order: ${formatWeight(minOrderQty)}`
-                      : `+/- adjusts by ${formatWeight(stepFor(product._id, minOrderQty))}`}
+                    {`Min ${formatWeight(minOrderQty)}`}{maxOrderQty != null ? ` · Max ${formatWeight(maxOrderQty)}` : ''}
+                    {qty > 0 ? ` · +/- adjusts by ${formatWeight(minOrderQty)}` : ''}
                   </p>
                 )}
 

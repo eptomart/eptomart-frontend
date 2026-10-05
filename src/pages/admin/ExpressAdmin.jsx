@@ -653,6 +653,39 @@ function ProductManagementTab({ stores }) {
     }
   };
 
+  // Per-item order limits (min / max quantity a customer can put in the cart).
+  // Stored on the product itself, so they apply at every store.
+  const [limits, setLimits] = useState({}); // id -> { min, max } (strings, edited)
+  const limitVal = (it, k) => {
+    const e = limits[rowId(it)]?.[k];
+    return e !== undefined ? e : (it[k === 'min' ? 'minOrderQty' : 'maxOrderQty'] ?? '');
+  };
+  const limitDirty = (it) => {
+    const e = limits[rowId(it)];
+    return !!e && ((e.min !== undefined && String(e.min) !== String(it.minOrderQty ?? ''))
+      || (e.max !== undefined && String(e.max) !== String(it.maxOrderQty ?? '')));
+  };
+  const saveLimits = async (it) => {
+    const min = limitVal(it, 'min'), max = limitVal(it, 'max');
+    if (min !== '' && !(Number(min) > 0)) return toast.error('Minimum must be greater than 0');
+    if (max !== '' && !(Number(max) > 0)) return toast.error('Maximum must be greater than 0');
+    if (min !== '' && max !== '' && Number(max) < Number(min)) return toast.error('Maximum cannot be less than minimum');
+    setBusyId(rowId(it));
+    try {
+      await api.put(`/express/admin/products/${it.productId}`, {
+        ...(min !== '' ? { minOrderQty: Number(min) } : {}),
+        maxOrderQty: max === '' ? '' : Number(max),
+      });
+      toast.success(`Order limits saved for ${it.name}`);
+      setLimits(l => { const n = { ...l }; delete n[rowId(it)]; return n; });
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to save limits');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const toggleSel = (id) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const allVisibleSelected = rows.length > 0 && rows.every(r => selected.has(rowId(r)));
   const selectedRows = items.filter(it => selected.has(rowId(it)));
@@ -718,6 +751,7 @@ function ProductManagementTab({ stores }) {
                 <th className="px-3 py-2 text-right">Price</th>
                 <th className="px-3 py-2 text-right">Stock</th>
                 <th className="px-3 py-2 text-center">Status</th>
+                <th className="px-3 py-2 text-center">Min / Max qty</th>
                 <th className="px-3 py-2 text-right">Add Stock</th>
               </tr>
             </thead>
@@ -741,6 +775,23 @@ function ProductManagementTab({ stores }) {
                         {it.isEnabled ? 'Active' : 'Inactive'}
                       </button>
                     </td>
+                    <td className="px-3 py-2 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <input type="number" step="0.01" min="0.01" placeholder="Min" value={limitVal(it, 'min')} disabled={!it.productId}
+                          title={it.productId ? `Minimum ${it.unit} per order` : 'Activate this item first'}
+                          onChange={e => setLimits(l => ({ ...l, [id]: { ...l[id], min: e.target.value } }))}
+                          className="w-16 border border-gray-200 rounded-lg px-1.5 py-1 text-right text-xs disabled:bg-gray-50" />
+                        <span className="text-gray-300">–</span>
+                        <input type="number" step="0.01" min="0.01" placeholder="Max" value={limitVal(it, 'max')} disabled={!it.productId}
+                          title={it.productId ? `Maximum ${it.unit} per order (blank = no limit)` : 'Activate this item first'}
+                          onChange={e => setLimits(l => ({ ...l, [id]: { ...l[id], max: e.target.value } }))}
+                          className="w-16 border border-gray-200 rounded-lg px-1.5 py-1 text-right text-xs disabled:bg-gray-50" />
+                        {limitDirty(it) && (
+                          <button onClick={() => saveLimits(it)} disabled={busyId === id}
+                            className="px-2 py-1 rounded-lg text-xs font-bold bg-green-600 text-white disabled:opacity-40">Save</button>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <input type="number" min="0" placeholder="+ qty" value={addQty[id] ?? ''} disabled={!it.productId}
@@ -754,7 +805,7 @@ function ProductManagementTab({ stores }) {
                   </tr>
                 );
               })}
-              {rows.length === 0 && <tr><td colSpan={6} className="text-center text-gray-400 py-6">No products match</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={7} className="text-center text-gray-400 py-6">No products match</td></tr>}
             </tbody>
           </table>
         </div>
