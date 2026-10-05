@@ -653,6 +653,24 @@ function ProductManagementTab({ stores }) {
     }
   };
 
+  // One-touch out-of-stock. Two taps (button turns into "Sure?") instead of a
+  // browser confirm() popup, which app webviews block.
+  const [oosConfirm, setOosConfirm] = useState(null); // row id | 'bulk' | null
+  const markOutOfStock = async (list) => {
+    const ids = list.filter(it => it.productId).map(it => it.productId);
+    if (!ids.length) { setOosConfirm(null); return toast.error('These items have no stock record at this store'); }
+    setBusyId(list.length === 1 ? rowId(list[0]) : 'bulk');
+    try {
+      await api.post(`/express/admin/stores/${storeId}/mark-out-of-stock`, { productIds: ids });
+      toast.success(`${list.length} item${list.length === 1 ? '' : 's'} marked out of stock`);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to mark out of stock');
+    } finally {
+      setBusyId(null); setOosConfirm(null);
+    }
+  };
+
   // Per-item order limits (min / max quantity a customer can put in the cart).
   // Stored on the product itself, so they apply at every store.
   const [limits, setLimits] = useState({}); // id -> { min, max } (strings, edited)
@@ -733,6 +751,14 @@ function ProductManagementTab({ stores }) {
           <span className="font-semibold text-indigo-800">{selected.size} selected</span>
           <button onClick={() => setOnline(selectedRows, true)} disabled={busyId === 'bulk'} className="px-3 py-1 rounded-lg bg-green-600 text-white text-xs font-bold disabled:opacity-50">Activate</button>
           <button onClick={() => setOnline(selectedRows, false)} disabled={busyId === 'bulk'} className="px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-50">Deactivate</button>
+          {oosConfirm === 'bulk' ? (
+            <>
+              <button onClick={() => markOutOfStock(selectedRows)} disabled={busyId === 'bulk'} className="px-3 py-1 rounded-lg bg-orange-600 text-white text-xs font-bold disabled:opacity-50">Sure? Set stock to 0</button>
+              <button onClick={() => setOosConfirm(null)} className="px-2 py-1 text-xs text-gray-500">Cancel</button>
+            </>
+          ) : (
+            <button onClick={() => setOosConfirm('bulk')} className="px-3 py-1 rounded-lg bg-orange-500 text-white text-xs font-bold">Out of stock</button>
+          )}
         </div>
       )}
 
@@ -800,6 +826,14 @@ function ProductManagementTab({ stores }) {
                           className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-right text-xs disabled:bg-gray-50" />
                         <button onClick={() => addStock(it)} disabled={!it.productId || busyId === id}
                           className="px-2 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white disabled:opacity-40">Add</button>
+                        {oosConfirm === id ? (
+                          <button onClick={() => markOutOfStock([it])} disabled={busyId === id}
+                            className="px-2 py-1 rounded-lg text-xs font-bold bg-orange-600 text-white disabled:opacity-40">Sure?</button>
+                        ) : (
+                          <button onClick={() => setOosConfirm(id)} disabled={!it.productId || it.stockQty <= 0}
+                            title="Set stock to 0 so it shows Out of stock online"
+                            className="px-2 py-1 rounded-lg text-xs font-bold bg-orange-100 text-orange-700 disabled:opacity-30">Out</button>
+                        )}
                       </div>
                     </td>
                   </tr>
