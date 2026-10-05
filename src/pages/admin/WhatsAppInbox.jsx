@@ -679,12 +679,26 @@ export default function WhatsAppInbox() {
     const first = m?.firstName || m?.customerName || '';
     return title ? `Dear ${title} ${first},` : `Dear ${first || 'Customer'},`;
   };
-  const draftWithAI = async (msg) => {
+  const [aiNotes, setAiNotes] = useState([]); // visible chat transcript
+  const [aiChat, setAiChat] = useState([]); // [{role:'user'|'assistant', content}]
+  const [aiInput, setAiInput] = useState('');
+  const draftWithAI = async (msg, instruction = '') => {
     setAiDrafting(true);
     try {
-      const { data } = await api.post('/express/admin/messages/draft-reply', { messageId: msg._id });
-      setAiMeta({ firstName: data.firstName, customerName: data.customerName, title: data.title });
-      setReplyText((data.draft || '').replace(/Dear\s*\{\{SALUTATION\}\},?/i, aiGreeting(data.title, data)));
+      const { data } = await api.post('/express/admin/messages/draft-reply', {
+        messageId: msg._id,
+        instruction,
+        history: aiChat,
+        currentDraft: instruction ? replyText : undefined,
+      });
+      const meta = { firstName: data.firstName, customerName: data.customerName, title: aiMeta?.title ?? data.title };
+      setAiMeta(meta);
+      setReplyText((data.draft || '').replace(/Dear\s*\{\{SALUTATION\}\},?/i, aiGreeting(meta.title, data)));
+      if (instruction) {
+        setAiChat(c => [...c, { role: 'user', content: instruction }, { role: 'assistant', content: data.raw || data.draft }]);
+        setAiNotes(n => [...n, { you: instruction, ai: data.note || 'Draft updated.' }]);
+        setAiInput('');
+      }
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Could not draft a reply');
     } finally {
@@ -951,6 +965,28 @@ export default function WhatsAppInbox() {
                 </button>
               ))}
             </div>
+
+            {/* Chat with AI — works with or without an existing order. */}
+            {(aiMeta || aiNotes.length > 0) && (
+              <div className="border border-indigo-100 bg-indigo-50/50 rounded-xl p-3 space-y-2">
+                {aiNotes.map((n, i) => (
+                  <div key={i} className="text-xs space-y-1">
+                    <p className="text-right"><span className="inline-block bg-white border rounded-lg px-2 py-1 text-gray-700">{n.you}</span></p>
+                    <p><span className="inline-block bg-indigo-100 text-indigo-900 rounded-lg px-2 py-1">🤖 {n.ai}</span></p>
+                  </div>
+                ))}
+                <div className="flex gap-2">
+                  <input value={aiInput} onChange={e => setAiInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && aiInput.trim() && !aiDrafting) draftWithAI(replyModal, aiInput.trim()); }}
+                    placeholder="Tell AI what to change — e.g. 'shorter', 'delivery by 5 PM'"
+                    className="flex-1 border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-indigo-400" />
+                  <button disabled={aiDrafting || !aiInput.trim()} onClick={() => draftWithAI(replyModal, aiInput.trim())}
+                    className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">
+                    {aiDrafting ? '…' : 'Ask AI'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <textarea
               value={replyText}
