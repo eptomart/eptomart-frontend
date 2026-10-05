@@ -139,7 +139,7 @@ function buildSlots(store) {
 
 export default function ExpressCheckout() {
   const navigate = useNavigate();
-  const { selectedStore, setSelectedStore, cart, fetchCart } = useExpressCart();
+  const { selectedStore, setSelectedStore, cart, fetchCart, clearCart } = useExpressCart();
   const { user } = useAuth();
 
   const [selectedAddrId, setSelectedAddrId] = useState(null);
@@ -278,16 +278,22 @@ export default function ExpressCheckout() {
   // an address AND slot were filled and a quote was attempted — most customers
   // never saw it. Fetch the store's live status on open and show it at once.
   const [liveHold, setLiveHold] = useState(null); // { message } | null
+  // Checkout is always for the store the CART belongs to (that's what the
+  // server prices and gates on), which can differ from the store currently
+  // being browsed if the customer switched stores without adding anything.
+  const cartStoreId = String(cart.store?._id || cart.store || '');
+  const storeMismatch = !!cartStoreId && !!selectedStore?._id && cartStoreId !== String(selectedStore._id) && cart.itemCount > 0;
   useEffect(() => {
     api.post('/express/visit', { page: '/checkout' }).catch(() => {});
-    if (!selectedStore?._id) return;
+    const checkId = cartStoreId || selectedStore?._id;
+    if (!checkId) return;
     api.get('/express/active-stores')
       .then(({ data }) => {
-        const s = (data.stores || []).find(x => String(x._id) === String(selectedStore._id));
+        const s = (data.stores || []).find(x => String(x._id) === String(checkId));
         setLiveHold(s?.isPaused ? { message: s.pauseMessage } : null);
       })
       .catch(() => {});
-  }, [selectedStore?._id]);
+  }, [selectedStore?._id, cartStoreId]);
 
   useEffect(() => {
     if (!selectedStore?._id) { navigate('/express/location'); return; }
@@ -641,6 +647,20 @@ export default function ExpressCheckout() {
       )}
       {!quoting && !quote && !checkoutBlock && slot && (!address.name || !address.phone || !address.addressLine) && (
         <p className="text-xs text-gray-400 mb-4 text-center">Add your delivery address above to see the price.</p>
+      )}
+
+      {storeMismatch && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+          <p className="font-bold text-blue-900 text-sm">Your cart is from a different store</p>
+          <p className="text-xs text-blue-800 mt-0.5">
+            These items were added from <b>{cart.storeName || 'another store'}</b>{cart.storeIsPaused ? ', which is on hold right now' : ''}, so checkout is for that store.
+            You're now browsing <b>{selectedStore?.name}</b>. To order from {selectedStore?.name}, start a fresh cart.
+          </p>
+          <button onClick={async () => { await clearCart(); navigate('/express/shop'); }}
+            className="mt-2 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold">
+            Clear cart &amp; shop {selectedStore?.name}
+          </button>
+        </div>
       )}
 
       {liveHold && checkoutBlock?.type !== 'storePaused' && (

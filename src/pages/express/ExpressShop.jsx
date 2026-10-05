@@ -517,7 +517,11 @@ export default function ExpressShop() {
         <div className="above-bottom-nav fixed left-0 right-0 z-[9970] bg-white border-t p-4 shadow-2xl">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <div>
-              <p className="text-xs text-gray-500">{cart.itemCount} item{cart.itemCount === 1 ? '' : 's'}</p>
+              <p className="text-xs text-gray-500">{cart.itemCount} item{cart.itemCount === 1 ? '' : 's'}
+                {cart.store && selectedStore?._id && String(cart.store?._id || cart.store) !== String(selectedStore._id) && (
+                  <span className="text-amber-600 font-semibold"> · from {cart.storeName || 'another store'}{cart.storeIsPaused ? ' (on hold)' : ''}</span>
+                )}
+              </p>
               <p className="font-bold text-gray-800">₹{cart.subtotal}</p>
             </div>
             {/* Not disabled even while paused — the checkout page itself
