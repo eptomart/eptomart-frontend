@@ -927,8 +927,10 @@ export default function WhatsAppInbox() {
 
       {/* Reply modal */}
       {replyModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6 space-y-4">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-start sm:items-center justify-center p-3 overflow-y-auto">
+          {/* max-h + overflow-y-auto: the box scrolls inside itself, so the
+              Send confirmation can never fall below the visible screen. */}
+          <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-4 max-h-[94vh] overflow-y-auto my-auto">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-black text-green-700 text-lg">💬 Reply via WhatsApp</h3>
@@ -998,9 +1000,10 @@ export default function WhatsAppInbox() {
             />
 
             {confirmingSend ? (
-              <div className="border-2 border-green-300 bg-green-50 rounded-xl p-3 space-y-2">
+              <div id="wa-confirm-box" ref={el => el && el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}
+                className="border-2 border-green-300 bg-green-50 rounded-xl p-3 space-y-2">
                 <p className="text-xs font-bold text-green-800">Send this to {replyModal.profileName || replyModal.from}?</p>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-white rounded-lg p-2 border">{replyText.trim()}</p>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-white rounded-lg p-2 border max-h-40 overflow-y-auto">{replyText.trim()}</p>
                 <div className="flex gap-3">
                   <button onClick={() => setConfirmingSend(false)}
                     className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-bold">Edit</button>

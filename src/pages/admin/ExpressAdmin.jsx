@@ -28,9 +28,9 @@ const copyExpressProductLink = (productId) => {
   if (navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(url)
       .then(() => toast.success('Product link copied'))
-      .catch(() => window.prompt('Copy this link:', url));
+      .catch(() => toast(`Copy this link: ${url}`, { duration: 12000 }));
   } else {
-    window.prompt('Copy this link:', url);
+    toast(`Copy this link: ${url}`, { duration: 12000 }); // no popup — shown on the page
   }
 };
 
@@ -254,7 +254,10 @@ function OrdersTab({ stores }) {
   };
 
   const load = () => {
-    setLoading(true);
+    // Only show the full "Loading…" state when there is nothing on screen yet.
+    // After a save/status change the list refreshes quietly in place, so the
+    // page doesn't blank out and jump back to the top.
+    setLoading(orders.length === 0);
     const params = new URLSearchParams();
     if (storeId) params.set('storeId', storeId);
     if (status) params.set('status', status);
@@ -290,13 +293,18 @@ function OrdersTab({ stores }) {
   // never completed the callback, and the payment.captured webhook also
   // never reached us) — looks the payment up directly on Razorpay's side
   // before marking anything paid. See adminManualVerifyExpressPayment.
+  // Inline (no popup): `pending` = { id, kind: 'cancel' | 'verify' } shows a
+  // small confirmation panel inside that order's card.
+  const [pending, setPending] = useState(null);
+  const [verifyPid, setVerifyPid] = useState('');
   const verifyStuckPayment = async (order) => {
-    const paymentId = window.prompt(`Enter the Razorpay Payment ID for order ${order.orderId} to verify and confirm it:`);
-    if (!paymentId?.trim()) return;
+    const paymentId = verifyPid;
+    if (!paymentId?.trim()) return toast.error('Enter the Razorpay Payment ID');
     setAdvancing(order._id);
     try {
       await api.post(`/express/admin/orders/${order._id}/manual-verify-payment`, { razorpayPaymentId: paymentId.trim() });
       toast.success('Payment verified — order confirmed');
+      setPending(null); setVerifyPid('');
       load();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to verify payment');
@@ -306,11 +314,11 @@ function OrdersTab({ stores }) {
   };
 
   const cancelOrder = async (order) => {
-    if (!window.confirm(`Cancel order ${order.orderId}? This cannot be undone.`)) return;
     setAdvancing(order._id);
     try {
       await api.patch(`/express/admin/orders/${order._id}/status`, { status: 'cancelled', note: 'Cancelled by admin' });
       toast.success('Order cancelled');
+      setPending(null);
       load();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to cancel order');
@@ -425,13 +433,13 @@ function OrdersTab({ stores }) {
                     </button>
                   )}
                   {!isTerminal && (
-                    <button onClick={() => cancelOrder(order)} disabled={advancing === order._id}
+                    <button onClick={() => setPending(p => p?.id === order._id && p.kind === 'cancel' ? null : { id: order._id, kind: 'cancel' })} disabled={advancing === order._id}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">
                       Cancel
                     </button>
                   )}
                   {order.paymentStatus !== 'paid' && order.razorpayOrderId && !order.isDemoOrder && (
-                    <button onClick={() => verifyStuckPayment(order)} disabled={advancing === order._id}
+                    <button onClick={() => { setVerifyPid(''); setPending(p => p?.id === order._id && p.kind === 'verify' ? null : { id: order._id, kind: 'verify' }); }} disabled={advancing === order._id}
                       title="Order shows unpaid but the customer may have actually paid — look it up directly on Razorpay"
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-50">
                       Verify Payment
@@ -455,6 +463,25 @@ function OrdersTab({ stores }) {
                     </button>
                   </div>
                 </div>
+
+                {pending?.id === order._id && pending.kind === 'cancel' && (
+                  <div className="mt-2 p-3 rounded-lg bg-red-50 border border-red-200 flex flex-wrap items-center gap-2 text-sm text-red-800">
+                    <span className="flex-1">Cancel order <b>{order.orderId}</b>? This cannot be undone.</span>
+                    <button onClick={() => cancelOrder(order)} disabled={advancing === order._id}
+                      className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-50">Yes, cancel order</button>
+                    <button onClick={() => setPending(null)} className="px-3 py-1.5 rounded-lg border text-xs text-gray-600 bg-white">Keep order</button>
+                  </div>
+                )}
+                {pending?.id === order._id && pending.kind === 'verify' && (
+                  <div className="mt-2 p-3 rounded-lg bg-amber-50 border border-amber-200 flex flex-wrap items-center gap-2 text-sm text-amber-900">
+                    <span className="w-full sm:w-auto">Razorpay Payment ID for <b>{order.orderId}</b>:</span>
+                    <input value={verifyPid} onChange={e => setVerifyPid(e.target.value)} placeholder="pay_XXXXXXXXXXXXXX"
+                      className="flex-1 min-w-[160px] border rounded-lg px-2.5 py-1.5 text-xs bg-white" />
+                    <button onClick={() => verifyStuckPayment(order)} disabled={advancing === order._id}
+                      className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50">Verify &amp; confirm</button>
+                    <button onClick={() => setPending(null)} className="px-3 py-1.5 rounded-lg border text-xs text-gray-600 bg-white">Cancel</button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -600,13 +627,15 @@ function ProductManagementTab({ stores }) {
 
   const load = () => {
     if (!storeId) { setItems([]); return; }
-    setLoading(true);
+    // Quiet refresh after a save: keep the table (and scroll position) on
+    // screen instead of swapping it for "Loading…".
+    setLoading(items.length === 0);
     api.get(`/express/admin/stores/${storeId}/online-catalog`)
       .then(r => { setItems(r.data.items || []); setSelected(new Set()); })
       .catch(() => toast.error('Failed to load products'))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { load(); }, [storeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setItems([]); load(); }, [storeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const categories = [...new Set(items.map(it => it.category).filter(Boolean))].sort();
   const rows = items
@@ -1445,17 +1474,19 @@ function StoresTab({ stores, reload }) {
     }
   };
 
-  const togglePause = async (s) => {
+  // Hold reason is typed in a panel on the page (no popup): tapping "Hold
+  // Checkout" opens it under the store, "Confirm hold" applies it.
+  const [holdFor, setHoldFor] = useState(null);   // store id with the reason panel open
+  const [holdReason, setHoldReason] = useState('');
+  const togglePause = async (s, reason = null) => {
     let message = null;
     if (!s.isPaused) {
-      message = window.prompt(
-        "Reason to show customers while checkout is on hold (e.g. 'Store closed for stock count, back at 4 PM'). Browsing and adding to cart stay open regardless:",
-        ""
-      );
-      if (message === null) return; // cancelled
+      if (holdFor !== s._id) { setHoldFor(s._id); setHoldReason(''); return; }
+      message = reason ?? holdReason;
     }
     try {
       await api.patch(`/express/admin/stores/${s._id}/toggle-pause`, { message });
+      setHoldFor(null); setHoldReason('');
       toast.success(s.isPaused
         ? 'Checkout reopened — taking orders again'
         : 'Checkout put on hold — customers can still browse & add to cart, and we\'re logging who tries to check out so you can call them back');
@@ -1569,6 +1600,21 @@ function StoresTab({ stores, reload }) {
                 </button>
               </div>
             </div>
+
+            {holdFor === s._id && !s.isPaused && (
+              <div className="mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
+                <p className="text-xs font-semibold text-amber-900 mb-1.5">
+                  Reason to show customers while checkout is on hold (browsing and adding to cart stay open):
+                </p>
+                <input value={holdReason} onChange={e => setHoldReason(e.target.value)}
+                  placeholder="e.g. Store closed for stock count, back at 4 PM"
+                  className="w-full border rounded-lg px-3 py-2 text-sm bg-white mb-2" />
+                <div className="flex gap-2">
+                  <button onClick={() => togglePause(s, holdReason)} className="px-4 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">Confirm hold</button>
+                  <button onClick={() => setHoldFor(null)} className="px-4 py-1.5 rounded-lg border text-xs text-gray-600 bg-white">Cancel</button>
+                </div>
+              </div>
+            )}
 
             {slotsStoreId === s._id && <DeliverySlotsPanel store={s} onChanged={reload} />}
             {feeStoreId === s._id && <DeliveryFeePanel store={s} onChanged={reload} />}
@@ -2245,13 +2291,13 @@ function OnlineCatalogTab({ stores, reload }) {
 
   const loadCatalog = () => {
     if (!storeId) { setItems([]); return; }
-    setLoading(true);
+    setLoading(items.length === 0); // quiet refresh after save — keep scroll position
     api.get(`/express/admin/stores/${storeId}/online-catalog`)
       .then(r => { setItems(r.data.items || []); setStoreName(r.data.store?.name || ''); setDrafts({}); })
       .catch(() => toast.error('Failed to load online catalog'))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { loadCatalog(); }, [storeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setItems([]); loadCatalog(); }, [storeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Generic row id works for both a Koyambedu-linked row and a fully-native
   // Express product/combo row — exactly one of the two ids is ever present.
@@ -3088,13 +3134,13 @@ function StoreInventoryTab({ stores }) {
 
   const loadStoreProducts = () => {
     if (!storeId) { setStoreProducts([]); return; }
-    setLoading(true);
+    setLoading(storeProducts.length === 0); // quiet refresh after save — keep scroll position
     api.get(`/express/admin/stores/${storeId}/products`)
       .then(r => setStoreProducts(r.data.storeProducts || []))
       .catch(() => toast.error('Failed to load store inventory'))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { loadStoreProducts(); }, [storeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setStoreProducts([]); loadStoreProducts(); }, [storeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadLogs = () => {
     if (!storeId) { setLogs([]); return; }

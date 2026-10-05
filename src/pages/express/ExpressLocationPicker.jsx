@@ -278,8 +278,12 @@ export default function ExpressLocationPicker() {
     }
   };
 
+  // Two-tap remove on the page itself (first tap arms it, second removes) —
+  // no browser popup.
+  const [removeArmed, setRemoveArmed] = useState(null);
   const removeAddress = async (addr) => {
-    if (!window.confirm(`Remove "${addr.label || 'this address'}"?`)) return;
+    if (removeArmed !== addr._id) { setRemoveArmed(addr._id); setTimeout(() => setRemoveArmed(a => a === addr._id ? null : a), 4000); return; }
+    setRemoveArmed(null);
     try {
       await api.delete(`/auth/address/${addr._id}`);
       await loadUser();
@@ -369,7 +373,10 @@ export default function ExpressLocationPicker() {
                     </button>
                     <div className="flex gap-1 shrink-0">
                       <Link to="/profile" className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><FiEdit2 size={13} /></Link>
-                      <button onClick={() => removeAddress(addr)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400"><FiTrash2 size={13} /></button>
+                      <button onClick={() => removeAddress(addr)}
+                        className={`p-1.5 rounded-lg text-red-400 flex items-center gap-1 ${removeArmed === addr._id ? 'bg-red-600 text-white text-[11px] font-bold px-2' : 'hover:bg-red-50'}`}>
+                        <FiTrash2 size={13} />{removeArmed === addr._id ? 'Tap again to remove' : ''}
+                      </button>
                     </div>
                   </div>
                   <button onClick={() => deliverToAddress(addr)} disabled={checkingId === addr._id}
