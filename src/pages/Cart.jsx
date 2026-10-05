@@ -932,8 +932,10 @@ function ExpressTab({ exCart, exItemCount, exUpdateItem, navigate, vertical }) {
               const lineAmt = (item.price || 0) * (item.quantity || 0);
               const isKg = item.unit === 'kg';
 
+              // Stable key (product id): a changing/missing _id after each
+              // server refresh used to remount the row — visible as flicker.
               return (
-                <div key={item._id || i} className="p-4 flex gap-4">
+                <div key={pid || i} className="p-4 flex gap-4">
                   <div className="w-20 h-20 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
                     <FiZap size={22} className="text-indigo-400" />
                   </div>

@@ -72,25 +72,50 @@ export const ExpressCartProvider = ({ children }) => {
   // displayed quantity updates instantly (optimistic), and the actual save
   // is debounced per product so a burst of taps collapses into one request
   // once the customer pauses, instead of one request per tap.
+  //
+  // Flicker fix: a slow response from an EARLIER save used to land after the
+  // customer had already tapped again and overwrite the newer optimistic
+  // quantity (the number jumped back, then forward again). Now each product
+  // carries a version, and a server response is only applied when (a) it is
+  // still the latest save for that product and (b) no other save/timer is
+  // outstanding — the final response always carries the true cart.
   const updateTimers = useRef({});
+  const versions = useRef({});       // productId -> latest local edit number
+  const outstanding = useRef(0);     // timers + in-flight requests
   const updateItem = useCallback((productId, quantity) => {
-    setCart(c => ({
-      ...c,
-      items: c.items.map(i => String(i.product) === String(productId) ? { ...i, quantity } : i),
-    }));
+    // Optimistic: update the line AND the totals together (subtotal / count),
+    // so the price doesn't lag a tap behind and then jump when the server
+    // answers. Removing (qty <= 0) drops the row immediately.
+    setCart(c => {
+      const items = c.items
+        .map(i => String(i.product?._id || i.product) === String(productId) ? { ...i, quantity } : i)
+        .filter(i => Number(i.quantity) > 0);
+      const subtotal = Math.round(items.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.quantity) || 0), 0));
+      return { ...c, items, subtotal, itemCount: items.length };
+    });
 
-    clearTimeout(updateTimers.current[productId]);
+    const version = (versions.current[productId] || 0) + 1;
+    versions.current[productId] = version;
+
+    if (updateTimers.current[productId]) {
+      clearTimeout(updateTimers.current[productId]);
+    } else {
+      outstanding.current += 1; // new burst for this product
+    }
     updateTimers.current[productId] = setTimeout(async () => {
+      delete updateTimers.current[productId];
       try {
         const { data } = await api.put('/express/cart', { productId, quantity });
-        setCart(data.cart);
+        const isLatest = versions.current[productId] === version;
+        outstanding.current -= 1;
+        // Apply only the final response, so nothing older can overwrite a newer tap.
+        if (isLatest && outstanding.current <= 0 && data?.cart) setCart(data.cart);
       } catch (err) {
+        outstanding.current -= 1;
         toast.error(err?.response?.data?.message || 'Failed to update cart');
-        fetchCart(); // re-sync with the server since the optimistic value may now be wrong
-      } finally {
-        delete updateTimers.current[productId];
+        if (versions.current[productId] === version) fetchCart(); // re-sync with the server
       }
-    }, 350);
+    }, 450);
   }, [fetchCart]);
 
   const clearCart = useCallback(async () => {
