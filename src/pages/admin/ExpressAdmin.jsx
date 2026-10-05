@@ -3554,7 +3554,24 @@ function MarginConfigTab({ stores }) {
       });
       toast.success('Margin config saved');
       load();
-    } catch { toast.error('Failed to save margin config'); } finally { setSaving(false); }
+    } catch (err) { toast.error(err?.response?.data?.message || 'Failed to save margin config'); } finally { setSaving(false); }
+  };
+
+  // Platform fee saves on its own — it used to ride along with the whole
+  // settings form, so any unrelated validation problem elsewhere in that form
+  // (e.g. delivery-time tiers) silently blocked lowering the fee.
+  const [savingFee, setSavingFee] = useState(false);
+  const savePlatformFee = async () => {
+    const v = Number(config.platformFeeAmount);
+    if (config.platformFeeAmount === '' || !Number.isFinite(v) || v < 0) return toast.error('Enter a fee of 0 or more');
+    setSavingFee(true);
+    try {
+      const { data } = await api.put('/express/admin/margin-config', { platformFeeAmount: v });
+      setConfig(c => ({ ...c, platformFeeAmount: data.config.platformFeeAmount }));
+      toast.success(v === 0 ? 'Platform fee removed (₹0)' : `Platform fee set to ₹${v}`);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to save platform fee');
+    } finally { setSavingFee(false); }
   };
 
   const recompute = async () => {
@@ -3615,11 +3632,19 @@ function MarginConfigTab({ stores }) {
           A flat fee charged to the customer at checkout, alongside the delivery fee — one amount for every Express
           store. Set to 0 to disable it entirely.
         </p>
-        <label className="text-xs font-semibold text-gray-500">Platform Fee (₹)
-          <input type="number" min={0} value={config.platformFeeAmount ?? 75}
-            onChange={e => setConfig(c => ({ ...c, platformFeeAmount: e.target.value }))}
-            className="border rounded-lg px-3 py-2 text-sm w-full mt-1 sm:w-48" />
-        </label>
+        <div className="flex items-end gap-2 flex-wrap">
+          <label className="text-xs font-semibold text-gray-500">Platform Fee (₹)
+            <input type="number" inputMode="decimal" min={0} step="1" value={config.platformFeeAmount ?? 75}
+              onChange={e => setConfig(c => ({ ...c, platformFeeAmount: e.target.value }))}
+              className="border rounded-lg px-3 py-2 text-sm w-full mt-1 sm:w-48" />
+          </label>
+          <button onClick={savePlatformFee} disabled={savingFee}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold disabled:opacity-50">
+            {savingFee ? 'Saving…' : 'Save fee'}
+          </button>
+          <button onClick={() => setConfig(c => ({ ...c, platformFeeAmount: 0 }))}
+            className="px-3 py-2 rounded-lg border text-xs font-semibold text-gray-600">Set to 0</button>
+        </div>
       </div>
 
       <div className="bg-white border rounded-xl p-4">
