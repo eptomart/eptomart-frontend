@@ -679,6 +679,7 @@ export default function WhatsAppInbox() {
     const first = m?.firstName || m?.customerName || '';
     return title ? `Dear ${title} ${first},` : `Dear ${first || 'Customer'},`;
   };
+  const [confirmingSend, setConfirmingSend] = useState(false);
   const [aiNotes, setAiNotes] = useState([]); // visible chat transcript
   const [aiChat, setAiChat] = useState([]); // [{role:'user'|'assistant', content}]
   const [aiInput, setAiInput] = useState('');
@@ -914,7 +915,7 @@ export default function WhatsAppInbox() {
                     Mark read
                   </button>
                 )}
-                <button onClick={() => { setReplyModal(msg); setReplyText(''); setAiMeta(null); }}
+                <button onClick={() => { setReplyModal(msg); setReplyText(''); setAiMeta(null); setAiNotes([]); setAiChat([]); setAiInput(''); setConfirmingSend(false); }}
                   className="text-sm px-4 py-1.5 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition">
                   💬 Reply
                 </button>
@@ -996,18 +997,34 @@ export default function WhatsAppInbox() {
               className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-green-400 resize-none"
             />
 
-            <div className="flex gap-3">
-              <button onClick={() => setReplyModal(null)}
-                className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-bold hover:bg-gray-50 transition">
-                Cancel
-              </button>
-              <button
-                disabled={replying || !replyText.trim()}
-                onClick={() => { if (window.confirm(`Send this message to ${replyModal.profileName || replyModal.from}?\n\n${replyText.trim()}`)) sendReply(); }}
-                className="flex-1 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 disabled:opacity-40 transition">
-                {replying ? 'Sending…' : '📤 Send Reply'}
-              </button>
-            </div>
+            {confirmingSend ? (
+              <div className="border-2 border-green-300 bg-green-50 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-bold text-green-800">Send this to {replyModal.profileName || replyModal.from}?</p>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-white rounded-lg p-2 border">{replyText.trim()}</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setConfirmingSend(false)}
+                    className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-bold">Edit</button>
+                  <button disabled={replying}
+                    onClick={async () => { await sendReply(); setConfirmingSend(false); }}
+                    className="flex-1 py-2.5 rounded-xl bg-green-600 text-white font-bold disabled:opacity-40">
+                    {replying ? 'Sending…' : 'Yes, send now'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-3">
+                <button onClick={() => setReplyModal(null)}
+                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-bold hover:bg-gray-50 transition">
+                  Cancel
+                </button>
+                <button
+                  disabled={replying || !replyText.trim()}
+                  onClick={() => setConfirmingSend(true)}
+                  className="flex-1 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 disabled:opacity-40 transition">
+                  📤 Send Reply
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
