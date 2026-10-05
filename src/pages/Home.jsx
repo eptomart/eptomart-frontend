@@ -630,7 +630,7 @@ function ExpressBanner({ onReady }) {
     api.get('/express/active-stores')
       .then(r => {
         const match = (r.data?.stores || []).find(s => String(s._id) === String(selectedStore._id));
-        setHoldNotice(match?.isPaused ? (match.pauseMessage || "We're experiencing high demand right now.") : null);
+        setHoldNotice(match?.isPaused ? (match.pauseMessage || "Orders on hold — back shortly") : null);
       })
       .catch(() => setHoldNotice(null));
   }, [selectedStore?._id]);
@@ -675,7 +675,7 @@ function ExpressBanner({ onReady }) {
               <div className="flex items-center gap-1 bg-amber-500/90 backdrop-blur-sm rounded-full px-2 py-0.5 self-start max-w-[90%]">
                 <FiPauseCircle className="text-white shrink-0" size={11} />
                 <span className="text-white font-bold text-[9px] leading-tight truncate" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
-                  High demand — back shortly
+                  {holdNotice}
                 </span>
               </div>
             )}

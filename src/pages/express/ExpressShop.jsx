@@ -378,7 +378,7 @@ export default function ExpressShop() {
         <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2">
           <FiPauseCircle className="text-amber-600 shrink-0 mt-0.5" size={16} />
           <div>
-            <p className="text-sm font-bold text-amber-800">High demand — we'll open orders again shortly!</p>
+            <p className="text-sm font-bold text-amber-800">Orders are on hold for now</p>
             <p className="text-xs text-amber-700 mt-0.5">
               {storeStatus.pauseMessage || "We're experiencing high demand right now."} Feel free to keep browsing and add items to your cart — you can check out the moment we're back.
             </p>

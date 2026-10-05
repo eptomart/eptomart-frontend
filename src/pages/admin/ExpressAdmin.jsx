@@ -1341,8 +1341,8 @@ function StoresTab({ stores, reload }) {
     let message = null;
     if (!s.isPaused) {
       message = window.prompt(
-        "Message to show customers while checkout is on hold (optional) — browsing and adding to cart stay open regardless:",
-        "We're experiencing high demand right now — we'll open orders again shortly!"
+        "Reason to show customers while checkout is on hold (e.g. 'Store closed for stock count, back at 4 PM'). Browsing and adding to cart stay open regardless:",
+        ""
       );
       if (message === null) return; // cancelled
     }

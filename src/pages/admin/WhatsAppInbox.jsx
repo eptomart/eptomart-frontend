@@ -673,6 +673,29 @@ export default function WhatsAppInbox() {
     } catch { toast.error('Failed'); }
   };
 
+  const [aiDrafting, setAiDrafting] = useState(false);
+  const [aiMeta, setAiMeta] = useState(null); // { firstName, customerName, title }
+  const aiGreeting = (title, m) => {
+    const first = m?.firstName || m?.customerName || '';
+    return title ? `Dear ${title} ${first},` : `Dear ${first || 'Customer'},`;
+  };
+  const draftWithAI = async (msg) => {
+    setAiDrafting(true);
+    try {
+      const { data } = await api.post('/express/admin/messages/draft-reply', { messageId: msg._id });
+      setAiMeta({ firstName: data.firstName, customerName: data.customerName, title: data.title });
+      setReplyText((data.draft || '').replace(/Dear\s*\{\{SALUTATION\}\},?/i, aiGreeting(data.title, data)));
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not draft a reply');
+    } finally {
+      setAiDrafting(false);
+    }
+  };
+  const setAiTitle = (title) => {
+    setAiMeta(m => ({ ...m, title }));
+    setReplyText(t => /^Dear [^\n]*,/.test(t) ? t.replace(/^Dear [^\n]*,/, aiGreeting(title, aiMeta)) : t);
+  };
+
   const sendReply = async () => {
     if (!replyText.trim()) return;
     setReplying(true);
@@ -877,7 +900,7 @@ export default function WhatsAppInbox() {
                     Mark read
                   </button>
                 )}
-                <button onClick={() => { setReplyModal(msg); setReplyText(''); }}
+                <button onClick={() => { setReplyModal(msg); setReplyText(''); setAiMeta(null); }}
                   className="text-sm px-4 py-1.5 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition">
                   💬 Reply
                 </button>
@@ -913,11 +936,27 @@ export default function WhatsAppInbox() {
               </div>
             )}
 
+            {/* AI draft — only fills the box; nothing is sent until the admin
+                presses Send AND confirms the preview. */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button disabled={aiDrafting} onClick={() => draftWithAI(replyModal)}
+                className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">
+                {aiDrafting ? 'Drafting…' : '✨ AI Draft Reply'}
+              </button>
+              {aiMeta && ['Mr.', 'Ms.', ''].map(t => (
+                <button key={t || 'none'} onClick={() => setAiTitle(t)}
+                  className="px-2.5 py-1 rounded-full text-xs font-bold border"
+                  style={aiMeta.title === t ? { background: '#4338ca', color: '#fff', borderColor: '#4338ca' } : { color: '#6b7280' }}>
+                  {t || 'No title'}
+                </button>
+              ))}
+            </div>
+
             <textarea
               value={replyText}
               onChange={e => setReplyText(e.target.value)}
               placeholder="Type your reply…"
-              rows={4}
+              rows={aiMeta ? 8 : 4}
               className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-green-400 resize-none"
             />
 
@@ -928,7 +967,7 @@ export default function WhatsAppInbox() {
               </button>
               <button
                 disabled={replying || !replyText.trim()}
-                onClick={sendReply}
+                onClick={() => { if (window.confirm(`Send this message to ${replyModal.profileName || replyModal.from}?\n\n${replyText.trim()}`)) sendReply(); }}
                 className="flex-1 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 disabled:opacity-40 transition">
                 {replying ? 'Sending…' : '📤 Send Reply'}
               </button>
