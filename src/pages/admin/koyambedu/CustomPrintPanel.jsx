@@ -374,33 +374,44 @@ export default function CustomPrintPanel({ connected }) {
 
           {/* Own item (any name) */}
           <div style={{ background: '#f9fafb', border: '1px dashed #d1d5db', borderRadius: 8, padding: 10, marginBottom: 10 }}>
-            <label style={labelStyle}>Add your own item (any name)</label>
-            <input value={own.name} onChange={e => setOwn(o => ({ ...o, name: e.target.value }))} placeholder="Item name, e.g. Banana leaf bundle" style={{ ...inputStyle, marginBottom: 6 }} />
-            <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr auto', gap: 6, alignItems: 'center' }}>
-              <input list="kcp-units" value={own.unit} onChange={e => setOwn(o => ({ ...o, unit: e.target.value }))} placeholder="Unit" style={{ ...inputStyle, padding: '6px 8px' }} />
-              <input type="number" min="0" step="any" value={own.qty} onChange={e => setOwn(o => ({ ...o, qty: e.target.value }))} placeholder="Qty" style={{ ...inputStyle, padding: '6px 8px' }} />
-              <input type="number" min="0" step="any" value={own.price} onChange={e => setOwn(o => ({ ...o, price: e.target.value }))} placeholder="Price/unit" style={{ ...inputStyle, padding: '6px 8px' }} />
-              <button onClick={addOwnItem} style={btn('#065f46', '#fff', { padding: '7px 12px' })}><FiPlus size={14} /> Add</button>
+            <label style={labelStyle}>Item name (type any name)</label>
+            <input value={own.name} onChange={e => setOwn(o => ({ ...o, name: e.target.value }))} placeholder="e.g. Banana leaf bundle" style={{ ...inputStyle, marginBottom: 6 }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr auto', gap: 6, alignItems: 'end' }}>
+              <div><label style={labelStyle}>Unit</label>
+                <input list="kcp-units" value={own.unit} onChange={e => setOwn(o => ({ ...o, unit: e.target.value }))} placeholder="kg" style={{ ...inputStyle, padding: '6px 8px' }} /></div>
+              <div><label style={labelStyle}>Quantity</label>
+                <input type="number" min="0" step="any" value={own.qty} onChange={e => setOwn(o => ({ ...o, qty: e.target.value }))} placeholder="e.g. 2" style={{ ...inputStyle, padding: '6px 8px' }} /></div>
+              <div><label style={labelStyle}>Rate per unit (₹)</label>
+                <input type="number" min="0" step="any" value={own.price} onChange={e => setOwn(o => ({ ...o, price: e.target.value }))} placeholder="₹ e.g. 46" style={{ ...inputStyle, padding: '6px 8px' }} /></div>
+              <button onClick={addOwnItem} style={btn('#065f46', '#fff', { padding: '8px 12px' })}><FiPlus size={14} /> Add</button>
             </div>
             <datalist id="kcp-units">{['kg', 'g', 'pcs', 'bunch', 'dozen', 'ltr', 'pack', 'box'].map(u => <option key={u} value={u} />)}</datalist>
           </div>
 
           {items.length > 0 && (
             <div style={{ border: '1px solid #f3f4f6', borderRadius: 8, marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#f9fafb', borderBottom: '1px solid #f3f4f6', fontSize: 10.5, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                <span style={{ flex: '1 1 130px', minWidth: 110 }}>Item name</span>
+                <span style={{ width: 55, textAlign: 'right' }}>Qty</span>
+                <span style={{ width: 46 }}>Unit</span>
+                <span style={{ width: 62, textAlign: 'right' }}>Rate ₹</span>
+                <span style={{ width: 62, textAlign: 'right' }}>Amount ₹</span>
+                <span style={{ width: 19 }} />
+              </div>
               {items.map((it, idx) => (
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', borderBottom: '1px solid #f3f4f6', flexWrap: 'wrap' }}>
                   <input value={it.name} onChange={e => patchItem(idx, { name: e.target.value })} title="Item name"
                     style={{ flex: '1 1 130px', minWidth: 110, padding: '4px 6px', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: 13 }} />
-                  <input type="number" min="0" step="any" value={it.qty} onChange={e => patchItem(idx, { qty: e.target.value === '' ? '' : Number(e.target.value) })} title="Quantity" style={{ ...smallInput, width: 55 }} />
+                  <input type="number" min="0" step="any" value={it.qty} onChange={e => patchItem(idx, { qty: e.target.value === '' ? '' : Number(e.target.value) })} title="Quantity" placeholder="Qty" style={{ ...smallInput, width: 55 }} />
                   <input list="kcp-units" value={it.unit} onChange={e => patchItem(idx, { unit: e.target.value })} title="Unit" style={{ ...smallInput, width: 46, textAlign: 'left' }} />
-                  <input type="number" min="0" step="any" value={it.price} onChange={e => patchItem(idx, { price: e.target.value === '' ? '' : Number(e.target.value) })} placeholder="Price" title="Price per unit" style={{ ...smallInput, width: 62 }} />
+                  <input type="number" min="0" step="any" value={it.price} onChange={e => patchItem(idx, { price: e.target.value === '' ? '' : Number(e.target.value) })} placeholder="₹" title="Rate per unit (₹)" style={{ ...smallInput, width: 62 }} />
                   <span style={{ fontSize: 12, fontWeight: 600, color: '#111', width: 62, textAlign: 'right' }}>{'₹'}{lineTotal(it).toFixed(2)}</span>
                   <button onClick={() => removeItem(idx)} title="Remove item" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 2 }}><FiX size={15} /></button>
                 </div>
               ))}
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', fontSize: 13, fontWeight: 700, color: '#065f46' }}>
                 <span>{items.length} item{items.length !== 1 ? 's' : ''}</span>
-                <span>Total: {'₹'}{grandTotal.toFixed(2)}</span>
+                <span>Total: ₹{grandTotal.toFixed(2)}</span>
               </div>
             </div>
           )}

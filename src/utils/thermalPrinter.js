@@ -428,8 +428,8 @@ const alignedItemLines = (index, name, qtyUnit, rate, amt) => {
   const prefix = `${index + 1}. `;
   const indent = ' '.repeat(prefix.length);
   const nameLines = wrapLabeled('', name, LINE_WIDTH - prefix.length).map((ln, i) => (i === 0 ? prefix : indent) + ln.trim());
-  const detailLeft = `${indent}${qtyUnit} x ${fmtCompact(rate)}`;
-  return [...nameLines, twoCol(detailLeft, Number(amt).toFixed(2))];
+  const detailLeft = `${indent}${qtyUnit} x Rs.${fmtCompact(rate)}`;
+  return [...nameLines, twoCol(detailLeft, `Rs.${Number(amt).toFixed(2)}`)];
 };
 
 /**
@@ -455,6 +455,10 @@ function buildCustomBillEscPos(bill) {
   if (bill.customerArea) {
     for (const line of wrapLabeled('Location', bill.customerArea)) chunks.push(bytesText(`${line}\n`));
   }
+  chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
+  chunks.push(bytesBoldOn());
+  chunks.push(bytesText(`${twoCol('Item / Qty x Rate', 'Amount')}\n`));
+  chunks.push(bytesBoldOff());
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
 
   bill.items.forEach((it, i) => {
@@ -495,8 +499,8 @@ function buildCustomBillHtml(bill) {
     <div style="padding:3px 0;border-bottom:1px dashed #ccc;font-size:12px;line-height:1.35">
       <div style="padding-left:1.6em;text-indent:-1.6em;word-break:break-word">${i + 1}. ${it.name}</div>
       <div style="display:flex;justify-content:space-between;padding-left:1.6em">
-        <span>${it.qty}${it.unit ? ' ' + it.unit : ''} x ${fmtCompact(it.price)}</span>
-        <span style="flex-shrink:0">${lineTotal.toFixed(2)}</span>
+        <span>${it.qty}${it.unit ? ' ' + it.unit : ''} x ₹${fmtCompact(it.price)}</span>
+        <span style="flex-shrink:0">₹${lineTotal.toFixed(2)}</span>
       </div>
     </div>`;
   }).join('');
@@ -515,10 +519,13 @@ function buildCustomBillHtml(bill) {
   <div><strong>Customer: ${bill.customerName}</strong></div>
   ${bill.customerArea ? `<div>Location: ${bill.customerArea}</div>` : ''}
   <hr>
+  <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:12px"><span>Item / Qty x Rate</span><span>Amount</span></div>
+  <hr>
   ${rows}
   <hr>
+  <div style="display:flex;justify-content:space-between;font-size:12px"><span>Items:</span><span>${bill.items.length}</span></div>
   <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;margin:4px 0">
-    <span>TOTAL</span><span>${fmtRs(grandTotal)}</span>
+    <span>TOTAL</span><span>₹${(Math.round(grandTotal*100)/100).toFixed(2)}</span>
   </div>
   <hr>
   <div class="center" style="margin-top:8px">Thank you for your purchase!</div>
