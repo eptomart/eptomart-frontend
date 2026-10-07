@@ -417,6 +417,36 @@ const twoCol = (left, right, width = LINE_WIDTH) => {
 };
 
 /**
+ * Prints one 32-character line as a PICTURE so it can contain the real rupee
+ * sign — this printer's text mode garbles ₹ (verified with the test strip:
+ * raw / FS & / FS C 1 all print junk; the picture method is exact). Each
+ * character is drawn on a fixed 12-dot grid, the same width as the printer's
+ * own text font, so picture lines line up perfectly with normal text lines.
+ */
+function rasterMonoLine(text, { bold = false } = {}) {
+  const CHAR_W = 12, H = 24, widthDots = LINE_WIDTH * CHAR_W;      // 384 dots = 58mm
+  const canvas = document.createElement('canvas');
+  canvas.width = widthDots; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, widthDots, H);
+  ctx.fillStyle = '#000'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+  ctx.font = `${bold ? 'bold ' : ''}21px "Courier New", Courier, monospace`;
+  Array.from(String(text)).slice(0, LINE_WIDTH).forEach((ch, i) => {
+    if (ch !== ' ') ctx.fillText(ch, i * CHAR_W + CHAR_W / 2, H / 2 + 1);
+  });
+  const { data } = ctx.getImageData(0, 0, widthDots, H);
+  const bytesPerRow = widthDots / 8;
+  const out = new Uint8Array(8 + bytesPerRow * H);
+  out.set([GS, 0x76, 0x30, 0x00, bytesPerRow & 0xff, bytesPerRow >> 8, H & 0xff, H >> 8], 0);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < widthDots; x++) {
+      if (data[(y * widthDots + x) * 4] < 140) out[8 + y * bytesPerRow + (x >> 3)] |= 0x80 >> (x & 7);
+    }
+  }
+  return out;
+}
+
+/**
  * Aligned item block (replaces the ragged "N. name qty @rate=amt" run-on):
  *   1. Tomato nattu
  *      2 kg x 46              92.00
@@ -428,8 +458,8 @@ const alignedItemLines = (index, name, qtyUnit, rate, amt) => {
   const prefix = `${index + 1}. `;
   const indent = ' '.repeat(prefix.length);
   const nameLines = wrapLabeled('', name, LINE_WIDTH - prefix.length).map((ln, i) => (i === 0 ? prefix : indent) + ln.trim());
-  const detailLeft = `${indent}${qtyUnit} x Rs.${fmtCompact(rate)}`;
-  return [...nameLines, twoCol(detailLeft, `Rs.${Number(amt).toFixed(2)}`)];
+  const detailLeft = `${indent}${qtyUnit} x \u20B9${fmtCompact(rate)}`;
+  return [...nameLines, twoCol(detailLeft, `\u20B9${Number(amt).toFixed(2)}`)];
 };
 
 /**
@@ -456,17 +486,15 @@ function buildCustomBillEscPos(bill) {
     for (const line of wrapLabeled('Location', bill.customerArea)) chunks.push(bytesText(`${line}\n`));
   }
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
-  chunks.push(bytesBoldOn());
-  chunks.push(bytesText(`${twoCol('Item / Qty x Rate', 'Amount')}\n`));
-  chunks.push(bytesBoldOff());
+  chunks.push(rasterMonoLine(twoCol('Item / Qty x Rate', 'Amount (\u20B9)'), { bold: true }));
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
 
   bill.items.forEach((it, i) => {
     const qtyUnit = `${it.qty}${it.unit ? ' ' + it.unit : ''}`;
     const lineTotal = (Number(it.qty) || 0) * (Number(it.price) || 0);
-    for (const line of alignedItemLines(i, it.name, qtyUnit, it.price, lineTotal)) {
-      chunks.push(bytesText(`${line}\n`));
-    }
+    const lines = alignedItemLines(i, it.name, qtyUnit, it.price, lineTotal);
+    lines.slice(0, -1).forEach(line => chunks.push(bytesText(`${line}\n`)));
+    chunks.push(rasterMonoLine(lines[lines.length - 1]));      // qty x rate ... amount, with real ₹
   });
 
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
@@ -474,9 +502,7 @@ function buildCustomBillEscPos(bill) {
   // usable characters per physical line, which was silently wrapping
   // "TOTAL: Rs.1869.00" mid-number into "...1869.0" / "0" on this printer.
   chunks.push(bytesText(`${twoCol('Items:', String(bill.items.length))}\n`));
-  chunks.push(bytesBoldOn());
-  chunks.push(bytesText(`${twoCol('TOTAL', fmtRs(grandTotal))}\n`));
-  chunks.push(bytesBoldOff());
+  chunks.push(rasterMonoLine(twoCol('TOTAL', `\u20B9${(Math.round(grandTotal * 100) / 100).toFixed(2)}`), { bold: true }));
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
   chunks.push(bytesAlignCenter());
   chunks.push(bytesText('Thank you for your purchase!\n'));
