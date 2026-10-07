@@ -540,6 +540,68 @@ function printCustomBillViaDialog(bill) {
   printHtmlViaDialog(buildCustomBillHtml(bill));
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// ₹ SYMBOL TEST — thermal printers have no standard code for ₹, so we print
+// the same symbol several different ways on ONE strip; whichever line shows a
+// real ₹ tells us which method this particular printer supports.
+//   A: raw UTF-8 bytes          B: UTF-8 mode on (FS &)    C: UTF-8 mode on (FS C 1)
+//   D: drawn as a picture (raster) — works on any ESC/POS printer
+// ══════════════════════════════════════════════════════════════
+const FS = 0x1c;
+const RUPEE_UTF8 = new Uint8Array([0xe2, 0x82, 0xb9]);
+
+/** Render text to a monochrome bitmap and return GS v 0 raster bytes (58mm = 384 dots wide). */
+function rasterTextBytes(text, { fontPx = 26, bold = true, widthDots = 384 } = {}) {
+  const canvas = document.createElement('canvas');
+  canvas.width = widthDots;
+  canvas.height = Math.ceil(fontPx * 1.5);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#000'; ctx.textBaseline = 'middle';
+  ctx.font = `${bold ? 'bold ' : ''}${fontPx}px Arial, Helvetica, sans-serif`;
+  ctx.fillText(text, 4, canvas.height / 2);
+  const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const bytesPerRow = widthDots / 8;
+  const out = new Uint8Array(8 + bytesPerRow * canvas.height);
+  out.set([GS, 0x76, 0x30, 0x00, bytesPerRow & 0xff, bytesPerRow >> 8, canvas.height & 0xff, canvas.height >> 8], 0);
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < widthDots; x++) {
+      const i = (y * widthDots + x) * 4;
+      if (data[i] < 128) out[8 + y * bytesPerRow + (x >> 3)] |= 0x80 >> (x & 7);
+    }
+  }
+  return out;
+}
+
+function buildRupeeTestBytes() {
+  const T = (str) => bytesText(str + '\n');
+  return concatBytes([
+    bytesInit(), bytesAlignLeft(),
+    bytesBoldOn(), T('RUPEE SYMBOL TEST'), bytesBoldOff(),
+    T('-'.repeat(LINE_WIDTH)),
+    bytesText('A raw UTF-8   : '), RUPEE_UTF8, bytesText(' 100\n'),
+    new Uint8Array([FS, 0x26]),                                   // FS &  : UTF-8 / Kanji mode on
+    bytesText('B FS &       : '), RUPEE_UTF8, bytesText(' 100\n'),
+    new Uint8Array([FS, 0x2e]),                                   // FS .  : mode off
+    new Uint8Array([FS, 0x43, 0x01]),                             // FS C 1: UTF-8 code mode
+    bytesText('C FS C 1     : '), RUPEE_UTF8, bytesText(' 100\n'),
+    new Uint8Array([FS, 0x43, 0x00]),
+    bytesInit(),
+    bytesText('D picture    :\n'),
+    rasterTextBytes('\u20B9 100   Rate \u20B9 46   \u20B9 92.00'),
+    T('-'.repeat(LINE_WIDTH)),
+    T('Tell us which line shows'),
+    T('a proper rupee sign.'),
+    bytesFeed(4),
+  ]);
+}
+
+/** Prints the ₹ test strip over the connected Bluetooth printer. */
+async function printRupeeTest() {
+  await writeBytesChunked(buildRupeeTestBytes());
+}
+
 export {
   isBluetoothSupported,
   connectPrinter,
@@ -549,6 +611,7 @@ export {
   printViaDialog,
   printCustomBillViaBluetooth,
   printCustomBillViaDialog,
+  printRupeeTest,
   // Shared low-level primitives — exported additively so other verticals can
   // compose their own ESC/POS documents over the same Bluetooth connection
   // instead of re-implementing byte-level printer commands from scratch.

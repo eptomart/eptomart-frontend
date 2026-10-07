@@ -12,7 +12,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { FiPlus, FiX, FiPrinter, FiChevronDown, FiChevronUp, FiSave, FiEdit2, FiTrash2, FiSearch } from 'react-icons/fi';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
-import { isPrinterConnected, printCustomBillViaBluetooth, printCustomBillViaDialog } from '../../../utils/thermalPrinter';
+import { isPrinterConnected, printCustomBillViaBluetooth, printCustomBillViaDialog, printRupeeTest } from '../../../utils/thermalPrinter';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const nowTimeStr = () => {
@@ -188,6 +188,15 @@ export default function CustomPrintPanel({ connected }) {
     setPasteText(''); setPasteOpen(false);
     const missing = parsed.items.filter(it => it.price == null).length;
     toast.success(`${parsed.items.length} item${parsed.items.length !== 1 ? 's' : ''} added${usedFallback ? ' (basic reader)' : ''}${missing ? ` — enter price for ${missing}` : ''}`);
+  };
+
+  const runRupeeTest = async () => {
+    if (!(connected && isPrinterConnected())) {
+      toast.error('Connect the Bluetooth printer first (Connect Printer, at the top)');
+      return;
+    }
+    try { await printRupeeTest(); toast.success('Test strip sent — check which line shows ₹'); }
+    catch (err) { toast.error(err.message || 'Test print failed'); }
   };
 
   const resetForm = () => {
@@ -425,6 +434,7 @@ export default function CustomPrintPanel({ connected }) {
             </button>
             <button onClick={resetForm} style={btn('#fff', '#111', { border: '1px solid #e5e7eb', fontWeight: 600 })}>Clear</button>
           </div>
+          <button onClick={runRupeeTest} style={{ marginTop: 8, background: 'none', border: 'none', color: '#6b7280', fontSize: 11.5, fontWeight: 600, textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>🧪 Print ₹ symbol test strip</button>
 
           {/* ── Saved bills ───────────────────────────────── */}
           <div style={{ marginTop: 18, borderTop: '1px solid #f3f4f6', paddingTop: 12 }}>
