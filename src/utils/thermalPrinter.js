@@ -602,6 +602,59 @@ async function printRupeeTest() {
   await writeBytesChunked(buildRupeeTestBytes());
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// PROCUREMENT LIST (supplier-facing) — plain 58mm list grouped by category.
+// doc: { dateLabel, supplier, note, groups:[{category, items:[{name, qty, unit, breakdown, packingNote}]}], total }
+// Item name on the left, quantity flush right on the same line when it fits
+// (otherwise the name wraps by whole words and the quantity sits right-aligned
+// on the last line). No prices anywhere — same content rules as the share text.
+// ══════════════════════════════════════════════════════════════
+function buildProcurementEscPos(doc) {
+  const chunks = [bytesInit(), bytesAlignCenter(), bytesDoubleOn(), bytesBoldOn()];
+  chunks.push(bytesText('EPTOMART\n'));
+  chunks.push(bytesDoubleOff());
+  chunks.push(bytesText('PROCUREMENT LIST\n'));
+  chunks.push(bytesBoldOff(), bytesAlignLeft());
+  chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
+  for (const line of wrapLabeled('Date', doc.dateLabel)) chunks.push(bytesText(`${line}\n`));
+  if (doc.supplier) for (const line of wrapLabeled('Supplier', doc.supplier)) chunks.push(bytesText(`${line}\n`));
+  if (doc.note) chunks.push(bytesText(`${doc.note}\n`));
+  chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
+
+  for (const g of doc.groups) {
+    chunks.push(bytesBoldOn());
+    chunks.push(bytesText(`${String(g.category).toUpperCase()}\n`));
+    chunks.push(bytesBoldOff());
+    g.items.forEach((it, i) => {
+      const qty = `${it.qty}${it.unit ? ' ' + it.unit : ''}`;
+      const name = `${i + 1}. ${it.name}`;
+      if (name.length + 1 + qty.length <= LINE_WIDTH) {
+        chunks.push(bytesText(`${twoCol(name, qty)}\n`));
+      } else {
+        const lines = wrapLabeled('', name, LINE_WIDTH - 3).map((l, k) => (k === 0 ? '' : '   ') + l.trimEnd());
+        lines.forEach(l => chunks.push(bytesText(`${l}\n`)));
+        chunks.push(bytesText(`${twoCol('', qty)}\n`));
+      }
+      if (it.breakdown) for (const l of wrapLabeled('', it.breakdown, LINE_WIDTH - 3)) chunks.push(bytesText(`   ${l.trim()}\n`));
+      if (it.packingNote) for (const l of wrapLabeled('Pack as', it.packingNote, LINE_WIDTH - 3)) chunks.push(bytesText(`   ${l}\n`));
+    });
+    chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
+  }
+  chunks.push(bytesBoldOn());
+  chunks.push(bytesText(`${twoCol('Total items', String(doc.total))}\n`));
+  chunks.push(bytesBoldOff());
+  chunks.push(bytesAlignCenter());
+  chunks.push(bytesText('Thank you! - Team Eptomart\n'));
+  chunks.push(bytesAlignLeft());
+  chunks.push(bytesFeed(4));
+  return concatBytes(chunks);
+}
+
+async function printProcurementViaBluetooth(doc) {
+  await writeBytesChunked(buildProcurementEscPos(doc));
+}
+
 export {
   isBluetoothSupported,
   connectPrinter,
@@ -612,6 +665,7 @@ export {
   printCustomBillViaBluetooth,
   printCustomBillViaDialog,
   printRupeeTest,
+  printProcurementViaBluetooth,
   // Shared low-level primitives — exported additively so other verticals can
   // compose their own ESC/POS documents over the same Bluetooth connection
   // instead of re-implementing byte-level printer commands from scratch.

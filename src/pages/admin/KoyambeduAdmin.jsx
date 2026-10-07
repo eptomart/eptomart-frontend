@@ -11,6 +11,7 @@ import PNLTab from './koyambedu/PNLTab';
 import BulkHarvestTab from './koyambedu/BulkHarvestTab';
 import NewsTab from './koyambedu/NewsTab';
 import QuotationTab from './koyambedu/QuotationTab';
+import { isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected, printProcurementViaBluetooth } from '../../utils/thermalPrinter';
 import WhatsAppMediaContent from '../../components/admin/WhatsAppMedia';
 import KoyambeduDailyPricePanel from '../../components/koyambedu/KoyambeduDailyPricePanel';
 import toast from 'react-hot-toast';
@@ -1654,12 +1655,59 @@ export default function KoyambeduAdmin() {
   // the existing Koyambedu "Printer" tab (which prints packing/order slips
   // for fulfillment) — this is specifically the supplier-facing procurement
   // list, so it doesn't touch that tab or its code at all.
-  const printProcurementList = () => {
+  // Shared Bluetooth printer connection (same one the Printer tab uses — it is
+  // one connection for the whole app, so connecting here also covers there).
+  const [procPrinterName, setProcPrinterName] = useState('');
+  const [procPrinterBusy, setProcPrinterBusy] = useState(false);
+  const procPrinterOn = !!procPrinterName && isPrinterConnected();
+
+  const connectProcPrinter = async () => {
+    setProcPrinterBusy(true);
+    try {
+      const { name } = await connectPrinter();
+      setProcPrinterName(name);
+      toast.success(`Connected to ${name}`);
+    } catch (err) {
+      toast.error(err.message || 'Could not connect to printer');
+    } finally {
+      setProcPrinterBusy(false);
+    }
+  };
+  const disconnectProcPrinter = () => { disconnectPrinter(); setProcPrinterName(''); };
+
+  const printProcurementList = async () => {
     const items = selectedProcProducts();
     if (items.length === 0) { toast.error('Select at least one item to print'); return; }
     const groups = groupProcByCategory(items);
     const orderLetterMap = buildOrderLetterMap(items);
     const dateLabel = new Date(procDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    // Connected thermal printer -> print directly (no dialog / pop-up window).
+    if (procPrinterOn) {
+      try {
+        await printProcurementViaBluetooth({
+          dateLabel,
+          supplier: procSupplierName.trim(),
+          note: !procIncludeNames ? 'Customer names hidden (a, b, c...)' : '',
+          total: items.length,
+          groups: groups.map(g => ({
+            category: g.category,
+            items: g.items.map(p => ({
+              name: `${p.productName}${p.gradeName ? ` (${p.gradeName})` : ''}`,
+              qty: procSelectedQty(p).toFixed(2),
+              unit: p.unit,
+              breakdown: procBreakdownLine(p, orderLetterMap),
+              packingNote: p.packingNote?.trim() || '',
+            })),
+          })),
+        });
+        toast.success('Sent to printer');
+      } catch (err) {
+        toast.error(err.message || 'Print failed — reconnect the printer');
+        setProcPrinterName('');
+      }
+      return;
+    }
 
     const sectionsHtml = groups.map(g => `
       <h3>${g.icon} ${g.category}</h3>
@@ -4586,6 +4634,18 @@ export default function KoyambeduAdmin() {
                   {procData.products?.length > 0 && (
                     <>
                       <p className="text-[11px] text-gray-400 text-center">{selectedProcProducts().length} of {procData.products.length} items selected</p>
+                      <div className="flex items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                        <span className="text-[12px] font-semibold text-gray-600">
+                          🖨️ {procPrinterOn ? `Printer: ${procPrinterName}` : 'Printer not connected'}
+                        </span>
+                        {isBluetoothSupported() ? (
+                          procPrinterOn
+                            ? <button onClick={disconnectProcPrinter} className="text-[12px] font-bold text-gray-500 underline">Disconnect</button>
+                            : <button onClick={connectProcPrinter} disabled={procPrinterBusy} className="text-[12px] font-bold bg-emerald-700 text-white px-3 py-1.5 rounded-lg disabled:opacity-50">{procPrinterBusy ? 'Connecting…' : 'Connect Printer'}</button>
+                        ) : (
+                          <span className="text-[11px] text-amber-700">Bluetooth printing isn't available in this browser — Print uses the system print dialog.</span>
+                        )}
+                      </div>
                       <div className="flex gap-2">
                         <button onClick={shareViaWhatsApp} disabled={procSharing}
                           className="flex-1 bg-green-600 text-white font-bold text-sm py-3 rounded-xl active:scale-95 transition disabled:opacity-50">
