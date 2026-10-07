@@ -409,6 +409,29 @@ const wrapLabeled = (label, value, width = LINE_WIDTH) => {
   return lines;
 };
 
+/** Pads `left` and `right` onto ONE line of exactly `width` chars (right-aligned amount). */
+const twoCol = (left, right, width = LINE_WIDTH) => {
+  const l = String(left), r = String(right);
+  const gap = Math.max(1, width - l.length - r.length);
+  return l + ' '.repeat(gap) + r;
+};
+
+/**
+ * Aligned item block (replaces the ragged "N. name qty @rate=amt" run-on):
+ *   1. Tomato nattu
+ *      2 kg x 46              92.00
+ * The name wraps on word boundaries under a hanging indent; the second line
+ * always carries qty x rate on the left and the line amount flush right, so
+ * every amount lines up in one column down the receipt.
+ */
+const alignedItemLines = (index, name, qtyUnit, rate, amt) => {
+  const prefix = `${index + 1}. `;
+  const indent = ' '.repeat(prefix.length);
+  const nameLines = wrapLabeled('', name, LINE_WIDTH - prefix.length).map((ln, i) => (i === 0 ? prefix : indent) + ln.trim());
+  const detailLeft = `${indent}${qtyUnit} x ${fmtCompact(rate)}`;
+  return [...nameLines, twoCol(detailLeft, Number(amt).toFixed(2))];
+};
+
 /**
  * @param {object} bill - { billNo, dateStr, timeLabel, customerName, customerArea, items: [{name, unit, qty, price}] }
  */
@@ -437,7 +460,7 @@ function buildCustomBillEscPos(bill) {
   bill.items.forEach((it, i) => {
     const qtyUnit = `${it.qty}${it.unit ? ' ' + it.unit : ''}`;
     const lineTotal = (Number(it.qty) || 0) * (Number(it.price) || 0);
-    for (const line of wrapItemLines(i, it.name, qtyUnit, it.price, lineTotal)) {
+    for (const line of alignedItemLines(i, it.name, qtyUnit, it.price, lineTotal)) {
       chunks.push(bytesText(`${line}\n`));
     }
   });
@@ -446,8 +469,9 @@ function buildCustomBillEscPos(bill) {
   // Bold only (no double-width) for the total — double-width halves the
   // usable characters per physical line, which was silently wrapping
   // "TOTAL: Rs.1869.00" mid-number into "...1869.0" / "0" on this printer.
+  chunks.push(bytesText(`${twoCol('Items:', String(bill.items.length))}\n`));
   chunks.push(bytesBoldOn());
-  chunks.push(bytesText(`TOTAL: ${fmtRs(grandTotal)}\n`));
+  chunks.push(bytesText(`${twoCol('TOTAL', fmtRs(grandTotal))}\n`));
   chunks.push(bytesBoldOff());
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
   chunks.push(bytesAlignCenter());
@@ -468,8 +492,12 @@ function buildCustomBillHtml(bill) {
   const rows = bill.items.map((it, i) => {
     const lineTotal = (Number(it.qty) || 0) * (Number(it.price) || 0);
     return `
-    <div style="padding:3px 0;border-bottom:1px dashed #ccc;font-size:12px;line-height:1.4;word-break:break-word;overflow-wrap:break-word">
-      <span>${i + 1}. ${it.name} — ${it.qty}${it.unit ? ' ' + it.unit : ''} @${fmtRs(it.price)} = ${fmtRs(lineTotal)}</span>
+    <div style="padding:3px 0;border-bottom:1px dashed #ccc;font-size:12px;line-height:1.35">
+      <div style="padding-left:1.6em;text-indent:-1.6em;word-break:break-word">${i + 1}. ${it.name}</div>
+      <div style="display:flex;justify-content:space-between;padding-left:1.6em">
+        <span>${it.qty}${it.unit ? ' ' + it.unit : ''} x ${fmtCompact(it.price)}</span>
+        <span style="flex-shrink:0">${lineTotal.toFixed(2)}</span>
+      </div>
     </div>`;
   }).join('');
 
