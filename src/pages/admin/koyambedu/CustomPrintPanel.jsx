@@ -90,6 +90,7 @@ export default function CustomPrintPanel({ connected }) {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [reading, setReading] = useState(false);
+  const pasteRef = useRef(null);
 
   // Own (free-text) item
   const [own, setOwn] = useState({ name: '', unit: 'kg', qty: '', price: '' });
@@ -152,6 +153,21 @@ export default function CustomPrintPanel({ connected }) {
   // Read pasted text into the form (customer, location, items). Replaces nothing
   // silently: items are APPENDED to whatever is already on the bill, and
   // header fields only fill in if currently empty. Admin reviews, then prints.
+  // One-tap paste. Some app webviews don't show the long-press "Paste" menu in
+  // text boxes, so read the clipboard directly (iOS shows a small "Paste"
+  // confirmation bubble the first time). If the webview refuses, fall back to
+  // focusing the box so the normal long-press / keyboard paste can be used.
+  const pasteFromClipboard = async () => {
+    try {
+      const txt = await navigator.clipboard.readText();
+      if (!txt || !txt.trim()) { toast.error('Clipboard is empty — copy the text first'); return; }
+      setPasteText(prev => (prev.trim() ? prev.replace(/\s+$/, '') + '\n' : '') + txt);
+    } catch {
+      pasteRef.current?.focus();
+      toast('Tap and hold inside the box, then choose Paste', { icon: '📋' });
+    }
+  };
+
   const readPastedText = async () => {
     if (!pasteText.trim()) { toast.error('Paste some text first'); return; }
     setReading(true);
@@ -318,7 +334,12 @@ export default function CustomPrintPanel({ connected }) {
             </button>
             {pasteOpen && (
               <div style={{ marginTop: 8 }}>
-                <textarea value={pasteText} onChange={e => setPasteText(e.target.value)} rows={7}
+                <button onClick={pasteFromClipboard}
+                  style={{ ...btn('#fff', '#c2410c', { border: '1px solid #f4941c', width: '100%', marginBottom: 6 }) }}>
+                  📋 Paste from clipboard
+                </button>
+                <textarea ref={pasteRef} value={pasteText} onChange={e => setPasteText(e.target.value)} onPaste={e => { /* allow native paste; nothing blocked */ }} rows={7}
+                  autoCapitalize="off" autoCorrect="off" spellCheck={false} inputMode="text"
                   placeholder={'Paste anything, e.g. a WhatsApp order:\n\nName: Ramesh\nArea: Anna Nagar\nTomato 2 kg @46\nOnion 1kg 50\nCoriander 2 bunch 10'}
                   style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }} />
                 <div style={{ fontSize: 11, color: '#6b7280', margin: '4px 0 8px' }}>
