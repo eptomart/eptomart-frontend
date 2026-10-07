@@ -23,6 +23,8 @@
 // Seznik line) sometimes use classic SPP, which no website can reach; if
 // that's the case here, path 2 above always still works as a safety net.
 
+import { thoughtForDate } from './foodThoughts';
+
 // ── ESC/POS byte-level primitives ─────────────────────────────
 const ESC = 0x1b, GS = 0x1d, LF = 0x0a;
 
@@ -447,6 +449,40 @@ function rasterMonoLine(text, { bold = false } = {}) {
 }
 
 /**
+ * One receipt row drawn as a picture: `left` text at the left (optionally
+ * indented), `right` text flush to the right edge, in a large bold face so
+ * rates and amounts are easy to read. Shrinks automatically if a long row
+ * would not fit the 384-dot paper width.
+ */
+function rasterRow(left, right, { px = 28, bold = true, indentDots = 0 } = {}) {
+  const widthDots = LINE_WIDTH * 12;                  // 384 = 58mm
+  const canvas = document.createElement('canvas');
+  const ctx0 = canvas.getContext('2d');
+  const family = 'Arial, Helvetica, sans-serif';
+  let size = px;
+  const fontOf = (n) => `${bold ? 'bold ' : ''}${n}px ${family}`;
+  const fits = (n) => { ctx0.font = fontOf(n); return indentDots + ctx0.measureText(left).width + 14 + ctx0.measureText(right).width <= widthDots - 6; };
+  while (size > 16 && !fits(size)) size -= 1;
+  const H = Math.round(size * 1.4);
+  canvas.width = widthDots; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, widthDots, H);
+  ctx.fillStyle = '#000'; ctx.textBaseline = 'middle'; ctx.font = fontOf(size);
+  ctx.textAlign = 'left';  ctx.fillText(left, indentDots, H / 2 + 1);
+  ctx.textAlign = 'right'; ctx.fillText(right, widthDots - 4, H / 2 + 1);
+  const { data } = ctx.getImageData(0, 0, widthDots, H);
+  const bytesPerRow = widthDots / 8;
+  const out = new Uint8Array(8 + bytesPerRow * H);
+  out.set([GS, 0x76, 0x30, 0x00, bytesPerRow & 0xff, bytesPerRow >> 8, H & 0xff, H >> 8], 0);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < widthDots; x++) {
+      if (data[(y * widthDots + x) * 4] < 150) out[8 + y * bytesPerRow + (x >> 3)] |= 0x80 >> (x & 7);
+    }
+  }
+  return out;
+}
+
+/**
  * Aligned item block (replaces the ragged "N. name qty @rate=amt" run-on):
  *   1. Tomato nattu
  *      2 kg x 46              92.00
@@ -486,7 +522,7 @@ function buildCustomBillEscPos(bill) {
     for (const line of wrapLabeled('Location', bill.customerArea)) chunks.push(bytesText(`${line}\n`));
   }
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
-  chunks.push(rasterMonoLine(twoCol('Item / Qty x Rate', 'Amount (\u20B9)'), { bold: true }));
+  chunks.push(rasterRow('Item / Qty x Rate', 'Amount (\u20B9)', { px: 22 }));
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
 
   bill.items.forEach((it, i) => {
@@ -494,7 +530,8 @@ function buildCustomBillEscPos(bill) {
     const lineTotal = (Number(it.qty) || 0) * (Number(it.price) || 0);
     const lines = alignedItemLines(i, it.name, qtyUnit, it.price, lineTotal);
     lines.slice(0, -1).forEach(line => chunks.push(bytesText(`${line}\n`)));
-    chunks.push(rasterMonoLine(lines[lines.length - 1]));      // qty x rate ... amount, with real ₹
+    // qty x rate on the left, amount on the right: big, bold, real ₹ (picture row)
+    chunks.push(rasterRow(`${qtyUnit} x \u20B9${fmtCompact(it.price)}`, `\u20B9${lineTotal.toFixed(2)}`, { px: 28, indentDots: 36 }));
   });
 
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
@@ -502,10 +539,19 @@ function buildCustomBillEscPos(bill) {
   // usable characters per physical line, which was silently wrapping
   // "TOTAL: Rs.1869.00" mid-number into "...1869.0" / "0" on this printer.
   chunks.push(bytesText(`${twoCol('Items:', String(bill.items.length))}\n`));
-  chunks.push(rasterMonoLine(twoCol('TOTAL', `\u20B9${(Math.round(grandTotal * 100) / 100).toFixed(2)}`), { bold: true }));
+  chunks.push(rasterRow('TOTAL', `\u20B9${(Math.round(grandTotal * 100) / 100).toFixed(2)}`, { px: 36 }));
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
   chunks.push(bytesAlignCenter());
+  // Thought for the day (same thought all day, from a bank of ~1000), then thanks.
+  const thought = bill.thought || thoughtForDate(new Date());
+  chunks.push(bytesBoldOn());
+  chunks.push(bytesText('Thought for the day\n'));
+  chunks.push(bytesBoldOff());
+  for (const line of wrapLabeled('', thought, LINE_WIDTH)) chunks.push(bytesText(`${line.trim()}\n`));
+  chunks.push(bytesText('\n'));
+  chunks.push(bytesBoldOn());
   chunks.push(bytesText('Thank you for your purchase!\n'));
+  chunks.push(bytesBoldOff());
   chunks.push(bytesAlignLeft());
 
   chunks.push(bytesFeed(4));
@@ -554,7 +600,8 @@ function buildCustomBillHtml(bill) {
     <span>TOTAL</span><span>₹${(Math.round(grandTotal*100)/100).toFixed(2)}</span>
   </div>
   <hr>
-  <div class="center" style="margin-top:8px">Thank you for your purchase!</div>
+  <div class="center" style="margin-top:8px;font-size:11px"><strong>Thought for the day</strong><br>${bill.thought || thoughtForDate(new Date())}</div>
+  <div class="center" style="margin-top:8px"><strong>Thank you for your purchase!</strong></div>
 </body></html>`;
 }
 
