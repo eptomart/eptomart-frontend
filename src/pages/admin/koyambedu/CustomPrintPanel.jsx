@@ -31,6 +31,42 @@ const inputStyle = { width: '100%', padding: '7px 10px', borderRadius: 8, border
 const labelStyle = { fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 };
 const smallInput = { padding: '4px 6px', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: 12, textAlign: 'right' };
 
+// Offline fallback used if the AI reader is unavailable. Handles the common
+// shapes: "Tomato 2 kg @46", "1. Tomato nattu 2kg x 46 = 92", "Onion - 1kg - 50",
+// plus "Customer:/Name:" and "Location:/Area:" header lines. Never guesses a price.
+const UNIT_RX = '(kg|kgs|g|gm|gms|gram|grams|pcs|pc|piece|pieces|bunch|bunches|dozen|ltr|l|litre|liter|pack|box)';
+function localParseBill(text) {
+  const out = { customerName: '', location: '', items: [] };
+  for (let raw of String(text).split(/\r?\n/)) {
+    let line = raw.trim();
+    if (!line) continue;
+    let m;
+    if ((m = line.match(/^(?:customer|name|cust)\s*[:\-]\s*(.+)$/i))) { out.customerName = m[1].trim(); continue; }
+    if ((m = line.match(/^(?:location|area|place)\s*[:\-]\s*(.+)$/i))) { out.location = m[1].trim(); continue; }
+    if (/^(bill\s*no|date|total|sub\s*total|thank|items?\s*:|-{3,}|={3,}|eptomart|koyambedu)/i.test(line)) continue;
+    line = line.replace(/^\s*\d+\s*[.)]\s+/, '').replace(/[₹]|rs\.?/gi, '');   // numbering, currency symbols
+    const q = line.match(new RegExp('(\\d+(?:\\.\\d+)?)\\s*' + UNIT_RX + '\\b', 'i'));
+    if (!q) continue;
+    let qty = Number(q[1]); let unit = q[2].toLowerCase();
+    if (/^(g|gm|gms|gram|grams)$/.test(unit)) { qty = qty / 1000; unit = 'kg'; }
+    else if (/^kgs?$/.test(unit)) unit = 'kg';
+    else if (/^(pc|pcs|piece|pieces)$/.test(unit)) unit = 'pcs';
+    else if (/^(l|litre|liter|ltr)$/.test(unit)) unit = 'ltr';
+    else if (/^bunch/.test(unit)) unit = 'bunch';
+    const name = line.slice(0, q.index).replace(/[-:–—@x×=]+\s*$/i, '').replace(/^[-:–—\s]+/, '').trim();
+    if (!name) continue;
+    const rest = line.slice(q.index + q[0].length);
+    const nums = (rest.match(/\d+(?:\.\d+)?/g) || []).map(Number);
+    let price = null;
+    const at = rest.match(/(?:@|x|×|at)\s*(\d+(?:\.\d+)?)/i);
+    if (at) price = Number(at[1]);
+    else if (nums.length >= 2) price = nums[0];           // "2 kg 46 92" -> rate 46
+    else if (nums.length === 1) price = nums[0];          // "2 kg 46"
+    out.items.push({ name, unit, qty: Math.round(qty * 1000) / 1000, price });
+  }
+  return out;
+}
+
 export default function CustomPrintPanel({ connected }) {
   const [open, setOpen] = useState(false);
 
@@ -49,6 +85,11 @@ export default function CustomPrintPanel({ connected }) {
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const debounce = useRef(null);
+
+  // Paste-to-bill
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [reading, setReading] = useState(false);
 
   // Own (free-text) item
   const [own, setOwn] = useState({ name: '', unit: 'kg', qty: '', price: '' });
@@ -107,6 +148,31 @@ export default function CustomPrintPanel({ connected }) {
   const patchItem = (idx, patch) => setItems(prev => prev.map((it, i) => i === idx ? { ...it, ...patch } : it));
   const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx));
   const grandTotal = items.reduce((s, it) => s + lineTotal(it), 0);
+
+  // Read pasted text into the form (customer, location, items). Replaces nothing
+  // silently: items are APPENDED to whatever is already on the bill, and
+  // header fields only fill in if currently empty. Admin reviews, then prints.
+  const readPastedText = async () => {
+    if (!pasteText.trim()) { toast.error('Paste some text first'); return; }
+    setReading(true);
+    let parsed = null, usedFallback = false;
+    try {
+      const { data } = await api.post('/koyambedu/custom-bills/parse', { text: pasteText });
+      parsed = data;
+    } catch {
+      parsed = localParseBill(pasteText);
+      usedFallback = true;
+    } finally {
+      setReading(false);
+    }
+    if (!parsed.items?.length) { toast.error('Could not find any items in that text'); return; }
+    if (parsed.customerName && !customerName.trim()) setCustomerName(parsed.customerName);
+    if (parsed.location && !location.trim()) setLocation(parsed.location);
+    setItems(prev => [...prev, ...parsed.items.map(it => ({ name: it.name, unit: it.unit || '', qty: it.qty, price: it.price ?? '' }))]);
+    setPasteText(''); setPasteOpen(false);
+    const missing = parsed.items.filter(it => it.price == null).length;
+    toast.success(`${parsed.items.length} item${parsed.items.length !== 1 ? 's' : ''} added${usedFallback ? ' (basic reader)' : ''}${missing ? ` — enter price for ${missing}` : ''}`);
+  };
 
   const resetForm = () => {
     setEditingId(null); setBillNo('');
@@ -242,6 +308,28 @@ export default function CustomPrintPanel({ connected }) {
               <label style={labelStyle}>Time</label>
               <input type="time" value={time} onChange={e => setTime(e.target.value)} style={inputStyle} />
             </div>
+          </div>
+
+          {/* Paste text → bill */}
+          <div style={{ marginBottom: 10 }}>
+            <button onClick={() => setPasteOpen(o => !o)}
+              style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', borderRadius: 8, border: '1px dashed #f4941c', background: '#fff7ed', color: '#c2410c', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              <span>📋 Paste text to make a bill</span>{pasteOpen ? <FiChevronUp /> : <FiChevronDown />}
+            </button>
+            {pasteOpen && (
+              <div style={{ marginTop: 8 }}>
+                <textarea value={pasteText} onChange={e => setPasteText(e.target.value)} rows={7}
+                  placeholder={'Paste anything, e.g. a WhatsApp order:\n\nName: Ramesh\nArea: Anna Nagar\nTomato 2 kg @46\nOnion 1kg 50\nCoriander 2 bunch 10'}
+                  style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }} />
+                <div style={{ fontSize: 11, color: '#6b7280', margin: '4px 0 8px' }}>
+                  Items are added to the bill below for you to check. Prices missing in the text are left blank — nothing is guessed.
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={readPastedText} disabled={reading} style={btn('#f4941c', '#fff', { flex: 1, opacity: reading ? 0.6 : 1 })}>{reading ? 'Reading…' : 'Read into bill'}</button>
+                  <button onClick={() => { setPasteText(''); setPasteOpen(false); }} style={btn('#fff', '#111', { border: '1px solid #e5e7eb', fontWeight: 600 })}>Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Koyambedu product search */}
