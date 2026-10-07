@@ -635,6 +635,27 @@ export default function WhatsAppInbox() {
   const [loading,    setLoading]    = useState(true);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [replyModal, setReplyModal] = useState(null);
+  // Excel export of received messages for a chosen date-time range
+  const [exportOpen, setExportOpen] = useState(false);
+  const [expFrom, setExpFrom] = useState('');
+  const [expTo, setExpTo] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const downloadExport = async () => {
+    setExporting(true);
+    try {
+      const params = {};
+      if (expFrom) params.from = new Date(expFrom).toISOString();
+      if (expTo)   params.to   = new Date(expTo).toISOString();
+      const res = await api.get('/koyambedu/admin/whatsapp/messages/export', { params, responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'eptomart-whatsapp-messages.xlsx';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      toast.success('Excel downloaded');
+    } catch { toast.error('Export failed'); }
+    finally { setExporting(false); }
+  };
   const [replyText,  setReplyText]  = useState('');
   const [replying,   setReplying]   = useState(false);
   // track which messages have the price panel open
@@ -767,6 +788,10 @@ export default function WhatsAppInbox() {
           </p>
         </div>
         <div className="flex gap-2">
+          <button onClick={() => setExportOpen(o => !o)}
+            className="text-sm font-bold px-4 py-2 rounded-xl border border-green-600 text-green-700 hover:bg-green-50 transition">
+            ⬇ Export Excel
+          </button>
           <button onClick={markAllRead}
             className="text-sm font-bold px-4 py-2 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition">
             Mark all read
@@ -777,6 +802,24 @@ export default function WhatsAppInbox() {
           </button>
         </div>
       </div>
+
+      {exportOpen && (
+        <div className="rounded-2xl border border-green-200 bg-green-50 p-3 flex flex-wrap items-end gap-3">
+          <label className="text-xs font-bold text-gray-600">From
+            <input type="datetime-local" value={expFrom} onChange={e => setExpFrom(e.target.value)}
+              className="block mt-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white" />
+          </label>
+          <label className="text-xs font-bold text-gray-600">To
+            <input type="datetime-local" value={expTo} onChange={e => setExpTo(e.target.value)}
+              className="block mt-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white" />
+          </label>
+          <button onClick={downloadExport} disabled={exporting}
+            className="text-sm font-bold px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">
+            {exporting ? 'Preparing…' : 'Download'}
+          </button>
+          <p className="text-[11px] text-gray-500 basis-full">Leave both empty for all messages. Times are in your device's time zone.</p>
+        </div>
+      )}
 
       {/* Filter */}
       <div className="flex gap-2">
