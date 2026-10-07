@@ -92,8 +92,16 @@ export default function ExpressShop() {
   // after the customer picked it is still reflected without a refetch of
   // the store list.
   const [storeStatus, setStoreStatus] = useState({ isPaused: false, pauseMessage: null });
+  // Other stores, so a customer on a closed store can see which ones are open
+  // right now and switch in one tap. showReason = tap-to-expand "why closed"
+  // (touch devices have no hover).
+  const [allStores, setAllStores] = useState([]);
+  const [showReason, setShowReason] = useState(false);
   // Visit beacon so Admin → Visitors lists Express shop views with the user.
   useEffect(() => { api.post('/express/visit', { page: '/shop' }).catch(() => {}); }, []);
+  useEffect(() => {
+    api.get('/express/active-stores').then(({ data }) => setAllStores(data.stores || [])).catch(() => {});
+  }, [selectedStore?._id, storeStatus.isPaused]);
   // productId -> chosen kg step (default 1kg). Only relevant for unit==='kg'
   // products; once an item is in the cart its stepper increments/decrements
   // by whatever step is currently selected here.
@@ -324,7 +332,16 @@ export default function ExpressShop() {
         <FiMapPin size={14} className="text-indigo-500 shrink-0" />
         <div className="min-w-0 flex-1 leading-tight">
           <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wide">Delivering from</p>
-          <p className="text-sm font-black text-indigo-900 truncate">{selectedStore?.name || 'your area'}</p>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <p className="text-sm font-black text-indigo-900 truncate">{selectedStore?.name || 'your area'}</p>
+            {storeStatus.isPaused && (
+              <button type="button" onClick={() => setShowReason(r => !r)}
+                title={`Closed: ${storeStatus.pauseMessage || 'Not taking orders right now'}`}
+                className="shrink-0 inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-amber-500 text-white">
+                <FiPauseCircle size={10} /> Store closed
+              </button>
+            )}
+          </div>
         </div>
         <button onClick={() => navigate('/express/location?mode=stores')}
           className="shrink-0 text-xs font-black px-3 py-1.5 rounded-lg bg-indigo-600 text-white active:scale-95 transition">
@@ -335,6 +352,44 @@ export default function ExpressShop() {
           Location
         </button>
       </div>
+
+      {storeStatus.isPaused && (() => {
+        const openOthers = allStores.filter(st => !st.isPaused && String(st._id) !== String(selectedStore?._id));
+        const closedOthers = allStores.filter(st => st.isPaused && String(st._id) !== String(selectedStore?._id));
+        const pick = (st) => { setSelectedStore(st); toast.success(`Now shopping from ${st.name}`); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+        return (
+          <div className="-mt-2 mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+            {showReason && (
+              <p className="text-[11px] text-amber-800 mb-2"><b>Why closed:</b> {storeStatus.pauseMessage || 'Not taking orders right now — you can still browse and add to cart.'}</p>
+            )}
+            <p className="text-[12px] font-bold text-amber-900">
+              {selectedStore?.name} is closed right now.{' '}
+              {openOthers.length > 0 ? 'These stores are open — tap one to shop from it:' : 'No other store is open at the moment — you can still browse and add to cart.'}
+            </p>
+            {openOthers.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto mt-2 -mx-1 px-1 pb-1 scrollbar-hide">
+                {openOthers.map(st => (
+                  <button key={st._id} onClick={() => pick(st)} title={`${st.name} is open`}
+                    className="shrink-0 flex flex-col items-start rounded-lg bg-white border border-emerald-200 px-2.5 py-1.5 active:scale-95 transition">
+                    <span className="text-[12px] font-black text-gray-900 whitespace-nowrap">{st.name}</span>
+                    <span className="text-[10px] font-bold text-emerald-600">Open now{st.estimatedDeliveryMinutes != null ? ` · ~${st.estimatedDeliveryMinutes} min` : ''}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {closedOthers.length > 0 && (
+              <p className="text-[10px] text-amber-700 mt-1.5">
+                Also closed:{' '}
+                {closedOthers.map((st, k) => (
+                  <span key={st._id} title={`Closed: ${st.pauseMessage || 'Not taking orders right now'}`} className="underline decoration-dotted cursor-help">{st.name}{k < closedOthers.length - 1 ? ', ' : ''}</span>
+                ))}
+                {' '}(hover or long-press for the reason)
+              </p>
+            )}
+            <button onClick={() => navigate('/express/location?mode=stores')} className="mt-2 text-[12px] font-black text-indigo-700 underline">View all stores</button>
+          </div>
+        );
+      })()}
 
       {banners.length > 0 && (
         <>

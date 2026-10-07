@@ -436,7 +436,8 @@ export default function ExpressLocationPicker() {
               <div className="grid gap-2">
                 {activeStores.map((store, i) => (
                   <button key={store._id} onClick={() => chooseStore(store)} disabled={selectingStoreId != null}
-                    className="w-full text-left border rounded-2xl p-3 transition active:scale-[0.98] active:bg-gray-50 disabled:opacity-50">
+                    title={store.isPaused ? `Closed: ${store.pauseMessage || 'Not taking orders right now'}` : `${store.name} is open`}
+                    className={`w-full text-left border rounded-2xl p-3 transition active:scale-[0.98] active:bg-gray-50 disabled:opacity-50 ${store.isPaused ? 'border-amber-200 bg-amber-50/40' : ''}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">
@@ -444,12 +445,14 @@ export default function ExpressLocationPicker() {
                           {i === 0 && store.distanceKm != null && (
                             <span className="shrink-0 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600">Nearest</span>
                           )}
-                          {store.isPaused && (
-                            <span className="shrink-0 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Busy</span>
+                          {store.isPaused ? (
+                            <span className="shrink-0 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Closed</span>
+                          ) : (
+                            <span className="shrink-0 text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600">Open</span>
                           )}
                         </div>
                         <p className="text-xs text-gray-500 line-clamp-2">{[store.address, store.city].filter(Boolean).join(', ')}</p>
-                        {store.isPaused && <p className="text-[11px] text-amber-600 italic mt-0.5 line-clamp-1">{store.pauseMessage}</p>}
+                        {store.isPaused && <p className="text-[11px] text-amber-700 italic mt-0.5">Why closed: {store.pauseMessage || 'Not taking orders right now — you can still browse and add to cart.'}</p>}
                       </div>
                       {selectingStoreId === store._id ? (
                         <div className="shrink-0 w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin mt-0.5" />
