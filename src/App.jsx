@@ -102,6 +102,7 @@ const AdminWhatsAppInbox   = lazy(() => import('./pages/admin/WhatsAppInbox'));
 
 // ── Koyambedu Daily pages ─────────────────────
 const KoyambeduHome         = lazy(() => import('./pages/koyambedu/KoyambeduHome'));
+const KoyambeduChoose       = lazy(() => import('./pages/koyambedu/KoyambeduChoose'));
 const KoyambeduPolicy       = lazy(() => import('./pages/koyambedu/KoyambeduPolicy'));
 const KoyambeduShop         = lazy(() => import('./pages/koyambedu/KoyambeduShop'));
 const KoyambeduProductDetail= lazy(() => import('./pages/koyambedu/KoyambeduProductDetail'));
@@ -301,6 +302,7 @@ function AppRoutes() {
 
           {/* ── Koyambedu Daily ─────────────────── */}
           <Route path="/koyambedu"                           element={<KoyambeduHome />} />
+          <Route path="/koyambedu/choose"                    element={<KoyambeduChoose />} />
           <Route path="/koyambedu/policy"                    element={<KoyambeduPolicy />} />
           <Route path="/koyambedu/location"                  element={<KoyambeduLocationPicker />} />
           <Route path="/koyambedu/shop"                      element={<KoyambeduShop />} />

@@ -218,7 +218,7 @@ function FlashDeals({ products }) {
 // ══════════════════════════════════════════════════════════════
 const SOURCE_APPS = [
   {
-    to: '/koyambedu',
+    to: '/koyambedu/choose',
     img: '/categories/koyambedu.jpg',
     gradient: 'linear-gradient(135deg, #064e3b 0%, #065f46 50%, #059669 100%)',
     accentColor: '#34d399',
@@ -258,7 +258,7 @@ const SOURCE_APPS = [
 // Highlighted 3-tile row — gradient dark backgrounds
 const SOURCE_TILES = [
   {
-    to: '/koyambedu', emoji: '🥬', label: 'Koyambedu', sub: 'Market Fresh',
+    to: '/koyambedu/choose', emoji: '🥬', label: 'Koyambedu', sub: 'Market Fresh',
     gradient: 'linear-gradient(145deg, #064e3b 0%, #059669 100%)',
     shadow: '0 6px 18px rgba(6,78,59,0.38)',
   },
@@ -307,7 +307,7 @@ function ShopBySource() {
   return (
     <div className="px-4 space-y-2">
       {/* Koyambedu Daily — HERO tile (live video when configured) */}
-      <Link to="/koyambedu"
+      <Link to="/koyambedu/choose"
         className="tap-ripple relative overflow-hidden rounded-2xl active:scale-[0.98] transition-transform block"
         style={{ aspectRatio: '2.4/1', maxHeight: 165, boxShadow: '0 8px 28px rgba(6,78,59,0.50)' }}>
         {heroVideo ? (
@@ -333,7 +333,7 @@ function ShopBySource() {
               MARKET FRESH · DAILY
             </span>
             <span className="bg-amber-400/90 text-amber-900 text-[9px] font-black px-2 py-0.5 rounded-full shadow">
-              💰 Wholesale Rates
+              ⚡ Same-day or Next-day
             </span>
           </div>
           {/* Middle: headline + hooks */}
@@ -790,18 +790,16 @@ function ComboBanner({ onReady }) {
 // ══════════════════════════════════════════════════════════════
 function PromoBannersRow() {
   const [comboOn,   setComboOn]   = useState(null); // null = still loading
-  const [expressOn, setExpressOn] = useState(null);
   const [fbOn,      setFbOn]      = useState(null);
 
-  const anyOthersOn = (a, b) => a === true || b === true;
-  const comboCls   = comboOn === false ? 'hidden' : (anyOthersOn(expressOn, fbOn) ? 'flex-1 min-w-0' : 'w-full');
-  const expressCls = expressOn === false ? 'hidden' : (anyOthersOn(comboOn, fbOn) ? 'flex-1 min-w-0' : 'w-full');
-  const fbCls      = fbOn === false ? 'hidden' : (anyOthersOn(comboOn, expressOn) ? 'flex-1 min-w-0' : 'w-full');
+  // Eptomart Express no longer has its own home banner — it is one of the two
+  // choices on the Koyambedu Daily decision page (/koyambedu/choose).
+  const comboCls   = comboOn === false ? 'hidden' : (fbOn === true ? 'flex-1 min-w-0' : 'w-full');
+  const fbCls      = fbOn === false ? 'hidden' : (comboOn === true ? 'flex-1 min-w-0' : 'w-full');
 
   return (
     <div className="flex items-stretch gap-2">
       <div className={comboCls}><ComboBanner onReady={setComboOn} /></div>
-      <div className={expressCls}><ExpressBanner onReady={setExpressOn} /></div>
       <div className={fbCls}><FruitBasketBanner onReady={setFbOn} /></div>
     </div>
   );
@@ -856,7 +854,7 @@ const PROMOS = [
     tag: '🌿 Just Arrived',
     title: 'Fresh Koyambedu Arrivals',
     sub: 'Veggies & fruits from today\'s market',
-    to: '/koyambedu', cta: 'Order Now',
+    to: '/koyambedu/choose', cta: 'Order Now',
   },
   {
     bg:   'linear-gradient(130deg, #7c2d12 0%, #c2410c 60%, #f97316 100%)',
@@ -1143,7 +1141,7 @@ const HERO_SLIDES = [
     tag: 'Market Fresh · Direct Delivery',
     title: 'Koyambedu\nDaily Fresh',
     sub: 'Vegetables · Fruits · Flowers · Temple',
-    cta: 'Order Now', to: '/koyambedu',
+    cta: 'Order Now', to: '/koyambedu/choose',
   },
   // Farmer Fresh / Proteins slides — HIDDEN FOR NOW per request. Left here,
   // commented out, so they can be restored exactly as-is at launch.
@@ -1216,7 +1214,7 @@ function DesktopHero() {
 function DesktopPromoGrid({ onScrollTo }) {
   const navigate = useNavigate();
   const banners = [
-    { gradient: 'linear-gradient(135deg,#14532d,#16a34a,#4ade80)', tag: 'MARKET FRESH',  Icon: FaCarrot,        title: 'Koyambedu Daily',    sub: 'Fresh Veggies · Fruits · Flowers', cta: 'Order Now', action: () => navigate('/koyambedu') },
+    { gradient: 'linear-gradient(135deg,#14532d,#16a34a,#4ade80)', tag: 'MARKET FRESH',  Icon: FaCarrot,        title: 'Koyambedu Daily',    sub: 'Fresh Veggies · Fruits · Flowers', cta: 'Order Now', action: () => navigate('/koyambedu/choose') },
     // Farmer Fresh / Proteins tiles — HIDDEN FOR NOW per request. Left here,
     // commented out, so they can be restored exactly as-is at launch.
     // { gradient: 'linear-gradient(135deg,#134e4a,#0f766e,#2dd4bf)', tag: 'FARM DIRECT',  Icon: FaTractor,        title: 'Farmer Fresh',       sub: 'உழவர் சந்தை · No middlemen',     cta: 'Explore',   action: () => navigate('/uzhavar') },

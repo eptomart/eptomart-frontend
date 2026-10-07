@@ -547,7 +547,7 @@ export default function Navbar() {
               {[
                 { label: 'All Products',    to: '/shop',       dot: null },
                 { label: 'Categories',      to: '/categories', dot: null },
-                { label: 'Koyambedu Daily', to: '/koyambedu',  dot: '#34d399' },
+                { label: 'Koyambedu Daily', to: '/koyambedu/choose',  dot: '#34d399' },
                 { label: 'Farmer Fresh',   to: '/uzhavar',    dot: '#a3e635' },
                 { label: 'EptoFresh',       to: '/eptofresh',  dot: '#fb923c' },
               ].map(item => {
