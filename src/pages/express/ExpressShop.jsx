@@ -317,20 +317,22 @@ export default function ExpressShop() {
           </span>
         )}
       </div>
-      <div className="flex items-center gap-1 text-xs text-gray-500 mb-4 flex-wrap">
-        <FiMapPin size={12} className="shrink-0" />
-        <span>Delivering from</span>
+      {/* Store bar — "Change store" is a clear button, not tiny text, so the
+          customer can always switch to another (open / quicker) store from
+          inside Express. */}
+      <div className="flex items-center gap-2 mb-4 rounded-xl bg-indigo-50 border border-indigo-100 px-3 py-2">
+        <FiMapPin size={14} className="text-indigo-500 shrink-0" />
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wide">Delivering from</p>
+          <p className="text-sm font-black text-indigo-900 truncate">{selectedStore?.name || 'your area'}</p>
+        </div>
         <button onClick={() => navigate('/express/location?mode=stores')}
-          className="font-bold text-gray-700 underline decoration-dotted decoration-gray-300 hover:text-indigo-600 hover:decoration-indigo-400 transition">
-          {selectedStore?.name || 'your area'}
-        </button>
-        <span>·</span>
-        <button onClick={() => navigate('/express/location?mode=stores')} className="hover:text-indigo-600 transition">
+          className="shrink-0 text-xs font-black px-3 py-1.5 rounded-lg bg-indigo-600 text-white active:scale-95 transition">
           Change store
         </button>
-        <span>·</span>
-        <button onClick={() => navigate('/express/location')} className="hover:text-indigo-600 transition">
-          Change location
+        <button onClick={() => navigate('/express/location')}
+          className="shrink-0 text-[11px] font-bold text-indigo-600 underline">
+          Location
         </button>
       </div>
 
@@ -403,6 +405,10 @@ export default function ExpressShop() {
             <p className="text-xs text-amber-700 mt-0.5">
               {storeStatus.pauseMessage || "We're experiencing high demand right now."} Feel free to keep browsing and add items to your cart — you can check out the moment we're back.
             </p>
+            <button onClick={() => navigate('/express/location?mode=stores')}
+              className="mt-2 text-xs font-black px-3 py-1.5 rounded-lg bg-amber-500 text-white active:scale-95 transition">
+              Change store — see other quick-delivery options
+            </button>
           </div>
         </div>
       )}

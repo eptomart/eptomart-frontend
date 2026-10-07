@@ -111,7 +111,8 @@ export default function KoyambeduChoose() {
   };
 
   const storeClosed = !!storeInfo?.closed;
-  const expressTarget = storeClosed ? '/express/location?mode=stores' : '/express';
+  // Express always opens Express itself; changing store is offered inside (shop screen).
+  const expressTarget = '/express';
 
   const pill = (cls, text) => <span key={text} className={`${cls} text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full shadow`}>{text}</span>;
 
@@ -184,20 +185,18 @@ export default function KoyambeduChoose() {
           </>}
           title="Koyambedu Daily · Retail Express"
           sub={storeClosed && expressOn
-            ? `${storeInfo.name ? storeInfo.name + ' is closed' : 'Your store is closed'} — pick another open store`
+            ? `${storeInfo.name ? storeInfo.name + ' is closed' : 'Your store is closed'} — you can switch store inside`
             : 'Order now · get it today · from a store near you'}
           onClick={() => expressOn && go('retail', expressTarget)}
           disabled={!expressOn}
           delay=".27s" accent="#dc2626"
         >
           <Chips items={RETAIL} base={0.45} />
-          <span className={`${expressOn ? (storeClosed ? 'kc-cta-amber' : 'kc-cta-red') : ''} flex items-center justify-center gap-1.5 text-white font-black text-[13px] px-4 py-2 rounded-xl`}
-            style={{ background: expressOn === false ? '#9ca3af' : storeClosed ? 'linear-gradient(90deg,#d97706,#f59e0b)' : 'linear-gradient(90deg,#dc2626,#ef4444)' }}>
+          <span className={`${expressOn ? 'kc-cta-red' : ''} flex items-center justify-center gap-1.5 text-white font-black text-[13px] px-4 py-2 rounded-xl`}
+            style={{ background: expressOn === false ? '#9ca3af' : 'linear-gradient(90deg,#dc2626,#ef4444)' }}>
             {expressOn === false
               ? 'Not available right now'
-              : storeClosed
-                ? <>Change store{storeInfo.otherOpen > 0 ? ` — ${storeInfo.otherOpen} open now` : ''} <FiArrowRight size={14} /></>
-                : <>Shop Express — Get it Today <FiArrowRight size={14} /></>}
+              : <>Shop Express — Get it Today <FiArrowRight size={14} /></>}
           </span>
         </ChoiceCard>
       </div>
