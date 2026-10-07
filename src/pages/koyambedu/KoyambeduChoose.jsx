@@ -120,8 +120,12 @@ export default function KoyambeduChoose() {
         </button>
 
         {/* RETAIL · EXPRESS — hero card with the bike-rider art */}
+        {/* Glow lives on this wrapper, entrance (kc-rise) on the button: both set the
+            CSS `animation` property, so on ONE element the glow replaced the entrance
+            and left the card stuck at opacity:0 (it flashed, then vanished). */}
+        <div className="kc-glow rounded-2xl">
         <button onClick={() => expressOn && go('retail', '/express')} disabled={!expressOn}
-          className="kc-rise kc-glow relative w-full text-left rounded-2xl overflow-hidden active:scale-[0.98] transition-transform disabled:opacity-70 disabled:active:scale-100 bg-white"
+          className="kc-rise relative block w-full text-left rounded-2xl overflow-hidden active:scale-[0.98] transition-transform disabled:opacity-70 disabled:active:scale-100 bg-white"
           style={{ animationDelay: '.27s' }}>
           {/* Rider art — static base + masked bouncing copy of the rider (left ~45%),
               so the bike moves while the wordmark stays still. */}
@@ -152,6 +156,7 @@ export default function KoyambeduChoose() {
             </span>
           </div>
         </button>
+        </div>
       </div>
     </div>
   );
