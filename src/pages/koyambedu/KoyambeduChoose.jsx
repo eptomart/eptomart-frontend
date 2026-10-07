@@ -3,23 +3,28 @@
 // Home banner lands here. The customer picks:
 //   • Wholesale · Next-day delivery  → /koyambedu  (existing Koyambedu Daily flow)
 //   • Retail · Same-day Express      → /express    (Eptomart Express flow)
-// Nothing about either flow changes; this page only routes. Laid out so BOTH
-// choices fit on one phone screen without scrolling (compact chips, short
-// header). Express gets the larger, brighter card with the bike-rider art.
-// The last choice is remembered ("Your usual").
+// Nothing about either flow changes; this page only routes.
+// Both cards are IDENTICAL in size and structure (photo on top, 6 highlights,
+// one button) so neither looks like the "lesser" choice, and both fit on one
+// phone screen. If the customer's chosen Express store is closed/on hold, the
+// Express card says so and points to "Change store" so they can see other
+// quick-delivery options. The last choice is remembered ("Your usual").
 // ============================================
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiArrowRight, FiArrowLeft, FiCheck } from 'react-icons/fi';
+import { FiArrowRight, FiArrowLeft, FiCheck, FiPauseCircle } from 'react-icons/fi';
 import api from '../../utils/api';
 
 const MODE_KEY = 'koyambedu_mode';
+const STORE_KEY = 'express_selected_store';
 
 const WHOLESALE = [
   ['💰', 'Wholesale rates'],
   ['🌙', 'Next-day delivery'],
   ['🏪', 'Direct suppliers'],
-  ['🅰️', 'Grade & variant choice'],
+  ['🅰️', 'Grade & variant'],
+  ['🕒', 'Choose your slot'],
+  ['📦', 'Bulk & weekly'],
 ];
 const RETAIL = [
   ['⚡', 'Same-day delivery'],
@@ -30,34 +35,75 @@ const RETAIL = [
   ['🏠', 'Daily home needs'],
 ];
 
-function Chips({ items, cols, dark, base = 0 }) {
+function Chips({ items, base = 0 }) {
   return (
-    <div className={`grid gap-1.5 mt-2.5 ${cols === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+    <div className="grid grid-cols-3 gap-1.5 mt-2">
       {items.map(([icon, text], i) => (
-        <div key={text} className="kc-pop flex items-center gap-1.5 rounded-lg px-2 py-1.5"
-          style={{
-            animationDelay: `${base + i * 0.07}s`,
-            background: dark ? 'rgba(255,255,255,.16)' : '#fff7d6',
-            border: dark ? '1px solid rgba(255,255,255,.18)' : '1px solid #fde68a',
-          }}>
-          <span className="text-[13px] leading-none">{icon}</span>
-          <span className={`text-[10.5px] font-bold leading-tight ${dark ? 'text-white' : 'text-indigo-950'}`}>{text}</span>
+        <div key={text} className="kc-pop flex items-center gap-1 rounded-lg px-1.5 py-1.5"
+          style={{ animationDelay: `${base + i * 0.06}s`, background: '#f3f4f6', border: '1px solid #e5e7eb' }}>
+          <span className="text-[12px] leading-none shrink-0">{icon}</span>
+          <span className="text-[10px] font-bold leading-tight text-gray-800">{text}</span>
         </div>
       ))}
     </div>
   );
 }
 
+// Same photo-on-top layout for both cards. `children` = the card body below.
+function ChoiceCard({ img, imgAlt, badge, badgeTone, tag, title, sub, usual, onClick, disabled, children, delay, accent }) {
+  return (
+    <div className="kc-card rounded-2xl" style={{ boxShadow: `0 10px 26px ${accent}55` }}>
+      <button onClick={onClick} disabled={disabled}
+        className="kc-rise relative block w-full text-left rounded-2xl overflow-hidden bg-white active:scale-[0.985] transition-transform disabled:active:scale-100"
+        style={{ animationDelay: delay }}>
+        <div className="relative w-full" style={{ aspectRatio: '2/1' }}>
+          <img src={img} alt={imgAlt} className="absolute inset-0 w-full h-full object-cover" loading="eager" />
+          <div className="absolute inset-x-0 bottom-0 h-16" style={{ background: 'linear-gradient(180deg,transparent,rgba(0,0,0,.62))' }} />
+          <div className="kc-shine" />
+          <div className="absolute top-2 left-2 right-2 flex items-center gap-1.5 flex-wrap">
+            <span className={`${badgeTone} text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full shadow`}>{badge}</span>
+            <span className="bg-black/55 text-white text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full">{tag}</span>
+            {usual && <span className="bg-white text-emerald-700 text-[9px] font-black px-2 py-0.5 rounded-full inline-flex items-center gap-1 shadow ml-auto"><FiCheck size={9} /> Your usual</span>}
+          </div>
+          <div className="absolute bottom-1.5 left-3 right-3">
+            <h2 className="text-white font-black text-[15px] leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,.7)' }}>{title}</h2>
+            <p className="text-white/90 text-[10.5px] font-semibold" style={{ textShadow: '0 1px 3px rgba(0,0,0,.7)' }}>{sub}</p>
+          </div>
+        </div>
+        <div className="px-3 pb-3 pt-1">{children}</div>
+      </button>
+    </div>
+  );
+}
+
 export default function KoyambeduChoose() {
   const navigate = useNavigate();
-  const [expressOn, setExpressOn] = useState(null); // null = checking
+  const [expressOn, setExpressOn] = useState(null);       // null = checking
   const [last, setLast] = useState(null);
+  const [storeInfo, setStoreInfo] = useState(null);       // { name, closed, otherOpen }
 
   useEffect(() => {
     try { setLast(localStorage.getItem(MODE_KEY)); } catch { /* ignore */ }
     api.get('/express/status')
       .then(r => setExpressOn(!!r.data?.isEnabled))
       .catch(() => setExpressOn(false));
+
+    // Is the customer's chosen Express store closed? (paused, or switched off
+    // so it no longer appears in the active list.) If so, we steer them to
+    // "Change store" to see the other quick-delivery options.
+    let chosen = null;
+    try { chosen = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch { /* ignore */ }
+    if (chosen?._id) {
+      api.get('/express/active-stores')
+        .then(({ data }) => {
+          const list = data.stores || [];
+          const me = list.find(s => String(s._id) === String(chosen._id));
+          const closed = !me || !!me.isPaused;
+          const otherOpen = list.filter(s => !s.isPaused && String(s._id) !== String(chosen._id)).length;
+          setStoreInfo({ name: me?.name || chosen.name, closed, otherOpen, message: me?.pauseMessage || null });
+        })
+        .catch(() => {});
+    }
   }, []);
 
   const go = (mode, to) => {
@@ -65,28 +111,29 @@ export default function KoyambeduChoose() {
     navigate(to);
   };
 
+  const storeClosed = !!storeInfo?.closed;
+  const expressTarget = storeClosed ? '/express/location?mode=stores' : '/express';
+
   return (
-    <div className="min-h-screen pb-6" style={{ background: 'linear-gradient(180deg,#052e1f 0%,#0b3d2e 150px,#f3f4f6 150px)' }}>
+    <div className="min-h-screen pb-6" style={{ background: 'linear-gradient(180deg,#052e1f 0%,#0b3d2e 110px,#f3f4f6 110px)' }}>
       <style>{`
         @keyframes kcFloat { 0%,100%{transform:translateY(0) rotate(0)} 50%{transform:translateY(-8px) rotate(6deg)} }
         @keyframes kcPop { from{opacity:0;transform:translateY(6px) scale(.96)} to{opacity:1;transform:none} }
         @keyframes kcRise { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:none} }
-        @keyframes kcBike { 0%,100%{transform:translate(0,0)} 50%{transform:translate(5px,-3px)} }
-        @keyframes kcMoon { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-5px) scale(1.08)} }
         @keyframes kcPulse { 0%{box-shadow:0 0 0 0 rgba(255,255,255,.6)} 100%{box-shadow:0 0 0 12px rgba(255,255,255,0)} }
+        @keyframes kcPulseGreen { 0%{box-shadow:0 0 0 0 rgba(5,150,105,.5)} 100%{box-shadow:0 0 0 12px rgba(5,150,105,0)} }
         @keyframes kcPulseRed { 0%{box-shadow:0 0 0 0 rgba(239,68,68,.55)} 100%{box-shadow:0 0 0 12px rgba(239,68,68,0)} }
+        @keyframes kcPulseAmber { 0%{box-shadow:0 0 0 0 rgba(217,119,6,.5)} 100%{box-shadow:0 0 0 12px rgba(217,119,6,0)} }
         @keyframes kcShine { 0%{transform:translateX(-120%) skewX(-20deg)} 60%,100%{transform:translateX(260%) skewX(-20deg)} }
-        @keyframes kcGlow { 0%,100%{box-shadow:0 10px 28px rgba(239,68,68,.30),0 0 0 2px rgba(250,204,21,.9)} 50%{box-shadow:0 10px 34px rgba(239,68,68,.50),0 0 0 3px rgba(250,204,21,1)} }
         .kc-pop{opacity:0;animation:kcPop .4s ease-out forwards}
         .kc-rise{opacity:0;animation:kcRise .55s ease-out forwards}
         .kc-float{animation:kcFloat 4.5s ease-in-out infinite}
-        .kc-cta{animation:kcPulse 1.8s ease-out infinite}
+        .kc-cta-green{animation:kcPulseGreen 1.8s ease-out infinite}
         .kc-cta-red{animation:kcPulseRed 1.6s ease-out infinite}
-        .kc-glow{animation:kcGlow 2.4s ease-in-out infinite}
-        .kc-bike{animation:kcBike 1.1s ease-in-out infinite}
+        .kc-cta-amber{animation:kcPulseAmber 1.6s ease-out infinite}
         .kc-shine{position:absolute;inset:0;overflow:hidden;pointer-events:none}
-        .kc-shine::after{content:'';position:absolute;top:0;bottom:0;width:35%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);animation:kcShine 4s ease-in-out infinite}
-        @media (prefers-reduced-motion: reduce){ .kc-pop,.kc-rise,.kc-float,.kc-cta,.kc-cta-red,.kc-glow,.kc-bike,.kc-shine::after{animation:none;opacity:1} }
+        .kc-shine::after{content:'';position:absolute;top:0;bottom:0;width:35%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);animation:kcShine 4.5s ease-in-out infinite}
+        @media (prefers-reduced-motion: reduce){ .kc-pop,.kc-rise,.kc-float,.kc-cta-green,.kc-cta-red,.kc-cta-amber,.kc-shine::after{animation:none;opacity:1} }
       `}</style>
 
       {/* Compact header */}
@@ -100,63 +147,60 @@ export default function KoyambeduChoose() {
 
       <div className="px-3 space-y-3 max-w-xl mx-auto">
 
-        {/* WHOLESALE — compact */}
-        <button onClick={() => go('wholesale', '/koyambedu')}
-          className="kc-rise relative w-full text-left rounded-2xl p-3.5 overflow-hidden active:scale-[0.98] transition-transform"
-          style={{ animationDelay: '.12s', background: 'linear-gradient(140deg,#064e3b 0%,#047857 55%,#10b981 100%)', boxShadow: '0 8px 22px rgba(6,78,59,.30)' }}>
-          <div className="kc-shine" />
-          <span className="absolute right-3 top-2 text-4xl opacity-25" style={{ animation: 'kcMoon 5s ease-in-out infinite' }}>🌙</span>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="bg-amber-400 text-amber-900 text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full">Wholesale</span>
-            <span className="bg-white/20 text-white text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full">Next-day delivery</span>
-            {last === 'wholesale' && <span className="bg-white text-emerald-700 text-[9px] font-black px-2 py-0.5 rounded-full inline-flex items-center gap-1"><FiCheck size={9} /> Your usual</span>}
-          </div>
-          <h2 className="text-white font-black text-base mt-1.5 leading-tight">Koyambedu Daily · Wholesale</h2>
-          <p className="text-emerald-100 text-[11px] font-semibold">Order today · delivered tomorrow</p>
-          <Chips items={WHOLESALE} cols={2} dark base={0.3} />
-          <span className="kc-cta mt-3 inline-flex items-center gap-1.5 bg-white text-emerald-800 font-black text-xs px-4 py-2 rounded-xl">
-            Shop Wholesale <FiArrowRight size={13} />
+        {/* WHOLESALE */}
+        <ChoiceCard
+          img="/images/koyambedu-wholesale-truck.jpg"
+          imgAlt="Eptomart truck loaded with fresh Koyambedu vegetables"
+          badge="Wholesale" badgeTone="bg-amber-400 text-amber-900"
+          tag="Next-day delivery"
+          title="Koyambedu Daily · Wholesale"
+          sub="Order today · delivered tomorrow"
+          usual={last === 'wholesale'}
+          onClick={() => go('wholesale', '/koyambedu')}
+          delay=".12s" accent="#047857"
+        >
+          <Chips items={WHOLESALE} base={0.3} />
+          <span className="kc-cta-green mt-2.5 flex items-center justify-center gap-1.5 text-white font-black text-sm px-4 py-2.5 rounded-xl"
+            style={{ background: 'linear-gradient(90deg,#047857,#10b981)' }}>
+            Shop Wholesale <FiArrowRight size={15} />
           </span>
-        </button>
+        </ChoiceCard>
 
-        {/* RETAIL · EXPRESS — hero card with the bike-rider art */}
-        {/* Glow lives on this wrapper, entrance (kc-rise) on the button: both set the
-            CSS `animation` property, so on ONE element the glow replaced the entrance
-            and left the card stuck at opacity:0 (it flashed, then vanished). */}
-        <div className="kc-glow rounded-2xl">
-        <button onClick={() => expressOn && go('retail', '/express')} disabled={!expressOn}
-          className="kc-rise relative block w-full text-left rounded-2xl overflow-hidden active:scale-[0.98] transition-transform disabled:opacity-70 disabled:active:scale-100 bg-white"
-          style={{ animationDelay: '.27s' }}>
-          {/* Rider art — static base + masked bouncing copy of the rider (left ~45%),
-              so the bike moves while the wordmark stays still. */}
-          <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
-            <img src="/images/express-delivery-rider.png" alt="Eptomart Express — Express Delivery, Fast, Safe, Right to Your Door"
-              className="absolute inset-0 w-full h-full object-cover" />
-            <img src="/images/express-delivery-rider.png" alt="" aria-hidden="true"
-              className="kc-bike absolute inset-0 w-full h-full object-cover"
-              style={{ maskImage: 'linear-gradient(to right, black 0%, black 34%, transparent 46%)', WebkitMaskImage: 'linear-gradient(to right, black 0%, black 34%, transparent 46%)' }} />
-            <div className="kc-shine" />
-            <div className="absolute top-2 left-2 flex items-center gap-1.5">
-              <span className="bg-red-600 text-white text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full shadow">⚡ Fastest</span>
-              {last === 'retail' && expressOn && <span className="bg-white text-indigo-700 text-[9px] font-black px-2 py-0.5 rounded-full inline-flex items-center gap-1 shadow"><FiCheck size={9} /> Your usual</span>}
+        {/* RETAIL · EXPRESS */}
+        <ChoiceCard
+          img="/images/express-delivery-rider.png"
+          imgAlt="Eptomart Express — Express Delivery, Fast, Safe, Right to Your Door"
+          badge="⚡ Fastest" badgeTone="bg-red-600 text-white"
+          tag="Retail · Same-day"
+          title="Koyambedu Daily · Retail Express"
+          sub="Order now · get it today · from a store near you"
+          usual={last === 'retail' && !!expressOn}
+          onClick={() => expressOn && go('retail', expressTarget)}
+          disabled={!expressOn}
+          delay=".27s" accent="#dc2626"
+        >
+          {storeClosed && expressOn && (
+            <div className="mt-2 flex items-start gap-2 rounded-lg px-2.5 py-2" style={{ background: '#fffbeb', border: '1px solid #fcd34d' }}>
+              <FiPauseCircle className="text-amber-600 shrink-0 mt-0.5" size={15} />
+              <p className="text-[11px] leading-snug text-amber-900 font-semibold">
+                {storeInfo.name ? `${storeInfo.name} is closed right now. ` : 'Your store is closed right now. '}
+                <span className="font-black">Change store</span>{' '}
+                {storeInfo.otherOpen > 0
+                  ? `— ${storeInfo.otherOpen} other store${storeInfo.otherOpen > 1 ? 's are' : ' is'} open for quick delivery.`
+                  : 'to see other quick-delivery options.'}
+              </p>
             </div>
-          </div>
-
-          <div className="px-3.5 pb-3.5 pt-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <h2 className="text-indigo-950 font-black text-base leading-tight">Koyambedu Daily · Retail Express</h2>
-                <p className="text-red-600 text-[11px] font-bold">Order now · get it today · from a store near you</p>
-              </div>
-            </div>
-            <Chips items={RETAIL} cols={3} base={0.45} />
-            <span className={`${expressOn ? 'kc-cta-red' : ''} mt-3 flex items-center justify-center gap-1.5 text-white font-black text-sm px-4 py-2.5 rounded-xl`}
-              style={{ background: expressOn === false ? '#9ca3af' : 'linear-gradient(90deg,#dc2626,#ef4444)' }}>
-              {expressOn === false ? 'Not available right now' : <>Shop Express — Get it Today <FiArrowRight size={15} /></>}
-            </span>
-          </div>
-        </button>
-        </div>
+          )}
+          <Chips items={RETAIL} base={0.45} />
+          <span className={`${expressOn ? (storeClosed ? 'kc-cta-amber' : 'kc-cta-red') : ''} mt-2.5 flex items-center justify-center gap-1.5 text-white font-black text-sm px-4 py-2.5 rounded-xl`}
+            style={{ background: expressOn === false ? '#9ca3af' : storeClosed ? 'linear-gradient(90deg,#d97706,#f59e0b)' : 'linear-gradient(90deg,#dc2626,#ef4444)' }}>
+            {expressOn === false
+              ? 'Not available right now'
+              : storeClosed
+                ? <>Change store — see open stores <FiArrowRight size={15} /></>
+                : <>Shop Express — Get it Today <FiArrowRight size={15} /></>}
+          </span>
+        </ChoiceCard>
       </div>
     </div>
   );
