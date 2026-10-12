@@ -855,7 +855,7 @@ export default function KoyambeduOrderDetail() {
           )}
           {(effective.deliveryCharge || pricing.deliveryCharge || 0) > 0 && (
             <PayRow
-              label={pricing.deliveryHub ? `Delivery Charge (${pricing.deliveryDistance ? pricing.deliveryDistance + ' km ' : ''}from ${pricing.deliveryHub})` : "Delivery Charge"}
+              label={pricing.deliveryHub ? `Delivery Charge from nearest hub (${pricing.deliveryHub}${pricing.deliveryDistance ? ' · ' + pricing.deliveryDistance + ' km' : ''})` : "Delivery Charge"}
               value={pricing.originalDeliveryCharge ? (
                 <>
                   <span style={{ color: '#9ca3af', textDecoration: 'line-through', marginRight: 6 }}>{fmt(pricing.originalDeliveryCharge)}</span>

@@ -21,8 +21,12 @@ export default function HubsTab() {
 
   const hubForStore = (id) => hubs.find(h => String(h.expressStore) === String(id));
   const addStoreHub = (s) => setHubs(h => [...h, { name: s.name, lat: s.lat, lng: s.lng, expressStore: s._id, isActive: true }]);
+  const rename = (i, name) => setHubs(h => h.map((x, k) => k === i ? { ...x, name } : x));
   const remove = (i) => setHubs(h => h.filter((_, k) => k !== i));
-  const toggle = (i) => setHubs(h => h.map((x, k) => k === i ? { ...x, isActive: !x.isActive } : x));
+  const toggle = (i) => {
+    if (!hubs[i].isActive && !hubs[i].name.trim()) return toast.error('Give this hub a name before turning it on');
+    setHubs(h => h.map((x, k) => k === i ? { ...x, isActive: !x.isActive } : x));
+  };
 
   const useMyLocation = () => {
     if (!navigator.geolocation) return toast.error('Location not available');
@@ -43,6 +47,8 @@ export default function HubsTab() {
   };
 
   const save = async () => {
+    const bad = hubs.find(h => h.isActive && !h.name.trim());
+    if (bad) return toast.error('Every active hub needs a name — customers see it at checkout');
     setSaving(true);
     try {
       const { data } = await api.put('/koyambedu/admin/hubs', { hubs });
@@ -59,7 +65,7 @@ export default function HubsTab() {
     <div className="space-y-5 max-w-3xl">
       <div>
         <h2 className="text-lg font-black text-gray-900">📍 Delivery Hubs</h2>
-        <p className="text-sm text-gray-500">Delivery distance and charge are measured from the <b>nearest active hub</b> to the customer.
+        <p className="text-sm text-gray-500">Delivery distance and charge are measured from the <b>nearest active hub</b>. The name you give each hub is shown to customers ("Delivery charges from nearest hub: <i>name</i>").
           {activeCount === 0 && ' No active hub yet — distance is currently measured from Koyambedu market.'}</p>
       </div>
 
@@ -68,9 +74,11 @@ export default function HubsTab() {
         {hubs.map((h, i) => (
           <div key={i} className="p-3 flex items-center gap-3">
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm text-gray-900 truncate">{h.name}
-                <span className={`ml-2 text-[10px] font-black px-1.5 py-0.5 rounded-full ${h.expressStore ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>{h.expressStore ? 'Express store' : 'Custom'}</span>
-              </p>
+              <div className="flex items-center gap-2">
+                <input value={h.name} onChange={e => rename(i, e.target.value)} placeholder="Hub name shown to customers"
+                  className={`flex-1 min-w-0 border rounded-lg px-2 py-1 text-sm font-bold ${h.name.trim() ? 'border-gray-300' : 'border-red-400 bg-red-50'}`} />
+                <span className={`shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded-full ${h.expressStore ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>{h.expressStore ? 'Express store' : 'Custom'}</span>
+              </div>
               <p className="text-[11px] text-gray-400">{Number(h.lat).toFixed(5)}, {Number(h.lng).toFixed(5)}</p>
             </div>
             <button onClick={() => toggle(i)} className={`text-xs font-bold px-3 py-1.5 rounded-lg ${h.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{h.isActive ? 'Active' : 'Off'}</button>
@@ -80,7 +88,7 @@ export default function HubsTab() {
       </div>
 
       <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-3">
-        <p className="text-sm font-black text-indigo-900 mb-2">Map from an Express store</p>
+        <p className="text-sm font-black text-indigo-900 mb-2">Map from an Express store <span className="font-normal text-indigo-700">(you can rename it above after adding)</span></p>
         <div className="space-y-1.5 max-h-56 overflow-y-auto">
           {stores.map(s => (
             <div key={s._id} className="flex items-center gap-2 bg-white rounded-lg px-3 py-2">

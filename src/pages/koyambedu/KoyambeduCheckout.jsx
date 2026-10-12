@@ -1672,10 +1672,10 @@ export default function KoyambeduCheckout() {
                 <div className="flex justify-between text-gray-700 font-medium"><span>Products Total</span><span>₹{subtotal.toFixed(2)}</span></div>
                 <div className="flex justify-between text-gray-700 font-medium">
                   <span className="flex items-center gap-1">
-                    Delivery Charges
+                    {hubName ? 'Delivery Charges from nearest hub' : 'Delivery Charges'}
                     {distanceKm !== null && (
                       <span className="text-[10px] bg-green-50 text-green-600 font-semibold px-1.5 py-0.5 rounded-full">
-                        {distanceKm} km{hubName ? ` from ${hubName}` : ''}
+                        {distanceKm} km{hubName ? ` · ${hubName}` : ''}
                       </span>
                     )}
                     {isSmallOrder && (
