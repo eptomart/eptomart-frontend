@@ -81,6 +81,10 @@ export default function HubsTab() {
                   className={`flex-1 min-w-0 border rounded-lg px-2 py-1 text-sm font-bold ${needsName(h) ? 'border-red-400 bg-red-50' : 'border-gray-300'}`} />
                 <span className={`shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded-full ${h.expressStore ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>{h.expressStore ? 'Express store' : 'Custom'}</span>
               </div>
+              <p className="text-[11px] text-indigo-700 font-semibold mt-0.5">
+                Customers see: “{h.name.trim() || storeName(h) || '— name needed —'}”
+                {h.expressStore && storeName(h) && h.name.trim() !== storeName(h) && <span className="text-gray-400 font-normal"> · retail shop: {storeName(h)}</span>}
+              </p>
               <p className="text-[11px] text-gray-400">{Number(h.lat).toFixed(5)}, {Number(h.lng).toFixed(5)}</p>
             </div>
             <button onClick={() => toggle(i)} className={`text-xs font-bold px-3 py-1.5 rounded-lg ${h.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{h.isActive ? 'Active' : 'Off'}</button>
