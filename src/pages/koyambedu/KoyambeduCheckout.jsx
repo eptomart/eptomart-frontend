@@ -270,6 +270,7 @@ const EmbeddedMapPicker = forwardRef(function EmbeddedMapPicker({ initialCenter,
         packingCharge:          data.packingCharge ?? 0,
         isSmallOrder:           data.isSmallOrder ?? false,
         distanceKm:   data.distanceKm ?? distKm,
+        hubName:      data.hubName ?? null,
       });
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Could not check delivery availability');
@@ -484,6 +485,7 @@ export default function KoyambeduCheckout() {
               packingCharge:          data.packingCharge ?? 0,
               isSmallOrder:           data.isSmallOrder ?? false,
               distanceKm:             data.distanceKm,
+              hubName:                data.hubName ?? null,
             }));
           })
           .catch(() => {});
@@ -694,6 +696,7 @@ export default function KoyambeduCheckout() {
   const deliveryCharge         = locationData?.deliveryCharge ?? 249;
   const originalDeliveryCharge = locationData?.originalDeliveryCharge ?? null;
   const distanceKm     = locationData?.distanceKm ?? null;
+  const hubName        = locationData?.hubName ?? null;
   const platformFee    = locationData?.platformFee ?? 75; // ₹75 incl. 18% GST (SAC 9985), or ₹25 for small orders
   const originalPlatformFee = locationData?.originalPlatformFee ?? null;
   const packingCharge  = locationData?.packingCharge ?? 0; // flat ₹35 for small orders only
@@ -1672,7 +1675,7 @@ export default function KoyambeduCheckout() {
                     Delivery Charges
                     {distanceKm !== null && (
                       <span className="text-[10px] bg-green-50 text-green-600 font-semibold px-1.5 py-0.5 rounded-full">
-                        {distanceKm} km
+                        {distanceKm} km{hubName ? ` from ${hubName}` : ''}
                       </span>
                     )}
                     {isSmallOrder && (
