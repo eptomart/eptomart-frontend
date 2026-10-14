@@ -246,6 +246,8 @@ export default function KoyambeduScheduleAdmin() {
   return (
     <div className="space-y-4">
 
+      <BookingSettings onChanged={load} />
+
       {/* ── Stats dashboard ── */}
       {stats && (
         <div className="grid grid-cols-4 gap-2">
@@ -367,10 +369,28 @@ function ScheduleCardInner({ sched, forceExpand, onRefresh }) {
     setTogglingSlot(sl.key);
     try {
       await api.patch(`/koyambedu/admin/schedule/${sched._id}/slots/${sl.key}/status`, { isEnabled: !sl.isEnabled });
-      toast.success(`${sl.label} ${sl.isEnabled ? 'disabled' : 'enabled'}`);
+      toast.success(`${sl.label} ${sl.isEnabled ? 'turned off' : 'turned on'} for this day`);
       onRefresh();
     } catch { toast.error('Failed to update slot'); }
     finally  { setTogglingSlot(null); }
+  };
+
+  const handleSlotReset = async (sl) => {
+    setTogglingSlot(sl.key);
+    try {
+      await api.patch(`/koyambedu/admin/schedule/${sched._id}/slots/${sl.key}/status`, { reset: true });
+      toast.success(`${sl.label} follows the global setting again`);
+      onRefresh();
+    } catch { toast.error('Failed to reset slot'); }
+    finally  { setTogglingSlot(null); }
+  };
+
+  const handlePrebookClose = async () => {
+    try {
+      await api.post('/koyambedu/admin/schedule/advance-open', { dateISO: sched.dateISO, advanceOpen: false });
+      toast.success('Pre-booking closed for this date');
+      onRefresh();
+    } catch { toast.error('Failed to update'); }
   };
 
   const totalOrders   = sched.slots.reduce((s, sl) => s + (sl.currentOrders || 0), 0);
@@ -390,6 +410,13 @@ function ScheduleCardInner({ sched, forceExpand, onRefresh }) {
             {enabledSlots}/{sched.slots.length} slots enabled · {totalOrders}/{totalCapacity} orders booked
           </p>
         </button>
+        {sched.advanceOpen && !sched.inWindow && (
+          <button onClick={handlePrebookClose} title="Tap to close pre-booking for this date"
+            className="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-indigo-100 text-indigo-700">📆 Pre-booking · close</button>
+        )}
+        {!sched.advanceOpen && sched.inWindow === false && (
+          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-gray-100 text-gray-500" title="Beyond the booking window — customers can't book this date">Not bookable</span>
+        )}
         <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${isOpen ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
           {isOpen ? '✅ Open' : '❌ Closed'}
         </span>
@@ -419,6 +446,12 @@ function ScheduleCardInner({ sched, forceExpand, onRefresh }) {
                 className={`grid grid-cols-12 gap-1 items-center px-4 py-2.5 border-t border-gray-50 ${!sl.isEnabled ? 'bg-gray-50/70' : ''}`}>
                 <div className="col-span-3">
                   <p className={`text-xs font-bold ${sl.isEnabled ? 'text-gray-800' : 'text-gray-400 line-through'}`}>{sl.label}</p>
+                  {sl.override === 'on' && sl.globalOff && <p className="text-[9px] font-bold text-indigo-600">On for this day only</p>}
+                  {sl.override && (
+                    <button onClick={() => handleSlotReset(sl)} disabled={togglingSlot === sl.key}
+                      className="text-[9px] text-gray-400 underline">reset to global</button>
+                  )}
+                  {!sl.override && sl.globalOff && <p className="text-[9px] font-bold text-red-400">Off globally</p>}
                 </div>
                 <div className="col-span-2 flex justify-center">
                   <CapacityInput
@@ -475,6 +508,94 @@ function ScheduleCardInner({ sched, forceExpand, onRefresh }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Booking window, global slot switches, pre-book a date ─────
+function BookingSettings({ onChanged }) {
+  const [cfg, setCfg] = useState(null);
+  const [days, setDays] = useState('2');
+  const [off, setOff] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [preDate, setPreDate] = useState('');
+  const [prebooking, setPrebooking] = useState(false);
+
+  useEffect(() => {
+    api.get('/koyambedu/admin/schedule/config')
+      .then(({ data }) => { setCfg(data); setDays(String(data.advanceDays)); setOff(data.disabledSlots || []); })
+      .catch(() => toast.error('Failed to load booking settings'));
+  }, []);
+
+  const toggleSlot = (k) => setOff(o => o.includes(k) ? o.filter(x => x !== k) : [...o, k]);
+  const save = async () => {
+    const n = parseInt(days);
+    if (isNaN(n) || n < 1 || n > 90) return toast.error('Booking days must be 1–90');
+    setSaving(true);
+    try {
+      await api.put('/koyambedu/admin/schedule/config', { advanceDays: n, disabledSlots: off });
+      toast.success('Booking settings saved');
+      onChanged && onChanged();
+    } catch (e) { toast.error(e?.response?.data?.message || 'Save failed'); }
+    finally { setSaving(false); }
+  };
+  const openDate = async () => {
+    if (!preDate) return toast.error('Pick a date');
+    setPrebooking(true);
+    try {
+      const { data } = await api.post('/koyambedu/admin/schedule/advance-open', { dateISO: preDate, advanceOpen: true });
+      toast.success(data.message);
+      setPreDate('');
+      onChanged && onChanged();
+    } catch (e) { toast.error(e?.response?.data?.message || 'Failed'); }
+    finally { setPrebooking(false); }
+  };
+
+  if (!cfg) return null;
+  const todayISO = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+  return (
+    <div className="bg-white rounded-2xl px-4 py-4 space-y-4" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1.5px solid #e0e7ff' }}>
+      <p className="font-black text-gray-800 text-sm">⚙️ Booking settings</p>
+
+      <div className="space-y-1.5">
+        <p className="text-xs font-bold text-gray-600">How many days can customers book? <span className="font-normal text-gray-400">(counting today — 2 = today + tomorrow)</span></p>
+        <div className="flex items-center gap-2">
+          <input type="number" min={1} max={90} value={days} onChange={e => setDays(e.target.value)}
+            className="w-20 text-center text-sm font-bold border border-gray-300 rounded-lg px-2 py-1.5" />
+          <span className="text-xs text-gray-500">days (max 90)</span>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <p className="text-xs font-bold text-gray-600">Delivery slots — turn a slot off for <u>every</u> day <span className="font-normal text-gray-400">(you can still turn it on for one day inside that day's card)</span></p>
+        <div className="grid grid-cols-2 gap-2">
+          {cfg.slots.map(sl => {
+            const isOn = !off.includes(sl.key);
+            return (
+              <div key={sl.key} className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 ${isOn ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50'}`}>
+                <span className={`text-xs font-bold ${isOn ? 'text-gray-800' : 'text-gray-400 line-through'}`}>{sl.label}</span>
+                <Toggle checked={isOn} onChange={() => toggleSlot(sl.key)} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <button onClick={save} disabled={saving}
+        className="text-white text-xs font-bold px-5 py-2 rounded-xl disabled:opacity-50" style={{ background: 'linear-gradient(135deg,#16a34a,#059669)' }}>
+        {saving ? 'Saving…' : 'Save booking settings'}
+      </button>
+
+      <div className="border-t border-gray-100 pt-3 space-y-1.5">
+        <p className="text-xs font-bold text-gray-600">Open one specific date for advance pre-booking <span className="font-normal text-gray-400">(even beyond the booking days above)</span></p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <input type="date" min={todayISO} value={preDate} onChange={e => setPreDate(e.target.value)}
+            className="text-xs border border-gray-300 rounded-lg px-2 py-1.5" />
+          <button onClick={openDate} disabled={prebooking}
+            className="text-xs font-bold px-4 py-2 rounded-xl bg-indigo-600 text-white disabled:opacity-50">{prebooking ? 'Opening…' : 'Open for pre-booking'}</button>
+        </div>
+        <p className="text-[10px] text-gray-400">Opened dates appear below with a 📆 Pre-booking badge — tap it to close again. Slots for that date follow the global switches unless you override them in the date card.</p>
+      </div>
     </div>
   );
 }

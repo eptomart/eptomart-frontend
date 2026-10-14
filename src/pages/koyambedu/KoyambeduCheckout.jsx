@@ -596,6 +596,15 @@ export default function KoyambeduCheckout() {
   const tomorrowValue = fmtDate(tomorrowIST);
 
   const [deliveryTab,  setDeliveryTab]  = useState(todayDisabled ? 'tomorrow' : 'today');
+  // Pre-booking: dates beyond tomorrow the admin has opened (booking window / specific dates)
+  const [laterDates, setLaterDates] = useState([]);
+  const [laterDate,  setLaterDate]  = useState(null);   // 'YYYY-MM-DD' when deliveryTab === 'later'
+  const [advanceDays, setAdvanceDays] = useState(2);
+  useEffect(() => {
+    api.get('/koyambedu/schedule/config')
+      .then(r => { setLaterDates(r.data?.laterDates || []); if (r.data?.advanceDays) setAdvanceDays(r.data.advanceDays); })
+      .catch(() => {});
+  }, []);
   const [selectedSlot, setSelectedSlot] = useState(null);
 
   // API-fetched available slots per date
@@ -622,7 +631,15 @@ export default function KoyambeduCheckout() {
   }, [todayDisabled]);
 
   // Derive the delivery date from the active tab
-  const selectedDate = deliveryTab === 'today' ? todayValue : tomorrowValue;
+  const selectedDate = deliveryTab === 'today' ? todayValue
+    : deliveryTab === 'later' && laterDate ? laterDate
+    : tomorrowValue;
+  const selectedDateObj = deliveryTab === 'today' ? todayIST
+    : deliveryTab === 'later' && laterDate ? new Date(laterDate + 'T00:00:00')
+    : tomorrowIST;
+  const selectedDayName = deliveryTab === 'today' ? 'Today'
+    : deliveryTab === 'later' && laterDate ? selectedDateObj.toLocaleDateString('en-IN', { weekday: 'long' })
+    : 'Tomorrow';
 
   // Fetch available slots from backend whenever date tab changes.
   // When a combo is active, use the Super-Admin-managed combo slot list
@@ -669,6 +686,13 @@ export default function KoyambeduCheckout() {
   const handleTabChange = (tab) => {
     if (tab === deliveryTab) return; // already on this tab — don't wipe slots
     setDeliveryTab(tab);
+    setSelectedSlot(null);
+    setAvailableSlots(null);
+  };
+  const pickLaterDate = (iso) => {
+    if (deliveryTab === 'later' && laterDate === iso) return;
+    setLaterDate(iso);
+    setDeliveryTab('later');
     setSelectedSlot(null);
     setAvailableSlots(null);
   };
@@ -1000,7 +1024,7 @@ export default function KoyambeduCheckout() {
       <h2 className="font-black text-2xl text-green-700 mb-1">Order Placed!</h2>
       <p className="text-gray-700 text-sm mb-1">Order ID: <strong className="text-gray-900">{placedOrder.orderId}</strong></p>
       <p className="text-gray-600 text-xs mb-4">
-        {deliveryTab === 'today' ? 'Today' : 'Tomorrow'} · {fmtDisplayDate(deliveryTab === 'today' ? todayIST : tomorrowIST)}<br />
+        {selectedDayName} · {fmtDisplayDate(selectedDateObj)}<br />
         {ALL_SLOTS.find(s => s.key === selectedSlot)?.display || ''}
       </p>
       <p className="text-gray-700 text-sm mb-6">WhatsApp updates at each stage.</p>
@@ -1313,7 +1337,8 @@ export default function KoyambeduCheckout() {
                 {/* Divider */}
                 {effectiveSameDay.enabled && <div className="w-px bg-gray-100 self-stretch" />}
 
-                {/* Tomorrow tab */}
+                {/* Tomorrow tab — hidden when the admin limits booking to today only */}
+                {(advanceDays >= 2 || comboActive) && (
                 <button
                   onClick={() => handleTabChange('tomorrow')}
                   className="flex-1 py-4 flex flex-col items-center gap-0.5 transition"
@@ -1330,14 +1355,36 @@ export default function KoyambeduCheckout() {
                     {fmtDisplayDate(tomorrowIST)}
                   </span>
                 </button>
+                )}
               </div>
             </div>
+
+            {/* ── Pre-book: later dates opened by admin ── */}
+            {!comboActive && laterDates.length > 0 && (
+              <div className="bg-white rounded-2xl px-4 py-3" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
+                <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">📆 Book in advance</p>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {laterDates.map(({ dateISO }) => {
+                    const d = new Date(dateISO + 'T00:00:00');
+                    const active = deliveryTab === 'later' && laterDate === dateISO;
+                    return (
+                      <button key={dateISO} onClick={() => pickLaterDate(dateISO)}
+                        className="shrink-0 rounded-xl px-3 py-2 text-center transition"
+                        style={{ background: active ? '#f0fdf4' : '#f9fafb', border: `2px solid ${active ? '#16a34a' : '#e5e7eb'}` }}>
+                        <span className="block text-[10px] font-black uppercase" style={{ color: active ? '#166534' : '#6b7280' }}>{d.toLocaleDateString('en-IN', { weekday: 'short' })}</span>
+                        <span className="block text-xs font-bold" style={{ color: active ? '#16a34a' : '#374151' }}>{d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* ── Slot list ── */}
             <div className="bg-white rounded-2xl p-4 space-y-2"
               style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
-                Available Delivery Slots — {deliveryTab === 'today' ? fmtDisplayDate(todayIST) : fmtDisplayDate(tomorrowIST)}
+                Available Delivery Slots — {fmtDisplayDate(selectedDateObj)}
               </p>
 
               {/* Loading state */}
@@ -1351,9 +1398,9 @@ export default function KoyambeduCheckout() {
                   <span className="text-3xl">🚫</span>
                   <p className="text-sm font-bold text-gray-700 mt-2">No deliveries on this date</p>
                   <p className="text-xs text-gray-400 mt-1">This delivery date is currently unavailable. Please choose another date.</p>
-                  <button onClick={() => handleTabChange(deliveryTab === 'today' ? 'tomorrow' : 'today')}
+                  <button onClick={() => handleTabChange(deliveryTab === 'tomorrow' && !todayDisabled ? 'today' : 'tomorrow')}
                     className="mt-3 text-green-600 text-sm font-bold underline">
-                    Switch to {deliveryTab === 'today' ? 'Tomorrow' : 'Today'} →
+                    Switch to {deliveryTab === 'tomorrow' && !todayDisabled ? 'Today' : 'Tomorrow'} →
                   </button>
                 </div>
               ) : visibleSlots.length === 0 ? (
@@ -1404,7 +1451,7 @@ export default function KoyambeduCheckout() {
             </div>
 
             {/* ── Tomorrow-only: Market Price Notice ── */}
-            {deliveryTab === 'tomorrow' && (
+            {deliveryTab !== 'today' && (
               <div className="rounded-2xl px-4 py-3.5 space-y-2.5"
                 style={{ background: '#fffbf0', border: '1.5px solid #fed7aa' }}>
                 {/* Header */}
@@ -1574,7 +1621,7 @@ export default function KoyambeduCheckout() {
                 <div className="flex items-center gap-2">
                   <div className="text-right">
                     <p className="font-semibold text-gray-700 text-xs">
-                      {deliveryTab === 'today' ? 'Today' : 'Tomorrow'} · {fmtDisplayDate(deliveryTab === 'today' ? todayIST : tomorrowIST)}
+                      {selectedDayName} · {fmtDisplayDate(selectedDateObj)}
                     </p>
                     <p className="text-[11px] text-green-600 font-medium">
                       {ALL_SLOTS.find(s => s.key === selectedSlot)?.display || '—'}
