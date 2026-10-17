@@ -67,6 +67,8 @@ function buildReceiptHtml(bill) {
   <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;margin:4px 0">
     <span>TOTAL</span><span>${fmtRs(bill.total)}</span>
   </div>
+  ${bill.paymentMethod ? `<div style="display:flex;justify-content:space-between"><span>Paid by</span><span style="text-transform:uppercase">${bill.paymentMethod}</span></div>` : ''}
+  ${bill.paymentMethod === 'cash' && bill.amountTendered != null ? `<div style="display:flex;justify-content:space-between"><span>Cash received</span><span>${fmtRs(bill.amountTendered)}</span></div><div style="display:flex;justify-content:space-between;font-weight:bold"><span>Change</span><span>${fmtRs(bill.changeReturned || 0)}</span></div>` : ''}
   <hr>
   <div class="center" style="margin-top:8px">Thank you for shopping with us!</div>
 </body></html>`;
@@ -102,6 +104,13 @@ function buildReceiptEscPos(bill) {
   chunks.push(bytesBoldOn());
   chunks.push(bytesText(`TOTAL: ${fmtRs(bill.total)}\n`));
   chunks.push(bytesBoldOff());
+  if (bill.paymentMethod) chunks.push(bytesText(`Paid by: ${String(bill.paymentMethod).toUpperCase()}\n`));
+  if (bill.paymentMethod === 'cash' && bill.amountTendered != null) {
+    chunks.push(bytesText(`Cash received: ${fmtRs(bill.amountTendered)}\n`));
+    chunks.push(bytesBoldOn());
+    chunks.push(bytesText(`Change: ${fmtRs(bill.changeReturned || 0)}\n`));
+    chunks.push(bytesBoldOff());
+  }
   chunks.push(bytesAlignCenter());
   chunks.push(bytesText('Thank you for shopping with us!\n'));
   chunks.push(bytesAlignLeft());

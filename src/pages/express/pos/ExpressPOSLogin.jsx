@@ -1,6 +1,6 @@
 // ============================================
 // EPTOMART EXPRESS — POS Login
-// Username + PIN, counter-friendly. Standalone from the main app's login.
+// Mobile number (assigned by Admin) + PIN, counter-friendly. Standalone from the main app's login.
 // ============================================
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -16,10 +16,10 @@ export default function ExpressPOSLogin() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!username || !pin) return toast.error('Enter username and PIN');
+    if (!username || !pin) return toast.error('Enter your mobile number and PIN');
     setLoading(true);
     try {
-      const { data } = await expressPOSApi.post('/login', { username, pin });
+      const { data } = await expressPOSApi.post('/login', { identifier: username.trim(), pin });
       setPOSToken(data.token);
       toast.success(`Welcome, ${data.posUser.name}`);
       navigate('/express/pos');
@@ -39,8 +39,8 @@ export default function ExpressPOSLogin() {
         </div>
         <p className="text-xs text-gray-500 text-center mb-6">POS Login</p>
 
-        <label className="block text-xs font-semibold text-gray-500 mb-1">Username</label>
-        <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Username"
+        <label className="block text-xs font-semibold text-gray-500 mb-1">Mobile number</label>
+        <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Mobile number" inputMode="tel" autoComplete="tel"
           className="w-full border rounded-lg px-3 py-2 text-sm mb-4" />
 
         <label className="block text-xs font-semibold text-gray-500 mb-1">PIN</label>

@@ -1790,7 +1790,7 @@ function ManagersTab({ stores }) {
 function POSUsersTab({ stores }) {
   const [posUsers, setPosUsers] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', username: '', pin: '', storeId: '' });
+  const [form, setForm] = useState({ name: '', phone: '', pin: '', storeId: '' });
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -1801,12 +1801,13 @@ function POSUsersTab({ stores }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.username || !form.pin || !form.storeId) return toast.error('All fields are required');
+    if (!form.name || !form.phone || !form.pin || !form.storeId) return toast.error('Name, mobile number, PIN and store are all required');
+    if (form.phone.replace(/\D/g, '').length !== 10) return toast.error('Enter a valid 10-digit mobile number');
     setSaving(true);
     try {
       await api.post('/express/admin/pos-users', form);
       toast.success('POS user created');
-      setForm({ name: '', username: '', pin: '', storeId: '' });
+      setForm({ name: '', phone: '', pin: '', storeId: '' });
       setShowForm(false);
       load();
     } catch (err) {
@@ -1823,13 +1824,18 @@ function POSUsersTab({ stores }) {
     } catch { toast.error('Failed to update POS user'); }
   };
 
-  const openEdit = (p) => { setEditId(p._id); setEditForm({ name: p.name || '', pin: '' }); };
+  const openEdit = (p) => { setEditId(p._id); setEditForm({ name: p.name || '', phone: p.phone || '', storeId: p.store?._id || '', pin: '' }); };
 
   const saveEdit = async (posUserId) => {
     if (!editForm.name) return toast.error('Name is required');
     setEditSaving(true);
     try {
       const payload = { name: editForm.name };
+      if (editForm.phone) {
+        if (editForm.phone.replace(/\D/g, '').length !== 10) { setEditSaving(false); return toast.error('Enter a valid 10-digit mobile number'); }
+        payload.phone = editForm.phone;
+      }
+      if (editForm.storeId) payload.storeId = editForm.storeId;
       if (editForm.pin) payload.pin = editForm.pin;
       await api.put(`/express/admin/pos-users/${posUserId}`, payload);
       toast.success(editForm.pin ? 'POS user updated and PIN reset' : 'POS user updated');
@@ -1855,7 +1861,7 @@ function POSUsersTab({ stores }) {
       {showForm && (
         <form onSubmit={submit} className="bg-white border rounded-xl p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input placeholder="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
-          <input placeholder="Username" value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+          <input placeholder="Mobile number (10 digits) — used to log in" inputMode="numeric" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))} className="border rounded-lg px-3 py-2 text-sm" />
           <input placeholder="PIN (min 4 digits)" value={form.pin} onChange={e => setForm(f => ({ ...f, pin: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
           <select value={form.storeId} onChange={e => setForm(f => ({ ...f, storeId: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm">
             <option value="">Assign to store…</option>
@@ -1876,7 +1882,7 @@ function POSUsersTab({ stores }) {
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <p className="font-bold text-gray-800">{p.name}</p>
-                <p className="text-xs text-gray-500">@{p.username} · {p.store?.name || 'No store'}</p>
+                <p className="text-xs text-gray-500">{p.phone ? `📱 ${p.phone}` : `@${p.username} (no mobile assigned)`} · 🏬 {p.store?.name || 'No store'}</p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <button onClick={() => openEdit(p)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
@@ -1892,6 +1898,12 @@ function POSUsersTab({ stores }) {
             {editId === p._id && (
               <div className="mt-3 pt-3 border-t grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <input placeholder="Full name" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <input placeholder="Mobile number (10 digits)" inputMode="numeric" value={editForm.phone || ''}
+                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))} className="border rounded-lg px-3 py-2 text-sm" />
+                <select value={editForm.storeId || ''} onChange={e => setEditForm(f => ({ ...f, storeId: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm">
+                  <option value="">Assigned store…</option>
+                  {stores.map(st => <option key={st._id} value={st._id}>{st.name}</option>)}
+                </select>
                 <input placeholder="New PIN (leave blank to keep current)" value={editForm.pin}
                   onChange={e => setEditForm(f => ({ ...f, pin: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
                 <div className="sm:col-span-2 flex gap-2">
