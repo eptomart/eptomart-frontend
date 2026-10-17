@@ -168,6 +168,7 @@ export default function ExpressPOSTerminal() {
   const [qtyPrompt, setQtyPrompt] = useState(null);       // product object
   const [qtyText, setQtyText] = useState('');
   const [freq, setFreq] = useState({});   // productId → times billed today (for Quick picks)
+  const [printingLast, setPrintingLast] = useState(false);
   const [stockPrompt, setStockPrompt] = useState(null);
   const [stockQty, setStockQty] = useState('');
   const [stockSaving, setStockSaving] = useState(false);
@@ -201,6 +202,7 @@ export default function ExpressPOSTerminal() {
   const [onlineOrders, setOnlineOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [activity, setActivity] = useState(null);
+  const [actDate, setActDate] = useState('');   // '' = today (IST); else YYYY-MM-DD
   // Checkout step (review/modify items, add last-minute items, payment mode,
   // cash received → change to return)
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -243,13 +245,13 @@ export default function ExpressPOSTerminal() {
     expressPOSApi.get('/orders').then(({ data }) => setOnlineOrders(data.orders || [])).catch(() => {}).finally(() => setOrdersLoading(false));
   };
   const loadActivity = () => {
-    expressPOSApi.get('/activity').then(({ data }) => setActivity(data)).catch(() => {});
+    expressPOSApi.get('/activity', { params: actDate ? { date: actDate } : {} }).then(({ data }) => setActivity(data)).catch(() => {});
   };
   // Load a tab's data when it's opened; keep the online-orders tab fresh
   useEffect(() => {
     if (view === 'orders') { loadOrders(); const t = setInterval(loadOrders, 30000); return () => clearInterval(t); }
     if (view === 'activity') loadActivity();
-  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [view, actDate]); // eslint-disable-line react-hooks/exhaustive-deps
   // Light poll so the Online Orders tab can show a "new" badge while billing
   useEffect(() => {
     const check = () => expressPOSApi.get('/orders').then(({ data }) => setOnlineOrders(data.orders || [])).catch(() => {});
@@ -719,8 +721,21 @@ export default function ExpressPOSTerminal() {
     );
   };
 
+  // Reprint the most recent completed bill at this store (any counter)
+  const printLastBill = async () => {
+    setPrintingLast(true);
+    try {
+      const { data } = await expressPOSApi.get('/activity');
+      const last = (data.bills || []).find(b => b.status === 'completed');
+      if (!last) return toast.error(lang === 'ta' ? 'அச்சிட பில் இல்லை' : 'No completed bill to print yet');
+      await reprint(last, true);
+    } catch { toast.error('Could not load the last bill'); }
+    finally { setPrintingLast(false); }
+  };
+
   // ── Sale done: change to return, WhatsApp share, reprint ──────────
-  const reprint = (b) => printReceipt({
+  const reprint = (b, duplicate = false) => printReceipt({
+    duplicate,
     billNo: b.billNo,
     dateStr: new Date(b.completedAt || Date.now()).toLocaleDateString('en-IN'),
     timeLabel: new Date(b.completedAt || Date.now()).toLocaleTimeString('en-IN'),
@@ -746,7 +761,7 @@ export default function ExpressPOSTerminal() {
             className="w-full py-3 rounded-xl bg-[#25D366] text-white font-bold text-sm flex items-center justify-center gap-2">
             <FiShare2 size={16} /> {tr('shareWA')}{lastSale.customerPhone ? ` (${lastSale.customerPhone})` : ''}
           </button>
-          <button onClick={() => reprint(lastSale)} className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-700 font-bold text-sm flex items-center justify-center gap-2"><FiPrinter size={15} /> {tr('printAgain')}</button>
+          <button onClick={() => reprint(lastSale, true)} className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-700 font-bold text-sm flex items-center justify-center gap-2"><FiPrinter size={15} /> {tr('printAgain')}</button>
           <button onClick={() => setLastSale(null)} className="w-full py-2.5 rounded-xl border font-bold text-sm text-gray-600">{tr('done')}</button>
         </div>
       </div>
@@ -854,7 +869,11 @@ export default function ExpressPOSTerminal() {
   const renderActivity = () => (
     <div className="p-4 max-w-3xl mx-auto w-full">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-bold text-gray-700">Today at {posUser?.store?.name || 'your store'}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-bold text-gray-700">{actDate ? actDate : (lang === 'ta' ? 'இன்று' : 'Today')} · {posUser?.store?.name || 'your store'}</p>
+          <input type="date" value={actDate} max={new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10)} onChange={e => setActDate(e.target.value)} className="border rounded-lg px-2 py-1 text-xs" />
+          {actDate && <button onClick={() => setActDate('')} className="text-xs text-indigo-600 font-bold">Today</button>}
+        </div>
         <button onClick={loadActivity} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600">↻ Refresh</button>
       </div>
       {!activity ? <p className="text-sm text-gray-400">Loading…</p> : (<>
@@ -872,6 +891,7 @@ export default function ExpressPOSTerminal() {
                 <p className="text-[11px] text-gray-400">{new Date(b.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} · {b.posUserName || 'POS'} · {b.items?.length || 0} items{b.paymentMethod ? ` · ${b.paymentMethod.toUpperCase()}` : ''}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                {b.status === 'completed' && <button onClick={() => reprint(b, true)} title={tr('printAgain')} className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600"><FiPrinter size={14} /></button>}
                 {b.status === 'completed' && <button onClick={() => shareBillWhatsApp(b, posUser?.store?.name)} title={tr('shareWA')} className="p-1.5 rounded-lg bg-green-50 text-green-600"><FiShare2 size={14} /></button>}
                 <p className="text-sm font-black text-gray-800">₹{b.total}</p>
               </div>
@@ -1047,6 +1067,9 @@ export default function ExpressPOSTerminal() {
           <button onClick={togglePrinterConnection} disabled={connectingPrinter}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50 ${printerConnected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
             <FiBluetooth size={14} /> {connectingPrinter ? '…' : printerConnected ? tr('printerConnected') : tr('connectPrinter')}
+          </button>
+          <button onClick={printLastBill} disabled={printingLast} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold disabled:opacity-50">
+            <FiPrinter size={14} /> {printingLast ? '…' : (lang === 'ta' ? 'கடைசி பில்' : 'Last bill')}
           </button>
           <button onClick={printCodeList} disabled={printingList} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold disabled:opacity-50">
             <FiPrinter size={14} /> {printingList ? '…' : tr('codeList')}

@@ -107,6 +107,7 @@ export function renderReceiptCanvas(bill) {
   if (bill.storeName) { d.gap(2); d.text(bill.storeName, { size: 21, align: 'center', x: W / 2 }); }
   d.rule('double');
 
+  if (bill.duplicate) { d.text('*** DUPLICATE COPY ***', { size: 19, align: 'center', x: W / 2 }); d.gap(2); }
   d.row('Bill No', bill.billNo, { size: 20, bold: false, boldR: true });
   d.row('Date', `${bill.dateStr}${bill.timeLabel ? '  ' + bill.timeLabel.replace(/:\d\d(\s|$)/, '$1') : ''}`, { size: 20, bold: false, boldR: true });
   const named = bill.customerName && bill.customerName !== 'Walk-in Customer';
