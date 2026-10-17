@@ -48,6 +48,39 @@ const I18N = {
   },
 };
 
+// Parse what the cashier types into a quantity in the product's own unit.
+//   kg items:   ".250" / "0.25" → 0.25 kg · "500g" / "500 gm" / "500" → 0.5 kg · "1kg" / "1.5" → kg
+//   litre items: same idea with ml.   gram items: plain = grams.   piece/bunch/dozen: plain count.
+// A bare whole number ≥ 50 is read as grams/ml (so "250" and "500" just work); smaller ones as kg/litres.
+function parseQty(text, unit) {
+  const m = String(text || '').trim().toLowerCase().replace(/,/g, '.').match(/^(\d*\.?\d+)\s*(kgs?|kilos?|gms?|grams?|g|ml|ltrs?|litres?|l|pcs?|nos?)?$/);
+  if (!m) return null;
+  const n = parseFloat(m[1]); const suf = m[2] || '';
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const isG = /^(g|gm|gms|gram|grams)$/.test(suf), isKg = /^(kg|kgs|kilo|kilos)$/.test(suf);
+  const isMl = suf === 'ml', isL = /^(l|ltr|ltrs|litre|litres)$/.test(suf);
+  const bareBig = !suf && Number.isInteger(n) && n >= 50;
+  let q;
+  if (unit === 'kg') q = isG || bareBig ? n / 1000 : n;
+  else if (unit === 'litre') q = isMl || bareBig ? n / 1000 : n;
+  else if (unit === 'gram') q = isKg ? n * 1000 : n;
+  else q = n;
+  return Math.round(q * 1000) / 1000;
+}
+const QTY_CHIPS = {
+  kg: [['250 g', 0.25], ['500 g', 0.5], ['750 g', 0.75], ['1 kg', 1], ['1.5 kg', 1.5], ['2 kg', 2], ['5 kg', 5]],
+  litre: [['250 ml', 0.25], ['500 ml', 0.5], ['1 L', 1], ['2 L', 2]],
+  gram: [['100 g', 100], ['250 g', 250], ['500 g', 500]],
+  other: [['1', 1], ['2', 2], ['3', 3], ['4', 4], ['5', 5], ['6', 6], ['12', 12]],
+};
+const qtyStepOf = (unit) => (unit === 'kg' || unit === 'litre' ? 0.25 : unit === 'gram' ? 50 : 1);
+const fmtQty = (q, unit) => {
+  const n = Number(q) || 0;
+  if (unit === 'kg') return n < 1 ? `${Math.round(n * 1000)} g` : `${n} kg`;
+  if (unit === 'litre') return n < 1 ? `${Math.round(n * 1000)} ml` : `${n} L`;
+  return `${n} ${unit}`;
+};
+
 // Plain-text bill for WhatsApp (English + Tamil thank-you)
 function buildBillText(b, storeName) {
   const lines = (b.items || []).map((it, i) => `${i + 1}. ${it.name} ${it.quantity}${it.unit ? ' ' + it.unit : ''} × ₹${it.price} = ₹${(it.price * it.quantity).toFixed(2)}`);
@@ -131,6 +164,12 @@ export default function ExpressPOSTerminal() {
   const [bills, setBills] = useState([]);
   const [activeBillId, setActiveBillId] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  // Quantity prompt (opens after a code/product pick) and new-bill customer prompt
+  const [qtyPrompt, setQtyPrompt] = useState(null);       // product object
+  const [qtyText, setQtyText] = useState('');
+  const [newBillOpen, setNewBillOpen] = useState(false);
+  const [nbName, setNbName] = useState('');
+  const [nbPhone, setNbPhone] = useState('');
   const [lang, setLang] = useState(() => { try { return localStorage.getItem('pos_lang') || 'en'; } catch { return 'en'; } });
   const tr = (k) => I18N[lang][k] || I18N.en[k] || k;
   const switchLang = (l) => { setLang(l); try { localStorage.setItem('pos_lang', l); } catch { /* ignore */ } };
@@ -245,12 +284,20 @@ export default function ExpressPOSTerminal() {
     } finally { setApplyingDiscount(false); }
   };
 
-  const newBill = async () => {
+  const newBill = () => {
     if (bills.length >= MAX_HELD) return toast.error(`You already have ${MAX_HELD} held bills — complete or void one first`);
+    setNbName(''); setNbPhone('');
+    setNewBillOpen(true);               // ask: with customer name/mobile, or walk-in
+  };
+  const startBill = async (withDetails) => {
+    const phone = nbPhone.replace(/\D/g, '');
+    if (withDetails && phone && phone.length !== 10) return toast.error('Mobile number must be 10 digits (or leave it blank)');
     try {
-      const { data } = await expressPOSApi.post('/bills', {});
+      const { data } = await expressPOSApi.post('/bills', withDetails ? { customerName: nbName.trim(), customerPhone: phone } : {});
       setBills(b => [data.bill, ...b]);
       setActiveBillId(data.bill._id);
+      setNewBillOpen(false);
+      setTimeout(refocusCodeInput, 50);
     } catch (err) { toast.error(err?.response?.data?.message || 'Failed to create bill'); }
   };
 
@@ -382,6 +429,24 @@ export default function ExpressPOSTerminal() {
     setCamResult(null); setCamWeight('');
   };
 
+  // ── Quantity prompt ─────────────────────────────────────────────────
+  const openQty = (p) => { setQtyPrompt(p); setQtyText(''); };
+  const qtyPreview = qtyPrompt ? parseQty(qtyText, qtyPrompt.unit) : null;
+  const stepQty = (dir) => {
+    if (!qtyPrompt) return;
+    const cur = parseQty(qtyText, qtyPrompt.unit) || 0;
+    const step = qtyStepOf(qtyPrompt.unit);
+    const next = Math.max(0, Math.round((cur + dir * step) * 1000) / 1000);
+    setQtyText(next > 0 ? String(next).replace(/^0\./, '.') : '');
+  };
+  const confirmQty = async (qtyOverride) => {
+    const q = qtyOverride ?? qtyPreview;
+    if (!qtyPrompt || !q || q <= 0) return toast.error('Enter a quantity');
+    const p = qtyPrompt;
+    setQtyPrompt(null); setQtyText('');
+    await addItem(p._id, q);
+  };
+
   const openCheckout = () => {
     if (!activeBill || activeBill.items.length === 0) return toast.error('Add at least one item');
     setTendered(''); setCoSearch(''); setCoCode('');
@@ -410,7 +475,8 @@ export default function ExpressPOSTerminal() {
         timeLabel: new Date(b.completedAt).toLocaleTimeString('en-IN'),
         storeName: posUser?.store?.name,
         customerName: b.customerName,
-        items: b.items,
+        items: (b.items || []).map(it => ({ ...it, nameTamil: products.find(x => String(x._id) === String(it.product))?.nameTamil || '' })),
+        customerPhone: b.customerPhone, cashier: posUser?.name,
         subtotal: b.subtotal,
         discountPercent: b.discountPercent,
         discountAmount: b.discountAmount,
@@ -483,8 +549,76 @@ export default function ExpressPOSTerminal() {
     const match = products.find(p => p.plu === code);
     if (!match) { beepError(); toast.error(`No product with code ${code}`); setCodeInput(''); return; }
     if (match.stockQty === 0) { beepError(); toast.error(`${match.name} is out of stock`); setCodeInput(''); return; }
-    addItem(match._id, 1);
+    openQty(match);
     setCodeInput('');
+  };
+
+  // ── New bill: ask for customer details (or skip) ───────────────────
+  const renderNewBill = () => (
+    <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-sm rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-1">
+          <p className="font-black text-gray-800">{tr('newBill')}</p>
+          <button onClick={() => setNewBillOpen(false)} className="p-1 rounded-lg hover:bg-gray-100"><FiX size={18} /></button>
+        </div>
+        <p className="text-xs text-gray-500 mb-3">{lang === 'ta' ? 'வாடிக்கையாளர் பெயர் / மொபைல் பதிவு செய்யவா?' : 'Do you want to enter the customer\'s name / mobile number?'}</p>
+        <input value={nbName} onChange={e => setNbName(e.target.value)} placeholder={tr('custName')} autoFocus
+          className="w-full border rounded-lg px-3 py-2.5 text-sm mb-2" />
+        <input value={nbPhone} onChange={e => setNbPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder={tr('custPhone')} inputMode="numeric"
+          onKeyDown={e => { if (e.key === 'Enter') startBill(true); }}
+          className="w-full border rounded-lg px-3 py-2.5 text-sm mb-3" />
+        <button onClick={() => startBill(true)} disabled={!nbName.trim() && !nbPhone}
+          className="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm mb-2 disabled:opacity-40">
+          {lang === 'ta' ? 'விவரங்களுடன் தொடங்கு' : 'Start with these details'}
+        </button>
+        <button onClick={() => startBill(false)} className="w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-bold text-sm">
+          {lang === 'ta' ? 'பெயர் / மொபைல் இல்லாமல் தொடங்கு' : 'Skip — start without name / mobile'}
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── Quantity prompt: quick weights, typed value, +/- stepper ───────
+  const renderQty = () => {
+    const p = qtyPrompt;
+    const chips = QTY_CHIPS[p.unit] || QTY_CHIPS.other;
+    const over = qtyPreview != null && p.stockQty != null && qtyPreview > p.stockQty;
+    return (
+      <div className="fixed inset-0 z-[70] bg-black/50 flex items-end sm:items-center justify-center">
+        <div className="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-4">
+          <div className="flex items-start justify-between mb-2">
+            <div className="min-w-0">
+              <p className="font-black text-gray-900 text-lg leading-tight">{p.plu != null && <span className="text-indigo-600 mr-1.5">#{p.plu}</span>}{p.name}</p>
+              {p.nameTamil && <p className="text-sm text-gray-600">{p.nameTamil}</p>}
+              <p className="text-xs text-gray-400 mt-0.5">₹{p.price}/{p.unit} · {lang === 'ta' ? 'இருப்பு' : 'Stock'} {p.stockQty}</p>
+            </div>
+            <button onClick={() => { setQtyPrompt(null); setQtyText(''); refocusCodeInput(); }} className="p-1.5 rounded-lg hover:bg-gray-100"><FiX size={18} /></button>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {chips.map(([label, q]) => (
+              <button key={label} onClick={() => confirmQty(q)}
+                className="px-3 py-2 rounded-xl bg-indigo-50 text-indigo-700 text-sm font-bold active:scale-95">{label}</button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 mb-1">
+            <button onClick={() => stepQty(-1)} className="w-11 h-11 rounded-xl bg-gray-100 flex items-center justify-center"><FiMinus size={18} /></button>
+            <input value={qtyText} onChange={e => setQtyText(e.target.value)} autoFocus inputMode="decimal"
+              onKeyDown={e => { if (e.key === 'Enter') confirmQty(); }}
+              placeholder={p.unit === 'kg' ? '.250  ·  500g  ·  1kg' : p.unit === 'litre' ? '.5  ·  500ml  ·  1L' : (lang === 'ta' ? 'எண்ணிக்கை' : 'Quantity')}
+              className="flex-1 min-w-0 border-2 border-indigo-200 rounded-xl px-3 py-2.5 text-xl font-black text-center focus:border-indigo-500 focus:outline-none" />
+            <button onClick={() => stepQty(1)} className="w-11 h-11 rounded-xl bg-gray-100 flex items-center justify-center"><FiPlus size={18} /></button>
+          </div>
+          <p className={`text-xs text-center h-5 mb-2 ${over ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+            {qtyText && qtyPreview == null ? (lang === 'ta' ? 'சரியான அளவை உள்ளிடவும்' : 'Enter a valid quantity')
+              : qtyPreview != null ? `= ${fmtQty(qtyPreview, p.unit)} · ₹${(qtyPreview * p.price).toFixed(2)}${over ? (lang === 'ta' ? ' · இருப்பை விட அதிகம்' : ' · more than stock') : ''}` : ''}
+          </p>
+          <button onClick={() => confirmQty()} disabled={!qtyPreview}
+            className="w-full py-3 rounded-xl bg-green-600 text-white font-bold text-sm disabled:opacity-40">{tr('camAdd')}</button>
+        </div>
+      </div>
+    );
   };
 
   // ── Sale done: change to return, WhatsApp share, reprint ──────────
@@ -492,7 +626,8 @@ export default function ExpressPOSTerminal() {
     billNo: b.billNo,
     dateStr: new Date(b.completedAt || Date.now()).toLocaleDateString('en-IN'),
     timeLabel: new Date(b.completedAt || Date.now()).toLocaleTimeString('en-IN'),
-    storeName: posUser?.store?.name, customerName: b.customerName, items: b.items,
+    storeName: posUser?.store?.name, customerName: b.customerName, customerPhone: b.customerPhone, cashier: posUser?.name,
+    items: (b.items || []).map(it => ({ ...it, nameTamil: products.find(x => String(x._id) === String(it.product))?.nameTamil || '' })),
     subtotal: b.subtotal, discountPercent: b.discountPercent, discountAmount: b.discountAmount, roundOff: b.roundOff, total: b.total,
     paymentMethod: b.paymentMethod, amountTendered: b.amountTendered, changeReturned: b.changeReturned,
   }).catch(() => toast.error('Printing failed'));
@@ -664,7 +799,7 @@ export default function ExpressPOSTerminal() {
       const m = products.find(p => p.plu === code);
       if (!m) { beepError(); toast.error(`No product with code ${code}`); setCoCode(''); return; }
       if (m.stockQty === 0) { beepError(); toast.error(`${m.name} is out of stock`); setCoCode(''); return; }
-      addItem(m._id, 1); setCoCode('');
+      openQty(m); setCoCode('');
     };
     const quick = [50, 100, 200, 500, 2000];
     return (
@@ -725,10 +860,10 @@ export default function ExpressPOSTerminal() {
               <button type="submit" className="px-3 rounded-lg bg-indigo-600 text-white text-xs font-bold">Add</button>
             </form>
             {results.map(p => (
-              <button key={p._id} onClick={() => { addItem(p._id, 1); setCoSearch(''); }}
+              <button key={p._id} onClick={() => { openQty(p); setCoSearch(''); }}
                 className="w-full flex items-center justify-between text-left bg-white border rounded-lg px-2.5 py-1.5 mb-1 text-xs">
                 <span className="font-semibold text-gray-800 truncate">{pName(p)}{p.plu != null ? <span className="ml-1 text-indigo-600">#{p.plu}</span> : null}</span>
-                <span className="text-gray-500 shrink-0">₹{p.price}/{p.unit} · +1</span>
+                <span className="text-gray-500 shrink-0">₹{p.price}/{p.unit}</span>
               </button>
             ))}
           </div>
@@ -1011,6 +1146,8 @@ export default function ExpressPOSTerminal() {
       {view === 'activity' && renderActivity()}
       {checkoutOpen && activeBill && renderCheckout()}
       {lastSale && renderSaleDone()}
+      {newBillOpen && renderNewBill()}
+      {qtyPrompt && renderQty()}
       {camOpen && renderCamera()}
     </div>
   );

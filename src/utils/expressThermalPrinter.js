@@ -23,6 +23,7 @@ import {
   bytesAlignCenter, bytesDoubleOn, bytesDoubleOff, bytesFeed, bytesText,
   concatBytes, LINE_WIDTH,
 } from './thermalPrinter';
+import { renderReceiptCanvas, renderPluListCanvas, canvasToEscPos, printCanvasViaDialog } from './expressReceiptRender';
 
 const fmtRs = (n) => `Rs.${(Number(n) || 0).toFixed(2)}`;
 
@@ -127,12 +128,13 @@ function printReceiptViaDialog(bill) {
   win.onload = () => { win.print(); };
 }
 
-/** Prints via Bluetooth if a printer is already connected, else the system print dialog. */
+/** Prints the premium picture receipt via Bluetooth if connected, else the system print dialog. */
 async function printReceipt(bill) {
+  const canvas = renderReceiptCanvas(bill);
   if (isPrinterConnected()) {
-    await printRawBytes(buildReceiptEscPos(bill));
+    await printRawBytes(canvasToEscPos(canvas, { feed: 5 }));
   } else {
-    printReceiptViaDialog(bill);
+    printCanvasViaDialog(canvas);
   }
 }
 
@@ -209,18 +211,14 @@ function buildPluListHtml(products, storeName) {
 </body></html>`;
 }
 
-/** Prints the PLU reference list via Bluetooth if connected, else the system print dialog. */
+/** Prints the full code list (all items, English + Tamil) via Bluetooth if connected, else the system print dialog. */
 async function printPluList(products, storeName) {
+  const canvas = renderPluListCanvas(products, storeName);
   if (isPrinterConnected()) {
-    await printRawBytes(buildPluListEscPos(products, storeName));
+    await printRawBytes(canvasToEscPos(canvas, { feed: 5 }));
     return;
   }
-  const html = buildPluListHtml(products, storeName);
-  const win = window.open('', '_blank', 'width=380,height=600');
-  if (!win) return;
-  win.document.write(html);
-  win.document.close();
-  win.onload = () => { win.print(); };
+  printCanvasViaDialog(canvas);
 }
 
 export {
