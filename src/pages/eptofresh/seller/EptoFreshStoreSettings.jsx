@@ -102,7 +102,7 @@ export default function EptoFreshStoreSettings({ sellerId = null, initial = null
         {gst.registered && (
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2"><Field label="GSTIN" hint="15 characters"><input className={inp + ' uppercase'} maxLength={15} value={gst.gstin || ''} onChange={e => setG('gstin', e.target.value.toUpperCase())} /></Field></div>
-            <Field label="GST rate on goods (%)" hint="Fresh unpacked meat/fish is generally 0 (exempt)">
+            <Field label="Default GST % (delivery &amp; fallback)" hint="Each product has its own GST % in the product form">
               <select className={inp} value={gst.gstRate} onChange={e => setG('gstRate', Number(e.target.value))}>
                 {GST_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
               </select>

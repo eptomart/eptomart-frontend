@@ -14,7 +14,7 @@ const CUT_TYPES  = ['whole','curry_cut','boneless','keema','half','quarter','leg
 
 const EMPTY_FORM = {
   name: '', nameLocal: '', category: 'chicken', subCategory: '', description: '',
-  cutTypes: [], basePrice: '', stock: '', unit: 'kg',
+  cutTypes: [], basePrice: '', stock: '', unit: 'kg', hsnCode: '0201', gstRate: 0,
   variants: [{ weight: 500, label: '500g', price: '', isAvailable: true }],
   tags: { cutToOrder: false, freshToday: false, fastDelivery: false },
 };
@@ -175,6 +175,25 @@ export default function EptoFreshSellerProducts() {
               style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }} />
           </div>
         ))}
+
+        {/* GST — seller decides */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">GST % on this product</label>
+            <select value={form.gstRate} onChange={e => setForm(v => ({ ...v, gstRate: Number(e.target.value) }))}
+              className="w-full px-3 py-2.5 rounded-xl text-sm text-gray-900 outline-none"
+              style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }}>
+              {[0, 0.25, 3, 5, 12, 18, 28].map(r => <option key={r} value={r}>{r}%</option>)}
+            </select>
+            <p className="text-gray-400 text-[10px] mt-0.5">Prices include GST. Applies only if your store is GST-registered.</p>
+          </div>
+          <div>
+            <label className="text-gray-400 text-xs mb-1 block">HSN code</label>
+            <input value={form.hsnCode} onChange={e => setForm(v => ({ ...v, hsnCode: e.target.value }))}
+              className="w-full px-3 py-2.5 rounded-xl text-sm text-gray-900 outline-none"
+              style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }} />
+          </div>
+        </div>
 
         {/* Category */}
         <div>
