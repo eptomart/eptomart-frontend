@@ -1102,6 +1102,7 @@ function ProductsTab() {
     const [form, setForm]   = useState(initial);
     const [saving, setSaving] = useState(false);
     const [imgFile, setImgFile] = useState(null);
+    const [aiBusy, setAiBusy] = useState(false);
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
     const submit = async (e) => {
@@ -1188,7 +1189,23 @@ function ProductsTab() {
             </div>
 
             <div>
-              <label style={labelStyle}>Description</label>
+              <div className="flex items-center justify-between">
+                <label style={labelStyle}>Description</label>
+                <button type="button" disabled={aiBusy}
+                  onClick={async () => {
+                    if (!form.name) return toast.error('Enter the product name first');
+                    setAiBusy(true);
+                    try {
+                      const { data } = await api.post('/eptofresh/ai/describe', { name: form.name, category: form.category, unit: form.unit, shortNote: form.description || undefined });
+                      if (data.success) set('description', data.description);
+                    } catch (e) { toast.error(e.response?.data?.message || 'AI is unavailable right now'); }
+                    finally { setAiBusy(false); }
+                  }}
+                  className="text-[11px] font-bold px-2.5 py-1 rounded-lg disabled:opacity-50"
+                  style={{ background: 'rgba(244,148,28,0.12)', color: '#f4941c' }}>
+                  {aiBusy ? 'Writing…' : '✨ Write with AI'}
+                </button>
+              </div>
               <textarea style={{ ...inputStyle, resize: 'none' }} rows={2} value={form.description}
                 onChange={e => set('description', e.target.value)} placeholder="Fresh cleaned chicken, ready to cook" />
             </div>

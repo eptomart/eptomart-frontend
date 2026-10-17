@@ -39,6 +39,20 @@ export default function EptoFreshSellerProducts() {
     } catch { toast.error('Failed to load products'); } finally { setLoading(false); }
   };
 
+  const [aiBusy, setAiBusy] = useState(false);
+  const aiWrite = async () => {
+    if (!form.name) return toast.error('Enter the product name first');
+    setAiBusy(true);
+    try {
+      const { data } = await api.post('/eptofresh/ai/describe', {
+        name: form.name, nameLocal: form.nameLocal, category: form.category, cutTypes: form.cutTypes, unit: form.unit,
+        shortNote: form.description || undefined,
+      });
+      if (data.success) setForm(v => ({ ...v, description: data.description }));
+    } catch (e) { toast.error(e.response?.data?.message || 'AI is unavailable right now'); }
+    finally { setAiBusy(false); }
+  };
+
   const handleSubmit = async () => {
     if (!form.name || !form.category || !form.basePrice) return toast.error('Name, category and price required');
     setSaving(true);
@@ -164,7 +178,6 @@ export default function EptoFreshSellerProducts() {
         {[
           { key: 'name', label: 'Product Name *', type: 'text' },
           { key: 'nameLocal', label: 'Tamil / Local Name', type: 'text' },
-          { key: 'description', label: 'Description', type: 'text' },
           { key: 'basePrice', label: 'Base Price (₹/kg) *', type: 'number' },
           { key: 'stock', label: 'Current Stock (kg)', type: 'number' },
         ].map(f => (
@@ -175,6 +188,22 @@ export default function EptoFreshSellerProducts() {
               style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }} />
           </div>
         ))}
+
+        {/* Description with AI */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-gray-400 text-xs">Description</label>
+            <button type="button" onClick={aiWrite} disabled={aiBusy}
+              className="text-[11px] font-bold px-2.5 py-1 rounded-lg disabled:opacity-50"
+              style={{ background: 'rgba(244,148,28,0.12)', color: '#f4941c' }}>
+              {aiBusy ? 'Writing…' : '✨ Write with AI'}
+            </button>
+          </div>
+          <textarea rows={3} value={form.description} onChange={e => setForm(v => ({ ...v, description: e.target.value }))}
+            placeholder="Describe the product, or tap Write with AI after entering the name"
+            className="w-full px-3 py-2.5 rounded-xl text-sm text-gray-900 outline-none resize-none"
+            style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '16px' }} />
+        </div>
 
         {/* GST — seller decides */}
         <div className="grid grid-cols-2 gap-3">
