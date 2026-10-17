@@ -22,9 +22,12 @@ export default function EptoFreshStoreSettings({ sellerId = null, initial = null
   const [ds, setDs] = useState({});
   const [gst, setGst] = useState({});
   const [saving, setSaving] = useState(false);
+  const [commission, setCommission] = useState('');
+  const [savingComm, setSavingComm] = useState(false);
 
   const hydrate = (s) => {
     setSeller(s);
+    setCommission(String(s.commissionRate ?? 10));
     setDs({ enabled: false, minOrderValue: 0, maxRadiusKm: 10, baseDeliveryCharge: 0, freeDeliveryAbove: 0, freeRadiusKm: 2, stepKm: 2, stepCharge: 0, ...(s.deliverySettings || {}) });
     setGst({ registered: false, gstin: '', legalName: '', gstRate: 0, hsnDefault: '0207', invoicePrefix: '', ...(s.gst || {}) });
   };
@@ -33,6 +36,15 @@ export default function EptoFreshStoreSettings({ sellerId = null, initial = null
     if (initial) { hydrate(initial); return; }
     api.get('/eptofresh/seller/profile').then(r => r.data.success && hydrate(r.data.seller)).catch(() => {});
   }, [initial]);
+
+  const saveCommission = async () => {
+    setSavingComm(true);
+    try {
+      const { data } = await api.patch(`/eptofresh/admin/sellers/${sellerId}/commission`, { commissionRate: commission === '' ? NaN : Number(commission) });
+      if (data.success) { toast.success(`Commission set to ${data.seller.commissionRate}%`); setSeller(s => ({ ...s, commissionRate: data.seller.commissionRate })); onSaved?.({ ...seller, commissionRate: data.seller.commissionRate }, true); }
+    } catch (e) { toast.error(e.response?.data?.message || 'Only a super admin can change commission'); }
+    finally { setSavingComm(false); }
+  };
 
   const setD = (k, v) => setDs(d => ({ ...d, [k]: v }));
   const setG = (k, v) => setGst(d => ({ ...d, [k]: v }));
@@ -60,6 +72,27 @@ export default function EptoFreshStoreSettings({ sellerId = null, initial = null
 
   return (
     <div className="space-y-4 text-gray-900">
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">
+        <p className="font-bold text-sm">Eptomart commission</p>
+        {sellerId ? (
+          <>
+            <p className="text-[11px] text-gray-500">% Eptomart keeps from this store's item sales (0 = no commission). 18% GST applies on the commission amount.</p>
+            <div className="flex gap-2 items-center">
+              <input type="number" min="0" max="100" step="0.5" className={inp + ' max-w-[110px]'} value={commission} onChange={e => setCommission(e.target.value)} />
+              <span className="text-sm font-semibold">%</span>
+              {[0, 5, 8, 10, 15].map(v => (
+                <button key={v} type="button" onClick={() => setCommission(String(v))}
+                  className="px-2 py-1 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700">{v}%</button>
+              ))}
+              <button onClick={saveCommission} disabled={savingComm} className="ml-auto px-3 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold disabled:opacity-50">
+                {savingComm ? 'Saving…' : 'Set'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm">Eptomart commission on your sales: <b>{seller.commissionRate ?? 10}%</b> <span className="text-[11px] text-gray-400">(set by Eptomart)</span></p>
+        )}
+      </div>
       <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div>

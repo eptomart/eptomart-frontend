@@ -820,11 +820,11 @@ function SellersTab() {
         <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setSettingsSeller(null)}>
           <div className="bg-gray-50 w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <p className="font-bold text-gray-900">{settingsSeller.shopName} — Delivery &amp; GST</p>
+              <p className="font-bold text-gray-900">{settingsSeller.shopName} — Commission, Delivery &amp; GST</p>
               <button onClick={() => setSettingsSeller(null)} className="p-1"><FiX /></button>
             </div>
             <EptoFreshStoreSettings sellerId={settingsSeller._id} initial={settingsSeller}
-              onSaved={(u) => { setSellers(list => list.map(x => x._id === u._id ? { ...x, ...u } : x)); setSettingsSeller(null); }} />
+              onSaved={(u, keepOpen) => { setSellers(list => list.map(x => x._id === u._id ? { ...x, ...u } : x)); if (!keepOpen) setSettingsSeller(null); }} />
           </div>
         </div>
       )}
@@ -878,7 +878,7 @@ function SellersTab() {
                   className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold"
                   style={{ background: 'rgba(167,139,250,0.15)', color: '#7c3aed' }}
                 >
-                  Delivery &amp; GST
+                  Commission · Delivery &amp; GST
                 </button>
                 <button
                   onClick={() => setEditSeller(s)}
