@@ -782,6 +782,48 @@ function ComboBanner({ onReady }) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// PROTEINS BANNER — shares the Fruit Baskets slot (stacked, half each).
+// Hidden when the Proteins master switch is OFF (/eptofresh/status).
+// ══════════════════════════════════════════════════════════════
+function ProteinsBanner({ onReady }) {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    api.get('/eptofresh/status')
+      .then(r => { const v = r.data?.enabled !== false; setEnabled(v); onReady?.(v); })
+      .catch(() => { setEnabled(true); onReady?.(true); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  if (!enabled) return null;
+  return (
+    <Link to="/eptofresh" className="tap-ripple block h-full active:scale-[0.98] transition-transform">
+      <div className="relative overflow-hidden rounded-[14px] h-full min-h-[84px] px-3 py-2.5"
+        style={{ background: 'linear-gradient(145deg, #3b0d02 0%, #9a3412 55%, #ea580c 100%)', border: '1px solid rgba(251,191,36,0.35)' }}>
+        <img src="/categories/proteins.jpg" alt="" aria-hidden="true"
+          className="absolute inset-y-0 right-0 h-full w-[55%] object-cover opacity-90"
+          style={{
+            maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 30%, black 60%)',
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.55) 30%, black 60%)',
+          }} />
+        <div className="relative z-10 flex flex-col justify-between h-full pr-[42%]">
+          <div>
+            <p className="text-white font-black text-[13px] md:text-[15px] leading-tight" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
+              Proteins
+            </p>
+            <p className="text-[10px] mt-0.5 leading-snug line-clamp-1" style={{ color: 'rgba(254,243,199,0.9)' }}>
+              Chicken · Mutton · Fish
+            </p>
+          </div>
+          <span className="self-start mt-1 font-black text-[10.5px] px-3 py-1 rounded-lg flex items-center gap-1 shadow-lg"
+            style={{ background: 'linear-gradient(135deg, #f59e0b, #fbbf24)', color: '#3b0d02' }}>
+            Order <FiArrowRight size={11} />
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 // PROMO BANNERS ROW — places ComboBanner, ExpressBanner, and
 // FruitBasketBanner side by side, each taking an equal share of the row.
 // Any banner whose vertical is toggled off by its Super Admin is hidden
@@ -795,12 +837,18 @@ function PromoBannersRow() {
   // Eptomart Express no longer has its own home banner — it is one of the two
   // choices on the Koyambedu Daily decision page (/koyambedu/choose).
   const comboCls   = comboOn === false ? 'hidden' : (fbOn === true ? 'flex-1 min-w-0' : 'w-full');
-  const fbCls      = fbOn === false ? 'hidden' : (comboOn === true ? 'flex-1 min-w-0' : 'w-full');
+  const [protOn, setProtOn] = useState(null);
+  const rightHidden = fbOn === false && protOn === false;
+  const rightCls    = rightHidden ? 'hidden' : (comboOn === true ? 'flex-1 min-w-0' : 'w-full');
 
   return (
     <div className="flex items-stretch gap-2">
       <div className={comboCls}><ComboBanner onReady={setComboOn} /></div>
-      <div className={fbCls}><FruitBasketBanner onReady={setFbOn} /></div>
+      {/* Right half: Fruit Baskets and Proteins share the slot, half each */}
+      <div className={`${rightCls} flex flex-col gap-2`}>
+        <div className={fbOn === false ? 'hidden' : 'flex-1 min-h-[84px]'}><FruitBasketBanner onReady={setFbOn} /></div>
+        <div className={protOn === false ? 'hidden' : 'flex-1 min-h-[84px]'}><ProteinsBanner onReady={setProtOn} /></div>
+      </div>
     </div>
   );
 }
