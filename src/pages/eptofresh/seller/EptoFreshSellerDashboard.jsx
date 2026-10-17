@@ -308,6 +308,14 @@ export default function EptoFreshSellerDashboard() {
         </div>
       )}
 
+      {seller?.commissionAgreement?.status === 'pending' && !sessionStorage.getItem('epf_act_as') && (
+        <button onClick={() => setShowSettings(true)} className="mx-4 mt-4 w-[calc(100%-2rem)] text-left rounded-2xl px-4 py-3"
+          style={{ background: '#fefce8', border: '1px solid #fde047' }}>
+          <p className="text-xs font-bold text-yellow-900">Commission proposal waiting: {seller.commissionAgreement.proposedRate}%</p>
+          <p className="text-[11px] text-yellow-800">Tap to review and accept in Store settings.</p>
+        </button>
+      )}
+
       {/* ── STORE SETTINGS ── */}
       <div className="px-4 mt-4">
         <button onClick={() => setShowSettings(v => !v)}

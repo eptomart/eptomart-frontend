@@ -24,6 +24,7 @@ export default function EptoFreshStoreSettings({ sellerId = null, initial = null
   const [saving, setSaving] = useState(false);
   const [commission, setCommission] = useState('');
   const [savingComm, setSavingComm] = useState(false);
+  const [commNote, setCommNote] = useState('');
 
   const hydrate = (s) => {
     setSeller(s);
@@ -40,9 +41,18 @@ export default function EptoFreshStoreSettings({ sellerId = null, initial = null
   const saveCommission = async () => {
     setSavingComm(true);
     try {
-      const { data } = await api.patch(`/eptofresh/admin/sellers/${sellerId}/commission`, { commissionRate: commission === '' ? NaN : Number(commission) });
-      if (data.success) { toast.success(`Commission set to ${data.seller.commissionRate}%`); setSeller(s => ({ ...s, commissionRate: data.seller.commissionRate })); onSaved?.({ ...seller, commissionRate: data.seller.commissionRate }, true); }
+      const { data } = await api.patch(`/eptofresh/admin/sellers/${sellerId}/commission`, { commissionRate: commission === '' ? NaN : Number(commission), note: commNote });
+      if (data.success) { toast.success('Proposal sent — seller must accept'); setCommNote(''); hydrate(data.seller); onSaved?.(data.seller, true); }
     } catch (e) { toast.error(e.response?.data?.message || 'Only a super admin can change commission'); }
+    finally { setSavingComm(false); }
+  };
+
+  const respond = async (action) => {
+    setSavingComm(true);
+    try {
+      const { data } = await api.post('/eptofresh/seller/commission/respond', { action });
+      if (data.success) { toast.success(action === 'accept' ? 'Commission accepted' : 'Proposal declined'); hydrate(data.seller); }
+    } catch (e) { toast.error(e.response?.data?.message || 'Failed'); }
     finally { setSavingComm(false); }
   };
 
@@ -74,25 +84,64 @@ export default function EptoFreshStoreSettings({ sellerId = null, initial = null
     <div className="space-y-4 text-gray-900">
       <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">
         <p className="font-bold text-sm">Eptomart commission</p>
-        {sellerId ? (
-          <>
-            <p className="text-[11px] text-gray-500">% Eptomart keeps from this store's item sales (0 = no commission). 18% GST applies on the commission amount.</p>
-            <div className="flex gap-2 items-center">
-              <input type="number" min="0" max="100" step="0.5" className={inp + ' max-w-[110px]'} value={commission} onChange={e => setCommission(e.target.value)} />
-              <span className="text-sm font-semibold">%</span>
-              {[0, 5, 8, 10, 15].map(v => (
-                <button key={v} type="button" onClick={() => setCommission(String(v))}
-                  className="px-2 py-1 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700">{v}%</button>
-              ))}
-              <button onClick={saveCommission} disabled={savingComm} className="ml-auto px-3 py-2 rounded-xl bg-gray-900 text-white text-xs font-bold disabled:opacity-50">
-                {savingComm ? 'Saving…' : 'Set'}
-              </button>
-            </div>
-          </>
-        ) : (
-          <p className="text-sm">Eptomart commission on your sales: <b>{seller.commissionRate ?? 10}%</b> <span className="text-[11px] text-gray-400">(set by Eptomart)</span></p>
-        )}
+        {(() => {
+          const ag = seller.commissionAgreement || {};
+          const pending = ag.status === 'pending';
+          const badge = pending ? 'bg-yellow-100 text-yellow-800' : ag.status === 'declined' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+          return (
+            <>
+              <p className="text-sm">
+                Current rate: <b>{seller.commissionRate ?? 10}%</b>
+                {ag.status && ag.status !== 'none' && (
+                  <span className={`ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${badge}`}>
+                    {pending ? `Proposed ${ag.proposedRate}% · awaiting seller` : ag.status === 'declined' ? `Seller declined ${ag.proposedRate}%` : 'Accepted by seller'}
+                  </span>
+                )}
+              </p>
+              <p className="text-[11px] text-gray-500">18% GST applies on the commission amount. The new rate applies to orders placed after the seller accepts.</p>
+
+              {!sellerId && pending && (
+                <div className="rounded-xl bg-yellow-50 border border-yellow-200 p-3 space-y-2">
+                  <p className="text-sm font-semibold text-yellow-900">Eptomart proposes {ag.proposedRate}% commission{ag.note ? ` — “${ag.note}”` : ''}</p>
+                  <div className="flex gap-2">
+                    <button disabled={savingComm} onClick={() => respond('accept')} className="flex-1 py-2 rounded-xl bg-green-600 text-white text-sm font-bold disabled:opacity-50">Accept</button>
+                    <button disabled={savingComm} onClick={() => respond('decline')} className="flex-1 py-2 rounded-xl bg-gray-200 text-gray-800 text-sm font-bold disabled:opacity-50">Decline</button>
+                  </div>
+                </div>
+              )}
+
+              {sellerId && (
+                <div className="space-y-2 pt-1">
+                  <div className="flex gap-2 items-center flex-wrap">
+                    <input type="number" min="0" max="100" step="0.5" className={inp + ' max-w-[100px]'} value={commission} onChange={e => setCommission(e.target.value)} />
+                    <span className="text-sm font-semibold">%</span>
+                    {[0, 5, 8, 10, 15].map(v => (
+                      <button key={v} type="button" onClick={() => setCommission(String(v))}
+                        className="px-2 py-1 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700">{v}%</button>
+                    ))}
+                  </div>
+                  <input className={inp} placeholder="Note to seller (optional)" value={commNote} onChange={e => setCommNote(e.target.value)} />
+                  <button onClick={saveCommission} disabled={savingComm} className="w-full py-2 rounded-xl bg-gray-900 text-white text-xs font-bold disabled:opacity-50">
+                    {savingComm ? 'Sending…' : pending ? 'Revise proposal' : 'Send proposal to seller'}
+                  </button>
+                </div>
+              )}
+
+              {(ag.history || []).length > 0 && (
+                <details className="text-[11px] text-gray-500">
+                  <summary className="cursor-pointer">History</summary>
+                  <ul className="mt-1 space-y-0.5">
+                    {[...ag.history].reverse().map((h, i) => (
+                      <li key={i}>{new Date(h.at).toLocaleDateString('en-IN')} · {h.rate}% {h.action} by {h.by}{h.note ? ` (${h.note})` : ''}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </>
+          );
+        })()}
       </div>
+
       <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div>
