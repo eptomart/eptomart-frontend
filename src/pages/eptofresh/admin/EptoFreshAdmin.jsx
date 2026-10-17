@@ -8,12 +8,27 @@ import api from '../../../utils/api';
 import toast from 'react-hot-toast';
 import { FiGrid, FiUsers, FiPackage, FiShoppingBag, FiDollarSign, FiTag, FiCheck, FiX, FiCamera, FiBarChart2, FiSettings, FiPlus, FiMapPin, FiArrowLeft, FiEdit2, FiSave, FiSearch, FiTrash2 } from 'react-icons/fi';
 import { imgThumb } from '../../../utils/cloudinary';
+import EptoFreshStoreSettings from '../seller/EptoFreshStoreSettings';
 
 export default function EptoFreshAdmin() {
   const navigate  = useNavigate();
   const location  = useLocation();
   const [tab, setTab] = useState('dashboard');
   const [dash, setDash] = useState(null);
+  const [master, setMaster] = useState(null);
+
+  useEffect(() => {
+    api.get('/eptofresh/admin/master-switch').then(r => r.data.success && setMaster(r.data.enabled)).catch(() => {});
+  }, []);
+
+  const toggleMaster = async () => {
+    const next = !master;
+    if (!next && !window.confirm) return;
+    try {
+      const { data } = await api.put('/eptofresh/admin/master-switch', { enabled: next });
+      if (data.success) { setMaster(data.enabled); toast.success(`Proteins is now ${data.enabled ? 'ON' : 'OFF'} for customers`); }
+    } catch (e) { toast.error(e.response?.data?.message || 'Only a super admin can change this'); }
+  };
 
   useEffect(() => {
     api.get('/eptofresh/admin/dashboard').then(r => { if (r.data.success) setDash(r.data); }).catch(() => {});
@@ -41,6 +56,20 @@ export default function EptoFreshAdmin() {
           <p className="text-gray-400 text-xs mt-0.5">Hyperlocal Proteins Marketplace</p>
         </div>
       </div>
+
+      {/* Master switch */}
+      {master !== null && (
+        <div className="mx-4 mt-3 flex items-center justify-between rounded-2xl px-4 py-3"
+          style={{ background: master ? 'rgba(52,211,153,0.10)' : 'rgba(248,113,113,0.10)', border: `1px solid ${master ? 'rgba(52,211,153,0.35)' : 'rgba(248,113,113,0.35)'}` }}>
+          <div>
+            <p className="text-sm font-bold" style={{ color: master ? '#059669' : '#dc2626' }}>Proteins master switch: {master ? 'ON' : 'OFF'}</p>
+            <p className="text-[11px] text-gray-500">{master ? 'Customers can browse and order from open stores.' : 'Customers cannot browse or order. Seller panels still work.'}</p>
+          </div>
+          <button onClick={toggleMaster} className="px-4 py-2 rounded-xl text-xs font-bold text-white" style={{ background: master ? '#dc2626' : '#059669' }}>
+            Turn {master ? 'OFF' : 'ON'}
+          </button>
+        </div>
+      )}
 
       {/* Tab nav */}
       <div className="flex overflow-x-auto scrollbar-hide border-b" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
@@ -697,6 +726,7 @@ function SellersTab() {
   const [acting, setActing]         = useState(null);
   const [showAdd, setShowAdd]       = useState(false);
   const [editSeller, setEditSeller] = useState(null); // seller object being edited
+  const [settingsSeller, setSettingsSeller] = useState(null);
   const [linkingId, setLinkingId]   = useState(null); // sellerId currently being linked
   const [linkPhone, setLinkPhone]   = useState('');
   const [linkEmail, setLinkEmail]   = useState('');
@@ -786,6 +816,19 @@ function SellersTab() {
         </button>
       </div>
 
+      {settingsSeller && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setSettingsSeller(null)}>
+          <div className="bg-gray-50 w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-bold text-gray-900">{settingsSeller.shopName} — Delivery &amp; GST</p>
+              <button onClick={() => setSettingsSeller(null)} className="p-1"><FiX /></button>
+            </div>
+            <EptoFreshStoreSettings sellerId={settingsSeller._id} initial={settingsSeller}
+              onSaved={(u) => { setSellers(list => list.map(x => x._id === u._id ? { ...x, ...u } : x)); setSettingsSeller(null); }} />
+          </div>
+        </div>
+      )}
+
       <div className="space-y-3">
         {sellers.map(s => (
           <div key={s._id} className="rounded-2xl p-4" style={{ background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
@@ -811,6 +854,32 @@ function SellersTab() {
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1.5">
+                <button
+                  onClick={async () => {
+                    try {
+                      const { data } = await api.patch(`/eptofresh/admin/sellers/${s._id}/store-open`, { isOpen: s.isOpen === false });
+                      if (data.success) setSellers(list => list.map(x => x._id === s._id ? { ...x, isOpen: data.isOpen } : x));
+                    } catch { toast.error('Failed'); }
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold"
+                  style={{ background: s.isOpen === false ? 'rgba(248,113,113,0.12)' : 'rgba(52,211,153,0.15)', color: s.isOpen === false ? '#dc2626' : '#059669' }}
+                >
+                  Store {s.isOpen === false ? 'OFF' : 'ON'}
+                </button>
+                <button
+                  onClick={() => { sessionStorage.setItem('epf_act_as', s._id); window.location.href = '/eptofresh/seller'; }}
+                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold"
+                  style={{ background: 'rgba(96,165,250,0.12)', color: '#2563eb' }}
+                >
+                  Manage store
+                </button>
+                <button
+                  onClick={() => setSettingsSeller(s)}
+                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold"
+                  style={{ background: 'rgba(167,139,250,0.15)', color: '#7c3aed' }}
+                >
+                  Delivery &amp; GST
+                </button>
                 <button
                   onClick={() => setEditSeller(s)}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold"

@@ -106,6 +106,19 @@ export default function EptoFreshHome() {
     fetchSellers(userLocation, cat);
   };
 
+  const [proteinsOff, setProteinsOff] = useState(null);
+  useEffect(() => {
+    api.get('/eptofresh/status').then(r => { if (r.data.success && !r.data.enabled) setProteinsOff(r.data.message || 'Temporarily unavailable'); }).catch(() => {});
+  }, []);
+  if (proteinsOff) return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-8 text-center" style={{ background: '#F5F4F2' }}>
+      <div className="text-5xl mb-3">🥩</div>
+      <h2 className="text-lg font-bold text-gray-900">Eptomart Proteins is paused</h2>
+      <p className="text-sm text-gray-500 mt-1 max-w-xs">{proteinsOff}</p>
+      <a href="/" className="mt-5 px-6 py-2.5 rounded-xl text-sm font-bold text-white" style={{ background: '#f4941c' }}>Back to Eptomart</a>
+    </div>
+  );
+
   const filtered      = sellers.filter(s => !searchQuery || s.shopName?.toLowerCase().includes(searchQuery.toLowerCase()));
   const openSellers   = filtered.filter(s => s.isOpen !== false);
   const closedSellers = filtered.filter(s => s.isOpen === false);

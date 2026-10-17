@@ -32,6 +32,12 @@ api.interceptors.request.use(
     }
     config.headers['x-session-id'] = sessionId;
 
+    // Super admin "acting as seller" for Proteins seller-panel calls
+    try {
+      const actAs = sessionStorage.getItem('epf_act_as');
+      if (actAs && String(config.url || '').startsWith('/eptofresh/seller')) config.headers['x-epf-seller-id'] = actAs;
+    } catch (_) {}
+
     return config;
   },
   (error) => Promise.reject(error)

@@ -142,6 +142,7 @@ const EptoFreshShop            = lazy(() => import('./pages/eptofresh/EptoFreshS
 const EptoFreshCart            = lazy(() => import('./pages/eptofresh/EptoFreshCart'));
 const EptoFreshCheckout        = lazy(() => import('./pages/eptofresh/EptoFreshCheckout'));
 // EptoFreshOrders / EptoFreshOrderDetail retired — unified Orders module handles these
+const EptoFreshInvoice         = lazy(() => import('./pages/eptofresh/EptoFreshInvoice'));
 const EptoFreshTracking        = lazy(() => import('./pages/eptofresh/EptoFreshTracking'));
 const EptoFreshSellerRegister  = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerRegister'));
 const EptoFreshSellerDashboard = lazy(() => import('./pages/eptofresh/seller/EptoFreshSellerDashboard'));
@@ -359,6 +360,7 @@ function AppRoutes() {
           {/* Legacy → unified Orders module (live tracking page retained) */}
           <Route path="/eptofresh/orders"                       element={<Navigate to="/orders?tab=eptofresh" replace />} />
           <Route path="/eptofresh/orders/:orderId"              element={<RedirectOrderDetail vertical="eptofresh" />} />
+          <Route path="/eptofresh/orders/:orderId/invoice"      element={<ProtectedRoute><EptoFreshInvoice /></ProtectedRoute>} />
           <Route path="/eptofresh/orders/:orderId/tracking"     element={<ProtectedRoute><EptoFreshTracking /></ProtectedRoute>} />
           <Route path="/eptofresh/seller/register"              element={<ProtectedRoute><EptoFreshSellerRegister /></ProtectedRoute>} />
           <Route path="/eptofresh/seller/location"              element={<ProtectedRoute><EptoFreshSellerLocationPicker /></ProtectedRoute>} />

@@ -100,6 +100,12 @@ export default function EptoFreshTracking() {
           </div>
         )}
 
+        <a href={`/eptofresh/orders/${orderId}/invoice`}
+          className="block text-center rounded-2xl py-3 text-sm font-bold"
+          style={{ background: 'rgba(244,148,28,0.1)', color: '#f4941c', border: '1px solid rgba(244,148,28,0.25)' }}>
+          View GST Invoice
+        </a>
+
         {/* OTP */}
         {tracking?.deliveryOtp && (
           <div className="rounded-2xl p-4 text-center" style={{ background: 'rgba(244,148,28,0.08)', border: '1px solid rgba(244,148,28,0.25)' }}>

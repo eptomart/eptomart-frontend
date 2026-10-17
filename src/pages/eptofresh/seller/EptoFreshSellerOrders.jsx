@@ -138,6 +138,9 @@ export function EptoFreshSellerOrderDetail() {
       <div className="flex items-center gap-3 px-4 pt-10 pb-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
         <button onClick={() => navigate(-1)} className="p-2 rounded-full" style={{ background: 'rgba(0,0,0,0.05)' }}><FiArrowLeft className="text-gray-900" /></button>
         <h1 className="text-gray-900 font-bold">Order #{order.orderId}</h1>
+        {(order.paymentStatus === 'paid' || order.paymentMethod === 'cod') && (
+          <a href={`/eptofresh/orders/${order._id}/invoice`} className="ml-auto text-xs font-bold underline" style={{ color: '#f4941c' }}>GST Invoice</a>
+        )}
       </div>
 
       <div className="px-4 mt-4 space-y-4">

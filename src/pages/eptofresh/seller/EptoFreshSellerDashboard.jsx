@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../../../utils/api';
 import toast from 'react-hot-toast';
+import EptoFreshStoreSettings from './EptoFreshStoreSettings';
 import {
   FiGrid, FiPackage, FiShoppingBag, FiDollarSign,
   FiToggleLeft, FiToggleRight, FiTag, FiChevronDown, FiChevronUp,
@@ -142,6 +143,7 @@ export default function EptoFreshSellerDashboard() {
   const [dash, setDash]           = useState(null);
   const [loading, setLoading]     = useState(true);
   const [toggling, setToggling]   = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     api.get('/eptofresh/seller/dashboard')
@@ -295,6 +297,29 @@ export default function EptoFreshSellerDashboard() {
             </div>
           </button>
         ))}
+      </div>
+
+      {/* ── ACTING-AS BANNER (super admin) ── */}
+      {sessionStorage.getItem('epf_act_as') && (
+        <div className="mx-4 mt-4 flex items-center justify-between rounded-2xl px-4 py-2.5" style={{ background:'#fff7ed', border:'1px solid #fdba74' }}>
+          <p className="text-xs font-semibold text-orange-800">Managing as admin: {seller?.shopName}</p>
+          <button className="text-xs font-bold text-orange-700 underline"
+            onClick={() => { sessionStorage.removeItem('epf_act_as'); navigate('/admin/eptofresh'); }}>Exit</button>
+        </div>
+      )}
+
+      {/* ── STORE SETTINGS ── */}
+      <div className="px-4 mt-4">
+        <button onClick={() => setShowSettings(v => !v)}
+          className="w-full flex items-center justify-between rounded-2xl px-4 py-3"
+          style={{ background:'rgba(244,148,28,0.07)', border:'1px solid rgba(244,148,28,0.18)' }}>
+          <div className="text-left">
+            <p className="text-gray-900 text-sm font-semibold">Store settings</p>
+            <p className="text-gray-400 text-[10px]">Delivery charges, minimum order, radius, GST invoice</p>
+          </div>
+          {showSettings ? <FiChevronUp size={16} style={{ color:'#f4941c' }} /> : <FiChevronDown size={16} style={{ color:'#f4941c' }} />}
+        </button>
+        {showSettings && <div className="mt-2"><EptoFreshStoreSettings /></div>}
       </div>
 
       {/* ── PROMO CODES ── */}

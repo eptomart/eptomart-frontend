@@ -80,6 +80,9 @@ export default function EptoFreshCheckout() {
         orderAmount: cartTotal - couponDiscount,
       });
       if (data.success) {
+        if (data.perSeller && data.storeOpen === false) { toast.error('This store is currently closed'); return; }
+        if (data.perSeller && data.serviceable === false) { toast.error(data.warning || 'Outside this store\'s delivery area'); return; }
+        if (data.perSeller && data.belowMinOrder) { toast.error(data.warning || `Minimum order is ₹${data.minOrderValue}`); return; }
         setDeliveryInfo(data);
         if (data.warning) setDistanceWarning(data.warning);
         if (data.requiresConsent) {
