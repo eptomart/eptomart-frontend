@@ -167,6 +167,9 @@ export default function ExpressPOSTerminal() {
   // Quantity prompt (opens after a code/product pick) and new-bill customer prompt
   const [qtyPrompt, setQtyPrompt] = useState(null);       // product object
   const [qtyText, setQtyText] = useState('');
+  const [stockPrompt, setStockPrompt] = useState(null);
+  const [stockQty, setStockQty] = useState('');
+  const [stockSaving, setStockSaving] = useState(false);
   const [newBillOpen, setNewBillOpen] = useState(false);
   const [nbName, setNbName] = useState('');
   const [nbPhone, setNbPhone] = useState('');
@@ -537,20 +540,55 @@ export default function ExpressPOSTerminal() {
     }
   };
 
-  const filteredProducts = products.filter(p => `${p.name} ${p.nameTamil || ''}`.toLowerCase().includes(search.toLowerCase()));
+  // Suggestions: digits → codes starting with them; text → English/Tamil name match.
+  // Only a handful are shown (no catalogue grid); in-stock items rank first.
+  const suggestions = (() => {
+    const q = codeInput.trim().toLowerCase();
+    if (!q) return [];
+    const isCode = /^\d+$/.test(q);
+    const hits = products.filter(p => isCode
+      ? String(p.plu ?? '').startsWith(q)
+      : `${p.name} ${p.nameTamil || ''}`.toLowerCase().includes(q));
+    hits.sort((a, b) => (b.stockQty > 0) - (a.stockQty > 0) || (a.plu ?? 9999) - (b.plu ?? 9999) || a.name.localeCompare(b.name));
+    return hits.slice(0, 6);
+  })();
 
-  // Quick-entry by PLU code — vegetables 100-199, fruits 200-299 — so a POS
-  // user can just type the 3-digit code instead of hunting through the grid.
+  const pickSuggestion = (p) => {
+    if (!activeBill) { toast.error(tr('startBill')); return; }
+    openQty(p);
+    setCodeInput('');
+  };
+
+  // Enter: exact code → that item; otherwise the only/first suggestion
   const addByCode = (e) => {
     e.preventDefault();
-    const code = Number(codeInput.trim());
-    if (!codeInput.trim() || !Number.isInteger(code)) return;
-    if (!activeBill) { toast.error('Start a new bill first'); return; }
-    const match = products.find(p => p.plu === code);
-    if (!match) { beepError(); toast.error(`No product with code ${code}`); setCodeInput(''); return; }
-    if (match.stockQty === 0) { beepError(); toast.error(`${match.name} is out of stock`); setCodeInput(''); return; }
-    openQty(match);
-    setCodeInput('');
+    const q = codeInput.trim();
+    if (!q) return;
+    if (!activeBill) { toast.error(tr('startBill')); return; }
+    const exact = /^\d+$/.test(q) ? products.find(p => String(p.plu) === q) : null;
+    const target = exact || suggestions[0];
+    if (!target) { beepError(); toast.error(`No product matching "${q}"`); return; }
+    if (!(target.stockQty > 0)) { beepError(); openStock(target); return; }
+    pickSuggestion(target);
+  };
+
+  // ── Add stock from the counter ──────────────────────────────────────
+  const openStock = (p) => { setStockPrompt(p); setStockQty(''); };
+  const submitStock = async (qtyOverride) => {
+    const p = stockPrompt;
+    const q = qtyOverride ?? parseQty(stockQty, p.unit);
+    if (!q || q <= 0) return toast.error('Enter the quantity received');
+    setStockSaving(true);
+    try {
+      const { data } = await expressPOSApi.post(`/products/${p._id}/add-stock`, { qty: q });
+      setProducts(ps => ps.map(x => x._id === p._id ? { ...x, stockQty: data.stockQty } : x));
+      toast.success(`${p.name}: +${fmtQty(q, p.unit)} → stock ${data.stockQty}`);
+      setStockPrompt(null); setStockQty('');
+      // Continue straight into billing this item
+      if (activeBill) setQtyPrompt({ ...p, stockQty: data.stockQty });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to add stock');
+    } finally { setStockSaving(false); }
   };
 
   // ── New bill: ask for customer details (or skip) ───────────────────
@@ -577,6 +615,46 @@ export default function ExpressPOSTerminal() {
       </div>
     </div>
   );
+
+  // ── Add stock modal ─────────────────────────────────────────────────
+  const renderStock = () => {
+    const p = stockPrompt;
+    const chips = p.unit === 'kg' || p.unit === 'litre' ? [5, 10, 20, 50] : [10, 25, 50, 100];
+    const q = parseQty(stockQty, p.unit);
+    return (
+      <div className="fixed inset-0 z-[80] bg-black/50 flex items-end sm:items-center justify-center">
+        <div className="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-4">
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center text-xl">
+                {p.image ? <img src={p.image} alt="" className="w-full h-full object-cover" /> : '🥬'}
+              </div>
+              <div className="min-w-0">
+                <p className="font-black text-gray-900 truncate">{p.name}</p>
+                {p.nameTamil && <p className="text-xs text-gray-500 truncate">{p.nameTamil}</p>}
+                <p className="text-xs text-red-600 font-semibold">{lang === 'ta' ? 'தற்போதைய இருப்பு' : 'Current stock'}: {p.stockQty} {p.unit}</p>
+              </div>
+            </div>
+            <button onClick={() => setStockPrompt(null)} className="p-1.5 rounded-lg hover:bg-gray-100"><FiX size={18} /></button>
+          </div>
+          <p className="text-[11px] font-bold text-gray-500 uppercase mb-1">{lang === 'ta' ? 'வந்த அளவு சேர்' : `Quantity received (${p.unit})`}</p>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {chips.map(c => (
+              <button key={c} onClick={() => submitStock(c)} disabled={stockSaving}
+                className="px-3 py-2 rounded-xl bg-indigo-50 text-indigo-700 text-sm font-bold disabled:opacity-50">+{c} {p.unit}</button>
+            ))}
+          </div>
+          <input value={stockQty} onChange={e => setStockQty(e.target.value)} inputMode="decimal" autoFocus
+            onKeyDown={e => { if (e.key === 'Enter') submitStock(); }}
+            placeholder={p.unit === 'kg' ? 'e.g. 25  ·  500g' : 'Quantity'}
+            className="w-full border-2 border-indigo-200 rounded-xl px-3 py-2.5 text-xl font-black text-center focus:border-indigo-500 focus:outline-none mb-1" />
+          <p className="text-xs text-center text-gray-500 h-5 mb-2">{q ? `${lang === 'ta' ? 'புதிய இருப்பு' : 'New stock'} = ${Math.round((p.stockQty + q) * 1000) / 1000} ${p.unit}` : ''}</p>
+          <button onClick={() => submitStock()} disabled={stockSaving || !q}
+            className="w-full py-3 rounded-xl bg-green-600 text-white font-bold text-sm disabled:opacity-40">{stockSaving ? '…' : (lang === 'ta' ? 'இருப்பு சேர்த்து தொடர்' : 'Add stock & continue')}</button>
+        </div>
+      </div>
+    );
+  };
 
   // ── Quantity prompt: quick weights, typed value, +/- stepper ───────
   const renderQty = () => {
@@ -614,6 +692,10 @@ export default function ExpressPOSTerminal() {
             {qtyText && qtyPreview == null ? (lang === 'ta' ? 'சரியான அளவை உள்ளிடவும்' : 'Enter a valid quantity')
               : qtyPreview != null ? `= ${fmtQty(qtyPreview, p.unit)} · ₹${(qtyPreview * p.price).toFixed(2)}${over ? (lang === 'ta' ? ' · இருப்பை விட அதிகம்' : ' · more than stock') : ''}` : ''}
           </p>
+          {over && (
+            <button onClick={() => { setQtyPrompt(null); openStock(p); }}
+              className="w-full mb-2 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold">+ {lang === 'ta' ? 'இருப்பு சேர்' : 'Add stock'}</button>
+          )}
           <button onClick={() => confirmQty()} disabled={!qtyPreview}
             className="w-full py-3 rounded-xl bg-green-600 text-white font-bold text-sm disabled:opacity-40">{tr('camAdd')}</button>
         </div>
@@ -986,62 +1068,61 @@ export default function ExpressPOSTerminal() {
       </div>
 
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 max-w-5xl mx-auto w-full">
-        {/* Product search */}
+        {/* Product search — suggestions only (no full catalogue grid) */}
         <div>
           <form onSubmit={addByCode} className="flex gap-2 mb-2">
-            <input ref={codeInputRef} value={codeInput} onChange={e => setCodeInput(e.target.value.replace(/\D/g, '').slice(0, 3))}
-              placeholder={tr('code')} inputMode="numeric" autoFocus
-              className="w-40 border-2 border-indigo-200 rounded-lg px-3 py-2 text-sm font-bold text-center focus:border-indigo-500 focus:outline-none" />
-            <button type="submit" className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold">Add</button>
-            <button type="button" onClick={openCamera} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold flex items-center gap-1.5"><FiCamera size={15} /> {tr('scan')}</button>
+            <div className="relative flex-1 min-w-0">
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+              <input ref={codeInputRef} value={codeInput} onChange={e => setCodeInput(e.target.value.slice(0, 40))}
+                placeholder={lang === 'ta' ? 'குறியீடு அல்லது பெயர் (எ.கா. 214, தக்காளி)' : 'Type code or name (e.g. 214, tomato)'} autoFocus autoComplete="off"
+                className="w-full border-2 border-indigo-200 rounded-lg pl-9 pr-3 py-2.5 text-sm font-bold focus:border-indigo-500 focus:outline-none" />
+            </div>
+            <button type="button" onClick={openCamera} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold flex items-center gap-1.5 shrink-0"><FiCamera size={15} /> {tr('scan')}</button>
           </form>
-          <div className="relative mb-3">
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder={tr('search')}
-              className="w-full border rounded-lg pl-9 pr-3 py-2 text-sm" />
-          </div>
-          <div className="grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto">
-            {filteredProducts.map(p => {
-              const decimal = isDecimalUnit(p.unit);
-              const draft = qtyDrafts[p._id] ?? '1';
-              return (
-                <div key={p._id} className={`bg-white border rounded-lg p-2 ${(!activeBill || p.stockQty === 0) ? 'opacity-40' : ''}`}>
-                  <p className="text-xs font-bold text-gray-800 truncate flex items-center gap-1">
-                    {pName(p)}
-                    {p.plu != null && <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700 shrink-0">{p.plu}</span>}
-                  </p>
-                  <p className="text-xs text-gray-400 mb-1.5">₹{p.price}/{p.unit} · Stock {p.stockQty}</p>
-                  {decimal ? (
-                    <div className="flex items-center gap-1">
-                      <input value={draft} inputMode="decimal" placeholder="1"
-                        onChange={e => {
-                          const v = e.target.value.replace(/[^0-9.]/g, '');
-                          setQtyDrafts(d => ({ ...d, [p._id]: v }));
-                        }}
-                        disabled={!activeBill || p.stockQty === 0}
-                        className="w-16 border rounded px-1.5 py-1 text-xs text-center disabled:bg-gray-50" />
-                      <span className="text-[10px] text-gray-400">{p.unit}</span>
-                      <button
-                        onClick={() => {
-                          const qty = Number(draft);
-                          if (!Number.isFinite(qty) || qty <= 0) return toast.error('Enter a quantity greater than 0');
-                          addItem(p._id, qty);
-                        }}
-                        disabled={!activeBill || p.stockQty === 0}
-                        className="ml-auto px-2 py-1 rounded bg-indigo-600 text-white text-[11px] font-bold disabled:opacity-40">
-                        Add
-                      </button>
+
+          {!activeBill && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">{tr('startBill')}</p>}
+
+          {suggestions.length === 0 ? (
+            <p className="text-xs text-gray-400 px-1 py-6 text-center">
+              {codeInput.trim()
+                ? (lang === 'ta' ? 'பொருந்தும் பொருள் இல்லை' : 'No matching item')
+                : (lang === 'ta' ? 'குறியீடு அல்லது பெயரை உள்ளிடவும் — பொருள் படத்துடன் தோன்றும்' : 'Start typing a code or name — matching items appear here with their picture')}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {suggestions.map(p => {
+                const out = !(p.stockQty > 0);
+                return (
+                  <div key={p._id}
+                    className={`flex items-center gap-3 bg-white border rounded-xl p-2 ${out ? 'border-red-200' : 'hover:border-indigo-400 active:scale-[0.99] cursor-pointer'}`}
+                    onClick={() => { if (!out) pickSuggestion(p); }}>
+                    <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center text-2xl">
+                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" loading="lazy" /> : '🥬'}
                     </div>
-                  ) : (
-                    <button onClick={() => addItem(p._id, 1)} disabled={!activeBill || p.stockQty === 0}
-                      className="w-full px-2 py-1 rounded bg-indigo-600 text-white text-[11px] font-bold disabled:opacity-40">
-                      Add 1 {p.unit}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-gray-900 truncate">
+                        {p.plu != null && <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 mr-1.5 align-middle">{p.plu}</span>}
+                        {p.name}
+                      </p>
+                      {p.nameTamil && <p className="text-xs text-gray-500 truncate">{p.nameTamil}</p>}
+                      <p className="text-xs mt-0.5">
+                        <span className="font-bold text-gray-700">₹{p.price}/{p.unit}</span>
+                        <span className={`ml-2 font-semibold ${out ? 'text-red-600' : p.stockQty <= 5 ? 'text-amber-600' : 'text-gray-400'}`}>
+                          {out ? (lang === 'ta' ? 'இருப்பு இல்லை' : 'Out of stock') : `${lang === 'ta' ? 'இருப்பு' : 'Stock'} ${p.stockQty}`}
+                        </span>
+                      </p>
+                    </div>
+                    {out ? (
+                      <button onClick={(e) => { e.stopPropagation(); openStock(p); }}
+                        className="shrink-0 px-3 py-2 rounded-lg bg-red-50 text-red-600 text-xs font-bold border border-red-200">+ {lang === 'ta' ? 'இருப்பு சேர்' : 'Add stock'}</button>
+                    ) : (
+                      <FiPlus className="text-indigo-500 shrink-0" size={20} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Current bill */}
@@ -1147,6 +1228,7 @@ export default function ExpressPOSTerminal() {
       {checkoutOpen && activeBill && renderCheckout()}
       {lastSale && renderSaleDone()}
       {newBillOpen && renderNewBill()}
+      {stockPrompt && renderStock()}
       {qtyPrompt && renderQty()}
       {camOpen && renderCamera()}
     </div>
