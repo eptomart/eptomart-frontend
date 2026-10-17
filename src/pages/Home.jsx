@@ -836,18 +836,18 @@ function PromoBannersRow() {
 
   // Eptomart Express no longer has its own home banner — it is one of the two
   // choices on the Koyambedu Daily decision page (/koyambedu/choose).
-  const comboCls   = comboOn === false ? 'hidden' : (fbOn === true ? 'flex-1 min-w-0' : 'w-full');
+  const comboCls   = comboOn === false ? 'hidden' : 'w-full';
   const [protOn, setProtOn] = useState(null);
-  const rightHidden = fbOn === false && protOn === false;
-  const rightCls    = rightHidden ? 'hidden' : (comboOn === true ? 'flex-1 min-w-0' : 'w-full');
+  const pairHidden = fbOn === false && protOn === false;
 
   return (
-    <div className="flex items-stretch gap-2">
+    <div className="flex flex-col gap-2">
       <div className={comboCls}><ComboBanner onReady={setComboOn} /></div>
-      {/* Right half: Fruit Baskets and Proteins share the slot, half each */}
-      <div className={`${rightCls} flex flex-col gap-2`}>
-        <div className={fbOn === false ? 'hidden' : 'flex-1 min-h-[84px]'}><FruitBasketBanner onReady={setFbOn} /></div>
-        <div className={protOn === false ? 'hidden' : 'flex-1 min-h-[84px]'}><ProteinsBanner onReady={setProtOn} /></div>
+      {/* One row: Proteins first, then Fruit Baskets & Hampers, half each.
+          If either vertical is switched off the other takes the full row. */}
+      <div className={pairHidden ? 'hidden' : 'flex items-stretch gap-2'}>
+        <div className={protOn === false ? 'hidden' : 'flex-1 min-w-0 min-h-[124px]'}><ProteinsBanner onReady={setProtOn} /></div>
+        <div className={fbOn === false ? 'hidden' : 'flex-1 min-w-0 min-h-[124px]'}><FruitBasketBanner onReady={setFbOn} /></div>
       </div>
     </div>
   );
