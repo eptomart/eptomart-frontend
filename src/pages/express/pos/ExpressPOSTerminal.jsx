@@ -167,6 +167,7 @@ export default function ExpressPOSTerminal() {
   // Quantity prompt (opens after a code/product pick) and new-bill customer prompt
   const [qtyPrompt, setQtyPrompt] = useState(null);       // product object
   const [qtyText, setQtyText] = useState('');
+  const [freq, setFreq] = useState({});   // productId → times billed today (for Quick picks)
   const [stockPrompt, setStockPrompt] = useState(null);
   const [stockQty, setStockQty] = useState('');
   const [stockSaving, setStockSaving] = useState(false);
@@ -539,6 +540,21 @@ export default function ExpressPOSTerminal() {
       setPrintingList(false);
     }
   };
+
+  // Quick picks: the 8 items billed most today at this store (falls back to the
+  // lowest codes in stock when nothing has been sold yet). Shown only while the
+  // search box is empty, so the left side is never a blank page.
+  useEffect(() => {
+    expressPOSApi.get('/activity').then(({ data }) => {
+      const f = {};
+      (data.bills || []).forEach(b => (b.items || []).forEach(it => { const k = String(it.product); f[k] = (f[k] || 0) + 1; }));
+      setFreq(f);
+    }).catch(() => {});
+  }, [lastSale]);
+  const quickPicks = [...products]
+    .filter(p => p.stockQty > 0)
+    .sort((a, b) => (freq[String(b._id)] || 0) - (freq[String(a._id)] || 0) || (a.plu ?? 9999) - (b.plu ?? 9999))
+    .slice(0, 8);
 
   // Suggestions: digits → codes starting with them; text → English/Tamil name match.
   // Only a handful are shown (no catalogue grid); in-stock items rank first.
@@ -1067,9 +1083,9 @@ export default function ExpressPOSTerminal() {
         </button>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 max-w-5xl mx-auto w-full">
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-5 gap-4 p-3 md:p-4 max-w-7xl mx-auto w-full md:h-[calc(100dvh-178px)] md:min-h-0">
         {/* Product search — suggestions only (no full catalogue grid) */}
-        <div>
+        <div className="md:col-span-2 md:overflow-y-auto md:pr-1">
           <form onSubmit={addByCode} className="flex gap-2 mb-2">
             <div className="relative flex-1 min-w-0">
               <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
@@ -1082,7 +1098,24 @@ export default function ExpressPOSTerminal() {
 
           {!activeBill && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">{tr('startBill')}</p>}
 
-          {suggestions.length === 0 ? (
+          {suggestions.length === 0 && !codeInput.trim() && quickPicks.length > 0 && (
+            <div>
+              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2">{lang === 'ta' ? 'அடிக்கடி விற்கும் பொருட்கள்' : 'Quick picks'}</p>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                {quickPicks.map(p => (
+                  <button key={p._id} onClick={() => pickSuggestion(p)}
+                    className="bg-white border rounded-xl p-1.5 text-left hover:border-indigo-400 active:scale-95">
+                    <div className="aspect-square rounded-lg bg-gray-100 overflow-hidden flex items-center justify-center text-2xl mb-1">
+                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" loading="lazy" /> : '🥬'}
+                    </div>
+                    <p className="text-[11px] font-bold text-gray-800 truncate">{pName(p)}</p>
+                    <p className="text-[10px] text-gray-500">₹{p.price}/{p.unit}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {suggestions.length === 0 && (codeInput.trim() || quickPicks.length === 0) ? (
             <p className="text-xs text-gray-400 px-1 py-6 text-center">
               {codeInput.trim()
                 ? (lang === 'ta' ? 'பொருந்தும் பொருள் இல்லை' : 'No matching item')
@@ -1126,7 +1159,7 @@ export default function ExpressPOSTerminal() {
         </div>
 
         {/* Current bill */}
-        <div className="bg-white border rounded-xl p-4 flex flex-col">
+        <div className="md:col-span-3 bg-white border rounded-xl p-4 flex flex-col md:h-full md:min-h-0">
           {!activeBill ? (
             <p className="text-sm text-gray-400 m-auto">{tr('startBill')}</p>
           ) : (
@@ -1135,7 +1168,7 @@ export default function ExpressPOSTerminal() {
                 <p className="font-bold text-gray-800">{activeBill.billNo}</p>
                 <button onClick={voidBill} className="text-red-500 text-xs font-semibold flex items-center gap-1"><FiTrash2 size={12} /> Void</button>
               </div>
-              <div className="flex-1 overflow-y-auto mb-3">
+              <div className="flex-1 min-h-[120px] overflow-y-auto mb-3">
                 {activeBill.items.length === 0 && <p className="text-xs text-gray-400">{tr('noItems')}</p>}
                 {activeBill.items.map(it => {
                   const pid = String(it.product);
