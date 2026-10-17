@@ -2012,6 +2012,39 @@ export default function KoyambeduAdmin() {
         {/* ── DASHBOARD ── */}
         {tab === 'dashboard' && stats && !loading && (
           <div>
+            {stats.impact && (() => {
+              const im = stats.impact;
+              const fmt = n => Number(n || 0).toLocaleString('en-IN');
+              return (
+                <div className="mb-6 rounded-3xl p-5 text-white relative overflow-hidden"
+                  style={{ background: 'linear-gradient(135deg,#14532d 0%,#16a34a 55%,#65a30d 100%)', boxShadow: '0 10px 30px rgba(22,163,74,0.35)' }}>
+                  <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-green-100">Koyambedu Daily · Our journey so far</p>
+                  <div className="grid grid-cols-2 gap-4 mt-3">
+                    <div>
+                      <p className="text-4xl font-black leading-none">{fmt(im.totalTonnes)}<span className="text-lg font-bold ml-1">tonnes</span></p>
+                      <p className="text-xs text-green-100 mt-1">of fresh veggies &amp; fruits delivered</p>
+                    </div>
+                    <div>
+                      <p className="text-4xl font-black leading-none">{fmt(im.totalKm)}<span className="text-lg font-bold ml-1">km</span></p>
+                      <p className="text-xs text-green-100 mt-1">covered bringing it to your doorsteps</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mt-4">
+                    {[
+                      ['🥬 Vegetables', `${fmt(im.vegTonnes)} t`],
+                      ['🍎 Fruits', `${fmt(im.fruitTonnes)} t`],
+                      ['📦 Deliveries', fmt(im.deliveries)],
+                    ].map(([l, v]) => (
+                      <div key={l} className="rounded-2xl px-3 py-2" style={{ background: 'rgba(255,255,255,0.15)' }}>
+                        <p className="text-[10px] text-green-100">{l}</p>
+                        <p className="text-sm font-extrabold">{v}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-green-100 mt-3">This month: <b>{fmt(im.monthTonnes)} t</b> moved · <b>{fmt(im.monthKm)} km</b> · {fmt(im.monthDeliveries)} deliveries</p>
+                </div>
+              );
+            })()}
             <h2 className="font-bold text-gray-800 mb-3">Today's Overview</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
               {[
