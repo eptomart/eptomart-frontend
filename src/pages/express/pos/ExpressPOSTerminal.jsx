@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FiZap, FiLogOut, FiPlus, FiMinus, FiTrash2, FiPrinter, FiSearch, FiX, FiBluetooth } from 'react-icons/fi';
+import { FiZap, FiLogOut, FiPlus, FiMinus, FiTrash2, FiPrinter, FiSearch, FiX, FiBluetooth, FiCamera, FiShare2, FiCheckCircle } from 'react-icons/fi';
 import expressPOSApi, { getPOSToken, clearPOSToken } from '../../../utils/expressPOSApi';
 import {
   printReceipt, printPluList,
@@ -15,6 +15,72 @@ import {
 } from '../../../utils/expressThermalPrinter';
 
 const MAX_HELD = 5;
+
+// ── English / Tamil UI ────────────────────────────────────────────
+const I18N = {
+  en: {
+    billing: '🧾 Billing', orders: '📦 Online Orders', activity: "📊 Today's Activity",
+    newBill: 'New Bill', checkout: 'Checkout', startBill: 'Start a new bill to begin.', void: 'Void',
+    offer: 'Offer %', apply: 'Apply', total: 'Total', noItems: 'No items yet — tap a product to add.',
+    search: 'Search products…', code: 'Enter code (e.g. 214)', connectPrinter: 'Connect Printer', printerConnected: 'Printer Connected',
+    codeList: 'Code List', scan: 'Scan item', addAnother: '+ Add another item', payMode: 'Payment mode', cash: '💵 Cash', upi: '📱 UPI', card: '💳 Card',
+    received: 'Amount received from customer', returnTo: 'Return to customer', shortBy: 'Short by', confirm: 'Confirm Payment & Print', totalToPay: 'Total to pay',
+    custName: 'Customer name (optional)', custPhone: 'Customer mobile (optional)', custNote: 'Optional — leave blank for a walk-in customer',
+    saleDone: 'Sale completed', returnChange: 'Return change', shareWA: 'Share on WhatsApp', printAgain: 'Print again', done: 'Done',
+    camTitle: 'Scan item on the scale', camHint: 'Place the item on the scale so the weight display is visible, then tap Scan.',
+    camScan: 'Scan', camScanning: 'Recognising…', camPick: 'Looks similar — pick the right one', camNotFound: 'Could not recognise — search and pick manually',
+    camWeight: 'Weight (kg)', camAdd: 'Add to bill', camAdded: 'Added', camClose: 'Close', camNoCamera: 'Camera not available — allow camera permission or use Take photo',
+    camPhoto: 'Take photo', camWeightAsk: 'Weight not readable — enter weight', share: 'Share',
+  },
+  ta: {
+    billing: '🧾 பில்லிங்', orders: '📦 ஆன்லைன் ஆர்டர்கள்', activity: '📊 இன்றைய செயல்பாடு',
+    newBill: 'புதிய பில்', checkout: 'பணம் செலுத்து', startBill: 'தொடங்க புதிய பில் உருவாக்கவும்.', void: 'ரத்து',
+    offer: 'தள்ளுபடி %', apply: 'சேர்', total: 'மொத்தம்', noItems: 'பொருட்கள் இல்லை — சேர்க்க தட்டவும்.',
+    search: 'பொருட்களைத் தேடு…', code: 'குறியீடு (எ.கா. 214)', connectPrinter: 'பிரிண்டர் இணை', printerConnected: 'பிரிண்டர் இணைந்தது',
+    codeList: 'குறியீட்டு பட்டியல்', scan: 'பொருளை ஸ்கேன்', addAnother: '+ மேலும் ஒரு பொருள் சேர்', payMode: 'பணம் செலுத்தும் முறை', cash: '💵 ரொக்கம்', upi: '📱 UPI', card: '💳 கார்டு',
+    received: 'வாடிக்கையாளர் கொடுத்த தொகை', returnTo: 'திருப்பித் தர வேண்டிய தொகை', shortBy: 'குறைவு', confirm: 'பணம் உறுதி & அச்சிடு', totalToPay: 'செலுத்த வேண்டிய தொகை',
+    custName: 'வாடிக்கையாளர் பெயர் (விருப்பம்)', custPhone: 'வாடிக்கையாளர் மொபைல் (விருப்பம்)', custNote: 'விருப்பம் — வேண்டாமெனில் காலியாக விடவும்',
+    saleDone: 'விற்பனை முடிந்தது', returnChange: 'மீதி தொகை', shareWA: 'வாட்ஸ்அப்பில் பகிர்', printAgain: 'மீண்டும் அச்சிடு', done: 'முடிந்தது',
+    camTitle: 'தராசில் உள்ள பொருளை ஸ்கேன் செய்', camHint: 'எடை காட்சி தெரியுமாறு பொருளை தராசில் வைத்து, ஸ்கேன் தட்டவும்.',
+    camScan: 'ஸ்கேன்', camScanning: 'அடையாளம் காண்கிறது…', camPick: 'ஒரே மாதிரி தெரிகிறது — சரியானதைத் தேர்வு செய்க', camNotFound: 'அடையாளம் காண இயலவில்லை — தேடி தேர்வு செய்க',
+    camWeight: 'எடை (கிலோ)', camAdd: 'பில்லில் சேர்', camAdded: 'சேர்க்கப்பட்டது', camClose: 'மூடு', camNoCamera: 'கேமரா இல்லை — அனுமதி வழங்கவும் அல்லது புகைப்படம் எடுக்கவும்',
+    camPhoto: 'புகைப்படம் எடு', camWeightAsk: 'எடை தெளிவாக இல்லை — எடையை உள்ளிடவும்', share: 'பகிர்',
+  },
+};
+
+// Plain-text bill for WhatsApp (English + Tamil thank-you)
+function buildBillText(b, storeName) {
+  const lines = (b.items || []).map((it, i) => `${i + 1}. ${it.name} ${it.quantity}${it.unit ? ' ' + it.unit : ''} × ₹${it.price} = ₹${(it.price * it.quantity).toFixed(2)}`);
+  const when = b.completedAt ? new Date(b.completedAt) : new Date();
+  return [
+    `*Eptomart Express*${storeName ? ' — ' + storeName : ''}`,
+    `Bill: ${b.billNo}`,
+    `${when.toLocaleDateString('en-IN')} ${when.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`,
+    '',
+    ...lines,
+    '',
+    b.discountAmount > 0 ? `Discount (${b.discountPercent}%): -₹${b.discountAmount.toFixed(2)}` : null,
+    `*Total: ₹${b.total}*`,
+    b.paymentMethod ? `Paid by: ${String(b.paymentMethod).toUpperCase()}` : null,
+    '',
+    'Thank you for shopping with us! / வாங்கியதற்கு நன்றி! 🙏',
+  ].filter(l => l !== null).join('\n');
+}
+function shareBillWhatsApp(b, storeName) {
+  const text = encodeURIComponent(buildBillText(b, storeName));
+  const ph = String(b.customerPhone || '').replace(/\D/g, '').slice(-10);
+  const url = ph.length === 10 ? `https://wa.me/91${ph}?text=${text}` : `https://wa.me/?text=${text}`;
+  window.open(url, '_blank');
+}
+
+// Downscale a camera frame to keep the upload small (~100–200 KB JPEG)
+function frameToJpeg(source, srcW, srcH, maxSide = 900) {
+  const scale = Math.min(1, maxSide / Math.max(srcW, srcH));
+  const c = document.createElement('canvas');
+  c.width = Math.round(srcW * scale); c.height = Math.round(srcH * scale);
+  c.getContext('2d').drawImage(source, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.72);
+}
 const round3 = (n) => Math.round((Number(n) || 0) * 1000) / 1000;
 // Weight/volume units allow fractional quantities (1.35kg, 0.5 litre); the
 // discrete units (piece/bunch/dozen) don't, so they keep the simple +/-
@@ -65,6 +131,28 @@ export default function ExpressPOSTerminal() {
   const [bills, setBills] = useState([]);
   const [activeBillId, setActiveBillId] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [lang, setLang] = useState(() => { try { return localStorage.getItem('pos_lang') || 'en'; } catch { return 'en'; } });
+  const tr = (k) => I18N[lang][k] || I18N.en[k] || k;
+  const switchLang = (l) => { setLang(l); try { localStorage.setItem('pos_lang', l); } catch { /* ignore */ } };
+  // Name shown for a product: Tamil when the Tamil UI is on and a Tamil name exists
+  const pName = (p) => (lang === 'ta' && p?.nameTamil ? p.nameTamil : p?.name);
+  const nameById = (id, fallback) => { const p = products.find(x => String(x._id) === String(id)); return p ? pName(p) : fallback; };
+  // Optional customer details + the "sale done" panel (WhatsApp share / reprint)
+  const [custName, setCustName] = useState('');
+  const [custPhone, setCustPhone] = useState('');
+  const [lastSale, setLastSale] = useState(null);
+  // Camera scan
+  const [camOpen, setCamOpen] = useState(false);
+  const [camReady, setCamReady] = useState(false);
+  const [camBusy, setCamBusy] = useState(false);
+  const [camResult, setCamResult] = useState(null);   // { matches, ambiguous, weightKg, count }
+  const [camWeight, setCamWeight] = useState('');
+  const [camAddedMsg, setCamAddedMsg] = useState(null);
+  const [camManual, setCamManual] = useState('');
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const fileRef = useRef(null);
+
   // Top-level view: billing counter, the store's online orders, today's activity
   const [view, setView] = useState('billing');
   const [onlineOrders, setOnlineOrders] = useState([]);
@@ -214,9 +302,91 @@ export default function ExpressPOSTerminal() {
     }
   };
 
+  // ── Camera scan ─────────────────────────────────────────────────────
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null; setCamReady(false);
+  };
+  const openCamera = async () => {
+    let billId = activeBillId;
+    if (!activeBill) {                       // start a bill automatically
+      if (bills.length >= MAX_HELD) return toast.error(`You already have ${MAX_HELD} held bills`);
+      try {
+        const { data } = await expressPOSApi.post('/bills', {});
+        setBills(b => [data.bill, ...b]); setActiveBillId(data.bill._id); billId = data.bill._id;
+      } catch (err) { return toast.error(err?.response?.data?.message || 'Failed to create bill'); }
+    }
+    setCamResult(null); setCamAddedMsg(null); setCamManual(''); setCamWeight('');
+    setCamOpen(true);          // the <video> mounts on this render; the effect below starts the stream
+    return billId;
+  };
+  const closeCamera = () => { stopCamera(); setCamOpen(false); setCamResult(null); };
+  useEffect(() => {
+    if (!camOpen) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false });
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+        streamRef.current = stream;
+        if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play().catch(() => {}); }
+        setCamReady(true);
+      } catch { setCamReady(false); }
+    })();
+    return () => { cancelled = true; stopCamera(); };
+  }, [camOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const sendFrame = async (dataUrl) => {
+    setCamBusy(true); setCamResult(null); setCamAddedMsg(null);
+    try {
+      const { data } = await expressPOSApi.post('/recognize', { image: dataUrl });
+      handleRecognition(data);
+    } catch (err) {
+      beepError();
+      toast.error(err?.response?.data?.message || 'Could not recognise the item');
+      setCamResult({ matches: [], ambiguous: false, weightKg: null, count: null });
+    } finally { setCamBusy(false); }
+  };
+  const scanNow = () => {
+    const v = videoRef.current;
+    if (!v || !v.videoWidth) return fileRef.current?.click();
+    sendFrame(frameToJpeg(v, v.videoWidth, v.videoHeight));
+  };
+  const onPhotoPicked = (e) => {
+    const f = e.target.files?.[0]; e.target.value = '';
+    if (!f) return;
+    const img = new Image();
+    img.onload = () => { sendFrame(frameToJpeg(img, img.naturalWidth, img.naturalHeight)); URL.revokeObjectURL(img.src); };
+    img.src = URL.createObjectURL(f);
+  };
+
+  // Confident single match + readable weight → add automatically.
+  // Lookalikes / low confidence → cashier chooses. Unreadable weight → asks for it.
+  const handleRecognition = (r) => {
+    setCamResult(r);
+    setCamWeight(r.weightKg != null ? String(r.weightKg) : '');
+    if (!r.ambiguous && r.matches.length === 1) {
+      const m = r.matches[0];
+      const needsWeight = isDecimalUnit(m.unit);
+      if (!needsWeight || r.weightKg != null) addRecognized(m, r.weightKg, r.count);
+    } else if (!r.ambiguous && r.matches.length > 1) {
+      const m = r.matches[0];
+      if (!isDecimalUnit(m.unit) || r.weightKg != null) addRecognized(m, r.weightKg, r.count);
+    }
+  };
+  const addRecognized = async (m, weightKg, count) => {
+    const qty = isDecimalUnit(m.unit) ? Number(weightKg) : (count || 1);
+    if (!Number.isFinite(qty) || qty <= 0) { toast.error(tr('camWeightAsk')); return; }
+    await addItem(m._id, qty);
+    setCamAddedMsg(`${tr('camAdded')}: ${pName(m)} — ${qty} ${m.unit}`);
+    setCamResult(null); setCamWeight('');
+  };
+
   const openCheckout = () => {
     if (!activeBill || activeBill.items.length === 0) return toast.error('Add at least one item');
     setTendered(''); setCoSearch(''); setCoCode('');
+    setCustName(activeBill.customerName && activeBill.customerName !== 'Walk-in Customer' ? activeBill.customerName : '');
+    setCustPhone(activeBill.customerPhone || '');
     setCheckoutOpen(true);
   };
 
@@ -231,7 +401,7 @@ export default function ExpressPOSTerminal() {
     }
     setCompleting(true);
     try {
-      const { data } = await expressPOSApi.patch(`/bills/${activeBill._id}/complete`, { paymentMethod, amountTendered });
+      const { data } = await expressPOSApi.patch(`/bills/${activeBill._id}/complete`, { paymentMethod, amountTendered, customerName: custName, customerPhone: custPhone });
       const b = data.bill;
       toast.success(paymentMethod === 'cash' && b.changeReturned > 0 ? `Sale completed — return ₹${b.changeReturned}` : 'Sale completed');
       printReceipt({
@@ -254,6 +424,8 @@ export default function ExpressPOSTerminal() {
       setActiveBillId(null);
       setDiscountDraft('');
       setCheckoutOpen(false);
+      setLastSale(b);
+      setCustName(''); setCustPhone('');
     } catch (err) { toast.error(err?.response?.data?.message || 'Failed to complete sale'); }
     finally { setCompleting(false); }
   };
@@ -299,7 +471,7 @@ export default function ExpressPOSTerminal() {
     }
   };
 
-  const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredProducts = products.filter(p => `${p.name} ${p.nameTamil || ''}`.toLowerCase().includes(search.toLowerCase()));
 
   // Quick-entry by PLU code — vegetables 100-199, fruits 200-299 — so a POS
   // user can just type the 3-digit code instead of hunting through the grid.
@@ -313,6 +485,101 @@ export default function ExpressPOSTerminal() {
     if (match.stockQty === 0) { beepError(); toast.error(`${match.name} is out of stock`); setCodeInput(''); return; }
     addItem(match._id, 1);
     setCodeInput('');
+  };
+
+  // ── Sale done: change to return, WhatsApp share, reprint ──────────
+  const reprint = (b) => printReceipt({
+    billNo: b.billNo,
+    dateStr: new Date(b.completedAt || Date.now()).toLocaleDateString('en-IN'),
+    timeLabel: new Date(b.completedAt || Date.now()).toLocaleTimeString('en-IN'),
+    storeName: posUser?.store?.name, customerName: b.customerName, items: b.items,
+    subtotal: b.subtotal, discountPercent: b.discountPercent, discountAmount: b.discountAmount, roundOff: b.roundOff, total: b.total,
+    paymentMethod: b.paymentMethod, amountTendered: b.amountTendered, changeReturned: b.changeReturned,
+  }).catch(() => toast.error('Printing failed'));
+  const renderSaleDone = () => (
+    <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-sm rounded-2xl p-5 text-center">
+        <FiCheckCircle className="mx-auto text-green-500 mb-1" size={40} />
+        <p className="font-black text-lg text-gray-800">{tr('saleDone')}</p>
+        <p className="text-xs text-gray-400 mb-3">{lastSale.billNo} · ₹{lastSale.total} · {String(lastSale.paymentMethod).toUpperCase()}</p>
+        {lastSale.paymentMethod === 'cash' && lastSale.changeReturned > 0 && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-3">
+            <p className="text-[11px] font-bold text-green-700 uppercase">{tr('returnChange')}</p>
+            <p className="text-3xl font-black text-green-700">₹{lastSale.changeReturned}</p>
+          </div>
+        )}
+        <div className="space-y-2">
+          <button onClick={() => shareBillWhatsApp(lastSale, posUser?.store?.name)}
+            className="w-full py-3 rounded-xl bg-[#25D366] text-white font-bold text-sm flex items-center justify-center gap-2">
+            <FiShare2 size={16} /> {tr('shareWA')}{lastSale.customerPhone ? ` (${lastSale.customerPhone})` : ''}
+          </button>
+          <button onClick={() => reprint(lastSale)} className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-700 font-bold text-sm flex items-center justify-center gap-2"><FiPrinter size={15} /> {tr('printAgain')}</button>
+          <button onClick={() => setLastSale(null)} className="w-full py-2.5 rounded-xl border font-bold text-sm text-gray-600">{tr('done')}</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Camera scan modal ─────────────────────────────────────────────
+  const renderCamera = () => {
+    const manualResults = camManual.trim() ? products.filter(p => `${p.name} ${p.nameTamil || ''}`.toLowerCase().includes(camManual.toLowerCase()) && p.stockQty > 0).slice(0, 5) : [];
+    const pickable = camResult && (camResult.ambiguous || camResult.matches.length === 0 || (camResult.matches[0] && isDecimalUnit(camResult.matches[0].unit) && camResult.weightKg == null));
+    return (
+      <div className="fixed inset-0 z-[60] bg-black/60 flex items-end sm:items-center justify-center">
+        <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[95vh] overflow-y-auto">
+          <div className="flex items-center justify-between p-3 border-b">
+            <p className="font-black text-gray-800 flex items-center gap-2"><FiCamera /> {tr('camTitle')}</p>
+            <button onClick={closeCamera} className="p-1.5 rounded-lg hover:bg-gray-100"><FiX size={18} /></button>
+          </div>
+          <div className="p-3 space-y-3">
+            <div className="relative bg-black rounded-xl overflow-hidden aspect-[4/3]">
+              <video ref={videoRef} playsInline muted className="w-full h-full object-cover" />
+              {!camReady && <div className="absolute inset-0 flex items-center justify-center text-center text-white/80 text-xs p-4">{tr('camNoCamera')}</div>}
+              {camBusy && <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-sm">{tr('camScanning')}</div>}
+            </div>
+            <p className="text-[11px] text-gray-500 text-center">{tr('camHint')}</p>
+            <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onPhotoPicked} />
+            <div className="flex gap-2">
+              <button onClick={scanNow} disabled={camBusy} className="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm disabled:opacity-50">{camBusy ? tr('camScanning') : `📸 ${tr('camScan')}`}</button>
+              <button onClick={() => fileRef.current?.click()} disabled={camBusy} className="px-4 py-3 rounded-xl bg-gray-100 text-gray-700 font-bold text-xs disabled:opacity-50">{tr('camPhoto')}</button>
+            </div>
+
+            {camAddedMsg && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm font-bold text-green-700 flex items-center gap-2"><FiCheckCircle /> {camAddedMsg}</div>
+            )}
+
+            {camResult && pickable && (
+              <div className="border rounded-xl p-3 space-y-2">
+                <p className="text-xs font-bold text-amber-700">{camResult.matches.length ? tr('camPick') : tr('camNotFound')}</p>
+                {camResult.matches.map(m => (
+                  <button key={m._id} onClick={() => addRecognized(m, Number(camWeight) || null, camResult.count)}
+                    className="w-full flex items-center justify-between bg-gray-50 hover:bg-indigo-50 border rounded-xl px-3 py-2.5 text-left">
+                    <span>
+                      <span className="block font-bold text-sm text-gray-800">{m.name}</span>
+                      {m.nameTamil && <span className="block text-sm text-gray-600">{m.nameTamil}</span>}
+                    </span>
+                    <span className="text-xs text-gray-500 shrink-0">₹{m.price}/{m.unit}</span>
+                  </button>
+                ))}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-500 shrink-0">{tr('camWeight')}</span>
+                  <input value={camWeight} onChange={e => setCamWeight(e.target.value.replace(/[^0-9.]/g, ''))} inputMode="decimal" placeholder="0.000"
+                    className="w-28 border-2 rounded-lg px-2 py-1.5 text-sm font-bold text-center" />
+                </div>
+                <input value={camManual} onChange={e => setCamManual(e.target.value)} placeholder={tr('search')} className="w-full border rounded-lg px-2.5 py-2 text-sm" />
+                {manualResults.map(m => (
+                  <button key={m._id} onClick={() => addRecognized(m, Number(camWeight) || null, null)}
+                    className="w-full flex items-center justify-between bg-white border rounded-lg px-2.5 py-1.5 text-xs text-left">
+                    <span className="font-semibold text-gray-800 truncate">{m.name}{m.nameTamil ? ` / ${m.nameTamil}` : ''}</span>
+                    <span className="text-gray-500 shrink-0">₹{m.price}/{m.unit}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // ── Online orders for this store ──────────────────────────────────
@@ -371,7 +638,10 @@ export default function ExpressPOSTerminal() {
                 <p className="text-sm font-bold text-gray-800">{b.billNo} <span className={`ml-1 text-[10px] font-black uppercase px-1.5 py-0.5 rounded-full ${b.status === 'completed' ? 'bg-green-100 text-green-700' : b.status === 'held' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'}`}>{b.status}</span></p>
                 <p className="text-[11px] text-gray-400">{new Date(b.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} · {b.posUserName || 'POS'} · {b.items?.length || 0} items{b.paymentMethod ? ` · ${b.paymentMethod.toUpperCase()}` : ''}</p>
               </div>
-              <p className="text-sm font-black text-gray-800 shrink-0">₹{b.total}</p>
+              <div className="flex items-center gap-2 shrink-0">
+                {b.status === 'completed' && <button onClick={() => shareBillWhatsApp(b, posUser?.store?.name)} title={tr('shareWA')} className="p-1.5 rounded-lg bg-green-50 text-green-600"><FiShare2 size={14} /></button>}
+                <p className="text-sm font-black text-gray-800">₹{b.total}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -386,7 +656,7 @@ export default function ExpressPOSTerminal() {
     const hasT = tendered !== '' && Number.isFinite(t);
     const change = hasT ? Math.round((t - total) * 100) / 100 : 0;
     const short = hasT && t < total;
-    const results = coSearch.trim() ? products.filter(p => p.name.toLowerCase().includes(coSearch.toLowerCase()) && p.stockQty > 0).slice(0, 6) : [];
+    const results = coSearch.trim() ? products.filter(p => `${p.name} ${p.nameTamil || ''}`.toLowerCase().includes(coSearch.toLowerCase()) && p.stockQty > 0).slice(0, 6) : [];
     const addCoCode = (e) => {
       e.preventDefault();
       const code = Number(coCode.trim());
@@ -401,7 +671,7 @@ export default function ExpressPOSTerminal() {
       <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center">
         <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="font-black text-gray-800">Checkout · {activeBill.billNo}</p>
+            <p className="font-black text-gray-800">{tr('checkout')} · {activeBill.billNo}</p>
             <button onClick={() => setCheckoutOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-100"><FiX size={18} /></button>
           </div>
 
@@ -413,7 +683,7 @@ export default function ExpressPOSTerminal() {
               return (
                 <div key={pid} className="flex items-center justify-between py-1.5 border-b">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{it.name}</p>
+                    <p className="text-sm font-semibold text-gray-800 truncate">{nameById(it.product, it.name)}</p>
                     <p className="text-[11px] text-gray-400">₹{it.price}/{it.unit} · <span className="font-bold text-gray-600">₹{(it.price * it.quantity).toFixed(2)}</span></p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -447,33 +717,42 @@ export default function ExpressPOSTerminal() {
 
           {/* Add one more item before paying */}
           <div className="bg-indigo-50/60 rounded-xl p-2.5 mb-3">
-            <p className="text-[11px] font-bold text-indigo-700 mb-1.5">+ Add another item</p>
+            <p className="text-[11px] font-bold text-indigo-700 mb-1.5">{tr('addAnother')}</p>
             <form onSubmit={addCoCode} className="flex gap-2 mb-1.5">
               <input value={coCode} onChange={e => setCoCode(e.target.value.replace(/\D/g, '').slice(0, 3))} placeholder="Code" inputMode="numeric"
                 className="w-20 border rounded-lg px-2 py-1.5 text-sm text-center font-bold" />
-              <input value={coSearch} onChange={e => setCoSearch(e.target.value)} placeholder="…or search by name" className="flex-1 border rounded-lg px-2 py-1.5 text-sm" />
+              <input value={coSearch} onChange={e => setCoSearch(e.target.value)} placeholder={tr('search')} className="flex-1 border rounded-lg px-2 py-1.5 text-sm" />
               <button type="submit" className="px-3 rounded-lg bg-indigo-600 text-white text-xs font-bold">Add</button>
             </form>
             {results.map(p => (
               <button key={p._id} onClick={() => { addItem(p._id, 1); setCoSearch(''); }}
                 className="w-full flex items-center justify-between text-left bg-white border rounded-lg px-2.5 py-1.5 mb-1 text-xs">
-                <span className="font-semibold text-gray-800 truncate">{p.name}{p.plu != null ? <span className="ml-1 text-indigo-600">#{p.plu}</span> : null}</span>
+                <span className="font-semibold text-gray-800 truncate">{pName(p)}{p.plu != null ? <span className="ml-1 text-indigo-600">#{p.plu}</span> : null}</span>
                 <span className="text-gray-500 shrink-0">₹{p.price}/{p.unit} · +1</span>
               </button>
             ))}
+          </div>
+
+          {/* Optional customer details */}
+          <div className="mb-3">
+            <div className="grid grid-cols-2 gap-2">
+              <input value={custName} onChange={e => setCustName(e.target.value)} placeholder={tr('custName')} className="border rounded-lg px-2.5 py-2 text-sm" />
+              <input value={custPhone} onChange={e => setCustPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder={tr('custPhone')} inputMode="numeric" className="border rounded-lg px-2.5 py-2 text-sm" />
+            </div>
+            <p className="text-[10px] text-gray-400 mt-1">{tr('custNote')}</p>
           </div>
 
           {/* Totals */}
           <div className="border-t pt-2 mb-3 text-sm">
             {activeBill.discountAmount > 0 && <div className="flex justify-between text-xs text-green-600"><span>Discount ({activeBill.discountPercent}%)</span><span>−₹{activeBill.discountAmount.toFixed(2)}</span></div>}
             {activeBill.roundOff !== 0 && <div className="flex justify-between text-xs text-gray-500"><span>Round off</span><span>{activeBill.roundOff > 0 ? '+' : '−'}₹{Math.abs(activeBill.roundOff).toFixed(2)}</span></div>}
-            <div className="flex justify-between font-black text-lg text-gray-900"><span>Total to pay</span><span>₹{total}</span></div>
+            <div className="flex justify-between font-black text-lg text-gray-900"><span>{tr('totalToPay')}</span><span>₹{total}</span></div>
           </div>
 
           {/* Payment mode */}
-          <p className="text-[11px] font-bold text-gray-500 uppercase mb-1">Payment mode</p>
+          <p className="text-[11px] font-bold text-gray-500 uppercase mb-1">{tr('payMode')}</p>
           <div className="flex gap-2 mb-3">
-            {[['cash', '💵 Cash'], ['upi', '📱 UPI'], ['card', '💳 Card']].map(([m, label]) => (
+            {[['cash', tr('cash')], ['upi', tr('upi')], ['card', tr('card')]].map(([m, label]) => (
               <button key={m} onClick={() => setPaymentMethod(m)}
                 className={`flex-1 py-2.5 rounded-xl text-sm font-bold ${paymentMethod === m ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}</button>
             ))}
@@ -482,7 +761,7 @@ export default function ExpressPOSTerminal() {
           {/* Cash received → change */}
           {paymentMethod === 'cash' ? (
             <div className="mb-3">
-              <p className="text-[11px] font-bold text-gray-500 uppercase mb-1">Amount received from customer</p>
+              <p className="text-[11px] font-bold text-gray-500 uppercase mb-1">{tr('received')}</p>
               <input value={tendered} onChange={e => setTendered(e.target.value.replace(/[^0-9.]/g, ''))} inputMode="decimal" placeholder={`₹ ${total}`} autoFocus
                 className="w-full border-2 border-indigo-200 rounded-xl px-3 py-2.5 text-xl font-black text-center focus:border-indigo-500 focus:outline-none" />
               <div className="flex gap-1.5 mt-2 flex-wrap">
@@ -494,10 +773,10 @@ export default function ExpressPOSTerminal() {
               {hasT && (
                 <div className={`mt-3 rounded-xl p-3 text-center ${short ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
                   {short ? (
-                    <p className="text-sm font-bold text-red-600">Short by ₹{Math.round((total - t) * 100) / 100}</p>
+                    <p className="text-sm font-bold text-red-600">{tr('shortBy')} ₹{Math.round((total - t) * 100) / 100}</p>
                   ) : (
                     <>
-                      <p className="text-[11px] font-bold text-green-700 uppercase">Return to customer</p>
+                      <p className="text-[11px] font-bold text-green-700 uppercase">{tr('returnTo')}</p>
                       <p className="text-3xl font-black text-green-700">₹{change}</p>
                     </>
                   )}
@@ -510,7 +789,7 @@ export default function ExpressPOSTerminal() {
 
           <button onClick={completeSale} disabled={completing || (paymentMethod === 'cash' && (!hasT || short))}
             className="w-full py-3 rounded-xl bg-green-600 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-40">
-            <FiPrinter size={16} /> {completing ? 'Completing…' : 'Confirm Payment & Print'}
+            <FiPrinter size={16} /> {completing ? '…' : tr('confirm')}
           </button>
         </div>
       </div>
@@ -528,12 +807,16 @@ export default function ExpressPOSTerminal() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex rounded-lg overflow-hidden border text-xs font-bold">
+            <button onClick={() => switchLang('en')} className={`px-2 py-1.5 ${lang === 'en' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-500'}`}>EN</button>
+            <button onClick={() => switchLang('ta')} className={`px-2 py-1.5 ${lang === 'ta' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-500'}`}>தமிழ்</button>
+          </div>
           <button onClick={togglePrinterConnection} disabled={connectingPrinter}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50 ${printerConnected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-            <FiBluetooth size={14} /> {connectingPrinter ? 'Connecting…' : printerConnected ? 'Printer Connected' : 'Connect Printer'}
+            <FiBluetooth size={14} /> {connectingPrinter ? '…' : printerConnected ? tr('printerConnected') : tr('connectPrinter')}
           </button>
           <button onClick={printCodeList} disabled={printingList} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold disabled:opacity-50">
-            <FiPrinter size={14} /> {printingList ? 'Printing…' : 'Code List'}
+            <FiPrinter size={14} /> {printingList ? '…' : tr('codeList')}
           </button>
           <button onClick={logout} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"><FiLogOut size={16} /></button>
         </div>
@@ -541,12 +824,12 @@ export default function ExpressPOSTerminal() {
 
       {/* View tabs */}
       <div className="bg-white border-b px-4 flex gap-1">
-        {[['billing', '🧾 Billing'], ['orders', '📦 Online Orders'], ['activity', '📊 Today\'s Activity']].map(([k, label]) => {
+        {[['billing'], ['orders'], ['activity']].map(([k]) => {
           const pending = k === 'orders' ? onlineOrders.filter(o => ['confirmed', 'placed', 'preparing'].includes(o.orderStatus)).length : 0;
           return (
             <button key={k} onClick={() => setView(k)}
               className={`px-3 py-2 text-xs font-bold border-b-2 ${view === k ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500'}`}>
-              {label}{pending > 0 && <span className="ml-1.5 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{pending}</span>}
+              {tr(k)}{pending > 0 && <span className="ml-1.5 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{pending}</span>}
             </button>
           );
         })}
@@ -563,7 +846,7 @@ export default function ExpressPOSTerminal() {
         ))}
         <button onClick={newBill} disabled={bills.length >= MAX_HELD}
           className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg border border-dashed text-xs font-bold text-indigo-600 disabled:opacity-40">
-          <FiPlus size={12} /> New Bill ({bills.length}/{MAX_HELD})
+          <FiPlus size={12} /> {tr('newBill')} ({bills.length}/{MAX_HELD})
         </button>
       </div>
 
@@ -572,13 +855,14 @@ export default function ExpressPOSTerminal() {
         <div>
           <form onSubmit={addByCode} className="flex gap-2 mb-2">
             <input ref={codeInputRef} value={codeInput} onChange={e => setCodeInput(e.target.value.replace(/\D/g, '').slice(0, 3))}
-              placeholder="Enter code (e.g. 214)" inputMode="numeric" autoFocus
+              placeholder={tr('code')} inputMode="numeric" autoFocus
               className="w-40 border-2 border-indigo-200 rounded-lg px-3 py-2 text-sm font-bold text-center focus:border-indigo-500 focus:outline-none" />
             <button type="submit" className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold">Add</button>
+            <button type="button" onClick={openCamera} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold flex items-center gap-1.5"><FiCamera size={15} /> {tr('scan')}</button>
           </form>
           <div className="relative mb-3">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products…"
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder={tr('search')}
               className="w-full border rounded-lg pl-9 pr-3 py-2 text-sm" />
           </div>
           <div className="grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto">
@@ -588,7 +872,7 @@ export default function ExpressPOSTerminal() {
               return (
                 <div key={p._id} className={`bg-white border rounded-lg p-2 ${(!activeBill || p.stockQty === 0) ? 'opacity-40' : ''}`}>
                   <p className="text-xs font-bold text-gray-800 truncate flex items-center gap-1">
-                    {p.name}
+                    {pName(p)}
                     {p.plu != null && <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-indigo-100 text-indigo-700 shrink-0">{p.plu}</span>}
                   </p>
                   <p className="text-xs text-gray-400 mb-1.5">₹{p.price}/{p.unit} · Stock {p.stockQty}</p>
@@ -628,7 +912,7 @@ export default function ExpressPOSTerminal() {
         {/* Current bill */}
         <div className="bg-white border rounded-xl p-4 flex flex-col">
           {!activeBill ? (
-            <p className="text-sm text-gray-400 m-auto">Start a new bill to begin.</p>
+            <p className="text-sm text-gray-400 m-auto">{tr('startBill')}</p>
           ) : (
             <>
               <div className="flex items-center justify-between mb-3">
@@ -636,14 +920,14 @@ export default function ExpressPOSTerminal() {
                 <button onClick={voidBill} className="text-red-500 text-xs font-semibold flex items-center gap-1"><FiTrash2 size={12} /> Void</button>
               </div>
               <div className="flex-1 overflow-y-auto mb-3">
-                {activeBill.items.length === 0 && <p className="text-xs text-gray-400">No items yet — tap a product to add.</p>}
+                {activeBill.items.length === 0 && <p className="text-xs text-gray-400">{tr('noItems')}</p>}
                 {activeBill.items.map(it => {
                   const pid = String(it.product);
                   const decimal = isDecimalUnit(it.unit);
                   return (
                     <div key={pid} className="flex items-center justify-between py-1.5 border-b">
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 truncate">{it.name}</p>
+                        <p className="text-sm font-semibold text-gray-800 truncate">{nameById(it.product, it.name)}</p>
                         <p className="text-xs text-gray-400">₹{it.price}/{it.unit} × {it.quantity} = <span className="font-bold text-gray-600">₹{(it.price * it.quantity).toFixed(2)}</span></p>
                       </div>
                       {decimal ? (
@@ -686,7 +970,7 @@ export default function ExpressPOSTerminal() {
               </div>
               <div className="pt-2 border-t mb-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs text-gray-500 font-semibold shrink-0">Offer %</span>
+                  <span className="text-xs text-gray-500 font-semibold shrink-0">{tr('offer')}</span>
                   <input value={discountDraft} inputMode="decimal" placeholder="0"
                     onChange={e => setDiscountDraft(e.target.value.replace(/[^0-9.]/g, ''))}
                     className="w-16 border rounded px-1.5 py-1 text-sm text-center" />
@@ -715,7 +999,7 @@ export default function ExpressPOSTerminal() {
                 </div>
               </div>
               <button onClick={openCheckout} className="w-full py-3 rounded-xl bg-green-600 text-white font-bold text-sm flex items-center justify-center gap-2">
-                Checkout · ₹{activeBill.total}
+                {tr('checkout')} · ₹{activeBill.total}
               </button>
             </>
           )}
@@ -726,6 +1010,8 @@ export default function ExpressPOSTerminal() {
       {view === 'orders' && renderOrders()}
       {view === 'activity' && renderActivity()}
       {checkoutOpen && activeBill && renderCheckout()}
+      {lastSale && renderSaleDone()}
+      {camOpen && renderCamera()}
     </div>
   );
 }
