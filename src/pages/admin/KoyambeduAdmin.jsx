@@ -4596,7 +4596,7 @@ export default function KoyambeduAdmin() {
                     <input type="text" value={procSupplierName} onChange={e => setProcSupplierName(e.target.value)}
                       placeholder="e.g. Murugan Traders"
                       className="w-full mb-3 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500" />
-                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Show in per-order breakdown</label>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Show on checklist &amp; supplier list</label>
                     <div className="grid grid-cols-2 gap-2 mb-2">
                       {[
                         ['anon', 'Hidden (a, b, c…)', 'Anonymous letters'],
@@ -4613,7 +4613,7 @@ export default function KoyambeduAdmin() {
                       ))}
                     </div>
                     <p className="text-[11px] text-gray-400">
-                      When an item comes from more than one order, both the shared text and the printed list break it down per order (e.g. "Ooty Carrot 4kg = {procLabelMode === 'anon' ? 'a 1kg, b 2kg' : procLabelMode === 'orderId' ? '#KD101 1kg, #KD102 2kg' : procLabelMode === 'name' ? 'Ravi 1kg, Priya 2kg' : procLabelMode === 'name_area' ? 'Ravi, Anna Nagar 1kg' : '#KD101 Ravi, Anna Nagar 1kg'}…"). Phone numbers and prices are never included.
+                      When an item comes from more than one order, the checklist below, the shared text and the printed list break it down per order (e.g. "Ooty Carrot 4kg = {procLabelMode === 'anon' ? 'a 1kg, b 2kg' : procLabelMode === 'orderId' ? '#KD101 1kg, #KD102 2kg' : procLabelMode === 'name' ? 'Ravi 1kg, Priya 2kg' : procLabelMode === 'name_area' ? 'Ravi, Anna Nagar 1kg' : '#KD101 Ravi, Anna Nagar 1kg'}…"). Phone numbers and prices are never included.
                     </p>
                   </div>
 
@@ -4667,7 +4667,7 @@ export default function KoyambeduAdmin() {
                                         return (
                                           <button key={oi} onClick={() => toggleProcOrderLine(p, o.orderId)}
                                             className={`text-[10px] font-semibold px-2 py-1 rounded-lg border transition ${checked ? 'bg-purple-600 border-purple-600 text-white' : 'bg-white border-gray-200 text-gray-500'}`}>
-                                            {checked ? '✓ ' : ''}{o.orderId}: {o.quantity.toFixed(2)} {p.unit}
+                                            {checked ? '✓ ' : ''}{procLabelMode === 'anon' ? o.orderId : procLabel(o, {})}: {o.quantity.toFixed(2)} {p.unit}
                                           </button>
                                         );
                                       })}
