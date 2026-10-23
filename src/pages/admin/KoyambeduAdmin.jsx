@@ -1466,6 +1466,24 @@ export default function KoyambeduAdmin() {
   const procIncludeNames = procLabelMode !== 'anon'; // legacy flag used by notes below
   // Checklist (internal) view has its own choice: none | orderId | name | name_area | all
   const [procChecklistMode, setProcChecklistMode] = useState('name_area');
+  // One stable colour per customer (same customer across items/orders = same colour)
+  const PROC_PALETTE = [
+    ['#dbeafe', '#1e40af'], ['#dcfce7', '#166534'], ['#fef3c7', '#92400e'], ['#fce7f3', '#9d174d'],
+    ['#ede9fe', '#5b21b6'], ['#ffedd5', '#9a3412'], ['#cffafe', '#155e75'], ['#fee2e2', '#991b1b'],
+    ['#e0e7ff', '#3730a3'], ['#ecfccb', '#3f6212'], ['#f3e8ff', '#6b21a8'], ['#ccfbf1', '#115e59'],
+  ];
+  const procCustomerKey = (o) => String(o.customerName || o.orderId || '').trim().toLowerCase();
+  const procColorMap = (() => {
+    const keys = new Set();
+    for (const p of (procData?.products || [])) for (const o of (p.orders || [])) keys.add(procCustomerKey(o));
+    const m = {};
+    [...keys].sort().forEach((k, i) => { m[k] = PROC_PALETTE[i % PROC_PALETTE.length]; });
+    return m;
+  })();
+  const procColor = (o) => {
+    const [bg, fg] = procColorMap[procCustomerKey(o)] || ['#f3f4f6', '#4b5563'];
+    return { backgroundColor: bg, color: fg };
+  };
   const procLabel = (o, orderLetterMap, modeOverride) => {
     const mode = modeOverride || procLabelMode;
     const name = (o.customerName || '').trim();
@@ -4573,7 +4591,7 @@ export default function KoyambeduAdmin() {
                                 {procChecklistMode !== 'none' && (p.orders || []).length > 0 && (
                                   <div className="mt-1 flex flex-wrap gap-1">
                                     {p.orders.map((o, oi) => (
-                                      <span key={oi} className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">
+                                      <span key={oi} className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={procColor(o)}>
                                         {procLabel(o, {}, procChecklistMode)} · {o.quantity.toFixed(2)} {p.unit}
                                       </span>
                                     ))}
@@ -4689,7 +4707,8 @@ export default function KoyambeduAdmin() {
                                         const checked = !!procSelected[p.productKey]?.[o.orderId];
                                         return (
                                           <button key={oi} onClick={() => toggleProcOrderLine(p, o.orderId)}
-                                            className={`text-[10px] font-semibold px-2 py-1 rounded-lg border transition ${checked ? 'bg-purple-600 border-purple-600 text-white' : 'bg-white border-gray-200 text-gray-500'}`}>
+                                            style={procLabelMode !== 'anon' ? { ...procColor(o), borderColor: checked ? procColor(o).color : 'transparent', opacity: checked ? 1 : 0.55 } : undefined}
+                                            className={`text-[10px] font-semibold px-2 py-1 rounded-lg border transition ${procLabelMode !== 'anon' ? '' : checked ? 'bg-purple-600 border-purple-600 text-white' : 'bg-white border-gray-200 text-gray-500'}`}>
                                             {checked ? '✓ ' : ''}{procLabelMode === 'anon' ? o.orderId : procLabel(o, {})}: {o.quantity.toFixed(2)} {p.unit}
                                           </button>
                                         );
