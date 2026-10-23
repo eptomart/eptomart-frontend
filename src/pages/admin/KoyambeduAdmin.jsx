@@ -1459,7 +1459,22 @@ export default function KoyambeduAdmin() {
   // "a 1kg, b 2kg, c 1kg") in both the shared text and the printed list.
   // Unchecked (default) = anonymous letters, so customer identity is never
   // exposed to the supplier unless admin explicitly opts in.
-  const [procIncludeNames, setProcIncludeNames] = useState(false);
+  // How each order line is labelled in the supplier list:
+  //  anon = a, b, c · orderId = order # · name = customer name ·
+  //  name_area = customer name + area · all = order # + name + area
+  const [procLabelMode, setProcLabelMode] = useState('anon');
+  const procIncludeNames = procLabelMode !== 'anon'; // legacy flag used by notes below
+  const procLabel = (o, orderLetterMap) => {
+    const name = (o.customerName || '').trim();
+    const area = (o.area || '').trim();
+    switch (procLabelMode) {
+      case 'orderId':   return `#${o.orderId}`;
+      case 'name':      return name || `#${o.orderId}`;
+      case 'name_area': return [name || `#${o.orderId}`, area].filter(Boolean).join(', ');
+      case 'all':       return `#${o.orderId} ${[name, area].filter(Boolean).join(', ')}`.trim();
+      default:          return orderLetterMap[o.orderId];
+    }
+  };
 
   const fetchProcurement = async () => {
     setProcLoading(true);
@@ -1614,7 +1629,7 @@ export default function KoyambeduAdmin() {
     const lines = procSelectedOrders(p);
     if (lines.length <= 1) return '';
     return lines
-      .map(o => `${procIncludeNames ? (o.customerName || o.orderId) : orderLetterMap[o.orderId]} ${o.quantity.toFixed(2)}${p.unit}`)
+      .map(o => `${procLabel(o, orderLetterMap)} ${o.quantity.toFixed(2)}${p.unit}`)
       .join(', ');
   };
 
@@ -1689,7 +1704,7 @@ export default function KoyambeduAdmin() {
         await printProcurementViaBluetooth({
           dateLabel,
           supplier: procSupplierName.trim(),
-          note: !procIncludeNames ? 'Customer names hidden (a, b, c...)' : '',
+          note: procLabelMode === 'anon' ? 'Customer names hidden (a, b, c...)' : '',
           total: items.length,
           groups: groups.map(g => ({
             category: g.category,
@@ -1741,7 +1756,7 @@ export default function KoyambeduAdmin() {
         .footer { margin-top: 16px; font-size: 11px; color: #888; }
       </style></head><body>
       <h1>Eptomart — Procurement List</h1>
-      <p class="meta">${dateLabel}${procSupplierName.trim() ? ` &middot; Supplier: ${procSupplierName.trim()}` : ''}${!procIncludeNames ? ' &middot; Customer identity anonymized (a, b, c…)' : ''}</p>
+      <p class="meta">${dateLabel}${procSupplierName.trim() ? ` &middot; Supplier: ${procSupplierName.trim()}` : ''}${procLabelMode === 'anon' ? ' &middot; Customer identity anonymized (a, b, c…)' : ''}</p>
       ${sectionsHtml}
       <p class="footer">Total items: ${items.length}</p>
     </body></html>`;
@@ -4581,14 +4596,24 @@ export default function KoyambeduAdmin() {
                     <input type="text" value={procSupplierName} onChange={e => setProcSupplierName(e.target.value)}
                       placeholder="e.g. Murugan Traders"
                       className="w-full mb-3 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500" />
-                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-1 cursor-pointer select-none">
-                      <input type="checkbox" checked={procIncludeNames} onChange={e => setProcIncludeNames(e.target.checked)}
-                        className="accent-purple-600" />
-                      Show customer name in the per-order breakdown
-                    </label>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Show in per-order breakdown</label>
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                      {[
+                        ['anon', 'Hidden (a, b, c…)', 'Anonymous letters'],
+                        ['orderId', 'Order # only', '#KD123'],
+                        ['name', 'Customer name', 'Ravi'],
+                        ['name_area', 'Name + Area', 'Ravi, Anna Nagar'],
+                        ['all', 'Order # + Name + Area', '#KD123 Ravi, Anna Nagar'],
+                      ].map(([k, label, eg]) => (
+                        <button key={k} type="button" onClick={() => setProcLabelMode(k)}
+                          className={`text-left rounded-xl border px-3 py-2 ${procLabelMode === k ? 'border-purple-600 bg-purple-50' : 'border-gray-200 bg-white'} ${k === 'all' ? 'col-span-2' : ''}`}>
+                          <p className={`text-xs font-bold ${procLabelMode === k ? 'text-purple-700' : 'text-gray-700'}`}>{label}</p>
+                          <p className="text-[10px] text-gray-400">{eg}</p>
+                        </button>
+                      ))}
+                    </div>
                     <p className="text-[11px] text-gray-400">
-                      When an item comes from more than one order, both the shared text and the printed list break it down per order (e.g. "Ooty Carrot 4kg = a 1kg, b 2kg, c 1kg").
-                      {procIncludeNames ? ' Real customer names will be shown.' : ' Customers are shown as anonymous letters (a, b, c…) instead of their name.'}
+                      When an item comes from more than one order, both the shared text and the printed list break it down per order (e.g. "Ooty Carrot 4kg = {procLabelMode === 'anon' ? 'a 1kg, b 2kg' : procLabelMode === 'orderId' ? '#KD101 1kg, #KD102 2kg' : procLabelMode === 'name' ? 'Ravi 1kg, Priya 2kg' : procLabelMode === 'name_area' ? 'Ravi, Anna Nagar 1kg' : '#KD101 Ravi, Anna Nagar 1kg'}…"). Phone numbers and prices are never included.
                     </p>
                   </div>
 
