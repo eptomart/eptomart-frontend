@@ -1464,10 +1464,13 @@ export default function KoyambeduAdmin() {
   //  name_area = customer name + area · all = order # + name + area
   const [procLabelMode, setProcLabelMode] = useState('anon');
   const procIncludeNames = procLabelMode !== 'anon'; // legacy flag used by notes below
-  const procLabel = (o, orderLetterMap) => {
+  // Checklist (internal) view has its own choice: none | orderId | name | name_area | all
+  const [procChecklistMode, setProcChecklistMode] = useState('name_area');
+  const procLabel = (o, orderLetterMap, modeOverride) => {
+    const mode = modeOverride || procLabelMode;
     const name = (o.customerName || '').trim();
     const area = (o.area || '').trim();
-    switch (procLabelMode) {
+    switch (mode) {
       case 'orderId':   return `#${o.orderId}`;
       case 'name':      return name || `#${o.orderId}`;
       case 'name_area': return [name || `#${o.orderId}`, area].filter(Boolean).join(', ');
@@ -4532,6 +4535,17 @@ export default function KoyambeduAdmin() {
               {procView === 'checklist' && (
                 <div className="space-y-3">
                   <p className="text-[11px] text-gray-400 px-1">Only orders confirmed by SuperAdmin are counted here. Check off each item once it's been physically purchased and leave an internal note if needed.</p>
+                  <div className="bg-white rounded-2xl border border-gray-200 p-3">
+                    <p className="text-xs font-semibold text-gray-600 mb-1.5">Show against each item</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[['none', 'Nothing'], ['orderId', 'Order #'], ['name', 'Customer'], ['name_area', 'Customer + Area'], ['all', 'Order # + Customer + Area']].map(([k, label]) => (
+                        <button key={k} type="button" onClick={() => setProcChecklistMode(k)}
+                          className={`text-[11px] font-bold px-2.5 py-1.5 rounded-lg border ${procChecklistMode === k ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-gray-200 text-gray-600'}`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   {groupProcByCategory(procData.products).map((g, gi) => (
                     <div key={gi} className="bg-white rounded-2xl border border-gray-200 p-4">
                       <p className="text-xs font-bold text-gray-500 uppercase mb-2">{g.icon} {g.category}</p>
@@ -4555,6 +4569,15 @@ export default function KoyambeduAdmin() {
                                 <p className="text-xs text-gray-400">{p.orderCount} orders · ₹{p.totalValue?.toFixed(0)} value{p.purchasedByName ? ` · marked by ${p.purchasedByName}` : ''}</p>
                                 {p.fromCombo > 0 && (
                                   <p className="text-[10px] text-purple-600 font-semibold mt-0.5">🧺 includes {p.fromCombo.toFixed(2)} {p.unit} for combos</p>
+                                )}
+                                {procChecklistMode !== 'none' && (p.orders || []).length > 0 && (
+                                  <div className="mt-1 flex flex-wrap gap-1">
+                                    {p.orders.map((o, oi) => (
+                                      <span key={oi} className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">
+                                        {procLabel(o, {}, procChecklistMode)} · {o.quantity.toFixed(2)} {p.unit}
+                                      </span>
+                                    ))}
+                                  </div>
                                 )}
                                 <textarea
                                   value={procCommentDrafts[p.productKey] ?? p.comment ?? ''}
