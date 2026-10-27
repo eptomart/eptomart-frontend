@@ -19,6 +19,7 @@ import {
 } from '../../components/orders/OrderSections';
 import ReorderButton from '../../components/orders/ReorderButton';
 import KoyambeduAddMoreItems from '../../components/orders/KoyambeduAddMoreItems';
+import KoyambeduChangeAddress from '../../components/orders/KoyambeduChangeAddress';
 import { formatINR, formatDate } from '../../utils/currency';
 import api from '../../utils/api';
 
@@ -156,6 +157,11 @@ export default function UnifiedOrderDetail() {
         {/* ── Add More Items (Koyambedu Daily only) ── */}
         {order.vertical === 'koyambedu' && (
           <KoyambeduAddMoreItems order={order} onAdded={loadOrder} />
+        )}
+
+        {/* ── Change delivery address (Koyambedu Daily only) ── */}
+        {order.vertical === 'koyambedu' && (
+          <KoyambeduChangeAddress order={order} onChanged={loadOrder} />
         )}
 
         {/* ── Timeline ── */}
