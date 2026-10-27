@@ -119,6 +119,8 @@ const buildInvoiceHtml = (order, type = 'proforma') => {
   const couponDisc     = r2(calc.couponDiscount || pricing.discount || 0);
   const delivFee       = r2(calc.deliveryCharge || pricing.deliveryCharge || pricing.deliveryFee || 0);
   const platFee        = r2(calc.platformFee || pricing.platformFee || 0);
+  const platFeeOrig    = r2(pricing.originalPlatformFee || 0);
+  const platFeeDisc    = platFeeOrig > platFee ? r2(platFeeOrig - platFee) : 0;
   const platFeeGst     = r2(platFee * 18 / 118); // GST portion extracted from tax-inclusive platform fee
   const packFee        = r2(calc.packingLogisticsFee || pricing.packingLogisticsFee || 0);
   const declinedRefund = r2(calc.declinedRefundAmount || 0);
@@ -134,8 +136,9 @@ const buildInvoiceHtml = (order, type = 'proforma') => {
   const summaryRows = [
     sumRow('Items Subtotal', fmtC(subtotal)),
     delivFee > 0  ? sumRow('Delivery Charge', fmtC(delivFee)) : '',
-    platFee  > 0  ? sumRow('Platform Fee (incl. GST)', fmtC(platFee)) : '',
-    platFeeGst > 0 ? sumRow('&nbsp;&nbsp;GST @18% on Platform Fee (SAC 9985)', fmtC(platFeeGst), '#6b7280') : '',
+    platFeeDisc > 0 ? sumRow('Platform Fee (incl. GST)', fmtC(platFeeOrig)) : (platFee > 0 ? sumRow('Platform Fee (incl. GST)', fmtC(platFee)) : ''),
+    platFeeDisc > 0 ? sumRow('Platform Fee Discount (−)', `&minus; ${fmtC(platFeeDisc)}`, '#16a34a', '#f0fdf4') : '',
+    platFeeGst > 0 ? sumRow(`&nbsp;&nbsp;GST @18% included in ${platFeeDisc > 0 ? 'net ' : ''}Platform Fee ${platFeeDisc > 0 ? `(₹${platFee.toFixed(2)}) ` : ''}(SAC 9985)`, fmtC(platFeeGst), '#6b7280') : '',
     packFee  > 0  ? sumRow('Packing &amp; Logistics', fmtC(packFee)) : '',
     couponDisc > 0 ? sumRow('Coupon Discount (−)', `&minus; ${fmtC(couponDisc)}`, '#16a34a', '#f0fdf4') : '',
     walletAdj > 0  ? sumRow('Wallet Credit Applied (−)', `&minus; ${fmtC(walletAdj)}`, '#16a34a', '#f0fdf4') : '',
