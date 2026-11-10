@@ -15,6 +15,10 @@ const MAIN_TOKEN_KEY = 'eptomart_token';
 // A store owner can use their NORMAL Eptomart login (Profile → Manage Store);
 // legacy manager-password sessions keep working too.
 export const isMainLogin = () => !!localStorage.getItem(MAIN_TOKEN_KEY);
+// Super admin "view as owner": remembers which store's dashboard is open (per tab).
+export const getActAsStore = () => { try { return JSON.parse(sessionStorage.getItem('express_act_as_store') || 'null'); } catch { return null; } };
+export const setActAsStore = (store) => sessionStorage.setItem('express_act_as_store', JSON.stringify({ _id: store._id, name: store.name }));
+export const clearActAsStore = () => sessionStorage.removeItem('express_act_as_store');
 export const getManagerToken = () => localStorage.getItem(MAIN_TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
 export const setManagerToken = (token) => localStorage.setItem(TOKEN_KEY, token);
 export const clearManagerToken = () => localStorage.removeItem(TOKEN_KEY);
@@ -27,6 +31,8 @@ const expressManagerApi = axios.create({
 expressManagerApi.interceptors.request.use((config) => {
   const token = getManagerToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  const actAs = getActAsStore();
+  if (actAs?._id && localStorage.getItem(MAIN_TOKEN_KEY)) config.headers['x-express-store-id'] = actAs._id;
   return config;
 });
 

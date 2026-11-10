@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { FiPlus, FiSearch, FiToggleLeft, FiToggleRight, FiTrash2 } from 'react-icons/fi';
 import expressManagerApi from '../../../utils/expressManagerApi';
+import { DeliverySlotsPanel, DeliveryFeePanel } from '../../../components/express/StoreDeliveryPanels';
 
 const inr = (n) => `₹${Math.round(Number(n) || 0).toLocaleString('en-IN')}`;
 const errMsg = (e, d) => e?.response?.data?.message || d;
@@ -67,12 +68,14 @@ function ItemRow({ it, onSaved }) {
             per {it.unit}{it.category ? ` · ${it.category}` : ''}
             {it.source === 'koyambedu' && it.wholesalePrice ? ` · Koyambedu ${inr(it.wholesalePrice)}` : ''}
             {it.isOwn && <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-bold">My product</span>}
+            {it.approvalStatus === 'pending' && <span className="ml-1 px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 font-bold">Awaiting approval</span>}
+            {it.approvalStatus === 'rejected' && <span className="ml-1 px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold" title={it.approvalNote || ''}>Rejected{it.approvalNote ? `: ${it.approvalNote}` : ''}</span>}
           </p>
         </div>
         {it.inStore && (
           <button disabled={busy} onClick={() => post({ isOnline: !online }, online ? 'Hidden from online shop' : 'Now visible online')}
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold shrink-0 ${online ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-            {online ? <FiToggleRight size={14} /> : <FiToggleLeft size={14} />} {online ? 'Online' : 'Offline only'}
+            {online ? <FiToggleRight size={14} /> : <FiToggleLeft size={14} />} {online ? (it.approvalStatus === 'approved' ? 'Online' : 'Online (not live yet)') : 'Offline only'}
           </button>
         )}
       </div>
@@ -123,6 +126,7 @@ export function OwnerCatalogTab() {
       if (t && !String(it.name || '').toLowerCase().includes(t)) return false;
       if (filter === 'mine') return it.inStore;
       if (filter === 'online') return it.inStore && it.isEnabled;
+      if (filter === 'pending') return it.approvalStatus === 'pending' || it.approvalStatus === 'rejected';
       if (filter === 'koyambedu') return it.source === 'koyambedu' && !it.inStore;
       if (filter === 'own') return it.isOwn;
       return true;
@@ -150,7 +154,8 @@ export function OwnerCatalogTab() {
     } catch (err) { toast.error(errMsg(err, 'Failed to create product')); } finally { setSaving(false); }
   };
 
-  const chips = [['mine', 'In my store'], ['online', 'Online'], ['koyambedu', 'Add from Koyambedu'], ['own', 'My products'], ['all', 'All']];
+  const pendingCount = items.filter(i => i.approvalStatus === 'pending').length;
+  const chips = [['mine', 'In my store'], ['online', 'Online'], ['pending', `Approval${pendingCount ? ` (${pendingCount})` : ''}`], ['koyambedu', 'Add from Koyambedu'], ['own', 'My products'], ['all', 'All']];
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -418,6 +423,59 @@ export function OwnerTeamTab() {
           ))}
           {team.length === 0 && <p className="text-sm text-gray-400">No manager or accountant yet.</p>}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Delivery & store settings (owner) ────────────────────────────────────
+export function OwnerDeliveryTab() {
+  const [store, setStore] = useState(null);
+  const [holdMsg, setHoldMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = () => expressManagerApi.get('/owner/store').then(({ data }) => setStore(data.store)).catch(() => toast.error('Failed to load store settings'));
+  useEffect(() => { load(); }, []);
+  if (!store) return <p className="text-sm text-gray-400">Loading…</p>;
+
+  const toggle = async (path, body, msg) => {
+    setBusy(true);
+    try { await expressManagerApi.patch(`/owner/store/${path}`, body || {}); toast.success(msg); await load(); }
+    catch (e) { toast.error(errMsg(e, 'Failed')); } finally { setBusy(false); }
+  };
+  return (
+    <div className="grid gap-4">
+      <div className="bg-white border rounded-xl p-4">
+        <p className="font-bold text-sm text-gray-800 mb-1">Online shop</p>
+        <p className="text-xs text-gray-500 mb-3">Turn your store's online ordering on or off. Counter (POS) sales are never affected.</p>
+        <button disabled={busy} onClick={() => toggle('toggle-online-shop', {}, store.onlineShopEnabled ? 'Online shop turned OFF' : 'Online shop turned ON')}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold ${store.onlineShopEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+          {store.onlineShopEnabled ? <FiToggleRight size={16} /> : <FiToggleLeft size={16} />} {store.onlineShopEnabled ? 'Online shop is ON' : 'Online shop is OFF'}
+        </button>
+      </div>
+
+      <div className="bg-white border rounded-xl p-4">
+        <p className="font-bold text-sm text-gray-800 mb-1">Busy? Put checkout on hold</p>
+        <p className="text-xs text-gray-500 mb-3">Customers can still browse and fill their cart but can't check out until you resume.</p>
+        {store.isPaused ? (
+          <div>
+            <p className="text-xs text-amber-700 mb-2">On hold{store.pauseMessage ? `: "${store.pauseMessage}"` : ''}</p>
+            <button disabled={busy} onClick={() => toggle('toggle-pause', {}, 'Checkout resumed')} className="px-4 py-2 rounded-lg bg-green-600 text-white text-xs font-bold">Resume checkout</button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <input value={holdMsg} onChange={e => setHoldMsg(e.target.value)} placeholder="Message customers see (optional)" className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px]" />
+            <button disabled={busy} onClick={() => toggle('toggle-pause', { message: holdMsg }, 'Checkout on hold')} className="px-4 py-2 rounded-lg bg-amber-600 text-white text-xs font-bold">Hold checkout</button>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white border rounded-xl p-4">
+        <p className="font-bold text-sm text-gray-800 mb-2">Delivery time slots</p>
+        <DeliverySlotsPanel store={store} onChanged={load} client={expressManagerApi} basePath="/owner/store" />
+      </div>
+      <div className="bg-white border rounded-xl p-4">
+        <p className="font-bold text-sm text-gray-800 mb-2">Delivery fees & range</p>
+        <DeliveryFeePanel store={store} onChanged={load} client={expressManagerApi} basePath="/owner/store" />
       </div>
     </div>
   );

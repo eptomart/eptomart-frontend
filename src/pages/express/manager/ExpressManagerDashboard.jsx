@@ -12,8 +12,8 @@ import {
   FiClipboard, FiPlus, FiTruck, FiAlertTriangle, FiFileText, FiCheckCircle,
   FiBluetooth, FiPrinter, FiBell,
 } from 'react-icons/fi';
-import expressManagerApi, { getManagerToken, clearManagerToken, isMainLogin } from '../../../utils/expressManagerApi';
-import { OwnerOverview, OwnerCatalogTab, OwnerPOSTab, OwnerAccountsTab, OwnerTeamTab } from './ExpressOwnerTabs';
+import expressManagerApi, { getManagerToken, clearManagerToken, isMainLogin, getActAsStore, clearActAsStore } from '../../../utils/expressManagerApi';
+import { OwnerOverview, OwnerCatalogTab, OwnerPOSTab, OwnerAccountsTab, OwnerTeamTab, OwnerDeliveryTab } from './ExpressOwnerTabs';
 import { isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected, printPluList } from '../../../utils/expressThermalPrinter';
 
 const TABS = [
@@ -23,12 +23,13 @@ const TABS = [
   { key: 'catalog',   label: 'My Catalogue', Icon: FiPlus },
   { key: 'staff',     label: 'POS Users', Icon: FiClipboard },
   { key: 'accounts',  label: 'Accounts', Icon: FiFileText },
+  { key: 'delivery',  label: 'Delivery', Icon: FiTruck },
   { key: 'team',      label: 'Team & Alerts', Icon: FiBell },
 ];
 
 // Which tabs each store role may open (backend enforces the same rules)
 const ROLE_TABS = {
-  owner:      ['orders', 'products', 'inventory', 'catalog', 'staff', 'accounts', 'team'],
+  owner:      ['orders', 'products', 'inventory', 'catalog', 'staff', 'accounts', 'delivery', 'team'],
   manager:    ['orders', 'products', 'inventory'],
   accountant: ['orders', 'accounts'],
 };
@@ -39,6 +40,7 @@ export default function ExpressManagerDashboard() {
   const [manager, setManager] = useState(null);
   const [store, setStore] = useState(null);
   const [stats, setStats] = useState(null);
+  const actAs = getActAsStore();
   const role = manager?.role || 'owner';
   const allowed = ROLE_TABS[role] || ROLE_TABS.owner;
   const visibleTabs = TABS.filter(t => allowed.includes(t.key));
@@ -66,6 +68,7 @@ export default function ExpressManagerDashboard() {
 
   const logout = () => {
     // Signed in with the normal Eptomart login → just go back to Profile (stay logged in)
+    if (actAs) { clearActAsStore(); navigate('/admin/express'); return; }
     if (isMainLogin()) { navigate('/profile'); return; }
     clearManagerToken(); navigate('/express/manager/login');
   };
@@ -99,6 +102,12 @@ export default function ExpressManagerDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {actAs && (
+        <div className="bg-amber-100 border-b border-amber-300 px-4 py-2 text-xs text-amber-900 flex items-center justify-between gap-2">
+          <span>👁 Admin view — you are seeing and managing <b>{actAs.name}</b> exactly as its owner does.</span>
+          <button onClick={() => { clearActAsStore(); navigate('/admin/express'); }} className="px-3 py-1 rounded-lg bg-amber-600 text-white font-bold shrink-0">Exit</button>
+        </div>
+      )}
       <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FiZap className="text-amber-500" size={18} />
@@ -159,6 +168,7 @@ export default function ExpressManagerDashboard() {
         {tab === 'catalog'   && <OwnerCatalogTab />}
         {tab === 'staff'     && <OwnerPOSTab />}
         {tab === 'accounts'  && <OwnerAccountsTab />}
+        {tab === 'delivery'  && <OwnerDeliveryTab />}
         {tab === 'team'      && <OwnerTeamTab />}
       </div>
     </div>
