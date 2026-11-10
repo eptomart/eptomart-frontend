@@ -45,30 +45,27 @@ const EXPRESS_CATEGORIES = [
 ];
 
 const TABS = [
-  { key: 'dashboard',  label: 'Dashboard',   Icon: FiGrid },
-  { key: 'orders',     label: 'Orders',      Icon: FiFileText },
-  { key: 'pnl',        label: 'P&L',         Icon: FiTrendingUp },
+  { key: 'dashboard',  label: 'Dashboard',      Icon: FiGrid },
+  { key: 'orders',     label: 'Orders',         Icon: FiFileText },
   { key: 'accounts',   label: 'Store Accounts', Icon: FiDollarSign },
-  { key: 'stores',     label: 'Stores',      Icon: FiMapPin },
-  { key: 'managers',   label: 'Managers',    Icon: FiUserCheck },
-  { key: 'pos',        label: 'POS Users',   Icon: FiUsers },
-  { key: 'products',   label: 'Products',    Icon: FiPackage },
-  { key: 'prodmgmt',   label: 'Product Management', Icon: FiSliders },
-  { key: 'copy',       label: 'Copy Items',  Icon: FiLink2 },
-  { key: 'messages',   label: 'Messages',    Icon: FiClipboard },
-  { key: 'allocation', label: 'Store Inventory', Icon: FiBox },
-  { key: 'online',     label: 'Online Catalog', Icon: FiEye },
-  { key: 'create',     label: 'Create Product/Combo', Icon: FiPlus },
-  { key: 'banners',    label: 'Hero Banners', Icon: FiZap },
-  { key: 'expenses',   label: 'Expenses',    Icon: FiDollarSign },
-  { key: 'carts',      label: 'Carts',       Icon: FiShoppingCart },
-  { key: 'margin',     label: 'Settings', Icon: FiSliders },
-  { key: 'inventory',  label: 'Inventory Requests', Icon: FiClipboard },
+  { key: 'pnl',        label: 'P&L',            Icon: FiTrendingUp },
+  { key: 'stores',     label: 'Stores',         Icon: FiMapPin },
+  { key: 'workspace',  label: 'Manage a Store', Icon: FiBox },
+  { key: 'messages',   label: 'Messages',       Icon: FiClipboard },
+  { key: 'banners',    label: 'Hero Banners',   Icon: FiZap },
+  { key: 'carts',      label: 'Carts',          Icon: FiShoppingCart },
+  { key: 'margin',     label: 'Settings',       Icon: FiSliders },
 ];
+
+// When a tab is rendered inside a Store Workspace it receives exactly one
+// store — pre-select it (the tab's own dropdown then has a single option).
+const lockedId = (stores) => (stores && stores.length === 1 ? stores[0]._id : '');
 
 export default function ExpressAdmin() {
   const [tab, setTab] = useState('dashboard');
   const [stores, setStores] = useState([]); // shared across tabs (managers/pos/products need store dropdowns)
+  const [workspaceStoreId, setWorkspaceStoreId] = useState('');
+  const manageStore = (id) => { setWorkspaceStoreId(id); setTab('workspace'); };
 
   const loadStores = () => {
     api.get('/express/admin/stores').then(r => setStores(r.data.stores || [])).catch(() => {});
@@ -81,7 +78,7 @@ export default function ExpressAdmin() {
         <FiZap className="text-amber-500" /> Eptomart Express — Same-Day Delivery
       </h1>
       <p className="text-sm text-gray-500 mb-4">
-        Manage stores, staff, catalogue and margins. Phase 1: admin setup only — no customer-facing storefront yet.
+        Company-wide view. Products, stock and staff are managed per store — open Manage a Store, pick a store, then work inside it (store owners handle day-to-day).
       </p>
 
       <div className="flex flex-wrap gap-1 rounded-xl p-1 mb-5 w-fit bg-indigo-50">
@@ -96,23 +93,14 @@ export default function ExpressAdmin() {
 
       {tab === 'dashboard'  && <DashboardTab stores={stores} />}
       {tab === 'orders'     && <OrdersTab stores={stores} />}
-      {tab === 'pnl'        && <OrdersPnLTab stores={stores} />}
       {tab === 'accounts'   && <StoreAccountsTab />}
-      {tab === 'stores'    && <StoresTab stores={stores} reload={loadStores} />}
-      {tab === 'managers'  && <ManagersTab stores={stores} />}
-      {tab === 'pos'       && <POSUsersTab stores={stores} />}
-      {tab === 'products'   && <ProductsTab />}
-      {tab === 'prodmgmt'   && <ProductManagementTab stores={stores} />}
-      {tab === 'copy'       && <CopyItemsTab stores={stores} />}
+      {tab === 'pnl'        && <OrdersPnLTab stores={stores} />}
+      {tab === 'stores'     && <StoresTab stores={stores} reload={loadStores} onManage={manageStore} />}
+      {tab === 'workspace'  && <StoreWorkspaceTab stores={stores} reload={loadStores} storeId={workspaceStoreId} setStoreId={setWorkspaceStoreId} />}
       {tab === 'messages'   && <MessagesTab />}
-      {tab === 'allocation' && <StoreInventoryTab stores={stores} />}
-      {tab === 'online'     && <OnlineCatalogTab stores={stores} reload={loadStores} />}
-      {tab === 'create'     && <CreateProductTab />}
       {tab === 'banners'    && <BannersTab />}
-      {tab === 'expenses'   && <ExpensesTab stores={stores} />}
       {tab === 'carts'      && <CartsTab />}
       {tab === 'margin'     && <MarginConfigTab stores={stores} />}
-      {tab === 'inventory'  && <InventoryRequestsTab />}
     </div>
   );
 }
@@ -614,7 +602,7 @@ function OrdersPnLTab({ stores }) {
 // addition lands in the Stock Report like any other.
 // ══════════════════════════════════════════════
 function ProductManagementTab({ stores }) {
-  const [storeId, setStoreId] = useState('');
+  const [storeId, setStoreId] = useState(lockedId(stores));
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -885,8 +873,8 @@ function ProductManagementTab({ stores }) {
 // (availability, price override). Stock is never copied: every target starts
 // at 0. Existing items at a target are skipped unless "overwrite" is ticked.
 // ══════════════════════════════════════════════
-function CopyItemsTab({ stores }) {
-  const [sourceId, setSourceId] = useState('');
+function CopyItemsTab({ stores, sourceStoreId = '' }) {
+  const [sourceId, setSourceId] = useState(sourceStoreId);
   const [targets, setTargets] = useState(new Set());
   const [items, setItems] = useState([]);
   const [mode, setMode] = useState('all'); // 'all' | 'selected'
@@ -1442,7 +1430,7 @@ function DeliveryFeePanel({ store, onChanged }) {
 // ══════════════════════════════════════════════
 // STORES TAB
 // ══════════════════════════════════════════════
-function StoresTab({ stores, reload }) {
+function StoresTab({ stores, reload, onManage }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', code: '', address: '', city: 'Chennai', pincode: '', lat: '', lng: '', notes: '' });
   const [saving, setSaving] = useState(false);
@@ -1597,6 +1585,12 @@ function StoresTab({ stores, reload }) {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
                   <FiDollarSign size={13} /> Delivery Fee
                 </button>
+                {onManage && (
+                  <button onClick={() => onManage(s._id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700">
+                    <FiBox size={13} /> Manage store →
+                  </button>
+                )}
                 <button onClick={() => setOwnerStoreId(id => id === s._id ? null : s._id)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
                   <FiUserCheck size={13} /> Owner
@@ -1712,6 +1706,92 @@ function StoreOwnerPanel({ store }) {
           {saving ? 'Saving…' : owner ? 'Update owner' : 'Assign owner'}
         </button>
       </div>
+      {owner && (
+        <button onClick={async () => {
+          try { await api.put(`/express/admin/managers/${owner._id}`, { isActive: !owner.isActive }); toast.success(owner.isActive ? 'Owner access suspended' : 'Owner access restored'); load(); }
+          catch { toast.error('Failed to update owner'); }
+        }} className={`mt-2 px-3 py-1.5 rounded-lg text-xs font-bold ${owner.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
+          {owner.isActive ? 'Owner access: Active (click to suspend)' : 'Owner access: Suspended (click to restore)'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+
+// ══════════════════════════════════════════════
+// STORE WORKSPACE — everything store-specific lives here. Pick a store
+// first, then manage its owner & POS users, catalogue, stock, online
+// visibility, expenses and requests. Keeps the main admin clean; store
+// owners do the same things for their own store from their Profile.
+// ══════════════════════════════════════════════
+const WS_TABS = [
+  { key: 'people',    label: 'Owner & POS Users' },
+  { key: 'catalog',   label: 'Catalogue & Online' },
+  { key: 'stock',     label: 'Stock' },
+  { key: 'tools',     label: 'Bulk Product Tools' },
+  { key: 'create',    label: 'Create Product/Combo' },
+  { key: 'expenses',  label: 'Expenses' },
+  { key: 'requests',  label: 'Stock Requests' },
+  { key: 'copy',      label: 'Copy Items' },
+  { key: 'costs',     label: 'Shared Product Costs' },
+];
+
+function StoreWorkspaceTab({ stores, reload, storeId, setStoreId }) {
+  const [sub, setSub] = useState('people');
+  const store = stores.find(s => s._id === storeId);
+
+  return (
+    <div>
+      <div className="bg-white border rounded-xl p-3 mb-4 flex flex-wrap items-center gap-3">
+        <p className="text-sm font-bold text-indigo-900">Store</p>
+        <select value={storeId} onChange={e => { setStoreId(e.target.value); setSub('people'); }}
+          className="border rounded-lg px-3 py-2 text-sm min-w-[220px]">
+          <option value="">Select a store…</option>
+          {stores.map(s => <option key={s._id} value={s._id}>{s.name} ({s.code})</option>)}
+        </select>
+        {store && <span className={`text-[11px] font-bold px-2 py-1 rounded-full ${store.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{store.isActive ? 'Active' : 'Inactive'}</span>}
+      </div>
+
+      {!store ? (
+        <div className="text-center py-14 text-gray-400">
+          <FiBox size={32} className="mx-auto mb-2" />
+          <p className="text-sm font-semibold text-gray-500">Select a store to manage its products, stock, staff and expenses.</p>
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-1 mb-4">
+            {WS_TABS.map(t => (
+              <button key={t.key} onClick={() => setSub(t.key)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold ${sub === t.key ? 'bg-indigo-600 text-white' : 'bg-white border text-gray-600'}`}>{t.label}</button>
+            ))}
+          </div>
+
+          {/* key={store._id} remounts each tab cleanly when the store changes */}
+          {sub === 'people' && (
+            <div key={store._id}>
+              <StoreOwnerPanel store={store} />
+              <div className="mt-4"><p className="font-bold text-sm text-gray-700 mb-2">POS users — {store.name}</p>
+                <POSUsersTab stores={[store]} /></div>
+            </div>
+          )}
+          {sub === 'catalog'  && <OnlineCatalogTab key={store._id} stores={[store]} reload={reload} />}
+          {sub === 'stock'    && <StoreInventoryTab key={store._id} stores={[store]} />}
+          {sub === 'tools'    && <ProductManagementTab key={store._id} stores={[store]} />}
+          {sub === 'create'   && <CreateProductTab key={store._id} storeId={store._id} />}
+          {sub === 'expenses' && <ExpensesTab key={store._id} stores={[store]} />}
+          {sub === 'requests' && <InventoryRequestsTab key={store._id} storeId={store._id} />}
+          {sub === 'copy'     && <CopyItemsTab key={store._id} stores={stores} sourceStoreId={store._id} />}
+          {sub === 'costs'    && (
+            <div>
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+                These are company-wide product costs (shared by all stores and used in profit calculations). Changing one affects every store.
+              </p>
+              <ProductsTab />
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -1940,13 +2020,13 @@ function ManagersTab({ stores }) {
 function POSUsersTab({ stores }) {
   const [posUsers, setPosUsers] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', phone: '', pin: '', storeId: '' });
+  const [form, setForm] = useState({ name: '', phone: '', pin: '', storeId: lockedId(stores) });
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [editSaving, setEditSaving] = useState(false);
 
-  const load = () => api.get('/express/admin/pos-users').then(r => setPosUsers(r.data.posUsers || [])).catch(() => {});
+  const load = () => api.get('/express/admin/pos-users', { params: lockedId(stores) ? { storeId: lockedId(stores) } : {} }).then(r => setPosUsers(r.data.posUsers || [])).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const submit = async (e) => {
@@ -1957,7 +2037,7 @@ function POSUsersTab({ stores }) {
     try {
       await api.post('/express/admin/pos-users', form);
       toast.success('POS user created');
-      setForm({ name: '', phone: '', pin: '', storeId: '' });
+      setForm({ name: '', phone: '', pin: '', storeId: lockedId(stores) });
       setShowForm(false);
       load();
     } catch (err) {
@@ -2423,7 +2503,7 @@ function ProductsTab() {
 // controls what the customer-facing Express shop displays and at what
 // price. One "Save All" action for the whole screen, not a click per row.
 function OnlineCatalogTab({ stores, reload }) {
-  const [storeId, setStoreId] = useState('');
+  const [storeId, setStoreId] = useState(lockedId(stores));
   const [storeName, setStoreName] = useState('');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -2677,7 +2757,7 @@ function OnlineCatalogTab({ stores, reload }) {
 // Category here is a simple free-text field scoped to Express only — see
 // EXPRESS_CATEGORIES below for the fixed list including "Combos".
 // ══════════════════════════════════════════════
-function CreateProductTab() {
+function CreateProductTab({ storeId = '' }) {
   const blankForm = { name: '', category: '', unit: 'kg', procurementBaseCost: '', minOrderQty: '', maxOrderQty: '', description: '', isCombo: false };
   const [form, setForm] = useState(blankForm);
   const [comboContents, setComboContents] = useState([]); // [{ product, name, unit, qty }]
@@ -2753,7 +2833,7 @@ function CreateProductTab() {
         isCombo: form.isCombo,
         comboContents: form.isCombo ? comboContents.map(c => ({ product: c.product, name: c.name, unit: c.unit, qty: Number(c.qty) || 0 })) : [],
       };
-      const { data } = await api.post('/express/admin/products/native', payload);
+      const { data } = await api.post('/express/admin/products/native', storeId ? { ...payload, ownerStore: storeId } : payload);
       toast.success(`"${form.name}" created — go to Online Catalog to enable it for a store and set its price.`);
       setRecentlyCreated(c => [{ _id: data.product._id, name: data.product.name, isCombo: form.isCombo }, ...c].slice(0, 5));
       resetForm();
@@ -3158,7 +3238,7 @@ function BannersTab() {
 }
 
 function StoreInventoryTab({ stores }) {
-  const [storeId, setStoreId] = useState('');
+  const [storeId, setStoreId] = useState(lockedId(stores));
   const [products, setProducts] = useState([]);       // master Express catalogue
   const [storeProducts, setStoreProducts] = useState([]); // this store's stock/availability rows
   const [loading, setLoading] = useState(false);
@@ -3630,10 +3710,10 @@ function StoreInventoryTab({ stores }) {
 // ══════════════════════════════════════════════
 function ExpensesTab({ stores }) {
   const [expenses, setExpenses] = useState([]);
-  const [form, setForm] = useState({ storeId: '', category: 'other', amount: '', note: '', date: new Date().toISOString().slice(0, 10) });
+  const [form, setForm] = useState({ storeId: lockedId(stores), category: 'other', amount: '', note: '', date: new Date().toISOString().slice(0, 10) });
   const [saving, setSaving] = useState(false);
 
-  const load = () => api.get('/express/admin/expenses').then(r => setExpenses(r.data.expenses || [])).catch(() => {});
+  const load = () => api.get('/express/admin/expenses', { params: lockedId(stores) ? { storeId: lockedId(stores) } : {} }).then(r => setExpenses(r.data.expenses || [])).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const submit = async (e) => {
@@ -3643,7 +3723,7 @@ function ExpensesTab({ stores }) {
     try {
       await api.post('/express/admin/expenses', form);
       toast.success('Expense recorded');
-      setForm({ storeId: '', category: 'other', amount: '', note: '', date: new Date().toISOString().slice(0, 10) });
+      setForm({ storeId: lockedId(stores), category: 'other', amount: '', note: '', date: new Date().toISOString().slice(0, 10) });
       load();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to record expense');
@@ -3996,10 +4076,13 @@ function MarginConfigTab({ stores }) {
 // ══════════════════════════════════════════════
 // INVENTORY REQUESTS TAB
 // ══════════════════════════════════════════════
-function InventoryRequestsTab() {
+function InventoryRequestsTab({ storeId = '' }) {
   const [requests, setRequests] = useState([]);
 
-  const load = () => api.get('/express/admin/inventory-requests').then(r => setRequests(r.data.requests || [])).catch(() => {});
+  const load = () => api.get('/express/admin/inventory-requests').then(r => {
+    const all = r.data.requests || [];
+    setRequests(storeId ? all.filter(q => String(q.store?._id || q.store) === String(storeId)) : all);
+  }).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const approve = async (id) => {
