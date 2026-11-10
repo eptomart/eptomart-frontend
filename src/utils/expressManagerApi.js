@@ -42,7 +42,7 @@ expressManagerApi.interceptors.response.use(
     const message = error.response?.data?.message || 'Something went wrong';
     if (error.response?.status === 401 || (error.response?.status === 403 && /not a store owner/i.test(message))) {
       clearManagerToken();
-      if (window.location.pathname.startsWith('/express/manager') && !window.location.pathname.endsWith('/login')) {
+      if ((window.location.pathname.startsWith('/express/manager') || window.location.pathname.startsWith('/express/owner')) && !window.location.pathname.endsWith('/login')) {
         window.location.href = isMainLogin() ? '/profile' : '/express/manager/login';
       }
     } else if (error.response?.status >= 500) {

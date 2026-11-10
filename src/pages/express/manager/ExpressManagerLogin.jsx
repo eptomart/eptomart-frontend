@@ -22,7 +22,7 @@ export default function ExpressManagerLogin() {
       const { data } = await expressManagerApi.post('/login', { phone, password });
       setManagerToken(data.token);
       toast.success(`Welcome, ${data.manager.name}`);
-      navigate('/express/manager');
+      navigate('/express/manager');  // owners are forwarded to /express/owner by the dashboard
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Login failed');
     } finally {

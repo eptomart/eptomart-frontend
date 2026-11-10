@@ -54,7 +54,7 @@ export default function ExpressManagerDashboard() {
 
   useEffect(() => {
     if (!getManagerToken()) { navigate('/login'); return; }
-    expressManagerApi.get('/me').then(({ data }) => { setManager(data.manager); const r = data.manager?.role || 'owner'; if (!(ROLE_TABS[r] || []).includes('orders')) setTab((ROLE_TABS[r] || ['orders'])[0]); }).catch(() => {});
+    expressManagerApi.get('/me').then(({ data }) => { setManager(data.manager); const r = data.manager?.role || 'owner'; if (r === 'owner' && !new URLSearchParams(window.location.search).get('classic')) { navigate('/express/owner', { replace: true }); return; } if (!(ROLE_TABS[r] || []).includes('orders')) setTab((ROLE_TABS[r] || ['orders'])[0]); }).catch(() => {});
     expressManagerApi.get('/store').then(({ data }) => setStore(data.store)).catch(() => {});
     expressManagerApi.get('/dashboard').then(({ data }) => setStats(data.stats)).catch(() => {});
   }, []);
@@ -188,7 +188,7 @@ const NEXT_LABEL = {
   out_for_delivery: 'Mark Delivered',
 };
 
-function OrdersTab({ readOnly = false }) {
+export function OrdersTab({ readOnly = false }) {
   const [orders, setOrders] = useState([]);
   const [expenseForm, setExpenseForm] = useState({}); // orderId -> { partner, amount }
 
@@ -328,7 +328,7 @@ function DeclinePanel({ order, onDone }) {
   );
 }
 
-function ProductsTab() {
+export function ProductsTab() {
   const [storeProducts, setStoreProducts] = useState([]);
   const [lossOpenId, setLossOpenId] = useState(null);
   const [lossForm, setLossForm] = useState({ qty: '', reason: '' });
@@ -482,7 +482,7 @@ function ProductsTab() {
   );
 }
 
-function InventoryTab() {
+export function InventoryTab() {
   const [requests, setRequests] = useState([]);
   const [products, setProducts] = useState([]);
   const [showForm, setShowForm] = useState(false);

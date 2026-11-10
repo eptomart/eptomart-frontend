@@ -883,7 +883,7 @@ export default function Profile() {
         </div>
 
         {ownedStore && (
-          <Link to="/express/manager" className="card p-4 mb-3 flex items-center gap-3 border-2 border-indigo-200 hover:border-indigo-400 transition-all">
+          <Link to={ownedStore.role === 'manager' || ownedStore.role === 'accountant' ? '/express/manager' : '/express/owner'} className="card p-4 mb-3 flex items-center gap-3 border-2 border-indigo-200 hover:border-indigo-400 transition-all">
             <FiShoppingBag size={22} className="text-indigo-600" />
             <div className="flex-1">
               <p className="font-bold text-gray-800 text-sm">Manage Store</p>

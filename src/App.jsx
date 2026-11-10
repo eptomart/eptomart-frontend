@@ -85,6 +85,7 @@ const ExpressMyOrders         = lazy(() => import('./pages/express/ExpressMyOrde
 const ExpressInvoice          = lazy(() => import('./pages/express/ExpressInvoice'));
 const ExpressManagerLogin     = lazy(() => import('./pages/express/manager/ExpressManagerLogin'));
 const ExpressManagerDashboard = lazy(() => import('./pages/express/manager/ExpressManagerDashboard'));
+const ExpressOwnerDashboard   = lazy(() => import('./pages/express/manager/ExpressOwnerDashboard'));
 const ExpressPOSLogin         = lazy(() => import('./pages/express/pos/ExpressPOSLogin'));
 const ExpressPOSTerminal      = lazy(() => import('./pages/express/pos/ExpressPOSTerminal'));
 
@@ -195,7 +196,7 @@ const SellerRoute = ({ children }) => {
 // prompt, compare bar) should be reachable from them, so staff on a shared
 // counter device can't wander off into the storefront.
 const isExpressStaffScreen = (pathname) =>
-  pathname.startsWith('/express/manager') || pathname.startsWith('/express/pos');
+  pathname.startsWith('/express/manager') || pathname.startsWith('/express/owner') || pathname.startsWith('/express/pos');
 
 function GlobalBottomNav() {
   const { pathname } = useLocation();
@@ -340,6 +341,7 @@ function AppRoutes() {
           <Route path="/express/invoice/:orderId" element={<ProtectedRoute><ExpressInvoice /></ProtectedRoute>} />
           <Route path="/express/manager/login" element={<ExpressManagerLogin />} />
           <Route path="/express/manager"       element={<ExpressManagerDashboard />} />
+          <Route path="/express/owner"         element={<ExpressOwnerDashboard />} />
           <Route path="/express/pos/login" element={<ExpressPOSLogin />} />
           <Route path="/express/pos"       element={<ExpressPOSTerminal />} />
 

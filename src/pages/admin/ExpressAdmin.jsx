@@ -1563,7 +1563,7 @@ function StoreWorkspaceTab({ stores, reload, storeId, setStoreId }) {
         </select>
         {store && <span className={`text-[11px] font-bold px-2 py-1 rounded-full ${store.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{store.isActive ? 'Active' : 'Inactive'}</span>}
         {store && (
-          <button onClick={() => { setActAsStore(store); window.location.assign('/express/manager'); }}
+          <button onClick={() => { setActAsStore(store); window.location.assign('/express/owner'); }}
             className="ml-auto px-3 py-2 rounded-lg bg-amber-500 text-white text-xs font-bold hover:bg-amber-600">
             👁 Open owner dashboard →
           </button>

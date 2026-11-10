@@ -134,6 +134,15 @@ export function OwnerCatalogTab() {
   }, [items, q, filter]);
   useEffect(() => { setLimit(40); }, [q, filter]);
 
+  // Products already in the catalogue with a similar name — suggest using
+  // them instead of creating a duplicate.
+  const similar = useMemo(() => {
+    const t = form.name.trim().toLowerCase();
+    if (t.length < 2) return [];
+    return items.filter(it => it.source !== 'own' && String(it.name || '').toLowerCase().includes(t)).slice(0, 4);
+  }, [form.name, items]);
+  const pickExisting = (name) => { setShowNew(false); setForm(blank); setQ(name); setFilter('all'); toast.success('Add it to your store from the list below'); };
+
   const createOwn = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error('Enter the product name');
@@ -145,14 +154,24 @@ export function OwnerCatalogTab() {
         ...(form.gstRate !== '' ? { gstRate: form.gstRate } : {}), ...(form.hsnCode.trim() ? { hsnCode: form.hsnCode.trim() } : {}),
       });
       if (form.price !== '' || form.stock !== '' || form.online) {
-        await expressManagerApi.post('/owner/items', {
-          expressProductId: data.product._id, price: form.price !== '' ? form.price : undefined,
-          addStock: form.stock !== '' ? form.stock : undefined, isOnline: form.online,
-        });
+        try {
+          await expressManagerApi.post('/owner/items', {
+            expressProductId: data.product._id, price: form.price !== '' ? form.price : undefined,
+            addStock: form.stock !== '' ? form.stock : undefined, isOnline: form.online,
+          });
+        } catch (e2) {
+          toast.error(`Product created, but adding it to your store failed: ${errMsg(e2, 'try "Add to my store" from My products')}`);
+          setForm(blank); setShowNew(false); setFilter('own'); load();
+          return;
+        }
       }
       toast.success('Product created and added to your store');
       setForm(blank); setShowNew(false); setFilter('own'); load();
-    } catch (err) { toast.error(errMsg(err, 'Failed to create product')); } finally { setSaving(false); }
+    } catch (err) {
+      const d = err?.response?.data;
+      if (d?.duplicate && d.matches?.length) { toast(d.message, { icon: '💡', duration: 6000 }); pickExisting(d.matches[0].name); }
+      else toast.error(errMsg(err, 'Failed to create product'));
+    } finally { setSaving(false); }
   };
 
   const pendingCount = items.filter(i => i.approvalStatus === 'pending').length;
@@ -176,6 +195,17 @@ export function OwnerCatalogTab() {
         <form onSubmit={createOwn} className="bg-white border rounded-xl p-3 mb-3 grid grid-cols-2 gap-2">
           <p className="col-span-2 text-xs font-bold text-indigo-900">Create your own product (visible only in your store)</p>
           <input placeholder="Product name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm col-span-2" />
+          {similar.length > 0 && (
+            <div className="col-span-2 bg-amber-50 border border-amber-200 rounded-lg p-2">
+              <p className="text-[11px] font-bold text-amber-800 mb-1">Already in the catalogue — use the same product instead?</p>
+              {similar.map(it => (
+                <div key={it.koyambeduProductId || it.expressProductId} className="flex items-center justify-between gap-2 py-0.5">
+                  <span className="text-xs text-gray-700 truncate">{it.name} <span className="text-gray-400">· per {it.unit}{it.inStore ? ' · already in your store' : ''}</span></span>
+                  <button type="button" onClick={() => pickExisting(it.name)} className="px-2 py-1 rounded-md bg-amber-600 text-white text-[11px] font-bold shrink-0">{it.inStore ? 'Open' : 'Use this'}</button>
+                </div>
+              ))}
+            </div>
+          )}
           <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm">
             {UNITS.map(u => <option key={u} value={u}>per {u}</option>)}
           </select>
