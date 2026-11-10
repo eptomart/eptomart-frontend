@@ -271,7 +271,14 @@ export default function ExpressShop() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [banners.length]);
   useEffect(() => {
-    bannerCardRefs.current[bannerIndex]?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+    // Scroll ONLY the banner strip, sideways. (scrollIntoView also scrolls the
+    // whole page to keep the banner on screen, which yanked the product list
+    // back up every 4.5 s whenever the customer had scrolled down.)
+    const box = bannerScrollRef.current;
+    const card = bannerCardRefs.current[bannerIndex];
+    if (!box || !card) return;
+    const left = box.scrollLeft + card.getBoundingClientRect().left - box.getBoundingClientRect().left - (parseFloat(getComputedStyle(box).paddingLeft) || 0);
+    box.scrollTo({ left, behavior: 'smooth' });
   }, [bannerIndex]);
 
   const qtyInCart = (productId) => cart.items?.find(i => String(i.product) === String(productId))?.quantity || 0;
