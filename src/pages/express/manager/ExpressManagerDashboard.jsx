@@ -13,12 +13,16 @@ import {
   FiBluetooth, FiPrinter,
 } from 'react-icons/fi';
 import expressManagerApi, { getManagerToken, clearManagerToken } from '../../../utils/expressManagerApi';
+import { OwnerOverview, OwnerCatalogTab, OwnerPOSTab, OwnerAccountsTab } from './ExpressOwnerTabs';
 import { isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected, printPluList } from '../../../utils/expressThermalPrinter';
 
 const TABS = [
   { key: 'orders',    label: 'Orders',    Icon: FiPackage },
   { key: 'products',  label: 'Products',  Icon: FiGrid },
   { key: 'inventory', label: 'Inventory', Icon: FiClipboard },
+  { key: 'catalog',   label: 'My Catalogue', Icon: FiPlus },
+  { key: 'staff',     label: 'Counter Staff', Icon: FiClipboard },
+  { key: 'accounts',  label: 'Accounts', Icon: FiFileText },
 ];
 
 export default function ExpressManagerDashboard() {
@@ -107,6 +111,7 @@ export default function ExpressManagerDashboard() {
       </header>
 
       <div className="p-4 max-w-3xl mx-auto">
+        <OwnerOverview />
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             {[
@@ -123,7 +128,7 @@ export default function ExpressManagerDashboard() {
           </div>
         )}
 
-        <div className="flex gap-1 rounded-xl p-1 mb-4 w-fit bg-indigo-50">
+        <div className="flex flex-wrap gap-1 rounded-xl p-1 mb-4 w-fit bg-indigo-50">
           {TABS.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-colors"
@@ -136,6 +141,9 @@ export default function ExpressManagerDashboard() {
         {tab === 'orders'    && <OrdersTab />}
         {tab === 'products'  && <ProductsTab />}
         {tab === 'inventory' && <InventoryTab />}
+        {tab === 'catalog'   && <OwnerCatalogTab />}
+        {tab === 'staff'     && <OwnerPOSTab />}
+        {tab === 'accounts'  && <OwnerAccountsTab />}
       </div>
     </div>
   );
@@ -293,7 +301,7 @@ function ProductsTab() {
               <div key={l._id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-gray-700 truncate">
-                    {l.product?.koyambeduProduct?.name || 'Product'} — <span className="text-green-600">+{l.qty}</span>
+                    {l.product?.koyambeduProduct?.name || l.product?.name || 'Product'} — <span className="text-green-600">+{l.qty}</span>
                   </p>
                   <p className="text-[11px] text-gray-400">Added by {l.actorName} on {new Date(l.createdAt).toLocaleString('en-IN')}</p>
                 </div>
@@ -317,7 +325,7 @@ function ProductsTab() {
             <div key={l._id} className="flex items-center justify-between px-3 py-2 text-xs">
               <div className="min-w-0">
                 <p className="font-semibold text-gray-700 truncate">
-                  {l.product?.koyambeduProduct?.name || 'Product'} —{' '}
+                  {l.product?.koyambeduProduct?.name || l.product?.name || 'Product'} —{' '}
                   <span className={l.type === 'addition' ? 'text-green-600' : 'text-red-600'}>{l.type === 'addition' ? '+' : '−'}{l.qty}</span>
                 </p>
                 <p className="text-gray-400">{l.actorName}{l.reason ? ` — ${l.reason}` : ''}</p>
@@ -334,7 +342,7 @@ function ProductsTab() {
           <div key={sp._id} className="bg-white border rounded-xl p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-bold text-sm text-gray-800">{sp.product?.koyambeduProduct?.name}</p>
+                <p className="font-bold text-sm text-gray-800">{sp.product?.koyambeduProduct?.name || sp.product?.name}</p>
                 <p className="text-xs text-gray-400">Stock: {sp.stockQty} {sp.product?.unit}</p>
               </div>
               <div className="flex items-center gap-2">
@@ -409,7 +417,7 @@ function InventoryTab() {
               <select value={it.product} onChange={e => setItems(arr => arr.map((x, j) => j === i ? { ...x, product: e.target.value } : x))}
                 className="border rounded-lg px-2 py-1.5 text-sm flex-1">
                 <option value="">Select product…</option>
-                {products.map(p => <option key={p._id} value={p._id}>{p.koyambeduProduct?.name}</option>)}
+                {products.map(p => <option key={p._id} value={p._id}>{p.koyambeduProduct?.name || p.name}</option>)}
               </select>
               <input placeholder="Qty" type="number" value={it.requestedQty}
                 onChange={e => setItems(arr => arr.map((x, j) => j === i ? { ...x, requestedQty: e.target.value } : x))}
@@ -433,7 +441,7 @@ function InventoryTab() {
                 r.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{r.status}</span>
             </div>
             <ul className="text-xs text-gray-600">
-              {r.items?.map((it, i) => <li key={i}>{it.product?.koyambeduProduct?.name} — {it.requestedQty} requested{it.allocatedQty != null ? `, ${it.allocatedQty} allocated` : ''}</li>)}
+              {r.items?.map((it, i) => <li key={i}>{it.product?.koyambeduProduct?.name || it.product?.name} — {it.requestedQty} requested{it.allocatedQty != null ? `, ${it.allocatedQty} allocated` : ''}</li>)}
             </ul>
           </div>
         ))}

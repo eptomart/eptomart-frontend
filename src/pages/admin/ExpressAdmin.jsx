@@ -48,6 +48,7 @@ const TABS = [
   { key: 'dashboard',  label: 'Dashboard',   Icon: FiGrid },
   { key: 'orders',     label: 'Orders',      Icon: FiFileText },
   { key: 'pnl',        label: 'P&L',         Icon: FiTrendingUp },
+  { key: 'accounts',   label: 'Store Accounts', Icon: FiDollarSign },
   { key: 'stores',     label: 'Stores',      Icon: FiMapPin },
   { key: 'managers',   label: 'Managers',    Icon: FiUserCheck },
   { key: 'pos',        label: 'POS Users',   Icon: FiUsers },
@@ -96,6 +97,7 @@ export default function ExpressAdmin() {
       {tab === 'dashboard'  && <DashboardTab stores={stores} />}
       {tab === 'orders'     && <OrdersTab stores={stores} />}
       {tab === 'pnl'        && <OrdersPnLTab stores={stores} />}
+      {tab === 'accounts'   && <StoreAccountsTab />}
       {tab === 'stores'    && <StoresTab stores={stores} reload={loadStores} />}
       {tab === 'managers'  && <ManagersTab stores={stores} />}
       {tab === 'pos'       && <POSUsersTab stores={stores} />}
@@ -1499,6 +1501,7 @@ function StoresTab({ stores, reload }) {
   const [waitlistStoreId, setWaitlistStoreId] = useState(null); // which store's waitlist panel is open
   const [slotsStoreId, setSlotsStoreId] = useState(null); // which store's delivery-slots panel is open
   const [feeStoreId, setFeeStoreId] = useState(null); // which store's delivery-fee panel is open
+  const [ownerStoreId, setOwnerStoreId] = useState(null); // which store's owner panel is open
 
   const openEdit = (s) => {
     setEditId(s._id);
@@ -1594,6 +1597,10 @@ function StoresTab({ stores, reload }) {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
                   <FiDollarSign size={13} /> Delivery Fee
                 </button>
+                <button onClick={() => setOwnerStoreId(id => id === s._id ? null : s._id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
+                  <FiUserCheck size={13} /> Owner
+                </button>
                 <button onClick={() => toggleActive(s._id)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${s.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                   {s.isActive ? <FiToggleRight size={16} /> : <FiToggleLeft size={16} />} {s.isActive ? 'Active' : 'Inactive'}
@@ -1618,6 +1625,7 @@ function StoresTab({ stores, reload }) {
 
             {slotsStoreId === s._id && <DeliverySlotsPanel store={s} onChanged={reload} />}
             {feeStoreId === s._id && <DeliveryFeePanel store={s} onChanged={reload} />}
+            {ownerStoreId === s._id && <StoreOwnerPanel store={s} />}
 
             {/* Who's waiting to order — shown whenever anyone has hit the
                 checkout gate for this store, whether it's paused right now
@@ -1653,6 +1661,166 @@ function StoresTab({ stores, reload }) {
         ))}
         {stores.length === 0 && <p className="text-sm text-gray-400">No stores yet — add your first one above.</p>}
       </div>
+    </div>
+  );
+}
+
+
+// ══════════════════════════════════════════════
+// STORE OWNER PANEL — assign a mobile number as this store's owner
+// The owner logs in at /express/manager/login (mobile + password) and can
+// run the store: catalogue, online visibility, POS staff and accounts.
+// ══════════════════════════════════════════════
+function StoreOwnerPanel({ store }) {
+  const [owner, setOwner] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+  const [form, setForm] = useState({ phone: '', name: '', password: '' });
+  const [saving, setSaving] = useState(false);
+  const [issued, setIssued] = useState(null); // { phone, password } shown once
+
+  const load = () => api.get('/express/admin/managers').then(r => {
+    const m = (r.data.managers || []).find(x => String(x.store?._id || x.store) === String(store._id));
+    setOwner(m || null);
+    if (m) setForm(f => ({ ...f, phone: m.phone, name: m.name }));
+    setLoaded(true);
+  }).catch(() => setLoaded(true));
+  useEffect(() => { load(); }, [store._id]);
+
+  const save = async (resetPassword = false) => {
+    if (!/^[6-9]\d{9}$/.test(form.phone)) return toast.error('Enter a valid 10-digit mobile number');
+    setSaving(true);
+    try {
+      const { data } = await api.post(`/express/admin/stores/${store._id}/owner`, { ...form, resetPassword });
+      toast.success(owner ? 'Owner updated' : 'Owner assigned');
+      setIssued(data.generatedPassword ? { phone: form.phone, password: data.generatedPassword } : form.password ? { phone: form.phone, password: form.password } : null);
+      setForm(f => ({ ...f, password: '' }));
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to assign owner');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="mt-3 p-3 rounded-xl bg-indigo-50/60 border border-indigo-100">
+      <p className="text-xs font-bold text-indigo-900 mb-1">Store owner</p>
+      <p className="text-[11px] text-gray-500 mb-2">
+        {loaded && owner ? `Current owner: ${owner.name} · ${owner.phone}${owner.isActive ? '' : ' (suspended)'}` : 'No owner yet — enter a mobile number to make someone the owner.'}
+        {' '}They log in at <b>/express/manager/login</b> with this mobile + password and can manage products, online visibility, POS staff and accounts for this store.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <input placeholder="Owner mobile (10 digits)" value={form.phone} maxLength={10}
+          onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, '') }))} className="border rounded-lg px-3 py-2 text-sm bg-white" />
+        <input placeholder="Owner name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm bg-white" />
+        <input placeholder={owner ? 'New password (optional)' : 'Password (blank = auto-generate)'} value={form.password}
+          onChange={e => setForm(f => ({ ...f, password: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm bg-white" />
+      </div>
+      <div className="flex flex-wrap gap-2 mt-2">
+        <button onClick={() => save(false)} disabled={saving} className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">
+          {saving ? 'Saving…' : owner ? 'Update owner' : 'Assign owner'}
+        </button>
+        {owner && (
+          <button onClick={() => save(true)} disabled={saving} className="px-4 py-1.5 rounded-lg border text-xs font-bold bg-white disabled:opacity-50">
+            Reset password (auto)
+          </button>
+        )}
+      </div>
+      {issued && (
+        <div className="mt-2 p-2 rounded-lg bg-green-50 border border-green-200 text-xs text-green-800">
+          Share these login details now (password is shown only once):<br />
+          Mobile <b>{issued.phone}</b> · Password <b>{issued.password}</b>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
+// STORE ACCOUNTS TAB — every store's accounts + store-wise profit
+// ══════════════════════════════════════════════
+function StoreAccountsTab() {
+  const [range, setRange] = useState({ from: '', to: '' });
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const inr = (n) => `₹${Math.round(Number(n) || 0).toLocaleString('en-IN')}`;
+
+  const load = () => {
+    setLoading(true);
+    const params = {};
+    if (range.from) params.from = range.from;
+    if (range.to) params.to = `${range.to}T23:59:59`;
+    api.get('/express/admin/accounts/stores', { params })
+      .then(r => setData(r.data)).catch(() => toast.error('Failed to load store accounts'))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, []);
+
+  const colour = (n) => (n < 0 ? 'text-red-600' : 'text-green-700');
+  return (
+    <div>
+      <div className="flex flex-wrap items-end gap-2 mb-4">
+        <div><p className="text-[11px] text-gray-500">From</p>
+          <input type="date" value={range.from} onChange={e => setRange(r => ({ ...r, from: e.target.value }))} className="border rounded-lg px-2 py-1.5 text-sm" /></div>
+        <div><p className="text-[11px] text-gray-500">To</p>
+          <input type="date" value={range.to} onChange={e => setRange(r => ({ ...r, to: e.target.value }))} className="border rounded-lg px-2 py-1.5 text-sm" /></div>
+        <button onClick={load} disabled={loading} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">{loading ? 'Loading…' : 'Apply'}</button>
+        {(range.from || range.to) && <button onClick={() => { setRange({ from: '', to: '' }); setTimeout(load, 0); }} className="px-3 py-2 rounded-lg border text-sm">All time</button>}
+      </div>
+
+      {data && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            {[
+              ['Total revenue', inr(data.totals.revenue), ''],
+              ['Online revenue', inr(data.totals.onlineRevenue), ''],
+              ['Online profit', inr(data.totals.onlineProfit), colour(data.totals.onlineProfit)],
+              ['Net profit (all)', inr(data.totals.netProfit), colour(data.totals.netProfit)],
+            ].map(([l, v, c]) => (
+              <div key={l} className="bg-white border rounded-xl p-3">
+                <p className="text-xs text-gray-400">{l}</p>
+                <p className={`text-lg font-black ${c || 'text-indigo-900'}`}>{v}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-3">
+            {data.rows.map(r => (
+              <div key={r.storeId} className="bg-white border rounded-xl p-4">
+                <div className="flex items-start justify-between flex-wrap gap-2 mb-3">
+                  <div>
+                    <p className="font-bold text-gray-800">{r.name} <span className="text-xs text-gray-400 font-normal">{r.code}</span></p>
+                    <p className="text-xs text-gray-500">{r.owner ? `Owner: ${r.owner.name} · ${r.owner.phone}` : 'No owner assigned'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[11px] text-gray-400">Net profit</p>
+                    <p className={`text-xl font-black ${colour(r.netProfit)}`}>{inr(r.netProfit)}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  {[
+                    ['Online revenue', `${inr(r.onlineRevenue)} · ${r.onlineOrders} orders`],
+                    ['Online profit', inr(r.onlineProfit), colour(r.onlineProfit)],
+                    ['Offline (POS) revenue', `${inr(r.posRevenue)} · ${r.posBills} bills`],
+                    ['Cost of goods', inr(r.cogs)],
+                    ['Losses / wastage', inr(r.lossValue)],
+                    ['Expenses', inr(r.expenses)],
+                    ['Total revenue', inr(r.revenue)],
+                  ].map(([l, v, c]) => (
+                    <div key={l} className="rounded-lg bg-gray-50 px-2.5 py-2">
+                      <p className="text-gray-400">{l}</p>
+                      <p className={`font-bold ${c || 'text-gray-800'}`}>{v}</p>
+                    </div>
+                  ))}
+                </div>
+                {r.onlinePendingCharges > 0 && (
+                  <p className="text-[11px] text-amber-700 mt-2">{r.onlinePendingCharges} online bill(s) still need transport/packing charges entered (Orders tab) for exact online profit.</p>
+                )}
+              </div>
+            ))}
+            {data.rows.length === 0 && <p className="text-sm text-gray-400">No stores yet.</p>}
+          </div>
+          <p className="text-[11px] text-gray-400 mt-3">Online profit = paid online orders − procurement − transport − packing − gateway fee. Net profit = online + offline revenue − cost of goods − losses − expenses.</p>
+        </>
+      )}
     </div>
   );
 }
