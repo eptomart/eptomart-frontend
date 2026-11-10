@@ -1674,26 +1674,23 @@ function StoresTab({ stores, reload }) {
 function StoreOwnerPanel({ store }) {
   const [owner, setOwner] = useState(null);
   const [loaded, setLoaded] = useState(false);
-  const [form, setForm] = useState({ phone: '', name: '', password: '' });
+  const [form, setForm] = useState({ phone: '', name: '' });
   const [saving, setSaving] = useState(false);
-  const [issued, setIssued] = useState(null); // { phone, password } shown once
 
   const load = () => api.get('/express/admin/managers').then(r => {
     const m = (r.data.managers || []).find(x => String(x.store?._id || x.store) === String(store._id));
     setOwner(m || null);
-    if (m) setForm(f => ({ ...f, phone: m.phone, name: m.name }));
+    if (m) setForm({ phone: m.phone, name: m.name });
     setLoaded(true);
   }).catch(() => setLoaded(true));
   useEffect(() => { load(); }, [store._id]);
 
-  const save = async (resetPassword = false) => {
+  const save = async () => {
     if (!/^[6-9]\d{9}$/.test(form.phone)) return toast.error('Enter a valid 10-digit mobile number');
     setSaving(true);
     try {
-      const { data } = await api.post(`/express/admin/stores/${store._id}/owner`, { ...form, resetPassword });
+      await api.post(`/express/admin/stores/${store._id}/owner`, form);
       toast.success(owner ? 'Owner updated' : 'Owner assigned');
-      setIssued(data.generatedPassword ? { phone: form.phone, password: data.generatedPassword } : form.password ? { phone: form.phone, password: form.password } : null);
-      setForm(f => ({ ...f, password: '' }));
       load();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to assign owner');
@@ -1704,32 +1701,17 @@ function StoreOwnerPanel({ store }) {
     <div className="mt-3 p-3 rounded-xl bg-indigo-50/60 border border-indigo-100">
       <p className="text-xs font-bold text-indigo-900 mb-1">Store owner</p>
       <p className="text-[11px] text-gray-500 mb-2">
-        {loaded && owner ? `Current owner: ${owner.name} · ${owner.phone}${owner.isActive ? '' : ' (suspended)'}` : 'No owner yet — enter a mobile number to make someone the owner.'}
-        {' '}They log in at <b>/express/manager/login</b> with this mobile + password and can manage products, online visibility, POS staff and accounts for this store.
+        {loaded && owner ? `Current owner: ${owner.name} · ${owner.phone}${owner.isActive ? '' : ' (suspended)'}. ` : 'No owner yet. '}
+        The owner signs in with the normal Eptomart login (this mobile + OTP). Their <b>Profile</b> then shows a <b>Manage Store</b> option for this store.
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <input placeholder="Owner mobile (10 digits)" value={form.phone} maxLength={10}
           onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, '') }))} className="border rounded-lg px-3 py-2 text-sm bg-white" />
         <input placeholder="Owner name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm bg-white" />
-        <input placeholder={owner ? 'New password (optional)' : 'Password (blank = auto-generate)'} value={form.password}
-          onChange={e => setForm(f => ({ ...f, password: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm bg-white" />
-      </div>
-      <div className="flex flex-wrap gap-2 mt-2">
-        <button onClick={() => save(false)} disabled={saving} className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">
+        <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">
           {saving ? 'Saving…' : owner ? 'Update owner' : 'Assign owner'}
         </button>
-        {owner && (
-          <button onClick={() => save(true)} disabled={saving} className="px-4 py-1.5 rounded-lg border text-xs font-bold bg-white disabled:opacity-50">
-            Reset password (auto)
-          </button>
-        )}
       </div>
-      {issued && (
-        <div className="mt-2 p-2 rounded-lg bg-green-50 border border-green-200 text-xs text-green-800">
-          Share these login details now (password is shown only once):<br />
-          Mobile <b>{issued.phone}</b> · Password <b>{issued.password}</b>
-        </div>
-      )}
     </div>
   );
 }

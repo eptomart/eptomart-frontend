@@ -4,7 +4,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiUser, FiSave, FiMapPin, FiPlus, FiTrash2, FiCheck, FiPackage, FiHeart, FiMessageSquare, FiSend, FiChevronLeft, FiToggleLeft, FiToggleRight, FiExternalLink, FiEdit2 } from 'react-icons/fi';
+import { FiUser, FiSave, FiMapPin, FiPlus, FiTrash2, FiCheck, FiPackage, FiHeart, FiMessageSquare, FiSend, FiChevronLeft, FiToggleLeft, FiToggleRight, FiExternalLink, FiEdit2, FiShoppingBag } from 'react-icons/fi';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import { useAuth } from '../context/AuthContext';
@@ -595,6 +595,12 @@ const INDIAN_MOBILE = /^[6-9]\d{9}$/;
 
 export default function Profile() {
   const { user, updateProfile, loadUser } = useAuth();
+  // Express store owner? (assigned by admin against this user's mobile)
+  const [ownedStore, setOwnedStore] = useState(null);
+  useEffect(() => {
+    if (!user) return;
+    api.get('/express/manager/owner-access').then(({ data }) => setOwnedStore(data.isOwner ? data.store : null)).catch(() => setOwnedStore(null));
+  }, [user?._id]);
   const [tab,         setTab]         = useState('profile'); // 'profile' | 'farmer' | 'messages' | 'kbdwallet'
   const [name,        setName]        = useState(user?.name || '');
   const [saving,      setSaving]      = useState(false);
@@ -875,6 +881,17 @@ export default function Profile() {
             </form>
           )}
         </div>
+
+        {ownedStore && (
+          <Link to="/express/manager" className="card p-4 mb-3 flex items-center gap-3 border-2 border-indigo-200 hover:border-indigo-400 transition-all">
+            <FiShoppingBag size={22} className="text-indigo-600" />
+            <div className="flex-1">
+              <p className="font-bold text-gray-800 text-sm">Manage Store</p>
+              <p className="text-xs text-gray-500">{ownedStore.name} · products, orders, POS users & accounts</p>
+            </div>
+            <FiChevronLeft size={16} className="text-gray-400 rotate-180" />
+          </Link>
+        )}
 
         {/* Quick links */}
         <div className="grid grid-cols-2 gap-3">

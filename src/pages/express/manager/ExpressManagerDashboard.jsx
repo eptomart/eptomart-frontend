@@ -12,7 +12,7 @@ import {
   FiClipboard, FiPlus, FiTruck, FiAlertTriangle, FiFileText, FiCheckCircle,
   FiBluetooth, FiPrinter,
 } from 'react-icons/fi';
-import expressManagerApi, { getManagerToken, clearManagerToken } from '../../../utils/expressManagerApi';
+import expressManagerApi, { getManagerToken, clearManagerToken, isMainLogin } from '../../../utils/expressManagerApi';
 import { OwnerOverview, OwnerCatalogTab, OwnerPOSTab, OwnerAccountsTab } from './ExpressOwnerTabs';
 import { isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected, printPluList } from '../../../utils/expressThermalPrinter';
 
@@ -21,7 +21,7 @@ const TABS = [
   { key: 'products',  label: 'Products',  Icon: FiGrid },
   { key: 'inventory', label: 'Inventory', Icon: FiClipboard },
   { key: 'catalog',   label: 'My Catalogue', Icon: FiPlus },
-  { key: 'staff',     label: 'Counter Staff', Icon: FiClipboard },
+  { key: 'staff',     label: 'POS Users', Icon: FiClipboard },
   { key: 'accounts',  label: 'Accounts', Icon: FiFileText },
 ];
 
@@ -39,7 +39,7 @@ export default function ExpressManagerDashboard() {
   const [printingList, setPrintingList] = useState(false);
 
   useEffect(() => {
-    if (!getManagerToken()) { navigate('/express/manager/login'); return; }
+    if (!getManagerToken()) { navigate('/login'); return; }
     expressManagerApi.get('/me').then(({ data }) => setManager(data.manager)).catch(() => {});
     expressManagerApi.get('/store').then(({ data }) => setStore(data.store)).catch(() => {});
     expressManagerApi.get('/dashboard').then(({ data }) => setStats(data.stats)).catch(() => {});
@@ -53,7 +53,11 @@ export default function ExpressManagerDashboard() {
     } catch { toast.error('Failed to update store status'); }
   };
 
-  const logout = () => { clearManagerToken(); navigate('/express/manager/login'); };
+  const logout = () => {
+    // Signed in with the normal Eptomart login → just go back to Profile (stay logged in)
+    if (isMainLogin()) { navigate('/profile'); return; }
+    clearManagerToken(); navigate('/express/manager/login');
+  };
 
   const togglePrinterConnection = async () => {
     if (printerConnected) { disconnectPrinter(); setPrinterConnected(false); return; }

@@ -37,7 +37,7 @@ export default function ExpressManagerLogin() {
           <FiZap className="text-amber-500" size={24} />
           <h1 className="text-lg font-black text-indigo-900">Eptomart Express</h1>
         </div>
-        <p className="text-xs text-gray-500 text-center mb-6">Store Owner / Manager Login</p>
+        <p className="text-xs text-gray-500 text-center mb-6">Store Manager Login<br/><span className="text-[11px] text-gray-400">Store owners: log in normally, then open Profile → Manage Store.</span></p>
 
         <label className="block text-xs font-semibold text-gray-500 mb-1">Phone</label>
         <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="10-digit mobile number"

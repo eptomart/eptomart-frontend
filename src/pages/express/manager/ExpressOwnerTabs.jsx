@@ -214,7 +214,7 @@ export function OwnerPOSTab() {
     setSaving(true);
     try {
       await expressManagerApi.post('/owner/pos-users', form);
-      toast.success('Counter staff added'); setForm({ name: '', phone: '', pin: '' }); load();
+      toast.success('POS user added'); setForm({ name: '', phone: '', pin: '' }); load();
     } catch (err) { toast.error(errMsg(err, 'Failed to add')); } finally { setSaving(false); }
   };
   const patch = async (u, body, msg) => {
@@ -223,12 +223,12 @@ export function OwnerPOSTab() {
 
   return (
     <div>
-      <p className="text-xs text-gray-500 mb-3">Counter staff sell offline at <b>/express/pos</b> with their mobile + PIN. Stock reduces automatically with each bill.</p>
+      <p className="text-xs text-gray-500 mb-3">Create POS users as you wish — they sell offline at <b>/express/pos</b> with their mobile + PIN. Stock reduces automatically with each bill.</p>
       <form onSubmit={add} className="bg-white border rounded-xl p-3 mb-3 grid grid-cols-1 sm:grid-cols-4 gap-2">
         <input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
         <input placeholder="Mobile" maxLength={10} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, '') }))} className="border rounded-lg px-3 py-2 text-sm" />
         <input placeholder="PIN (4+ digits)" value={form.pin} onChange={e => setForm(f => ({ ...f, pin: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
-        <button disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">{saving ? 'Adding…' : 'Add staff'}</button>
+        <button disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">{saving ? 'Adding…' : 'Add POS user'}</button>
       </form>
       <div className="grid gap-2">
         {users.map(u => (
@@ -243,7 +243,7 @@ export function OwnerPOSTab() {
             </div>
           </div>
         ))}
-        {users.length === 0 && <p className="text-sm text-gray-400">No counter staff yet.</p>}
+        {users.length === 0 && <p className="text-sm text-gray-400">No POS users yet.</p>}
       </div>
     </div>
   );

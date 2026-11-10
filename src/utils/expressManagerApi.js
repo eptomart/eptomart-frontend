@@ -11,7 +11,11 @@ import toast from 'react-hot-toast';
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 const TOKEN_KEY = 'express_manager_token';
 
-export const getManagerToken = () => localStorage.getItem(TOKEN_KEY);
+const MAIN_TOKEN_KEY = 'eptomart_token';
+// A store owner can use their NORMAL Eptomart login (Profile → Manage Store);
+// legacy manager-password sessions keep working too.
+export const isMainLogin = () => !!localStorage.getItem(MAIN_TOKEN_KEY);
+export const getManagerToken = () => localStorage.getItem(MAIN_TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
 export const setManagerToken = (token) => localStorage.setItem(TOKEN_KEY, token);
 export const clearManagerToken = () => localStorage.removeItem(TOKEN_KEY);
 
@@ -30,10 +34,10 @@ expressManagerApi.interceptors.response.use(
   (response) => response,
   (error) => {
     const message = error.response?.data?.message || 'Something went wrong';
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 || (error.response?.status === 403 && /not a store owner/i.test(message))) {
       clearManagerToken();
       if (window.location.pathname.startsWith('/express/manager') && !window.location.pathname.endsWith('/login')) {
-        window.location.href = '/express/manager/login';
+        window.location.href = isMainLogin() ? '/profile' : '/express/manager/login';
       }
     } else if (error.response?.status >= 500) {
       toast.error('Server error. Please try again later.');
