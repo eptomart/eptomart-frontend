@@ -15,6 +15,13 @@ const inr = (n) => `₹${Math.round(Number(n) || 0).toLocaleString('en-IN')}`;
 const errMsg = (e, d) => e?.response?.data?.message || d;
 const UNITS = ['kg', 'gram', 'piece', 'bunch', 'litre', 'dozen'];
 
+// Upload a photo for an own product → hosted URL
+async function uploadPhoto(file) {
+  const fd = new FormData(); fd.append('image', file);
+  const { data } = await expressManagerApi.post('/owner/upload-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  return data.url;
+}
+
 // ── Headline revenue strip ───────────────────────────────────────────────
 export function OwnerOverview() {
   const [o, setO] = useState(null);
@@ -46,6 +53,19 @@ function ItemRow({ it, onSaved }) {
   const [online, setOnline] = useState(!!it.isEnabled);
   const [busy, setBusy] = useState(false);
   useEffect(() => { setOnline(!!it.isEnabled); setPrice(it.sellingPrice ?? it.price ?? ''); }, [it.isEnabled, it.sellingPrice, it.price]);
+
+  const removeFromStore = async () => {
+    if (!window.confirm(`Remove "${it.name}" from your store? It will disappear from your shop (online and counter). Other stores are not affected.`)) return;
+    setBusy(true);
+    try { await expressManagerApi.delete(`/owner/items/${it.productId}`); toast.success('Removed from your store'); onSaved(); }
+    catch (e) { toast.error(errMsg(e, 'Failed to remove')); } finally { setBusy(false); }
+  };
+  const changePhoto = async (file) => {
+    if (!file) return;
+    setBusy(true);
+    try { const url = await uploadPhoto(file); await expressManagerApi.patch(`/owner/products/${it.productId}`, { image: url }); toast.success('Photo updated'); onSaved(); }
+    catch (e) { toast.error(errMsg(e, 'Photo upload failed')); } finally { setBusy(false); }
+  };
 
   const ref = it.source === 'koyambedu' ? { koyambeduProductId: it.koyambeduProductId } : { expressProductId: it.expressProductId };
   const post = async (payload, okMsg) => {
@@ -99,6 +119,13 @@ function ItemRow({ it, onSaved }) {
           <button disabled={busy || price === ''} onClick={() => post({ price }, 'Price updated')} className="px-2.5 py-1.5 rounded-lg border text-xs font-bold disabled:opacity-50">Save price</button>
           <input type="number" min="0" step="any" placeholder="+ stock" value={stock} onChange={e => setStock(e.target.value)} className="border rounded-lg px-2.5 py-1.5 text-xs w-20" />
           <button disabled={busy || !stock} onClick={() => post({ addStock: stock }, 'Stock added')} className="px-2.5 py-1.5 rounded-lg border text-xs font-bold disabled:opacity-50">Add stock</button>
+          {it.isOwn && (
+            <label className="px-2.5 py-1.5 rounded-lg border text-xs font-bold cursor-pointer text-indigo-600">
+              {it.image ? 'Change photo' : 'Add photo'}
+              <input type="file" accept="image/*" className="hidden" disabled={busy} onChange={e => changePhoto(e.target.files?.[0])} />
+            </label>
+          )}
+          <button disabled={busy} onClick={removeFromStore} className="px-2.5 py-1.5 rounded-lg border border-red-200 text-red-600 text-xs font-bold disabled:opacity-50 ml-auto">Remove</button>
         </div>
       )}
     </div>
@@ -115,9 +142,13 @@ export function OwnerCatalogTab() {
   const blank = { name: '', unit: 'kg', procurementBaseCost: '', category: '', description: '', price: '', stock: '', online: true, gstRate: '', hsnCode: '' };
   const [form, setForm] = useState(blank);
   const [saving, setSaving] = useState(false);
+  const [loadErr, setLoadErr] = useState('');
+  const [photo, setPhoto] = useState(null);       // { file, preview }
 
   const load = () => expressManagerApi.get('/owner/catalog')
-    .then(({ data }) => setItems(data.items || [])).catch(() => toast.error('Failed to load catalogue')).finally(() => setLoading(false));
+    .then(({ data }) => { setItems(data.items || []); setLoadErr(''); })
+    .catch((e) => { const m = e?.response?.data?.message || e?.message || 'Network problem'; setLoadErr(m); toast.error(`Failed to load catalogue — ${m}`); })
+    .finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
   const shown = useMemo(() => {
@@ -149,7 +180,13 @@ export function OwnerCatalogTab() {
     if (form.procurementBaseCost === '') return toast.error('Enter your cost price');
     setSaving(true);
     try {
+      let imageUrl;
+      if (photo?.file) {
+        try { imageUrl = await uploadPhoto(photo.file); }
+        catch (e) { toast.error(errMsg(e, 'Photo upload failed — product not created')); setSaving(false); return; }
+      }
       const { data } = await expressManagerApi.post('/owner/products', {
+        ...(imageUrl ? { image: imageUrl } : {}),
         name: form.name, unit: form.unit, procurementBaseCost: form.procurementBaseCost, category: form.category, description: form.description,
         ...(form.gstRate !== '' ? { gstRate: form.gstRate } : {}), ...(form.hsnCode.trim() ? { hsnCode: form.hsnCode.trim() } : {}),
       });
@@ -166,7 +203,7 @@ export function OwnerCatalogTab() {
         }
       }
       toast.success('Product created and added to your store');
-      setForm(blank); setShowNew(false); setFilter('own'); load();
+      setForm(blank); setPhoto(null); setShowNew(false); setFilter('own'); load();
     } catch (err) {
       const d = err?.response?.data;
       if (d?.duplicate && d.matches?.length) { toast(d.message, { icon: '💡', duration: 6000 }); pickExisting(d.matches[0].name); }
@@ -185,6 +222,12 @@ export function OwnerCatalogTab() {
         </div>
         <button onClick={() => setShowNew(s => !s)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold"><FiPlus size={13} /> New product</button>
       </div>
+      {loadErr && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3 text-xs text-red-700 flex items-center justify-between gap-2">
+          <span>Couldn't load the catalogue: {loadErr}</span>
+          <button onClick={load} className="px-3 py-1 rounded-lg bg-red-600 text-white font-bold shrink-0">Retry</button>
+        </div>
+      )}
       <div className="flex flex-wrap gap-1.5 mb-3">
         {chips.map(([k, l]) => (
           <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1 rounded-full text-[11px] font-bold ${filter === k ? 'bg-indigo-600 text-white' : 'bg-white border text-gray-600'}`}>{l}</button>
@@ -194,6 +237,11 @@ export function OwnerCatalogTab() {
       {showNew && (
         <form onSubmit={createOwn} className="bg-white border rounded-xl p-3 mb-3 grid grid-cols-2 gap-2">
           <p className="col-span-2 text-xs font-bold text-indigo-900">Create your own product (visible only in your store)</p>
+          <label className="col-span-2 flex items-center gap-3 border border-dashed rounded-lg p-2 cursor-pointer">
+            {photo?.preview ? <img src={photo.preview} alt="" className="w-14 h-14 rounded-lg object-cover" /> : <span className="w-14 h-14 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-300 text-xl">📷</span>}
+            <span className="text-xs text-gray-500"><b className="text-indigo-700">{photo ? 'Change photo' : 'Add product photo'}</b><br />JPG / PNG / WebP, up to 5 MB</span>
+            <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) setPhoto({ file: f, preview: URL.createObjectURL(f) }); }} />
+          </label>
           <input placeholder="Product name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm col-span-2" />
           {similar.length > 0 && (
             <div className="col-span-2 bg-amber-50 border border-amber-200 rounded-lg p-2">
