@@ -330,3 +330,95 @@ export function OwnerAccountsTab() {
     </div>
   );
 }
+
+// ── Team & WhatsApp alerts (owner only) ──────────────────────────────────
+const ROLE_HELP = {
+  manager: 'Manager — can see orders, move them forward and close them (delivered), and handle stock availability.',
+  accountant: 'Accountant — can see accounts, record expenses and view orders (read-only).',
+};
+export function OwnerTeamTab() {
+  const [team, setTeam] = useState([]);
+  const [form, setForm] = useState({ name: '', phone: '', role: 'manager' });
+  const [saving, setSaving] = useState(false);
+  const [phones, setPhones] = useState([]);
+  const [newPhone, setNewPhone] = useState('');
+  const [savingPhones, setSavingPhones] = useState(false);
+
+  const load = () => {
+    expressManagerApi.get('/owner/team').then(({ data }) => setTeam(data.team || [])).catch(() => {});
+    expressManagerApi.get('/owner/alerts').then(({ data }) => setPhones(data.phones || [])).catch(() => {});
+  };
+  useEffect(() => { load(); }, []);
+
+  const add = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try { await expressManagerApi.post('/owner/team', form); toast.success('Team member added'); setForm({ name: '', phone: '', role: 'manager' }); load(); }
+    catch (err) { toast.error(errMsg(err, 'Failed to add')); } finally { setSaving(false); }
+  };
+  const patch = async (m, body, msg) => { try { await expressManagerApi.patch(`/owner/team/${m._id}`, body); toast.success(msg); load(); } catch (err) { toast.error(errMsg(err, 'Failed')); } };
+  const remove = async (m) => { try { await expressManagerApi.delete(`/owner/team/${m._id}`); toast.success('Removed'); load(); } catch (err) { toast.error(errMsg(err, 'Failed')); } };
+
+  const savePhones = async (list) => {
+    setSavingPhones(true);
+    try { const { data } = await expressManagerApi.put('/owner/alerts', { phones: list }); setPhones(data.phones); toast.success('Alert numbers saved'); }
+    catch (err) { toast.error(errMsg(err, 'Failed to save')); } finally { setSavingPhones(false); }
+  };
+  const addPhone = () => {
+    const p = newPhone.replace(/\D/g, '');
+    if (!/^[6-9]\d{9}$/.test(p)) return toast.error('Enter a valid 10-digit mobile');
+    if (phones.includes(p)) return toast.error('Already added');
+    savePhones([...phones, p]); setNewPhone('');
+  };
+
+  return (
+    <div className="grid gap-5">
+      <div>
+        <p className="font-bold text-sm text-gray-800 mb-1">WhatsApp order alerts</p>
+        <p className="text-xs text-gray-500 mb-2">These numbers get a WhatsApp message for every order at your store — new order, confirmed, being prepared, out for delivery, delivered and cancelled.</p>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {phones.map(p => (
+            <span key={p} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-xs font-bold">
+              {p}<button disabled={savingPhones} onClick={() => savePhones(phones.filter(x => x !== p))} className="text-green-700 hover:text-red-600"><FiTrash2 size={11} /></button>
+            </span>
+          ))}
+          {phones.length === 0 && <span className="text-xs text-gray-400">No numbers yet.</span>}
+        </div>
+        <div className="flex gap-2">
+          <input value={newPhone} maxLength={10} onChange={e => setNewPhone(e.target.value.replace(/\D/g, ''))} placeholder="WhatsApp mobile (10 digits)" className="border rounded-lg px-3 py-2 text-sm w-56" />
+          <button onClick={addPhone} disabled={savingPhones} className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold disabled:opacity-50">Add number</button>
+        </div>
+      </div>
+
+      <div>
+        <p className="font-bold text-sm text-gray-800 mb-1">Team profiles</p>
+        <p className="text-xs text-gray-500 mb-2">Add a manager or accountant by mobile number. They sign in with the normal Eptomart login (mobile + OTP) and see <b>Manage Store</b> in their Profile.</p>
+        <form onSubmit={add} className="bg-white border rounded-xl p-3 mb-2 grid grid-cols-1 sm:grid-cols-4 gap-2">
+          <input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+          <input placeholder="Mobile" maxLength={10} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, '') }))} className="border rounded-lg px-3 py-2 text-sm" />
+          <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm">
+            <option value="manager">Manager</option><option value="accountant">Accountant</option>
+          </select>
+          <button disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">{saving ? 'Adding…' : 'Add'}</button>
+          <p className="sm:col-span-4 text-[11px] text-gray-400">{ROLE_HELP[form.role]}</p>
+        </form>
+        <div className="grid gap-2">
+          {team.map(m => (
+            <div key={m._id} className="bg-white border rounded-xl p-3 flex items-center justify-between flex-wrap gap-2">
+              <div><p className="font-bold text-sm text-gray-800">{m.name} <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-bold uppercase">{m.role}</span></p><p className="text-xs text-gray-500">{m.phone}</p></div>
+              <div className="flex items-center gap-2">
+                <select value={m.role} onChange={e => patch(m, { role: e.target.value }, 'Role updated')} className="border rounded-lg px-2 py-1.5 text-xs">
+                  <option value="manager">Manager</option><option value="accountant">Accountant</option>
+                </select>
+                <button onClick={() => patch(m, { isActive: !m.isActive }, m.isActive ? 'Suspended' : 'Activated')}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold ${m.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{m.isActive ? 'Active' : 'Suspended'}</button>
+                <button onClick={() => remove(m)} className="p-1.5 text-gray-400 hover:text-red-500"><FiTrash2 size={14} /></button>
+              </div>
+            </div>
+          ))}
+          {team.length === 0 && <p className="text-sm text-gray-400">No manager or accountant yet.</p>}
+        </div>
+      </div>
+    </div>
+  );
+}

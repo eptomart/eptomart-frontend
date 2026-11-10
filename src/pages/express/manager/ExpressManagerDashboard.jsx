@@ -10,10 +10,10 @@ import toast from 'react-hot-toast';
 import {
   FiZap, FiLogOut, FiGrid, FiPackage, FiToggleLeft, FiToggleRight,
   FiClipboard, FiPlus, FiTruck, FiAlertTriangle, FiFileText, FiCheckCircle,
-  FiBluetooth, FiPrinter,
+  FiBluetooth, FiPrinter, FiBell,
 } from 'react-icons/fi';
 import expressManagerApi, { getManagerToken, clearManagerToken, isMainLogin } from '../../../utils/expressManagerApi';
-import { OwnerOverview, OwnerCatalogTab, OwnerPOSTab, OwnerAccountsTab } from './ExpressOwnerTabs';
+import { OwnerOverview, OwnerCatalogTab, OwnerPOSTab, OwnerAccountsTab, OwnerTeamTab } from './ExpressOwnerTabs';
 import { isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected, printPluList } from '../../../utils/expressThermalPrinter';
 
 const TABS = [
@@ -23,7 +23,15 @@ const TABS = [
   { key: 'catalog',   label: 'My Catalogue', Icon: FiPlus },
   { key: 'staff',     label: 'POS Users', Icon: FiClipboard },
   { key: 'accounts',  label: 'Accounts', Icon: FiFileText },
+  { key: 'team',      label: 'Team & Alerts', Icon: FiBell },
 ];
+
+// Which tabs each store role may open (backend enforces the same rules)
+const ROLE_TABS = {
+  owner:      ['orders', 'products', 'inventory', 'catalog', 'staff', 'accounts', 'team'],
+  manager:    ['orders', 'products', 'inventory'],
+  accountant: ['orders', 'accounts'],
+};
 
 export default function ExpressManagerDashboard() {
   const navigate = useNavigate();
@@ -31,6 +39,9 @@ export default function ExpressManagerDashboard() {
   const [manager, setManager] = useState(null);
   const [store, setStore] = useState(null);
   const [stats, setStats] = useState(null);
+  const role = manager?.role || 'owner';
+  const allowed = ROLE_TABS[role] || ROLE_TABS.owner;
+  const visibleTabs = TABS.filter(t => allowed.includes(t.key));
   // Bluetooth thermal printer — same shared connection as Koyambedu Daily's
   // Printer tab and the Express admin panel. Connect once here before the
   // shift starts, then print the PLU code-reference sheet for the counter.
@@ -40,7 +51,7 @@ export default function ExpressManagerDashboard() {
 
   useEffect(() => {
     if (!getManagerToken()) { navigate('/login'); return; }
-    expressManagerApi.get('/me').then(({ data }) => setManager(data.manager)).catch(() => {});
+    expressManagerApi.get('/me').then(({ data }) => { setManager(data.manager); const r = data.manager?.role || 'owner'; if (!(ROLE_TABS[r] || []).includes('orders')) setTab((ROLE_TABS[r] || ['orders'])[0]); }).catch(() => {});
     expressManagerApi.get('/store').then(({ data }) => setStore(data.store)).catch(() => {});
     expressManagerApi.get('/dashboard').then(({ data }) => setStats(data.stats)).catch(() => {});
   }, []);
@@ -115,7 +126,7 @@ export default function ExpressManagerDashboard() {
       </header>
 
       <div className="p-4 max-w-3xl mx-auto">
-        <OwnerOverview />
+        {(role === 'owner' || role === 'accountant') && <OwnerOverview />}
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             {[
@@ -133,7 +144,7 @@ export default function ExpressManagerDashboard() {
         )}
 
         <div className="flex flex-wrap gap-1 rounded-xl p-1 mb-4 w-fit bg-indigo-50">
-          {TABS.map(t => (
+          {visibleTabs.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-colors"
               style={tab === t.key ? { background: '#fff', color: '#3730a3' } : { color: '#6b7280' }}>
@@ -142,12 +153,13 @@ export default function ExpressManagerDashboard() {
           ))}
         </div>
 
-        {tab === 'orders'    && <OrdersTab />}
+        {tab === 'orders'    && <OrdersTab readOnly={role === 'accountant'} />}
         {tab === 'products'  && <ProductsTab />}
         {tab === 'inventory' && <InventoryTab />}
         {tab === 'catalog'   && <OwnerCatalogTab />}
         {tab === 'staff'     && <OwnerPOSTab />}
         {tab === 'accounts'  && <OwnerAccountsTab />}
+        {tab === 'team'      && <OwnerTeamTab />}
       </div>
     </div>
   );
@@ -164,7 +176,7 @@ const NEXT_LABEL = {
   out_for_delivery: 'Mark Delivered',
 };
 
-function OrdersTab() {
+function OrdersTab({ readOnly = false }) {
   const [orders, setOrders] = useState([]);
   const [expenseForm, setExpenseForm] = useState({}); // orderId -> { partner, amount }
 
@@ -206,13 +218,13 @@ function OrdersTab() {
           </ul>
           <p className="font-bold text-sm text-gray-800 mb-3">Total: ₹{o.pricing?.total}</p>
 
-          {NEXT_STATUS[o.orderStatus] && (
+          {!readOnly && NEXT_STATUS[o.orderStatus] && (
             <button onClick={() => advance(o)} className="mb-2 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold">
               {NEXT_LABEL[o.orderStatus]}
             </button>
           )}
 
-          <div className="flex items-center gap-2 pt-2 border-t mt-2">
+          {!readOnly && <div className="flex items-center gap-2 pt-2 border-t mt-2">
             <FiTruck className="text-gray-400" size={14} />
             <input placeholder="Delivery partner" value={expenseForm[o._id]?.partner || o.deliveryExpense?.partner || ''}
               onChange={e => setExpenseForm(f => ({ ...f, [o._id]: { ...f[o._id], partner: e.target.value } }))}
@@ -221,7 +233,7 @@ function OrdersTab() {
               onChange={e => setExpenseForm(f => ({ ...f, [o._id]: { ...f[o._id], amount: e.target.value } }))}
               className="border rounded-lg px-2 py-1 text-xs w-20" />
             <button onClick={() => saveExpense(o._id)} className="px-2 py-1 rounded-lg border text-xs font-semibold">Save</button>
-          </div>
+          </div>}
         </div>
       ))}
       {orders.length === 0 && <p className="text-sm text-gray-400">No orders yet.</p>}

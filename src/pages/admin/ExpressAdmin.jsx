@@ -1672,7 +1672,7 @@ function StoreOwnerPanel({ store }) {
   const [saving, setSaving] = useState(false);
 
   const load = () => api.get('/express/admin/managers').then(r => {
-    const m = (r.data.managers || []).find(x => String(x.store?._id || x.store) === String(store._id));
+    const m = (r.data.managers || []).find(x => String(x.store?._id || x.store) === String(store._id) && (!x.role || x.role === 'owner'));
     setOwner(m || null);
     if (m) setForm({ phone: m.phone, name: m.name });
     setLoaded(true);

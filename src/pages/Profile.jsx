@@ -599,7 +599,7 @@ export default function Profile() {
   const [ownedStore, setOwnedStore] = useState(null);
   useEffect(() => {
     if (!user) return;
-    api.get('/express/manager/owner-access').then(({ data }) => setOwnedStore(data.isOwner ? data.store : null)).catch(() => setOwnedStore(null));
+    api.get('/express/manager/owner-access').then(({ data }) => setOwnedStore(data.isOwner ? { ...data.store, role: data.role } : null)).catch(() => setOwnedStore(null));
   }, [user?._id]);
   const [tab,         setTab]         = useState('profile'); // 'profile' | 'farmer' | 'messages' | 'kbdwallet'
   const [name,        setName]        = useState(user?.name || '');
@@ -887,7 +887,7 @@ export default function Profile() {
             <FiShoppingBag size={22} className="text-indigo-600" />
             <div className="flex-1">
               <p className="font-bold text-gray-800 text-sm">Manage Store</p>
-              <p className="text-xs text-gray-500">{ownedStore.name} · products, orders, POS users & accounts</p>
+              <p className="text-xs text-gray-500">{ownedStore.name} · {ownedStore.role === 'manager' ? 'orders & stock (manager)' : ownedStore.role === 'accountant' ? 'accounts & orders (accountant)' : 'products, orders, team & accounts'}</p>
             </div>
             <FiChevronLeft size={16} className="text-gray-400 rotate-180" />
           </Link>
