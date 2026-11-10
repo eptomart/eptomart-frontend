@@ -112,7 +112,7 @@ export function OwnerCatalogTab() {
   const [filter, setFilter] = useState('mine'); // mine | online | koyambedu | own | all
   const [limit, setLimit] = useState(40);
   const [showNew, setShowNew] = useState(false);
-  const blank = { name: '', unit: 'kg', procurementBaseCost: '', category: '', description: '', price: '', stock: '', online: true };
+  const blank = { name: '', unit: 'kg', procurementBaseCost: '', category: '', description: '', price: '', stock: '', online: true, gstRate: '', hsnCode: '' };
   const [form, setForm] = useState(blank);
   const [saving, setSaving] = useState(false);
 
@@ -142,6 +142,7 @@ export function OwnerCatalogTab() {
     try {
       const { data } = await expressManagerApi.post('/owner/products', {
         name: form.name, unit: form.unit, procurementBaseCost: form.procurementBaseCost, category: form.category, description: form.description,
+        ...(form.gstRate !== '' ? { gstRate: form.gstRate } : {}), ...(form.hsnCode.trim() ? { hsnCode: form.hsnCode.trim() } : {}),
       });
       if (form.price !== '' || form.stock !== '' || form.online) {
         await expressManagerApi.post('/owner/items', {
@@ -182,6 +183,8 @@ export function OwnerCatalogTab() {
           <input type="number" min="0" placeholder="Your cost price" value={form.procurementBaseCost} onChange={e => setForm(f => ({ ...f, procurementBaseCost: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
           <input type="number" min="0" placeholder="Selling price" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
           <input type="number" min="0" step="any" placeholder="Opening stock" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+          <input type="number" min="0" max="28" step="any" placeholder="GST % (blank = store default)" value={form.gstRate} onChange={e => setForm(f => ({ ...f, gstRate: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
+          <input placeholder="HSN code (optional)" value={form.hsnCode} onChange={e => setForm(f => ({ ...f, hsnCode: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm" />
           <label className="flex items-center gap-2 text-xs text-gray-600"><input type="checkbox" checked={form.online} onChange={e => setForm(f => ({ ...f, online: e.target.checked }))} /> Show in online shop</label>
           <textarea placeholder="Description (optional)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm col-span-2" rows={2} />
           <div className="col-span-2 flex gap-2">
@@ -425,6 +428,62 @@ export function OwnerTeamTab() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ── GST & Invoice profile (owner; identity locks after the first final invoice) ──
+export function OwnerGstTab() {
+  const [g, setG] = useState(null);
+  const [locked, setLocked] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const load = () => expressManagerApi.get('/owner/gst').then(({ data }) => {
+    const x = data.gst || {};
+    setLocked(!!data.locked);
+    setG({
+      registered: !!x.registered, gstin: x.gstin || '', legalName: x.legalName || '', tradeName: x.tradeName || data.storeName || '',
+      address: x.address || '', pincode: x.pincode || '', pan: x.pan || '', fssai: x.fssai || '',
+      defaultGstRate: x.defaultGstRate ?? 0, deliveryGstRate: x.deliveryGstRate ?? 18, hsnDefault: x.hsnDefault || '0709', invoicePrefix: x.invoicePrefix || '',
+      stateCode: x.stateCode || '', complete: data.complete,
+    });
+  }).catch(() => toast.error('Failed to load GST profile'));
+  useEffect(() => { load(); }, []);
+  if (!g) return <p className="text-sm text-gray-400">Loading…</p>;
+  const set = (k, v) => setG(s => ({ ...s, [k]: v }));
+  const idLocked = locked;
+
+  const save = async (e) => {
+    e.preventDefault(); setSaving(true);
+    try {
+      const { complete, stateCode, ...body } = g;
+      await expressManagerApi.put('/owner/gst', body);
+      toast.success('GST & invoice profile saved'); await load();
+    } catch (err) { toast.error(errMsg(err, 'Failed to save')); } finally { setSaving(false); }
+  };
+  const inp = 'border rounded-lg px-3 py-2 text-sm w-full disabled:bg-gray-100 disabled:text-gray-500';
+  return (
+    <form onSubmit={save} className="bg-white border rounded-xl p-4 grid gap-3">
+      {!g.complete && <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-800">Set this up once — every customer invoice is issued in your store's name using these details.</div>}
+      {idLocked && <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2 text-xs text-indigo-800">🔒 Invoices have been issued, so GST status, GSTIN, legal name, PAN and invoice prefix are locked. Contact Eptomart admin to change them. You can still update the other fields.</div>}
+      <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+        <input type="checkbox" disabled={idLocked} checked={g.registered} onChange={e => set('registered', e.target.checked)} /> My store is GST registered
+      </label>
+      <p className="text-[11px] text-gray-500 -mt-2">{g.registered ? 'Customers get a GST Tax Invoice.' : 'Customers get a Bill of Supply (no GST charged).'}</p>
+      <div className="grid sm:grid-cols-2 gap-2">
+        {g.registered && <div><p className="text-[11px] text-gray-500 mb-1">GSTIN</p><input disabled={idLocked} value={g.gstin} onChange={e => set('gstin', e.target.value.toUpperCase())} maxLength={15} placeholder="33ABCDE1234F1Z5" className={inp} /></div>}
+        <div><p className="text-[11px] text-gray-500 mb-1">Legal / business name *</p><input disabled={idLocked} value={g.legalName} onChange={e => set('legalName', e.target.value)} className={inp} /></div>
+        <div><p className="text-[11px] text-gray-500 mb-1">Trade name (optional)</p><input value={g.tradeName} onChange={e => set('tradeName', e.target.value)} className={inp} /></div>
+        <div><p className="text-[11px] text-gray-500 mb-1">PAN (optional)</p><input disabled={idLocked} value={g.pan} onChange={e => set('pan', e.target.value.toUpperCase())} maxLength={10} className={inp} /></div>
+        <div className="sm:col-span-2"><p className="text-[11px] text-gray-500 mb-1">Business address *</p><input value={g.address} onChange={e => set('address', e.target.value)} className={inp} /></div>
+        <div><p className="text-[11px] text-gray-500 mb-1">Pincode</p><input value={g.pincode} onChange={e => set('pincode', e.target.value.replace(/\D/g, '').slice(0, 6))} className={inp} /></div>
+        <div><p className="text-[11px] text-gray-500 mb-1">FSSAI licence no. (food)</p><input value={g.fssai} onChange={e => set('fssai', e.target.value)} className={inp} /></div>
+        <div><p className="text-[11px] text-gray-500 mb-1">Default GST % on products</p><input type="number" min="0" max="28" step="any" value={g.defaultGstRate} onChange={e => set('defaultGstRate', e.target.value)} className={inp} /></div>
+        <div><p className="text-[11px] text-gray-500 mb-1">GST % on delivery charge</p><input type="number" min="0" max="28" step="any" value={g.deliveryGstRate} onChange={e => set('deliveryGstRate', e.target.value)} className={inp} /></div>
+        <div><p className="text-[11px] text-gray-500 mb-1">Default HSN code</p><input value={g.hsnDefault} onChange={e => set('hsnDefault', e.target.value)} className={inp} /></div>
+        <div><p className="text-[11px] text-gray-500 mb-1">Invoice number prefix</p><input disabled={idLocked} value={g.invoicePrefix} onChange={e => set('invoicePrefix', e.target.value.toUpperCase())} placeholder="e.g. VALASA" className={inp} /></div>
+      </div>
+      {g.stateCode && <p className="text-[11px] text-gray-500">State code {g.stateCode}{g.registered ? ' (from GSTIN)' : ' (from pincode)'} — decides CGST+SGST vs IGST.</p>}
+      <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50 w-fit">{saving ? 'Saving…' : 'Save profile'}</button>
+    </form>
   );
 }
 

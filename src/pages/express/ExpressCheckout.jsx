@@ -249,6 +249,11 @@ export default function ExpressCheckout() {
   const [couponApplied, setCouponApplied] = useState(null); // { code, discount }
   const [couponLoading, setCouponLoading] = useState(false);
 
+  // Express wallet (refunds from declined items land here) + where future
+  // refunds should go: back to the wallet (instant) or the original payment.
+  const [useWallet, setUseWallet] = useState(false);
+  const [refundPreference, setRefundPreference] = useState('wallet');
+
   const [quote, setQuote] = useState(null);
   const [quoting, setQuoting] = useState(false);
   const [placing, setPlacing] = useState(false);
@@ -356,6 +361,7 @@ export default function ExpressCheckout() {
       const { data } = await api.post('/express/quote', {
         deliveryAddress: { ...address, lat: effectiveLat, lng: effectiveLng },
         couponCode: couponApplied?.code || undefined,
+        useWallet,
       });
       setQuote(data);
       // Server is the source of truth — if the coupon didn't actually apply
@@ -420,7 +426,7 @@ export default function ExpressCheckout() {
     const t = setTimeout(() => { getQuote({ silent: true }); }, 600);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address.name, address.phone, address.addressLine, address.city, address.pincode, slot, couponApplied]);
+  }, [address.name, address.phone, address.addressLine, address.city, address.pincode, slot, couponApplied, useWallet]);
 
   const placeOrder = async () => {
     if (!quote) return toast.error('Please get a quote first');
@@ -431,7 +437,15 @@ export default function ExpressCheckout() {
         deliveryAddress: { ...address, lat: effectiveLat, lng: effectiveLng },
         deliverySlot: { date: slot.date, label: slot.label, isNextDay: slot.isNextDay },
         couponCode: couponApplied?.code || undefined,
+        useWallet, refundPreference,
       });
+
+      // Fully paid from the Express wallet — no card payment needed
+      if (data.walletOnly) {
+        toast.success('Order placed using your wallet!');
+        navigate('/express/my-orders');
+        return;
+      }
 
       if (data.demoMode) {
         await api.post('/express/orders/verify-payment', {
@@ -785,9 +799,38 @@ export default function ExpressCheckout() {
             )}
           </div>
 
+          {(quote.walletBalance > 0 || useWallet) && (
+            <label className="flex items-center justify-between gap-2 mt-2 pt-2 border-t text-sm text-gray-700">
+              <span className="flex items-center gap-2">
+                <input type="checkbox" checked={useWallet} onChange={e => { setUseWallet(e.target.checked); setQuote(null); }} />
+                Use Express wallet <span className="text-xs text-gray-400">(₹{quote.walletBalance} available)</span>
+              </span>
+              {quote.walletApplied > 0 && <span className="font-semibold text-emerald-600">− ₹{quote.walletApplied}</span>}
+            </label>
+          )}
+
           <div className="flex justify-between font-bold text-gray-800 pt-2 border-t mt-2">
             <span>Total ({quote.totalWeightKg} kg)</span>
             <span>₹{quote.total}</span>
+          </div>
+          {quote.walletApplied > 0 && (
+            <div className="flex justify-between font-bold text-indigo-700 mt-1">
+              <span>To pay now</span>
+              <span>₹{quote.payable}</span>
+            </div>
+          )}
+
+          <div className="mt-3 pt-3 border-t">
+            <p className="text-xs font-bold text-gray-600 mb-1.5">If an item is unavailable, refund me to</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[['wallet', 'Eptomart wallet', 'Instant'], ['source', 'Original payment', '5–7 working days']].map(([k, l, s]) => (
+                <button key={k} type="button" onClick={() => setRefundPreference(k)}
+                  className={`px-3 py-2 rounded-xl border-2 text-left text-xs transition ${refundPreference === k ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-100 text-gray-600'}`}>
+                  <span className="block font-bold">{l}</span><span className="text-[10px] text-gray-400">{s}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-gray-400 mt-1">You can change this later from My Orders. Amounts paid from your wallet always return to the wallet.</p>
           </div>
           {slot && (
             <p className="text-xs text-indigo-600 font-semibold mt-2">
@@ -810,7 +853,7 @@ export default function ExpressCheckout() {
           {placing
             ? <span className="w-5 h-5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
             : <FiCheck size={20} />}
-          {placing ? 'Placing order…' : `Pay ₹${quote.total}`}
+          {placing ? 'Placing order…' : (quote.walletApplied > 0 && quote.payable <= 0 ? `Pay ₹${quote.total} from wallet` : `Pay ₹${quote.payable ?? quote.total}`)}
         </button>
       )}
     </div>

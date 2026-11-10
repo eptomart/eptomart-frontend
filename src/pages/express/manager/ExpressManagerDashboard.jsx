@@ -13,7 +13,7 @@ import {
   FiBluetooth, FiPrinter, FiBell,
 } from 'react-icons/fi';
 import expressManagerApi, { getManagerToken, clearManagerToken, isMainLogin, getActAsStore, clearActAsStore } from '../../../utils/expressManagerApi';
-import { OwnerOverview, OwnerCatalogTab, OwnerPOSTab, OwnerAccountsTab, OwnerTeamTab, OwnerDeliveryTab } from './ExpressOwnerTabs';
+import { OwnerOverview, OwnerCatalogTab, OwnerPOSTab, OwnerAccountsTab, OwnerTeamTab, OwnerDeliveryTab, OwnerGstTab } from './ExpressOwnerTabs';
 import { isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected, printPluList } from '../../../utils/expressThermalPrinter';
 
 const TABS = [
@@ -25,12 +25,13 @@ const TABS = [
   { key: 'accounts',  label: 'Accounts', Icon: FiFileText },
   { key: 'delivery',  label: 'Delivery', Icon: FiTruck },
   { key: 'team',      label: 'Team & Alerts', Icon: FiBell },
+  { key: 'gst',       label: 'GST & Invoice', Icon: FiFileText },
 ];
 
 // Which tabs each store role may open (backend enforces the same rules)
 const ROLE_TABS = {
-  owner:      ['orders', 'products', 'inventory', 'catalog', 'staff', 'accounts', 'delivery', 'team'],
-  manager:    ['orders', 'products', 'inventory'],
+  owner:      ['orders', 'products', 'inventory', 'catalog', 'staff', 'accounts', 'delivery', 'team', 'gst'],
+  manager:   ['orders', 'products', 'inventory'],
   accountant: ['orders', 'accounts'],
 };
 
@@ -170,6 +171,7 @@ export default function ExpressManagerDashboard() {
         {tab === 'accounts'  && <OwnerAccountsTab />}
         {tab === 'delivery'  && <OwnerDeliveryTab />}
         {tab === 'team'      && <OwnerTeamTab />}
+        {tab === 'gst'       && <OwnerGstTab />}
       </div>
     </div>
   );
@@ -224,9 +226,14 @@ function OrdersTab({ readOnly = false }) {
           <p className="text-xs text-gray-500 mb-1">{o.buyer?.name} · {o.buyer?.phone}</p>
           <p className="text-xs text-gray-500 mb-2">{o.deliveryAddress?.addressLine}, {o.deliveryAddress?.city} {o.deliveryAddress?.pincode}</p>
           <ul className="text-xs text-gray-600 mb-3">
-            {o.items?.map((it, i) => <li key={i}>{it.name} × {it.quantity}</li>)}
+            {o.items?.map((it, i) => it.status === 'declined'
+              ? <li key={i} className="text-red-500 line-through">{it.name} × {it.quantity} <span className="no-underline">(declined · refund ₹{it.refundAmount})</span></li>
+              : <li key={i}>{it.name} × {it.quantity}</li>)}
           </ul>
-          <p className="font-bold text-sm text-gray-800 mb-3">Total: ₹{o.pricing?.total}</p>
+          <p className="font-bold text-sm text-gray-800 mb-1">Total: ₹{o.pricing?.total}{o.pricing?.refundedAmount > 0 && <span className="text-red-500 font-semibold"> · refunded ₹{o.pricing.refundedAmount}</span>}</p>
+          <p className="text-[11px] text-gray-400 mb-3">Customer refund choice: {o.refundPreference === 'source' ? 'Original payment' : 'Wallet'}</p>
+          {!readOnly && <DeclinePanel order={o} onDone={load} />}
+          {o.paymentStatus === 'paid' && <a href={`/express/invoice/${o.orderId}`} target="_blank" rel="noreferrer" className="inline-block mb-2 mr-2 text-xs font-bold text-indigo-600 underline">View invoice</a>}
 
           {!readOnly && NEXT_STATUS[o.orderStatus] && (
             <button onClick={() => advance(o)} className="mb-2 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold">
@@ -247,6 +254,76 @@ function OrdersTab({ readOnly = false }) {
         </div>
       ))}
       {orders.length === 0 && <p className="text-sm text-gray-400">No orders yet.</p>}
+    </div>
+  );
+}
+
+// Decline unavailable items → refund to the customer's chosen destination
+function DeclinePanel({ order, onDone }) {
+  const [open, setOpen] = useState(false);
+  const [sel, setSel] = useState([]);
+  const [code, setCode] = useState('out_of_stock');
+  const [reason, setReason] = useState('');
+  const [preview, setPreview] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const canDecline = order.paymentStatus === 'paid' && ['confirmed', 'preparing'].includes(order.orderStatus);
+  const active = (order.items || []).filter(i => i.status !== 'declined');
+  if (!canDecline || active.length === 0) return null;
+
+  const toggle = async (id) => {
+    const next = sel.includes(id) ? sel.filter(x => x !== id) : [...sel, id];
+    setSel(next); setPreview(null);
+    if (!next.length) return;
+    try {
+      const { data } = await expressManagerApi.get(`/orders/${order._id}/decline-preview`, { params: { itemIds: next.join(',') } });
+      setPreview(data);
+    } catch { /* preview is advisory */ }
+  };
+
+  const submit = async () => {
+    if (!sel.length) return toast.error('Select the items that are not available');
+    if (code === 'other' && !reason.trim()) return toast.error('Please give a reason');
+    if (!window.confirm(`Decline ${sel.length} item(s) and refund ₹${preview?.amount ?? ''} to the customer's ${order.refundPreference === 'source' ? 'original payment method' : 'wallet'}?`)) return;
+    setBusy(true);
+    try {
+      const { data } = await expressManagerApi.post(`/orders/${order._id}/decline-items`, { itemIds: sel, code, reason: reason.trim() });
+      const r = data.refund;
+      toast.success(`Refunded ₹${r.amount}${r.toSource ? ` (₹${r.toSource} to source)` : ''}${r.toWallet ? ` (₹${r.toWallet} to wallet)` : ''}${r.fallback ? ' — source refund failed, credited to wallet' : ''}`);
+      setOpen(false); setSel([]); setPreview(null); setReason('');
+      onDone();
+    } catch (err) { toast.error(err?.response?.data?.message || 'Failed to decline items'); }
+    finally { setBusy(false); }
+  };
+
+  if (!open) return <button onClick={() => setOpen(true)} className="mb-2 mr-2 px-3 py-1.5 rounded-lg border border-red-300 text-red-600 text-xs font-bold">Decline unavailable items</button>;
+  return (
+    <div className="mb-3 border border-red-200 bg-red-50 rounded-xl p-3">
+      <p className="text-xs font-bold text-red-700 mb-2">Select items that cannot be supplied</p>
+      {active.map(it => (
+        <label key={it._id} className="flex items-center gap-2 text-xs text-gray-700 py-0.5">
+          <input type="checkbox" checked={sel.includes(it._id)} onChange={() => toggle(it._id)} /> {it.name} × {it.quantity} — ₹{it.lineTotal}
+        </label>
+      ))}
+      <div className="flex gap-2 mt-2">
+        <select value={code} onChange={e => setCode(e.target.value)} className="border rounded-lg px-2 py-1 text-xs bg-white">
+          <option value="out_of_stock">Out of stock</option>
+          <option value="quality">Quality issue</option>
+          <option value="other">Other</option>
+        </select>
+        <input value={reason} onChange={e => setReason(e.target.value)} placeholder="Reason (shown to customer)" className="flex-1 border rounded-lg px-2 py-1 text-xs" />
+      </div>
+      {preview && (
+        <p className="text-xs text-gray-700 mt-2">
+          Refund <b>₹{preview.amount}</b> → customer chose <b>{preview.refundPreference === 'source' ? 'original payment' : 'wallet'}</b>
+          {preview.paidByWallet > 0 && <> (₹{preview.paidByWallet} was paid from wallet and returns to wallet)</>}
+          {preview.isDemo && <> · demo order</>}
+          {preview.note && <span className="block text-red-600 mt-1">{preview.note}</span>}
+        </p>
+      )}
+      <div className="flex gap-2 mt-2">
+        <button onClick={submit} disabled={busy || !sel.length} className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-50">{busy ? 'Refunding…' : 'Decline & refund'}</button>
+        <button onClick={() => { setOpen(false); setSel([]); setPreview(null); }} className="px-3 py-1.5 rounded-lg border text-xs font-semibold">Cancel</button>
+      </div>
     </div>
   );
 }

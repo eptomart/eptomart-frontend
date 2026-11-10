@@ -82,6 +82,7 @@ const ExpressShop             = lazy(() => import('./pages/express/ExpressShop')
 const ExpressProductDetail    = lazy(() => import('./pages/express/ExpressProductDetail'));
 const ExpressCheckout         = lazy(() => import('./pages/express/ExpressCheckout'));
 const ExpressMyOrders         = lazy(() => import('./pages/express/ExpressMyOrders'));
+const ExpressInvoice          = lazy(() => import('./pages/express/ExpressInvoice'));
 const ExpressManagerLogin     = lazy(() => import('./pages/express/manager/ExpressManagerLogin'));
 const ExpressManagerDashboard = lazy(() => import('./pages/express/manager/ExpressManagerDashboard'));
 const ExpressPOSLogin         = lazy(() => import('./pages/express/pos/ExpressPOSLogin'));
@@ -336,6 +337,7 @@ function AppRoutes() {
           <Route path="/express/product/:productId" element={<ExpressProductDetail />} />
           <Route path="/express/checkout"  element={<ProtectedRoute><ExpressCheckout /></ProtectedRoute>} />
           <Route path="/express/my-orders" element={<ProtectedRoute><ExpressMyOrders /></ProtectedRoute>} />
+          <Route path="/express/invoice/:orderId" element={<ProtectedRoute><ExpressInvoice /></ProtectedRoute>} />
           <Route path="/express/manager/login" element={<ExpressManagerLogin />} />
           <Route path="/express/manager"       element={<ExpressManagerDashboard />} />
           <Route path="/express/pos/login" element={<ExpressPOSLogin />} />
