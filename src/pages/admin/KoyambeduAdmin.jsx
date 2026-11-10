@@ -2065,6 +2065,11 @@ export default function KoyambeduAdmin() {
                       <p className="text-xs text-green-100 mt-1">covered bringing it to your doorsteps</p>
                     </div>
                   </div>
+                  <div className="mt-4 rounded-2xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.18)' }}>
+                    <p className="text-[10px] font-bold tracking-widest uppercase text-green-100">Total turnover so far</p>
+                    <p className="text-3xl font-black leading-tight">₹{fmt(im.turnover)}</p>
+                    <p className="text-[11px] text-green-100">This month: <b>₹{fmt(im.monthTurnover)}</b> · {fmt(im.paidOrders)} paid orders</p>
+                  </div>
                   <div className="grid grid-cols-3 gap-2 mt-4">
                     {[
                       ['🥬 Vegetables', `${fmt(im.vegTonnes)} t`],
