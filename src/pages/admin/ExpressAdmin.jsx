@@ -8,6 +8,7 @@
 // /express/admin/* route regardless of what this page does).
 // ============================================
 import React, { useEffect, useState } from 'react';
+import { OrderFilterBar, OrderSummary, LoadMore, useOrderSearch, downloadOrdersCsv, blankFilters } from '../../components/express/OrderSearch';
 import toast from 'react-hot-toast';
 import {
   FiZap, FiMapPin, FiUsers, FiUserCheck, FiPackage, FiSliders, FiBox,
@@ -221,12 +222,9 @@ const ORDER_STATUS_COLORS = {
 const NEXT_ORDER_STEP = { placed: 'confirmed', confirmed: 'preparing', preparing: 'out_for_delivery', out_for_delivery: 'delivered' };
 
 function OrdersTab({ stores }) {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [storeId, setStoreId] = useState('');
-  const [status, setStatus] = useState('');
-  const [range, setRange] = useState({ from: '', to: '' });
-  const [search, setSearch] = useState('');
+  // Cross-store search: date, store, item, location, status, payment, customer.
+  const [filters, setFilters] = useState({ ...blankFilters });
+  const { orders, summary, total, hasMore, loading, reload: load, loadMore } = useOrderSearch(api, '/express/admin/orders', filters);
   const [chargeDrafts, setChargeDrafts] = useState({}); // orderId -> { transportCharge, packingCharge }
   const [savingCharges, setSavingCharges] = useState(null);
   const [advancing, setAdvancing] = useState(null);
@@ -249,26 +247,6 @@ function OrdersTab({ stores }) {
       setConnectingPrinter(false);
     }
   };
-
-  const load = () => {
-    // Only show the full "Loading…" state when there is nothing on screen yet.
-    // After a save/status change the list refreshes quietly in place, so the
-    // page doesn't blank out and jump back to the top.
-    setLoading(orders.length === 0);
-    const params = new URLSearchParams();
-    if (storeId) params.set('storeId', storeId);
-    if (status) params.set('status', status);
-    if (range.from) params.set('from', range.from);
-    if (range.to) params.set('to', range.to);
-    if (search.trim()) params.set('search', search.trim());
-    api.get(`/express/admin/orders?${params.toString()}`)
-      .then(r => setOrders(r.data.orders || []))
-      .catch(() => toast.error('Failed to load orders'))
-      .finally(() => setLoading(false));
-  };
-  useEffect(() => { load(); }, [storeId, status, range.from, range.to]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Search is debounced separately so every keystroke doesn't re-fetch.
-  useEffect(() => { const t = setTimeout(load, 350); return () => clearTimeout(t); }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const advanceStatus = async (order) => {
     const next = NEXT_ORDER_STEP[order.orderStatus];
@@ -363,26 +341,16 @@ function OrdersTab({ stores }) {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h2 className="font-bold text-gray-700">Orders — All Stores</h2>
-        <div className="flex flex-wrap gap-2">
-          <input placeholder="Search order ID…" value={search} onChange={e => setSearch(e.target.value)}
-            className="border rounded-lg px-2.5 py-1.5 text-xs w-36" />
-          <select value={storeId} onChange={e => setStoreId(e.target.value)} className="border rounded-lg px-2.5 py-1.5 text-xs">
-            <option value="">All stores</option>
-            {stores.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-          </select>
-          <select value={status} onChange={e => setStatus(e.target.value)} className="border rounded-lg px-2.5 py-1.5 text-xs">
-            <option value="">All statuses</option>
-            {Object.entries(ORDER_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-          <input type="date" value={range.from} onChange={e => setRange(r => ({ ...r, from: e.target.value }))} className="border rounded-lg px-2.5 py-1.5 text-xs" />
-          <input type="date" value={range.to} onChange={e => setRange(r => ({ ...r, to: e.target.value }))} className="border rounded-lg px-2.5 py-1.5 text-xs" />
-          <button onClick={togglePrinterConnection} disabled={connectingPrinter}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
-            style={printerConnected ? { background: '#dcfce7', color: '#16a34a' } : { background: '#f3f4f6', color: '#4b5563' }}>
-            <FiBluetooth size={12} /> {connectingPrinter ? 'Connecting…' : printerConnected ? 'Printer Connected' : 'Connect Printer'}
-          </button>
-        </div>
+        <button onClick={togglePrinterConnection} disabled={connectingPrinter}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
+          style={printerConnected ? { background: '#dcfce7', color: '#16a34a' } : { background: '#f3f4f6', color: '#4b5563' }}>
+          <FiBluetooth size={12} /> {connectingPrinter ? 'Connecting…' : printerConnected ? 'Printer Connected' : 'Connect Printer'}
+        </button>
       </div>
+
+      <OrderFilterBar filters={filters} onChange={setFilters} stores={stores} showPayment
+        onExport={() => downloadOrdersCsv(api, '/express/admin/orders-export', filters)} />
+      <OrderSummary summary={summary} total={total} />
 
       {loading ? (
         <p className="text-sm text-gray-400 py-6 text-center">Loading…</p>
@@ -417,6 +385,16 @@ function OrdersTab({ stores }) {
                     <span className="font-black text-sm text-gray-800">₹{order.pricing?.total ?? 0}</span>
                   </div>
                 </div>
+
+                <p className="text-xs text-gray-600 mb-1">
+                  {(order.items || []).map((it, i) => (
+                    <span key={i} className={it.status === 'declined' ? 'line-through text-red-400' : ''}>{i ? ', ' : ''}{it.name} × {it.quantity}</span>
+                  ))}
+                </p>
+                <p className="text-[11px] text-gray-400 mb-2">
+                  📍 {[order.deliveryAddress?.addressLine, order.deliveryAddress?.city, order.deliveryAddress?.pincode].filter(Boolean).join(', ') || '—'}
+                  {order.pricing?.refundedAmount > 0 && <span className="text-red-500 font-semibold"> · refunded ₹{order.pricing.refundedAmount}</span>}
+                </p>
 
                 <div className="flex flex-wrap items-center gap-2">
                   <button onClick={() => printBill(order)}
@@ -482,6 +460,7 @@ function OrdersTab({ stores }) {
               </div>
             );
           })}
+          <LoadMore hasMore={hasMore} shown={orders.length} total={total} onClick={loadMore} />
         </div>
       )}
     </div>

@@ -13,6 +13,7 @@ import {
   FiBluetooth, FiPrinter, FiBell,
 } from 'react-icons/fi';
 import expressManagerApi, { getManagerToken, clearManagerToken, isMainLogin, getActAsStore, clearActAsStore } from '../../../utils/expressManagerApi';
+import { OrderFilterBar, OrderSummary, LoadMore, useOrderSearch, downloadOrdersCsv, blankFilters } from '../../../components/express/OrderSearch';
 import { OwnerOverview, OwnerCatalogTab, OwnerPOSTab, OwnerAccountsTab, OwnerTeamTab, OwnerDeliveryTab, OwnerGstTab } from './ExpressOwnerTabs';
 import { isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected, printPluList } from '../../../utils/expressThermalPrinter';
 
@@ -189,11 +190,10 @@ const NEXT_LABEL = {
 };
 
 export function OrdersTab({ readOnly = false }) {
-  const [orders, setOrders] = useState([]);
   const [expenseForm, setExpenseForm] = useState({}); // orderId -> { partner, amount }
-
-  const load = () => expressManagerApi.get('/orders').then(({ data }) => setOrders(data.orders || [])).catch(() => {});
-  useEffect(() => { load(); }, []);
+  // Store-level orders: the backend scopes this to the caller's own store.
+  const [filters, setFilters] = useState({ ...blankFilters });
+  const { orders, summary, total, hasMore, loading, reload: load, loadMore } = useOrderSearch(expressManagerApi, '/orders', filters);
 
   const advance = async (order) => {
     const next = NEXT_STATUS[order.orderStatus];
@@ -217,6 +217,10 @@ export function OrdersTab({ readOnly = false }) {
 
   return (
     <div className="grid gap-3">
+      <div>
+        <OrderFilterBar filters={filters} onChange={setFilters} onExport={() => downloadOrdersCsv(expressManagerApi, '/orders-export', filters)} />
+        <OrderSummary summary={summary} total={total} />
+      </div>
       {orders.map(o => (
         <div key={o._id} className="bg-white border rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
@@ -253,7 +257,9 @@ export function OrdersTab({ readOnly = false }) {
           </div>}
         </div>
       ))}
-      {orders.length === 0 && <p className="text-sm text-gray-400">No orders yet.</p>}
+      {loading && orders.length === 0 && <p className="text-sm text-gray-400">Loading…</p>}
+      {!loading && orders.length === 0 && <p className="text-sm text-gray-400">No orders match these filters.</p>}
+      <LoadMore hasMore={hasMore} shown={orders.length} total={total} onClick={loadMore} />
     </div>
   );
 }
