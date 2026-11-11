@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import UserActivityPanel from '../../components/koyambedu/UserActivityPanel';
 import api from '../../utils/api';
 import KoyambeduImageUploader from '../../components/koyambedu/KoyambeduImageUploader';
 import KoyambeduVariantProductForm, { makeEmptyVariantProduct, getVariantOverlapError } from '../../components/koyambedu/KoyambeduVariantProductForm';
@@ -2009,7 +2010,7 @@ export default function KoyambeduAdmin() {
           {TAB_LIST.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition ${tab === t ? 'bg-white text-green-700' : 'bg-white/20 text-white hover:bg-white/30'}`}>
-              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'wallets' ? '💳 Wallets' : t === 'users-cart' ? '🛒 Users Cart' : t === 'procurement' ? '📦 Procurement' : t === 'offers' ? '📣 Offers' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'hubs' ? '📍 Hubs' : t === 'printer' ? '🖨️ Printer' : t === 'fulfillment' ? '📋 Fulfillment' : t === 'pnl' ? '💰 P&L' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'combos' ? '🧺 Combos' : t === 'bulk-harvest' ? '🌾 Bulk Harvest' : t === 'news' ? '📰 News' : t === 'quotation' ? '🧾 Quotation' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t === 'whatsapp-inbox' ? `💬 WhatsApp${waUnread > 0 ? ` (${waUnread})` : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'seller-admins' ? 'Seller Admins' : t === 'pending-approval' ? `⏳ Approvals${pendingApprovalOrders.length ? ` (${pendingApprovalOrders.length})` : ''}` : t === 'alerts' ? `🚨 Alerts${deliveryAlerts.length ? ` (${deliveryAlerts.length})` : ''}` : t === 'cancelled-orders' ? '❌ Cancelled' : t === 'refund-requests' ? '💸 Refunds' : t === 'wallets' ? '💳 Wallets' : t === 'users-cart' ? '👥 User Activity' : t === 'procurement' ? '📦 Procurement' : t === 'offers' ? '📣 Offers' : t === 'daily-price' ? '🏷️ Daily Price' : t === 'schedule' ? '📅 Schedule' : t === 'hubs' ? '📍 Hubs' : t === 'printer' ? '🖨️ Printer' : t === 'fulfillment' ? '📋 Fulfillment' : t === 'pnl' ? '💰 P&L' : t === 'reports' ? '📊 Reports' : t === 'product-approvals' ? '✅ Product Approvals' : t === 'combos' ? '🧺 Combos' : t === 'bulk-harvest' ? '🌾 Bulk Harvest' : t === 'news' ? '📰 News' : t === 'quotation' ? '🧾 Quotation' : t === 'dev-settings' ? `🔧 Dev Settings${testModeActive ? ' 🔴' : ''}` : t === 'whatsapp-inbox' ? `💬 WhatsApp${waUnread > 0 ? ` (${waUnread})` : ''}` : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -4201,6 +4202,7 @@ export default function KoyambeduAdmin() {
             <p className="text-orange-600 font-semibold text-sm">⚠️ Viewing customer carts requires SuperAdmin access.</p>
           </div>
         ) : (
+          <UserActivityPanel cartsView={(
           <div className="space-y-3 pb-6">
             <div className="bg-white rounded-2xl border border-gray-200 p-3">
               <input
@@ -4245,6 +4247,7 @@ export default function KoyambeduAdmin() {
               <p className="text-center text-gray-400 py-8">No customers currently have items in their cart</p>
             )}
           </div>
+          )} />
         )
       )}
 

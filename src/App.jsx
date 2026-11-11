@@ -17,6 +17,7 @@ import { EptoFreshCartProvider } from './context/EptoFreshCartContext';
 import Loader from './components/common/Loader';
 import CompareBar from './components/product/CompareBar';
 import AIAssistant from './components/AIAssistant';
+import KoyambeduActivityTracker from './components/koyambedu/KoyambeduActivityTracker';
 import WhatsAppFloat from './components/WhatsAppFloat';
 import BottomNav from './components/common/BottomNav';
 import PwaInstallBanner from './components/common/PwaInstallBanner';
@@ -381,6 +382,7 @@ function AppRoutes() {
       </Suspense>
 
       <GlobalBottomNav />
+      <KoyambeduActivityTracker />
       {!isExpressStaffScreen(useLocation().pathname) && <CompareBar />}
       {!useLocation().pathname.startsWith('/koyambedu') && !isExpressStaffScreen(useLocation().pathname) && <AIAssistant />}
       {!isExpressStaffScreen(useLocation().pathname) && <WhatsAppFloat />}
