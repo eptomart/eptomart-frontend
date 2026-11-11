@@ -37,6 +37,171 @@ const ProfitBadge = ({ value, size = 'base' }) => {
   );
 };
 
+
+// ── Loadman & Transport payments ─────────────────────────────────────────
+// Separate ledger: each payment has an amount, who paid it and who received
+// it. Payer names are a managed list (add + delete with ✕). Deleting a name
+// never changes past payments. Loadman total feeds the existing loadman
+// split; transport total is shared across the day's bills by revenue.
+function DayPayments({ cycle, report, onChanged }) {
+  const [names, setNames] = useState([]);
+  const [kind, setKind] = useState('loadman');
+  const [amount, setAmount] = useState('');
+  const [paidBy, setPaidBy] = useState('');
+  const [paidTo, setPaidTo] = useState('');
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [manage, setManage] = useState(false);
+  const [newName, setNewName] = useState('');
+
+  useEffect(() => {
+    api.get('/koyambedu/admin/pnl/parties').then(({ data }) => setNames(data.names || [])).catch(() => {});
+  }, []);
+
+  const addName = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    try {
+      const { data } = await api.post('/koyambedu/admin/pnl/parties', { name });
+      setNames(data.names || []); setNewName(''); setPaidBy(name);
+    } catch { toast.error('Failed to add name'); }
+  };
+  const delName = async (name) => {
+    if (!window.confirm(`Delete "${name}" from the list? Past payments keep their name.`)) return;
+    try {
+      const { data } = await api.delete('/koyambedu/admin/pnl/parties', { data: { name } });
+      setNames(data.names || []);
+      if (paidBy === name) setPaidBy('');
+    } catch { toast.error('Failed to delete name'); }
+  };
+  const save = async () => {
+    if (!(Number(amount) > 0)) { toast.error('Enter an amount'); return; }
+    setSaving(true);
+    try {
+      await api.post('/koyambedu/admin/pnl/day-expenses', { cycle, kind, amount: Number(amount), paidBy, paidTo, note });
+      setAmount(''); setPaidTo(''); setNote('');
+      toast.success('Payment added');
+      if (paidBy && !names.includes(paidBy)) setNames(n => [...n, paidBy].sort());
+      onChanged();
+    } catch (e) { toast.error(e.response?.data?.message || 'Failed to save payment'); }
+    finally { setSaving(false); }
+  };
+  const delEntry = async (id) => {
+    if (!window.confirm('Delete this payment?')) return;
+    try { await api.delete(`/koyambedu/admin/pnl/day-expenses/${id}`); onChanged(); }
+    catch { toast.error('Failed to delete'); }
+  };
+
+  const entries = report.expenseEntries || [];
+  const inp = 'border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400';
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h3 className="font-bold text-gray-700 text-sm">🚚 Loadman &amp; Transport Payments</h3>
+          <p className="text-[11px] text-gray-400">Record each payment and who paid it. Loadman is split across today's kg items; transport is shared across today's bills by value.</p>
+        </div>
+        <button onClick={() => setManage(m => !m)}
+          className="shrink-0 text-xs font-bold text-gray-700 border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-lg">
+          {manage ? 'Done' : '👤 Manage Names'}
+        </button>
+      </div>
+
+      {manage && (
+        <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+          <div className="flex gap-2">
+            <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="New name"
+              onKeyDown={e => e.key === 'Enter' && addName()} className={`${inp} flex-1`} />
+            <button onClick={addName} className="bg-gray-800 text-white text-sm font-bold px-4 rounded-xl">Add</button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {names.length === 0 && <span className="text-xs text-gray-400">No names yet</span>}
+            {names.map(n => (
+              <span key={n} className="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-full pl-3 pr-1 py-1 text-xs text-gray-700">
+                {n}
+                <button onClick={() => delName(n)} aria-label={`Delete ${n}`}
+                  className="w-5 h-5 rounded-full text-red-600 hover:bg-red-50 font-bold leading-none">✕</button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-end gap-2">
+        <div>
+          <label className="text-xs text-gray-500 font-medium block mb-1">Type</label>
+          <select value={kind} onChange={e => setKind(e.target.value)} className={`${inp} bg-white`}>
+            <option value="loadman">Loadman</option>
+            <option value="transport">Transport</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500 font-medium block mb-1">Amount (₹)</label>
+          <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="e.g. 500" className={`${inp} w-28`} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500 font-medium block mb-1">Paid by</label>
+          <select value={paidBy} onChange={e => setPaidBy(e.target.value)} className={`${inp} bg-white w-36`}>
+            <option value="">— Select —</option>
+            {names.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500 font-medium block mb-1">Paid to (optional)</label>
+          <input value={paidTo} onChange={e => setPaidTo(e.target.value)} placeholder="Loadman / driver" className={`${inp} w-36`} />
+        </div>
+        <div className="flex-1 min-w-[120px]">
+          <label className="text-xs text-gray-500 font-medium block mb-1">Note (optional)</label>
+          <input value={note} onChange={e => setNote(e.target.value)} className={`${inp} w-full`} />
+        </div>
+        <button onClick={save} disabled={saving}
+          className="bg-red-600 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-red-700 disabled:opacity-50">
+          {saving ? 'Saving…' : '+ Add'}
+        </button>
+      </div>
+
+      {entries.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
+                <th className="px-3 py-2">Type</th><th className="px-3 py-2 text-right">Amount</th>
+                <th className="px-3 py-2">Paid by</th><th className="px-3 py-2">Paid to</th>
+                <th className="px-3 py-2">Note</th><th className="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map(e => (
+                <tr key={e._id} className="border-t border-gray-100">
+                  <td className="px-3 py-2 capitalize">{e.kind}</td>
+                  <td className="px-3 py-2 text-right font-bold text-gray-700">{money(e.amount)}</td>
+                  <td className="px-3 py-2">{e.paidBy || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-3 py-2">{e.paidTo || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-3 py-2 text-gray-500">{e.note}</td>
+                  <td className="px-3 py-2 text-right">
+                    <button onClick={() => delEntry(e._id)} className="text-red-600 text-xs font-bold hover:underline">Delete</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {report.paidByRollup?.length > 0 && (
+            <p className="text-[11px] text-gray-500 mt-2">
+              {report.paidByRollup.map(p => `${p.name}: ${money(p.total)} (loadman ${money(p.loadman)}, transport ${money(p.transport)})`).join('  ·  ')}
+            </p>
+          )}
+          {report.transportUnallocated > 0 && (
+            <p className="text-[11px] text-amber-700 mt-1">No confirmed orders this day, so transport {money(report.transportUnallocated)} isn't counted in any bill.</p>
+          )}
+        </div>
+      ) : (
+        <p className="text-xs text-gray-400">No payments recorded for this date.
+          {report.loadmanCharge > 0 && ' (Using the single loadman amount entered above.)'}</p>
+      )}
+    </div>
+  );
+}
+
 export default function PNLTab() {
   const [view, setView] = useState('day'); // 'day' | 'range' | 'margin'
 
@@ -266,7 +431,7 @@ export default function PNLTab() {
 
               <div className="ml-auto flex items-end gap-2">
                 <div>
-                  <label className="text-xs text-gray-500 font-medium block mb-1">Total loadman charge for the day (₹)</label>
+                  <label className="text-xs text-gray-500 font-medium block mb-1">Quick loadman total (₹) — or use Payments below</label>
                   <input type="number" value={loadmanDraft} onChange={e => setLoadmanDraft(e.target.value)}
                     placeholder="e.g. 1000"
                     className="border border-gray-200 rounded-xl px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-red-400" />
@@ -310,6 +475,8 @@ export default function PNLTab() {
                   <ProfitBadge value={dayReport.dayProfit} size="lg" />
                 </div>
               </div>
+
+              <DayPayments cycle={cycle} report={dayReport} onChanged={loadDay} />
 
               {/* Margin & price alerts — products that made little or no money
                   today, with a suggested selling price for tomorrow's listing. */}
