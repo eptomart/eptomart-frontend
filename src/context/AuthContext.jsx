@@ -43,7 +43,15 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('eptomart_token', data.token);
       }
       checkKoyambeduRoles();
-    } catch {
+    } catch (err) {
+      // While viewing as a customer a failed lookup must never log the admin out:
+      // drop the view and return to the admin panel instead.
+      if (sessionStorage.getItem('kbd_view_as')) {
+        sessionStorage.removeItem('kbd_view_as');
+        setLoading(false);
+        window.location.replace('/admin/koyambedu');
+        return;
+      }
       localStorage.removeItem('eptomart_token');
       setUser(null);
       setIsKoyambeduSeller(false);
