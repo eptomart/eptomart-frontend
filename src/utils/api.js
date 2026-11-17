@@ -3,7 +3,7 @@
 // ============================================
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { getViewAs, VIEW_AS_URLS, isViewAsWriteBlocked } from './viewAsCustomer';
+import { getViewAs, isViewAsUrl, isViewAsPaymentBlocked } from './viewAsCustomer';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -39,17 +39,17 @@ api.interceptors.request.use(
       if (actAs && String(config.url || '').startsWith('/eptofresh/seller')) config.headers['x-epf-seller-id'] = actAs;
     } catch (_) {}
 
-    // Super admin "view as customer": serve cart / wallet / orders as that
-    // customer, and refuse every other change (no checkout / payment).
+    // Super admin "view as customer": serve every customer screen as that
+    // customer; only payment / order placement is refused.
     try {
       const va = getViewAs();
       if (va) {
         const url = String(config.url || '');
-        if (isViewAsWriteBlocked(config.method, url)) {
-          toast.error('Not allowed while viewing as a customer');
-          return Promise.reject(new axios.Cancel('view-as-readonly'));
+        if (isViewAsPaymentBlocked(config.method, url)) {
+          toast.error('Payment is disabled in admin view');
+          return Promise.reject(new axios.Cancel('view-as-payment'));
         }
-        if (VIEW_AS_URLS.some(u => url.startsWith(u))) config.headers['x-view-as-user'] = va.id;
+        if (isViewAsUrl(url)) config.headers['x-view-as-user'] = va.id;
       }
     } catch (_) {}
 

@@ -16,8 +16,18 @@ export const stopViewAs = (to = '/admin/koyambedu') => {
   window.location.assign(to);
 };
 
-// Only these customer endpoints are served as the customer.
-export const VIEW_AS_URLS = ['/koyambedu/cart', '/koyambedu/wallet', '/koyambedu/my-orders'];
-// While viewing, the only writes allowed are cart edits.
-export const isViewAsWriteBlocked = (method, url) =>
-  String(method || 'get').toLowerCase() !== 'get' && !String(url || '').startsWith('/koyambedu/cart');
+// Customer endpoints that are served as the viewed customer (mirrors the backend).
+export const isViewAsUrl = (url) => {
+  const u = String(url || '');
+  if (u.startsWith('/koyambedu/')) return !/^\/koyambedu\/(admin|seller|seller-admin)(\/|$)/.test(u);
+  return u === '/auth/me' || u === '/auth/add-address' || u.startsWith('/auth/address/') || u.startsWith('/coupon/validate');
+};
+// The ONLY thing blocked while viewing: payment / placing an order.
+export const isViewAsPaymentBlocked = (method, url) => {
+  if (String(method || 'get').toLowerCase() === 'get') return false;
+  const u = String(url || '').split('?')[0];
+  return /^\/koyambedu\/orders\/?$/.test(u)
+    || /^\/koyambedu\/orders\/(create-razorpay|verify-payment|test-payment)$/.test(u)
+    || /^\/koyambedu\/orders\/[^/]+\/amend\/(checkout|verify)$/.test(u)
+    || /^\/koyambedu\/orders\/[^/]+\/address\/(confirm|verify)$/.test(u);
+};

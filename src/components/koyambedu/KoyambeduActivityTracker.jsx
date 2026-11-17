@@ -13,6 +13,7 @@ import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import { getViewAs } from '../../utils/viewAsCustomer';
 
 const API = import.meta.env.VITE_API_URL || '/api';
 
@@ -28,7 +29,7 @@ export default function KoyambeduActivityTracker() {
   const lastPath = useRef('');
   const lastSearch = useRef('');
 
-  const eligible = !!user && !['admin', 'superAdmin'].includes(user.role)
+  const eligible = !!user && !getViewAs() && !['admin', 'superAdmin'].includes(user.role)
     && pathname.startsWith('/koyambedu') && !pathname.startsWith('/koyambedu/seller');
 
   // Page / product / checkout views

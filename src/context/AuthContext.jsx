@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
       const { data } = await api.get('/auth/me');
       setUser(data.user);
       // Auto-refresh: server sends a new token when the current one is near expiry
-      if (data.token) {
+      if (data.token && !sessionStorage.getItem('kbd_view_as')) {
         localStorage.setItem('eptomart_token', data.token);
       }
       checkKoyambeduRoles();
