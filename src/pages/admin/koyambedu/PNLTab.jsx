@@ -294,15 +294,28 @@ export default function PNLTab() {
 
   // "Procured By" is a strict dropdown, so a brand-new person has to be
   // added to the maintained list once before they show up as an option.
+  const [managePeople, setManagePeople] = useState(false);
+  const [newPerson, setNewPerson] = useState('');
   const addProcurer = async () => {
-    const name = window.prompt('Add a new name to the Procured By list:');
-    if (!name || !name.trim()) return;
+    const name = newPerson.trim();
+    if (!name) return;
     try {
-      const { data } = await api.post('/koyambedu/admin/procurers', { name: name.trim() });
+      const { data } = await api.post('/koyambedu/admin/procurers', { name });
       setProcurers(data.names || []);
-      toast.success(`${name.trim()} added`);
+      setNewPerson('');
+      toast.success(`${name} added`);
     } catch {
       toast.error('Failed to add name');
+    }
+  };
+  const deleteProcurer = async (name) => {
+    if (!window.confirm(`Delete "${name}" from the list? Past entries keep their name.`)) return;
+    try {
+      const { data } = await api.delete('/koyambedu/admin/procurers', { data: { name } });
+      setProcurers(data.names || []);
+      toast.success(`${name} deleted`);
+    } catch {
+      toast.error('Failed to delete name');
     }
   };
 
@@ -545,9 +558,9 @@ export default function PNLTab() {
                     <p className="text-[11px] text-gray-400">Enter what was actually paid to the supplier per unit, and pick who procured it.</p>
                   </div>
                   <div className="shrink-0 flex items-center gap-2">
-                    <button onClick={addProcurer}
+                    <button onClick={() => setManagePeople(m => !m)}
                       className="text-xs font-bold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-lg">
-                      + Add Person
+                      {managePeople ? 'Done' : '👤 Add / Delete Names'}
                     </button>
                     <button onClick={saveAllCosts} disabled={savingAllCosts}
                       className="text-xs font-bold text-white bg-gray-800 hover:bg-gray-900 px-3 py-1.5 rounded-lg disabled:opacity-50">
@@ -555,6 +568,26 @@ export default function PNLTab() {
                     </button>
                   </div>
                 </div>
+                {managePeople && (
+                  <div className="mx-4 mb-3 bg-gray-50 rounded-xl p-3 space-y-2">
+                    <div className="flex gap-2">
+                      <input value={newPerson} onChange={e => setNewPerson(e.target.value)} placeholder="New name"
+                        onKeyDown={e => e.key === 'Enter' && addProcurer()}
+                        className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+                      <button onClick={addProcurer} className="bg-gray-800 text-white text-sm font-bold px-4 rounded-xl">Add</button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {procurers.length === 0 && <span className="text-xs text-gray-400">No names yet</span>}
+                      {procurers.map(n => (
+                        <span key={n} className="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-full pl-3 pr-1 py-1 text-xs text-gray-700">
+                          {n}
+                          <button onClick={() => deleteProcurer(n)} aria-label={`Delete ${n}`}
+                            className="w-5 h-5 rounded-full text-red-600 hover:bg-red-50 font-bold leading-none">✕</button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
