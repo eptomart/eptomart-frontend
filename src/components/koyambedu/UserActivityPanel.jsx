@@ -40,7 +40,7 @@ const toParams = (f, extra = {}) => {
   for (const [k, v] of Object.entries(f)) { if (k === 'groups') { if (v.length) p.group = v.join(','); } else if (v) p[k] = v; }
   return p;
 };
-const cls = 'border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:border-green-500';
+const cls = 'border border-gray-200 rounded-lg px-2.5 py-1.5 text-[16px] sm:text-xs bg-white focus:outline-none focus:border-green-500';
 
 export default function UserActivityPanel({ cartsView }) {
   const [view, setView] = useState('feed');           // feed | customers | insights | carts
