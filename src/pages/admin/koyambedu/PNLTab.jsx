@@ -43,20 +43,16 @@ const ProfitBadge = ({ value, size = 'base' }) => {
 // it. Payer names are a managed list (add + delete with ✕). Deleting a name
 // never changes past payments. Loadman total feeds the existing loadman
 // split; transport total is shared across the day's bills by revenue.
-function DayPayments({ cycle, report, onChanged }) {
-  const [names, setNames] = useState([]);
+function DayPayments({ cycle, report, onChanged, names, setNames }) {
   const [kind, setKind] = useState('loadman');
   const [amount, setAmount] = useState('');
   const [paidBy, setPaidBy] = useState('');
   const [paidTo, setPaidTo] = useState('');
+  const [category, setCategory] = useState('Stationery');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [manage, setManage] = useState(false);
   const [newName, setNewName] = useState('');
-
-  useEffect(() => {
-    api.get('/koyambedu/admin/pnl/parties').then(({ data }) => setNames(data.names || [])).catch(() => {});
-  }, []);
 
   const addName = async () => {
     const name = newName.trim();
@@ -78,7 +74,7 @@ function DayPayments({ cycle, report, onChanged }) {
     if (!(Number(amount) > 0)) { toast.error('Enter an amount'); return; }
     setSaving(true);
     try {
-      await api.post('/koyambedu/admin/pnl/day-expenses', { cycle, kind, amount: Number(amount), paidBy, paidTo, note });
+      await api.post('/koyambedu/admin/pnl/day-expenses', { cycle, kind, amount: Number(amount), paidBy, paidTo, note, category: kind === 'misc' ? category : undefined });
       setAmount(''); setPaidTo(''); setNote('');
       toast.success('Payment added');
       if (paidBy && !names.includes(paidBy)) setNames(n => [...n, paidBy].sort());
@@ -98,8 +94,8 @@ function DayPayments({ cycle, report, onChanged }) {
     <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h3 className="font-bold text-gray-700 text-sm">🚚 Loadman &amp; Transport Payments</h3>
-          <p className="text-[11px] text-gray-400">Record each payment and who paid it. Loadman is split across today's kg items; transport is shared across today's bills by value.</p>
+          <h3 className="font-bold text-gray-700 text-sm">🧾 Day Expenses — Loadman, Transport &amp; Miscellaneous</h3>
+          <p className="text-[11px] text-gray-400">Record each expense and who paid it. These are day-end overheads: they reduce the day's net profit once and are not spread over items or bills.</p>
         </div>
         <button onClick={() => setManage(m => !m)}
           className="shrink-0 text-xs font-bold text-gray-700 border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-lg">
@@ -132,9 +128,18 @@ function DayPayments({ cycle, report, onChanged }) {
           <label className="text-xs text-gray-500 font-medium block mb-1">Type</label>
           <select value={kind} onChange={e => setKind(e.target.value)} className={`${inp} bg-white`}>
             <option value="loadman">Loadman</option>
-            <option value="transport">Transport</option>
+            <option value="transport">Transport (day)</option>
+            <option value="misc">Miscellaneous</option>
           </select>
         </div>
+        {kind === 'misc' && (
+          <div>
+            <label className="text-xs text-gray-500 font-medium block mb-1">Category</label>
+            <select value={category} onChange={e => setCategory(e.target.value)} className={`${inp} bg-white w-40`}>
+              {['Stationery', 'Packing material', 'Fuel', 'Food & tea', 'Repairs & maintenance', 'Phone & internet', 'Labour (other)', 'Other'].map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+        )}
         <div>
           <label className="text-xs text-gray-500 font-medium block mb-1">Amount (₹)</label>
           <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="e.g. 500" className={`${inp} w-28`} />
@@ -148,10 +153,10 @@ function DayPayments({ cycle, report, onChanged }) {
         </div>
         <div>
           <label className="text-xs text-gray-500 font-medium block mb-1">Paid to (optional)</label>
-          <input value={paidTo} onChange={e => setPaidTo(e.target.value)} placeholder="Loadman / driver" className={`${inp} w-36`} />
+          <input value={paidTo} onChange={e => setPaidTo(e.target.value)} placeholder="Shop / person / driver" className={`${inp} w-36`} />
         </div>
         <div className="flex-1 min-w-[120px]">
-          <label className="text-xs text-gray-500 font-medium block mb-1">Note (optional)</label>
+          <label className="text-xs text-gray-500 font-medium block mb-1">Comments</label>
           <input value={note} onChange={e => setNote(e.target.value)} className={`${inp} w-full`} />
         </div>
         <button onClick={save} disabled={saving}
@@ -167,13 +172,13 @@ function DayPayments({ cycle, report, onChanged }) {
               <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
                 <th className="px-3 py-2">Type</th><th className="px-3 py-2 text-right">Amount</th>
                 <th className="px-3 py-2">Paid by</th><th className="px-3 py-2">Paid to</th>
-                <th className="px-3 py-2">Note</th><th className="px-3 py-2"></th>
+                <th className="px-3 py-2">Comments</th><th className="px-3 py-2"></th>
               </tr>
             </thead>
             <tbody>
               {entries.map(e => (
                 <tr key={e._id} className="border-t border-gray-100">
-                  <td className="px-3 py-2 capitalize">{e.kind}</td>
+                  <td className="px-3 py-2">{e.kind === 'misc' ? `Misc · ${e.category || 'Other'}` : e.kind === 'transport' ? 'Transport (day)' : 'Loadman'}</td>
                   <td className="px-3 py-2 text-right font-bold text-gray-700">{money(e.amount)}</td>
                   <td className="px-3 py-2">{e.paidBy || <span className="text-gray-300">—</span>}</td>
                   <td className="px-3 py-2">{e.paidTo || <span className="text-gray-300">—</span>}</td>
@@ -185,14 +190,11 @@ function DayPayments({ cycle, report, onChanged }) {
               ))}
             </tbody>
           </table>
-          {report.paidByRollup?.length > 0 && (
-            <p className="text-[11px] text-gray-500 mt-2">
-              {report.paidByRollup.map(p => `${p.name}: ${money(p.total)} (loadman ${money(p.loadman)}, transport ${money(p.transport)})`).join('  ·  ')}
-            </p>
-          )}
-          {report.transportUnallocated > 0 && (
-            <p className="text-[11px] text-amber-700 mt-1">No confirmed orders this day, so transport {money(report.transportUnallocated)} isn't counted in any bill.</p>
-          )}
+          <p className="text-[11px] text-gray-500 mt-2">
+            Day expenses total <b>{money(report.dayOverheads)}</b>
+            {' '}(loadman {money(report.loadmanCharge)} · transport {money(report.dayTransportCharge)} · misc {money(report.miscTotal)})
+            {report.miscByCategory?.length > 0 && <> — {report.miscByCategory.map(c => `${c.category} ${money(c.amount)}`).join(', ')}</>}
+          </p>
         </div>
       ) : (
         <p className="text-xs text-gray-400">No payments recorded for this date.
@@ -220,6 +222,7 @@ export default function PNLTab() {
   const [orderCostDrafts, setOrderCostDrafts] = useState({}); // orderId -> { transportCost, packingCost }
   const [savingOrderCost, setSavingOrderCost] = useState({});
   const [expandedOrder, setExpandedOrder] = useState(null);
+  const [partyNames, setPartyNames] = useState([]); // payer names (Day Expenses + per-bill 'paid by')
   const [procurers, setProcurers] = useState([]); // maintained dropdown list for "Procured By"
   const [expandedProcurers, setExpandedProcurers] = useState({}); // name -> bool, product list shown on demand
 
@@ -258,6 +261,9 @@ export default function PNLTab() {
 
   // Maintained "Procured By" dropdown — loaded once, grows automatically
   // whenever a new name is used (see registerProcurerName on the backend).
+  useEffect(() => {
+    api.get('/koyambedu/admin/pnl/parties').then(({ data }) => setPartyNames(data.names || [])).catch(() => {});
+  }, []);
   useEffect(() => {
     api.get('/koyambedu/admin/procurers').then(({ data }) => setProcurers(data.names || [])).catch(() => {});
   }, []);
@@ -369,6 +375,7 @@ export default function PNLTab() {
       await api.patch(`/koyambedu/admin/orders/${order._id}/costs`, {
         transportCharge: draft.transportCost ?? order.transportCost,
         packingCharge:   draft.packingCost   ?? order.packingCost,
+        costPaidBy:      draft.paidBy        ?? order.costPaidBy ?? '',
       });
       toast.success(`${order.orderId} costs saved`);
       loadDay();
@@ -431,7 +438,7 @@ export default function PNLTab() {
 
               <div className="ml-auto flex items-end gap-2">
                 <div>
-                  <label className="text-xs text-gray-500 font-medium block mb-1">Quick loadman total (₹) — or use Payments below</label>
+                  <label className="text-xs text-gray-500 font-medium block mb-1">Quick loadman total (₹) — or add under Day Expenses</label>
                   <input type="number" value={loadmanDraft} onChange={e => setLoadmanDraft(e.target.value)}
                     placeholder="e.g. 1000"
                     className="border border-gray-200 rounded-xl px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-red-400" />
@@ -453,7 +460,6 @@ export default function PNLTab() {
             {dayReport && (
               <p className="text-[11px] text-gray-400 mt-2">
                 {dayReport.orderCount} confirmed order{dayReport.orderCount === 1 ? '' : 's'} · {dayReport.totalQtyForDay.toFixed(2)} total units ·
-                {' '}loadman rate ≈ ₹{dayReport.loadmanPerUnitRate.toFixed(2)}/unit
               </p>
             )}
           </div>
@@ -467,16 +473,24 @@ export default function PNLTab() {
                   <p className="text-xl font-bold text-gray-700">{money(dayReport.dayRevenue)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 font-medium mb-1">Today's Cost</p>
-                  <p className="text-xl font-bold text-gray-700">{money(dayReport.dayCost)}</p>
+                  <p className="text-xs text-gray-500 font-medium mb-1">Bill costs (procurement, bill transport/packing, Razorpay)</p>
+                  <p className="text-xl font-bold text-gray-700">{money(dayReport.orderCostTotal)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium mb-1">Gross profit</p>
+                  <p className="text-xl font-bold text-gray-700">{money(dayReport.grossProfit)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium mb-1">Day expenses (loadman, transport, misc)</p>
+                  <p className="text-xl font-bold text-gray-700">− {money(dayReport.dayOverheads)}</p>
                 </div>
                 <div className="ml-auto">
-                  <p className="text-xs text-gray-500 font-medium mb-1 text-right">Today's {dayReport.dayProfit < 0 ? 'Loss' : 'Profit'}</p>
+                  <p className="text-xs text-gray-500 font-medium mb-1 text-right">Net {dayReport.dayProfit < 0 ? 'Loss' : 'Profit'} for the day</p>
                   <ProfitBadge value={dayReport.dayProfit} size="lg" />
                 </div>
               </div>
 
-              <DayPayments cycle={cycle} report={dayReport} onChanged={loadDay} />
+              <DayPayments cycle={cycle} report={dayReport} onChanged={loadDay} names={partyNames} setNames={setPartyNames} />
 
               {/* Margin & price alerts — products that made little or no money
                   today, with a suggested selling price for tomorrow's listing. */}
@@ -548,7 +562,6 @@ export default function PNLTab() {
                       <th className="px-3 py-2 text-right">Qty</th>
                       <th className="px-3 py-2 text-right">Purchase Cost/Unit</th>
                       <th className="px-3 py-2 text-right">Total Purchase Cost</th>
-                      <th className="px-3 py-2 text-right">Loadman Cost</th>
                       <th className="px-3 py-2 text-right">Total Procurement</th>
                       <th className="px-3 py-2">Procured By</th>
                     </tr>
@@ -565,7 +578,6 @@ export default function PNLTab() {
                             className="w-24 border border-gray-200 rounded-lg px-2 py-1 text-right focus:outline-none focus:border-red-400" />
                         </td>
                         <td className="px-3 py-2 text-right text-gray-600">{money(row.purchaseCost)}</td>
-                        <td className="px-3 py-2 text-right text-gray-600">{money(row.loadmanCost)}</td>
                         <td className="px-3 py-2 text-right font-bold text-gray-700">{money(row.totalProcurement)}</td>
                         <td className="px-3 py-2">
                           {/* Strict dropdown — only names from the maintained list.
@@ -582,7 +594,7 @@ export default function PNLTab() {
                       </tr>
                     ))}
                     {dayReport.itemRollup.length === 0 && (
-                      <tr><td colSpan={7} className="text-center text-gray-400 py-6">No confirmed orders for this date</td></tr>
+                      <tr><td colSpan={6} className="text-center text-gray-400 py-6">No confirmed orders for this date</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -592,8 +604,8 @@ export default function PNLTab() {
               {dayReport.procuredByRollup.length > 0 && (
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
                   <div className="px-4 pt-3 pb-1">
-                    <h3 className="font-bold text-gray-700 text-sm">Procured By — Amount to Pay</h3>
-                    <p className="text-[11px] text-gray-400">What Eptomart owes each person for this day's procurement — their supplier cost plus their share of the loadman charge.</p>
+                    <h3 className="font-bold text-gray-700 text-sm">Procured By — Purchases</h3>
+                    <p className="text-[11px] text-gray-400">What Eptomart owes each person for the supplier purchases they paid for. Other out-of-pocket payments are in Settlement below.</p>
                   </div>
                   <table className="w-full text-sm">
                     <thead>
@@ -601,7 +613,6 @@ export default function PNLTab() {
                         <th className="px-3 py-2">Name</th>
                         <th className="px-3 py-2 text-right">Qty Handled</th>
                         <th className="px-3 py-2 text-right">Purchase Cost</th>
-                        <th className="px-3 py-2 text-right">Loadman Share</th>
                         <th className="px-3 py-2 text-right">Amount to Pay</th>
                         <th className="px-3 py-2">Products</th>
                       </tr>
@@ -614,7 +625,6 @@ export default function PNLTab() {
                             <td className="px-3 py-2 font-bold text-gray-700">{p.name}</td>
                             <td className="px-3 py-2 text-right text-gray-600">{p.totalQty.toFixed(2)}</td>
                             <td className="px-3 py-2 text-right text-gray-600">{money(p.purchaseCost)}</td>
-                            <td className="px-3 py-2 text-right text-gray-600">{money(p.loadmanCost)}</td>
                             <td className="px-3 py-2 text-right font-bold text-green-700">{money(p.amountPayable)}</td>
                             <td className="px-3 py-2 text-gray-500 text-xs">
                               <button
@@ -627,6 +637,42 @@ export default function PNLTab() {
                           </tr>
                         );
                       })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Settlement — who paid what out of pocket */}
+              {dayReport.settlement?.length > 0 && (
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
+                  <div className="px-4 pt-3 pb-1">
+                    <h3 className="font-bold text-gray-700 text-sm">💳 Settlement — who paid, what Eptomart owes</h3>
+                    <p className="text-[11px] text-gray-400">Everything each person paid out of pocket today: supplier purchases, loadman, transport, miscellaneous and per-bill costs.</p>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
+                        <th className="px-3 py-2">Paid by</th>
+                        <th className="px-3 py-2 text-right">Purchases</th>
+                        <th className="px-3 py-2 text-right">Loadman</th>
+                        <th className="px-3 py-2 text-right">Transport</th>
+                        <th className="px-3 py-2 text-right">Misc</th>
+                        <th className="px-3 py-2 text-right">Bill costs</th>
+                        <th className="px-3 py-2 text-right">Total to reimburse</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dayReport.settlement.map(r => (
+                        <tr key={r.name} className="border-t border-gray-100">
+                          <td className="px-3 py-2 font-bold text-gray-700">{r.name}</td>
+                          <td className="px-3 py-2 text-right text-gray-600">{money(r.procurement)}</td>
+                          <td className="px-3 py-2 text-right text-gray-600">{money(r.loadman)}</td>
+                          <td className="px-3 py-2 text-right text-gray-600">{money(r.transport)}</td>
+                          <td className="px-3 py-2 text-right text-gray-600">{money(r.misc)}</td>
+                          <td className="px-3 py-2 text-right text-gray-600">{money(r.billCosts)}</td>
+                          <td className="px-3 py-2 text-right font-bold text-green-700">{money(r.total)}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -689,7 +735,6 @@ export default function PNLTab() {
                                             <th className="px-2.5 py-1.5 text-right">Order Price</th>
                                             <th className="px-2.5 py-1.5 text-right">Revenue</th>
                                             <th className="px-2.5 py-1.5 text-right">Purchase Cost/Unit (this bill)</th>
-                                            <th className="px-2.5 py-1.5 text-right">Loadman Cost</th>
                                             <th className="px-2.5 py-1.5 text-right">Total Procurement</th>
                                             <th className="px-2.5 py-1.5">Procured By</th>
                                           </tr>
@@ -716,10 +761,6 @@ export default function PNLTab() {
                                                   ? <p className="text-[9px] text-red-500 mt-0.5">Bill-specific override</p>
                                                   : it.purchaseCostPerUnit != null && <p className="text-[9px] text-gray-400 mt-0.5">From day-level entry</p>}
                                               </td>
-                                              <td className="px-2.5 py-1.5 text-right text-gray-600">
-                                                {money(it.loadmanCost)}
-                                                {!it.loadmanEligible && <p className="text-[9px] text-gray-400">not eligible{it.unit !== 'kg' ? ' (not kg)' : ' (<₹200)'}</p>}
-                                              </td>
                                               <td className="px-2.5 py-1.5 text-right font-bold text-gray-700">{money(it.totalProcurement)}</td>
                                               <td className="px-2.5 py-1.5 text-gray-500 whitespace-nowrap">{it.procuredBy || '—'}</td>
                                             </tr>
@@ -728,7 +769,7 @@ export default function PNLTab() {
                                       </table>
                                     </div>
                                     <p className="text-[10px] text-gray-400 mt-1">
-                                      Loadman cost = day's loadman charge ÷ total eligible quantity for the day ({money(dayReport.loadmanPerUnitRate)}/kg) × this item's quantity — only applies to kg-sold items worth ₹200+ per bill, never bunches, pieces, or small low-value lines.
+                                      Loadman is a day-level expense (see Day Expenses) and is not charged to individual items.
                                       Purchase cost defaults to the day-level Procurement Cost Entry table above, unless overridden here for this specific bill.
                                     </p>
                                   </div>
@@ -758,6 +799,15 @@ export default function PNLTab() {
                                             className="w-28 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:border-red-400" />
                                         </div>
                                       ))}
+                                      <div className="flex items-center justify-between gap-2">
+                                        <label className="text-xs text-gray-500">Paid by</label>
+                                        <select value={draft.paidBy ?? o.costPaidBy ?? ''}
+                                          onChange={e => setOrderCostDrafts(d => ({ ...d, [o._id]: { ...d[o._id], paidBy: e.target.value } }))}
+                                          className="w-28 border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white focus:outline-none focus:border-red-400">
+                                          <option value="">— Select —</option>
+                                          {partyNames.map(n => <option key={n} value={n}>{n}</option>)}
+                                        </select>
+                                      </div>
                                       <div className="flex items-center justify-between gap-2">
                                         <label className="text-xs text-gray-500">Razorpay Deduction (auto)</label>
                                         <span className="w-28 text-sm text-right text-gray-500">{money(o.razorpayDeduction)}</span>
