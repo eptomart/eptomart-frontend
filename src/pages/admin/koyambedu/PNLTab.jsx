@@ -65,10 +65,10 @@ function DayPayments({ cycle, report, onChanged, names, setNames }) {
   const delName = async (name) => {
     if (!window.confirm(`Delete "${name}" from the list? Past payments keep their name.`)) return;
     try {
-      const { data } = await api.delete('/koyambedu/admin/pnl/parties', { data: { name } });
+      const { data } = await api.delete('/koyambedu/admin/pnl/parties', { params: { name } });
       setNames(data.names || []);
       if (paidBy === name) setPaidBy('');
-    } catch { toast.error('Failed to delete name'); }
+    } catch (e) { toast.error(e?.response?.data?.message || 'Failed to delete name'); }
   };
   const save = async () => {
     if (!(Number(amount) > 0)) { toast.error('Enter an amount'); return; }
@@ -311,11 +311,11 @@ export default function PNLTab() {
   const deleteProcurer = async (name) => {
     if (!window.confirm(`Delete "${name}" from the list? Past entries keep their name.`)) return;
     try {
-      const { data } = await api.delete('/koyambedu/admin/procurers', { data: { name } });
+      const { data } = await api.delete('/koyambedu/admin/procurers', { params: { name } });
       setProcurers(data.names || []);
       toast.success(`${name} deleted`);
-    } catch {
-      toast.error('Failed to delete name');
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to delete name');
     }
   };
 
