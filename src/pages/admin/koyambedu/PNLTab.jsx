@@ -44,12 +44,16 @@ const ProfitBadge = ({ value, size = 'base' }) => {
 // never changes past payments. Loadman total feeds the existing loadman
 // split; transport total is shared across the day's bills by revenue.
 function DayPayments({ cycle, report, onChanged, names, setNames }) {
-  const [kind, setKind] = useState('loadman');
-  const [amount, setAmount] = useState('');
-  const [paidBy, setPaidBy] = useState('');
-  const [paidTo, setPaidTo] = useState('');
-  const [category, setCategory] = useState('Stationery');
-  const [note, setNote] = useState('');
+  // Entry lines: first line is Loadman by default; "+ Add line" adds more
+  // (Miscellaneous by default, changeable). Save all posts every filled line.
+  const CATS = ['Stationery', 'Packing material', 'Fuel', 'Food & tea', 'Repairs & maintenance', 'Phone & internet', 'Labour (other)', 'Other'];
+  const blankLine = (kind = 'misc') => ({ kind, category: 'Stationery', amount: '', paidBy: '', paidTo: '', note: '' });
+  const hasLoadmanEntry = (report.expenseEntries || []).some(e => e.kind === 'loadman');
+  // An old single-amount loadman charge becomes the pre-filled first line so it can be re-saved properly
+  const firstLine = () => ({ ...blankLine('loadman'), amount: !hasLoadmanEntry && report.loadmanCharge > 0 ? String(report.loadmanCharge) : '' });
+  const [lines, setLines] = useState(() => [firstLine()]);
+  useEffect(() => { setLines([firstLine()]); /* eslint-disable-next-line */ }, [cycle]);
+  const setLine = (i, patch) => setLines(ls => ls.map((l, k) => k === i ? { ...l, ...patch } : l));
   const [saving, setSaving] = useState(false);
   const [manage, setManage] = useState(false);
   const [newName, setNewName] = useState('');
@@ -59,7 +63,7 @@ function DayPayments({ cycle, report, onChanged, names, setNames }) {
     if (!name) return;
     try {
       const { data } = await api.post('/koyambedu/admin/pnl/parties', { name });
-      setNames(data.names || []); setNewName(''); setPaidBy(name);
+      setNames(data.names || []); setNewName('');
     } catch { toast.error('Failed to add name'); }
   };
   const delName = async (name) => {
@@ -67,19 +71,26 @@ function DayPayments({ cycle, report, onChanged, names, setNames }) {
     try {
       const { data } = await api.delete('/koyambedu/admin/pnl/parties', { params: { name } });
       setNames(data.names || []);
-      if (paidBy === name) setPaidBy('');
+      setLines(ls => ls.map(l => l.paidBy === name ? { ...l, paidBy: '' } : l));
     } catch (e) { toast.error(e?.response?.data?.message || 'Failed to delete name'); }
   };
   const save = async () => {
-    if (!(Number(amount) > 0)) { toast.error('Enter an amount'); return; }
+    const filled = lines.filter(l => Number(l.amount) > 0);
+    if (!filled.length) { toast.error('Enter an amount on at least one line'); return; }
     setSaving(true);
     try {
-      await api.post('/koyambedu/admin/pnl/day-expenses', { cycle, kind, amount: Number(amount), paidBy, paidTo, note, category: kind === 'misc' ? category : undefined });
-      setAmount(''); setPaidTo(''); setNote('');
-      toast.success('Payment added');
-      if (paidBy && !names.includes(paidBy)) setNames(n => [...n, paidBy].sort());
+      for (const l of filled) {
+        await api.post('/koyambedu/admin/pnl/day-expenses', {
+          cycle, kind: l.kind, amount: Number(l.amount), paidBy: l.paidBy, paidTo: l.paidTo, note: l.note,
+          category: l.kind === 'misc' ? l.category : undefined,
+        });
+      }
+      const newNames = filled.map(l => l.paidBy).filter(n => n && !names.includes(n));
+      if (newNames.length) setNames(n => [...new Set([...n, ...newNames])].sort());
+      toast.success(`${filled.length} expense${filled.length === 1 ? '' : 's'} saved`);
+      setLines([{ ...blankLine('loadman') }]);
       onChanged();
-    } catch (e) { toast.error(e.response?.data?.message || 'Failed to save payment'); }
+    } catch (e) { toast.error(e.response?.data?.message || 'Failed to save expenses'); }
     finally { setSaving(false); }
   };
   const delEntry = async (id) => {
@@ -123,46 +134,58 @@ function DayPayments({ cycle, report, onChanged, names, setNames }) {
         </div>
       )}
 
-      <div className="flex flex-wrap items-end gap-2">
-        <div>
-          <label className="text-xs text-gray-500 font-medium block mb-1">Type</label>
-          <select value={kind} onChange={e => setKind(e.target.value)} className={`${inp} bg-white`}>
-            <option value="loadman">Loadman</option>
-            <option value="transport">Transport (day)</option>
-            <option value="misc">Miscellaneous</option>
-          </select>
-        </div>
-        {kind === 'misc' && (
-          <div>
-            <label className="text-xs text-gray-500 font-medium block mb-1">Category</label>
-            <select value={category} onChange={e => setCategory(e.target.value)} className={`${inp} bg-white w-40`}>
-              {['Stationery', 'Packing material', 'Fuel', 'Food & tea', 'Repairs & maintenance', 'Phone & internet', 'Labour (other)', 'Other'].map(c => <option key={c}>{c}</option>)}
-            </select>
+      <div className="space-y-2">
+        {lines.map((l, i) => (
+          <div key={i} className="flex flex-wrap items-end gap-2 bg-gray-50 rounded-xl p-2">
+            <div>
+              {i === 0 && <label className="text-xs text-gray-500 font-medium block mb-1">Type</label>}
+              <select value={l.kind} onChange={e => setLine(i, { kind: e.target.value })} className={`${inp} bg-white`}>
+                <option value="loadman">Loadman</option>
+                <option value="transport">Transport (day)</option>
+                <option value="misc">Miscellaneous</option>
+              </select>
+            </div>
+            {l.kind === 'misc' && (
+              <div>
+                {i === 0 && <label className="text-xs text-gray-500 font-medium block mb-1">Category</label>}
+                <select value={l.category} onChange={e => setLine(i, { category: e.target.value })} className={`${inp} bg-white w-40`}>
+                  {CATS.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+            )}
+            <div>
+              {i === 0 && <label className="text-xs text-gray-500 font-medium block mb-1">Amount (₹)</label>}
+              <input type="number" value={l.amount} onChange={e => setLine(i, { amount: e.target.value })} placeholder="₹" className={`${inp} w-28`} />
+            </div>
+            <div>
+              {i === 0 && <label className="text-xs text-gray-500 font-medium block mb-1">Paid by</label>}
+              <select value={l.paidBy} onChange={e => setLine(i, { paidBy: e.target.value })} className={`${inp} bg-white w-36`}>
+                <option value="">— Select —</option>
+                {names.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+            <div>
+              {i === 0 && <label className="text-xs text-gray-500 font-medium block mb-1">Paid to</label>}
+              <input value={l.paidTo} onChange={e => setLine(i, { paidTo: e.target.value })} placeholder="Shop / person" className={`${inp} w-32`} />
+            </div>
+            <div className="flex-1 min-w-[120px]">
+              {i === 0 && <label className="text-xs text-gray-500 font-medium block mb-1">Comments</label>}
+              <input value={l.note} onChange={e => setLine(i, { note: e.target.value })} placeholder="e.g. bill books, tape rolls" className={`${inp} w-full`} />
+            </div>
+            {i > 0 && (
+              <button onClick={() => setLines(ls => ls.filter((_, k) => k !== i))} aria-label="Remove line"
+                className="w-8 h-9 rounded-lg text-red-600 hover:bg-red-50 font-bold">✕</button>
+            )}
           </div>
-        )}
-        <div>
-          <label className="text-xs text-gray-500 font-medium block mb-1">Amount (₹)</label>
-          <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="e.g. 500" className={`${inp} w-28`} />
+        ))}
+        <div className="flex items-center gap-2">
+          <button onClick={() => setLines(ls => [...ls, blankLine('misc')])}
+            className="text-xs font-bold text-gray-700 border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-lg">+ Add line</button>
+          <button onClick={save} disabled={saving}
+            className="bg-red-600 text-white text-sm font-bold px-4 py-1.5 rounded-xl hover:bg-red-700 disabled:opacity-50">
+            {saving ? 'Saving…' : 'Save all'}
+          </button>
         </div>
-        <div>
-          <label className="text-xs text-gray-500 font-medium block mb-1">Paid by</label>
-          <select value={paidBy} onChange={e => setPaidBy(e.target.value)} className={`${inp} bg-white w-36`}>
-            <option value="">— Select —</option>
-            {names.map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-gray-500 font-medium block mb-1">Paid to (optional)</label>
-          <input value={paidTo} onChange={e => setPaidTo(e.target.value)} placeholder="Shop / person / driver" className={`${inp} w-36`} />
-        </div>
-        <div className="flex-1 min-w-[120px]">
-          <label className="text-xs text-gray-500 font-medium block mb-1">Comments</label>
-          <input value={note} onChange={e => setNote(e.target.value)} className={`${inp} w-full`} />
-        </div>
-        <button onClick={save} disabled={saving}
-          className="bg-red-600 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-red-700 disabled:opacity-50">
-          {saving ? 'Saving…' : '+ Add'}
-        </button>
       </div>
 
       {entries.length > 0 ? (
@@ -197,8 +220,7 @@ function DayPayments({ cycle, report, onChanged, names, setNames }) {
           </p>
         </div>
       ) : (
-        <p className="text-xs text-gray-400">No payments recorded for this date.
-          {report.loadmanCharge > 0 && ' (Using the single loadman amount entered above.)'}</p>
+        <p className="text-xs text-gray-400">No expenses saved for this date yet.</p>
       )}
     </div>
   );
@@ -211,9 +233,6 @@ export default function PNLTab() {
   const [cycle, setCycle] = useState(todayStr());
   const [dayReport, setDayReport] = useState(null);
   const [dayLoading, setDayLoading] = useState(false);
-  const [loadmanDraft, setLoadmanDraft] = useState('');
-  const [loadmanPaidByDraft, setLoadmanPaidByDraft] = useState('');
-  const [savingLoadman, setSavingLoadman] = useState(false);
   const [costDrafts, setCostDrafts] = useState({}); // productKey -> purchaseCostPerUnit draft (day-level, all bills at once)
   const [procuredByDrafts, setProcuredByDrafts] = useState({}); // productKey -> selected "procured by" name
   const [savingAllCosts, setSavingAllCosts] = useState(false);
@@ -245,8 +264,6 @@ export default function PNLTab() {
     try {
       const { data } = await api.get(`/koyambedu/admin/pnl/day?cycle=${cycle}`);
       setDayReport(data);
-      setLoadmanDraft(String(data.loadmanCharge || ''));
-      setLoadmanPaidByDraft(data.loadmanPaidBy || '');
       // Row drafts are stale once a fresh report loads — clear them so the
       // inputs fall back to showing the just-saved server values instead of
       // leftover text from before the save.
@@ -317,19 +334,6 @@ export default function PNLTab() {
     } catch (e) {
       toast.error(e?.response?.data?.message || 'Failed to delete name');
     }
-  };
-
-  const saveLoadman = async () => {
-    setSavingLoadman(true);
-    try {
-      await api.patch('/koyambedu/admin/pnl/daily-expense', {
-        cycle, loadmanCharge: Number(loadmanDraft) || 0, loadmanPaidBy: loadmanPaidByDraft.trim(),
-      });
-      toast.success('Loadman charge saved');
-      loadDay();
-    } catch {
-      toast.error('Failed to save loadman charge');
-    } finally { setSavingLoadman(false); }
   };
 
   // Single save action for the whole Procurement Cost Entry table — no
@@ -449,26 +453,6 @@ export default function PNLTab() {
                 {dayLoading ? 'Loading…' : 'Search'}
               </button>
 
-              <div className="ml-auto flex items-end gap-2">
-                <div>
-                  <label className="text-xs text-gray-500 font-medium block mb-1">Quick loadman total (₹) — or add under Day Expenses</label>
-                  <input type="number" value={loadmanDraft} onChange={e => setLoadmanDraft(e.target.value)}
-                    placeholder="e.g. 1000"
-                    className="border border-gray-200 rounded-xl px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-red-400" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 font-medium block mb-1">Paid by</label>
-                  <select value={loadmanPaidByDraft} onChange={e => setLoadmanPaidByDraft(e.target.value)}
-                    className="border border-gray-200 rounded-xl px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-red-400 bg-white">
-                    <option value="">— Select —</option>
-                    {procurers.map(name => <option key={name} value={name}>{name}</option>)}
-                  </select>
-                </div>
-                <button onClick={saveLoadman} disabled={savingLoadman}
-                  className="bg-gray-800 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-gray-900 disabled:opacity-50">
-                  {savingLoadman ? 'Saving…' : 'Save'}
-                </button>
-              </div>
             </div>
             {dayReport && (
               <p className="text-[11px] text-gray-400 mt-2">
