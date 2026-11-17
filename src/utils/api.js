@@ -3,6 +3,7 @@
 // ============================================
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { getViewAs, VIEW_AS_URLS, isViewAsWriteBlocked } from './viewAsCustomer';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -38,6 +39,20 @@ api.interceptors.request.use(
       if (actAs && String(config.url || '').startsWith('/eptofresh/seller')) config.headers['x-epf-seller-id'] = actAs;
     } catch (_) {}
 
+    // Super admin "view as customer": serve cart / wallet / orders as that
+    // customer, and refuse every other change (no checkout / payment).
+    try {
+      const va = getViewAs();
+      if (va) {
+        const url = String(config.url || '');
+        if (isViewAsWriteBlocked(config.method, url)) {
+          toast.error('Not allowed while viewing as a customer');
+          return Promise.reject(new axios.Cancel('view-as-readonly'));
+        }
+        if (VIEW_AS_URLS.some(u => url.startsWith(u))) config.headers['x-view-as-user'] = va.id;
+      }
+    } catch (_) {}
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -47,6 +62,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (axios.isCancel(error)) return Promise.reject(error); // blocked on purpose (view-as-customer)
     const message = error.response?.data?.message || 'Something went wrong';
 
     if (error.response?.status === 401) {

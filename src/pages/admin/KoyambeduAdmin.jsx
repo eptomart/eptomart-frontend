@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import UserActivityPanel from '../../components/koyambedu/UserActivityPanel';
+import UserActivityPanel, { ViewAsButton } from '../../components/koyambedu/UserActivityPanel';
 import api from '../../utils/api';
 import KoyambeduImageUploader from '../../components/koyambedu/KoyambeduImageUploader';
 import KoyambeduVariantProductForm, { makeEmptyVariantProduct, getVariantOverlapError } from '../../components/koyambedu/KoyambeduVariantProductForm';
@@ -4231,6 +4231,7 @@ export default function KoyambeduAdmin() {
                   <div className="text-right shrink-0">
                     <p className="font-black text-green-700 text-sm">₹{c.cartValue?.toFixed(0)}</p>
                     <p className="text-[10px] text-gray-400">{c.itemCount} item{c.itemCount !== 1 ? 's' : ''}</p>
+                    {c.userId && <div className="mt-1"><ViewAsButton id={c.userId} name={c.customerName} phone={c.phone} compact /></div>}
                   </div>
                 </div>
                 <div className="border-t border-gray-100 pt-2 space-y-1">

@@ -104,8 +104,10 @@ export const KoyambeduCartProvider = ({ children }) => {
     }
 
     // Sync any pending guest items to server
+    // never merge an admin's own guest cart into the customer being viewed
+    const viewingAs = !!sessionStorage.getItem('kbd_view_as');
     const guestMap = readGuestCart();
-    const guestItems = Object.entries(guestMap).filter(([, e]) => (e.qty || 0) > 0);
+    const guestItems = viewingAs ? [] : Object.entries(guestMap).filter(([, e]) => (e.qty || 0) > 0);
     if (guestItems.length > 0) {
       try {
         await Promise.all(

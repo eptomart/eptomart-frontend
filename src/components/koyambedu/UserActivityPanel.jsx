@@ -5,6 +5,7 @@
 // profile + timeline, funnel / insight numbers and CSV export.
 // Data: GET /koyambedu/admin/activity (+ /summary, /users, /user/:id, /export)
 // ============================================
+import { startViewAs } from '../../utils/viewAsCustomer';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
@@ -210,7 +211,10 @@ function CustomerView({ customer, filters, onBack }) {
       <div className="bg-white rounded-2xl border border-gray-200 p-3">
         {!p ? <p className="text-sm text-gray-400">Loading…</p> : (
           <>
-            <p className="font-black text-gray-800">{p.name}</p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-black text-gray-800">{p.name}</p>
+              <ViewAsButton id={customer.userId} name={p.name} phone={p.phone} />
+            </div>
             <p className="text-xs text-gray-500">📞 {p.phone || '—'}{p.email ? ` · ✉️ ${p.email}` : ''}</p>
             <p className="text-[11px] text-gray-400 mt-0.5">Joined {p.joined ? fmtDay(p.joined) : '—'} · last active {ago(p.lastActive || p.lastLogin)}{p.device ? ` · ${p.device}` : ''}{p.area ? ` · 📍${p.area}${p.pincode ? ` ${p.pincode}` : ''}` : ''}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
@@ -226,6 +230,15 @@ function CustomerView({ customer, filters, onBack }) {
       </div>
       <Timeline feed={feed} showCustomer={false} />
     </div>
+  );
+}
+
+export function ViewAsButton({ id, name, phone, compact }) {
+  return (
+    <button onClick={(e) => { e.stopPropagation(); startViewAs({ id, name, phone }); }}
+      className={`shrink-0 bg-indigo-600 text-white font-bold rounded-lg active:scale-95 ${compact ? 'text-[10px] px-2 py-1' : 'text-xs px-3 py-1.5'}`}>
+      👁 View as customer
+    </button>
   );
 }
 
@@ -250,13 +263,16 @@ function Customers({ filters, onOpen }) {
         </select>
       </div>
       {rows?.map(u => (
-        <button key={u.userId} onClick={() => onOpen(u)} className="w-full text-left bg-white rounded-2xl border border-gray-200 p-3 hover:border-green-400">
+        <div key={u.userId} role="button" tabIndex={0} onClick={() => onOpen(u)} onKeyDown={e => e.key === 'Enter' && onOpen(u)} className="w-full text-left bg-white rounded-2xl border border-gray-200 p-3 hover:border-green-400 cursor-pointer">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0"><p className="font-bold text-sm text-gray-800 truncate">{u.name}</p><p className="text-[11px] text-gray-400">📞 {u.phone || '—'} · active {ago(u.lastActive)}</p></div>
             <div className="text-right shrink-0"><p className="font-black text-green-700 text-sm">{inr(u.spend)}</p><p className="text-[10px] text-gray-400">{u.orders} order{u.orders === 1 ? '' : 's'}</p></div>
           </div>
-          <p className="text-[11px] text-gray-500 mt-1">👀 {u.views} views · 🛒 {u.cartAdds} cart changes · {u.events} actions</p>
-        </button>
+          <div className="flex items-center justify-between gap-2 mt-1">
+            <p className="text-[11px] text-gray-500">👀 {u.views} views · 🛒 {u.cartAdds} cart changes · {u.events} actions</p>
+            <ViewAsButton id={u.userId} name={u.name} phone={u.phone} compact />
+          </div>
+        </div>
       ))}
       {rows && rows.length === 0 && <p className="text-sm text-gray-400 text-center py-8">No customers match.</p>}
     </div>

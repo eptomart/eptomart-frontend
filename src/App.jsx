@@ -18,6 +18,7 @@ import Loader from './components/common/Loader';
 import CompareBar from './components/product/CompareBar';
 import AIAssistant from './components/AIAssistant';
 import KoyambeduActivityTracker from './components/koyambedu/KoyambeduActivityTracker';
+import ViewAsBanner from './components/koyambedu/ViewAsBanner';
 import WhatsAppFloat from './components/WhatsAppFloat';
 import BottomNav from './components/common/BottomNav';
 import PwaInstallBanner from './components/common/PwaInstallBanner';
@@ -228,6 +229,7 @@ function AppRoutes() {
   const { pathname } = useLocation();
   return (
     <>
+      <ViewAsBanner />
       <Suspense fallback={<Loader />}>
         <div key={pathname} className="route-anim">
         <Routes>
