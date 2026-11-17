@@ -683,6 +683,10 @@ export default function ExpressCheckout() {
           <div>
             <p className="font-bold text-amber-800 text-sm">Orders are on hold for now</p>
             <p className="text-xs text-amber-700 mt-0.5">{liveHold.message || 'This store is not taking orders at the moment. Your cart is saved — you can check out once we are back.'}</p>
+            <button onClick={() => navigate('/koyambedu')}
+              className="mt-2 text-xs font-black px-3 py-1.5 rounded-lg bg-green-600 text-white active:scale-95 transition">
+              🛒 Order in bulk — Koyambedu Daily Wholesale
+            </button>
           </div>
         </div>
       )}
@@ -694,6 +698,10 @@ export default function ExpressCheckout() {
             <p className="font-bold text-amber-800 text-sm">Orders are on hold for now</p>
             <p className="text-xs text-amber-700 mt-0.5">{checkoutBlock.message}</p>
             <p className="text-xs text-amber-600 mt-1.5">We've noted you're waiting — we'll call you once we're back online.</p>
+            <button onClick={() => navigate('/koyambedu')}
+              className="mt-2 text-xs font-black px-3 py-1.5 rounded-lg bg-green-600 text-white active:scale-95 transition">
+              🛒 Order in bulk — Koyambedu Daily Wholesale
+            </button>
           </div>
         </div>
       )}

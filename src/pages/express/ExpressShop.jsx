@@ -369,6 +369,10 @@ export default function ExpressShop() {
             {showReason && (
               <p className="text-[11px] text-amber-800 mb-2"><b>Why closed:</b> {storeStatus.pauseMessage || 'Not taking orders right now — you can still browse and add to cart.'}</p>
             )}
+            <button onClick={() => navigate('/koyambedu')}
+              className="mb-2 text-[11px] font-black px-3 py-1.5 rounded-lg bg-green-600 text-white active:scale-95 transition">
+              🛒 Order in bulk — Koyambedu Daily Wholesale
+            </button>
             <p className="text-[12px] font-bold text-amber-900">
               {selectedStore?.name} is closed right now.{' '}
               {openOthers.length > 0 ? 'These stores are open — tap one to shop from it:' : 'No other store is open at the moment — you can still browse and add to cart.'}
@@ -467,10 +471,16 @@ export default function ExpressShop() {
             <p className="text-xs text-amber-700 mt-0.5">
               {storeStatus.pauseMessage || "We're experiencing high demand right now."} Feel free to keep browsing and add items to your cart — you can check out the moment we're back.
             </p>
-            <button onClick={() => navigate('/express/location?mode=stores')}
-              className="mt-2 text-xs font-black px-3 py-1.5 rounded-lg bg-amber-500 text-white active:scale-95 transition">
-              Change store — see other quick-delivery options
-            </button>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button onClick={() => navigate('/koyambedu')}
+                className="text-xs font-black px-3 py-1.5 rounded-lg bg-green-600 text-white active:scale-95 transition">
+                🛒 Order in bulk — Koyambedu Daily Wholesale
+              </button>
+              <button onClick={() => navigate('/express/location?mode=stores')}
+                className="text-xs font-black px-3 py-1.5 rounded-lg bg-amber-500 text-white active:scale-95 transition">
+                Change store
+              </button>
+            </div>
           </div>
         </div>
       )}

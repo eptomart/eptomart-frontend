@@ -1258,6 +1258,20 @@ function StoresTab({ stores, reload, onManage }) {
   // Checkout" opens it under the store, "Confirm hold" applies it.
   const [holdFor, setHoldFor] = useState(null);   // store id with the reason panel open
   const [holdReason, setHoldReason] = useState('');
+  const PAUSE_PRESETS = [
+    "We're taking a short break and will be back soon. You can order fresh produce in bulk from Koyambedu Daily Wholesale in the meantime.",
+    "Store is closed for stock count. We'll be back soon — order in bulk from Koyambedu Daily Wholesale meanwhile.",
+    "We're very busy right now and will be back shortly. Koyambedu Daily Wholesale is open for bulk orders.",
+    "Closed for the day. Back tomorrow — or order wholesale from Koyambedu Daily.",
+  ];
+  const [editMsgFor, setEditMsgFor] = useState(null);
+  const [editMsg, setEditMsg] = useState('');
+  const saveMsg = async (s) => {
+    try {
+      await api.patch(`/express/admin/stores/${s._id}/toggle-pause`, { update: true, message: editMsg });
+      setEditMsgFor(null); toast.success('Message updated'); reload();
+    } catch { toast.error('Failed to update message'); }
+  };
   const togglePause = async (s, reason = null) => {
     let message = null;
     if (!s.isPaused) {
@@ -1352,7 +1366,23 @@ function StoresTab({ stores, reload, onManage }) {
                 <p className="text-xs text-gray-500">{s.address}{s.city ? `, ${s.city}` : ''} {s.pincode}</p>
                 <p className="text-xs text-gray-400">Manager: {s.storeManager?.name || 'Not assigned'}</p>
                 <p className="text-xs text-gray-400">{s.location?.lat}, {s.location?.lng}</p>
-                {s.isPaused && <p className="text-xs text-amber-600 mt-1 italic">&ldquo;{s.pauseMessage}&rdquo;</p>}
+                {s.isPaused && editMsgFor !== s._id && (
+                  <p className="text-xs text-amber-600 mt-1 italic">&ldquo;{s.pauseMessage}&rdquo;{' '}
+                    <button onClick={() => { setEditMsgFor(s._id); setEditMsg(s.pauseMessage || ''); }} className="not-italic font-bold underline text-amber-700">Edit message</button>
+                  </p>
+                )}
+                {s.isPaused && editMsgFor === s._id && (
+                  <div className="mt-1 space-y-1">
+                    <input value={editMsg} onChange={e => setEditMsg(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm bg-white" />
+                    <div className="flex flex-wrap gap-1">
+                      {PAUSE_PRESETS.map(m => <button key={m} type="button" onClick={() => setEditMsg(m)} className="text-[10px] px-2 py-0.5 rounded-full border border-amber-200 text-amber-800 bg-amber-50">{m.slice(0, 32)}…</button>)}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => saveMsg(s)} className="px-3 py-1 rounded-lg bg-amber-600 text-white text-xs font-bold">Save message</button>
+                      <button onClick={() => setEditMsgFor(null)} className="px-3 py-1 rounded-lg border text-xs bg-white">Cancel</button>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <button onClick={() => openEdit(s)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-gray-50">
@@ -1398,8 +1428,14 @@ function StoresTab({ stores, reload, onManage }) {
                   Reason to show customers while checkout is on hold (browsing and adding to cart stay open):
                 </p>
                 <input value={holdReason} onChange={e => setHoldReason(e.target.value)}
-                  placeholder="e.g. Store closed for stock count, back at 4 PM"
+                  placeholder="Leave blank to use the default message"
                   className="w-full border rounded-lg px-3 py-2 text-sm bg-white mb-2" />
+                <div className="flex flex-col gap-1 mb-2">
+                  {PAUSE_PRESETS.map(m => (
+                    <button key={m} type="button" onClick={() => setHoldReason(m)}
+                      className="text-left text-[11px] px-2 py-1 rounded-lg bg-white border border-amber-200 text-amber-900 hover:bg-amber-100">{m}</button>
+                  ))}
+                </div>
                 <div className="flex gap-2">
                   <button onClick={() => togglePause(s, holdReason)} className="px-4 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">Confirm hold</button>
                   <button onClick={() => setHoldFor(null)} className="px-4 py-1.5 rounded-lg border text-xs text-gray-600 bg-white">Cancel</button>
