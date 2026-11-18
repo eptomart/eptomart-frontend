@@ -38,15 +38,77 @@ const ProfitBadge = ({ value, size = 'base' }) => {
 };
 
 
+// ── One people list for the whole P&L (Procured By + Paid By) ─────────────
+// Add and delete here; every dropdown on this tab uses this single list.
+// Past entries keep the name they were saved with. Delete asks inline (no
+// browser popup — popups are blocked in some phone browsers / in-app views,
+// which made the old ✕ look like it did nothing).
+const CATS = ['Stationery', 'Packing material', 'Fuel', 'Food & tea', 'Repairs & maintenance', 'Phone & internet', 'Labour (other)', 'Other'];
+function PeoplePanel({ people, setPeople }) {
+  const [name, setName] = useState('');
+  const [confirming, setConfirming] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const add = async () => {
+    const n = name.trim();
+    if (!n) return;
+    setBusy(true);
+    try {
+      const { data } = await api.post('/koyambedu/admin/pnl/parties', { name: n });
+      setPeople(data.names || []); setName('');
+    } catch (e) { toast.error(e?.response?.data?.message || 'Failed to add name'); }
+    finally { setBusy(false); }
+  };
+  const remove = async (n) => {
+    setBusy(true);
+    try {
+      const { data } = await api.delete('/koyambedu/admin/pnl/parties', { params: { name: n } });
+      setPeople(data.names || []); setConfirming(null);
+      toast.success(`${n} deleted`);
+    } catch (e) { toast.error(e?.response?.data?.message || 'Failed to delete name'); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+      <p className="text-[11px] text-gray-500">People list — used for “Procured By” and “Paid by” everywhere in P&amp;L.</p>
+      <div className="flex gap-2">
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="New name"
+          onKeyDown={e => e.key === 'Enter' && add()}
+          className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+        <button onClick={add} disabled={busy} className="bg-gray-800 text-white text-sm font-bold px-4 rounded-xl disabled:opacity-50">Add</button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {people.length === 0 && <span className="text-xs text-gray-400">No names yet</span>}
+        {people.map(n => (
+          <span key={n} className="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-full pl-3 pr-1 py-1 text-xs text-gray-700">
+            {n}
+            {confirming === n ? (
+              <>
+                <span className="text-red-600 font-bold">Delete?</span>
+                <button onClick={() => remove(n)} disabled={busy} className="px-2 py-0.5 rounded-full bg-red-600 text-white font-bold">Yes</button>
+                <button onClick={() => setConfirming(null)} className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 font-bold">No</button>
+              </>
+            ) : (
+              <button onClick={() => setConfirming(n)} aria-label={`Delete ${n}`}
+                className="w-6 h-6 rounded-full text-red-600 hover:bg-red-50 font-bold leading-none">✕</button>
+            )}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Loadman & Transport payments ─────────────────────────────────────────
 // Separate ledger: each payment has an amount, who paid it and who received
 // it. Payer names are a managed list (add + delete with ✕). Deleting a name
 // never changes past payments. Loadman total feeds the existing loadman
 // split; transport total is shared across the day's bills by revenue.
 function DayPayments({ cycle, report, onChanged, names, setNames }) {
+  const [editId, setEditId] = useState(null);
+  const [edit, setEdit] = useState({});
+  const [delId, setDelId] = useState(null);
   // Entry lines: first line is Loadman by default; "+ Add line" adds more
   // (Miscellaneous by default, changeable). Save all posts every filled line.
-  const CATS = ['Stationery', 'Packing material', 'Fuel', 'Food & tea', 'Repairs & maintenance', 'Phone & internet', 'Labour (other)', 'Other'];
   const blankLine = (kind = 'misc') => ({ kind, category: 'Stationery', amount: '', paidBy: '', paidTo: '', note: '' });
   const hasLoadmanEntry = (report.expenseEntries || []).some(e => e.kind === 'loadman');
   // An old single-amount loadman charge becomes the pre-filled first line so it can be re-saved properly
@@ -55,25 +117,6 @@ function DayPayments({ cycle, report, onChanged, names, setNames }) {
   useEffect(() => { setLines([firstLine()]); /* eslint-disable-next-line */ }, [cycle]);
   const setLine = (i, patch) => setLines(ls => ls.map((l, k) => k === i ? { ...l, ...patch } : l));
   const [saving, setSaving] = useState(false);
-  const [manage, setManage] = useState(false);
-  const [newName, setNewName] = useState('');
-
-  const addName = async () => {
-    const name = newName.trim();
-    if (!name) return;
-    try {
-      const { data } = await api.post('/koyambedu/admin/pnl/parties', { name });
-      setNames(data.names || []); setNewName('');
-    } catch { toast.error('Failed to add name'); }
-  };
-  const delName = async (name) => {
-    if (!window.confirm(`Delete "${name}" from the list? Past payments keep their name.`)) return;
-    try {
-      const { data } = await api.delete('/koyambedu/admin/pnl/parties', { params: { name } });
-      setNames(data.names || []);
-      setLines(ls => ls.map(l => l.paidBy === name ? { ...l, paidBy: '' } : l));
-    } catch (e) { toast.error(e?.response?.data?.message || 'Failed to delete name'); }
-  };
   const save = async () => {
     const filled = lines.filter(l => Number(l.amount) > 0);
     if (!filled.length) { toast.error('Enter an amount on at least one line'); return; }
@@ -94,9 +137,15 @@ function DayPayments({ cycle, report, onChanged, names, setNames }) {
     finally { setSaving(false); }
   };
   const delEntry = async (id) => {
-    if (!window.confirm('Delete this payment?')) return;
-    try { await api.delete(`/koyambedu/admin/pnl/day-expenses/${id}`); onChanged(); }
-    catch { toast.error('Failed to delete'); }
+    try { await api.delete(`/koyambedu/admin/pnl/day-expenses/${id}`); setDelId(null); onChanged(); }
+    catch (e) { toast.error(e?.response?.data?.message || 'Failed to delete'); }
+  };
+  const startEdit = (e) => { setEditId(e._id); setEdit({ amount: String(e.amount), paidBy: e.paidBy || '', paidTo: e.paidTo || '', note: e.note || '', category: e.category || 'Other' }); };
+  const saveEdit = async (e) => {
+    try {
+      await api.patch(`/koyambedu/admin/pnl/day-expenses/${e._id}`, { ...edit, amount: Number(edit.amount), category: e.kind === 'misc' ? edit.category : undefined });
+      setEditId(null); toast.success('Updated'); onChanged();
+    } catch (err) { toast.error(err?.response?.data?.message || 'Failed to update'); }
   };
 
   const entries = report.expenseEntries || [];
@@ -105,34 +154,10 @@ function DayPayments({ cycle, report, onChanged, names, setNames }) {
     <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h3 className="font-bold text-gray-700 text-sm">🧾 Day Expenses — Loadman, Transport &amp; Miscellaneous</h3>
-          <p className="text-[11px] text-gray-400">Record each expense and who paid it. These are day-end overheads: they reduce the day's net profit once and are not spread over items or bills.</p>
+          <h3 className="font-bold text-gray-700 text-sm">🧾 Day Expenses — Loadman &amp; Miscellaneous</h3>
+          <p className="text-[11px] text-gray-400">Loadman and miscellaneous expenses with who paid. (Transport is entered per bill, below.) These are day-end overheads: they reduce the day's net profit once and are not spread over items or bills.</p>
         </div>
-        <button onClick={() => setManage(m => !m)}
-          className="shrink-0 text-xs font-bold text-gray-700 border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-lg">
-          {manage ? 'Done' : '👤 Manage Names'}
-        </button>
       </div>
-
-      {manage && (
-        <div className="bg-gray-50 rounded-xl p-3 space-y-2">
-          <div className="flex gap-2">
-            <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="New name"
-              onKeyDown={e => e.key === 'Enter' && addName()} className={`${inp} flex-1`} />
-            <button onClick={addName} className="bg-gray-800 text-white text-sm font-bold px-4 rounded-xl">Add</button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {names.length === 0 && <span className="text-xs text-gray-400">No names yet</span>}
-            {names.map(n => (
-              <span key={n} className="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-full pl-3 pr-1 py-1 text-xs text-gray-700">
-                {n}
-                <button onClick={() => delName(n)} aria-label={`Delete ${n}`}
-                  className="w-5 h-5 rounded-full text-red-600 hover:bg-red-50 font-bold leading-none">✕</button>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="space-y-2">
         {lines.map((l, i) => (
@@ -141,7 +166,6 @@ function DayPayments({ cycle, report, onChanged, names, setNames }) {
               {i === 0 && <label className="text-xs text-gray-500 font-medium block mb-1">Type</label>}
               <select value={l.kind} onChange={e => setLine(i, { kind: e.target.value })} className={`${inp} bg-white`}>
                 <option value="loadman">Loadman</option>
-                <option value="transport">Transport (day)</option>
                 <option value="misc">Miscellaneous</option>
               </select>
             </div>
@@ -199,18 +223,55 @@ function DayPayments({ cycle, report, onChanged, names, setNames }) {
               </tr>
             </thead>
             <tbody>
-              {entries.map(e => (
-                <tr key={e._id} className="border-t border-gray-100">
-                  <td className="px-3 py-2">{e.kind === 'misc' ? `Misc · ${e.category || 'Other'}` : e.kind === 'transport' ? 'Transport (day)' : 'Loadman'}</td>
-                  <td className="px-3 py-2 text-right font-bold text-gray-700">{money(e.amount)}</td>
-                  <td className="px-3 py-2">{e.paidBy || <span className="text-gray-300">—</span>}</td>
-                  <td className="px-3 py-2">{e.paidTo || <span className="text-gray-300">—</span>}</td>
-                  <td className="px-3 py-2 text-gray-500">{e.note}</td>
-                  <td className="px-3 py-2 text-right">
-                    <button onClick={() => delEntry(e._id)} className="text-red-600 text-xs font-bold hover:underline">Delete</button>
-                  </td>
-                </tr>
-              ))}
+              {entries.map(e => {
+                const label = e.kind === 'misc' ? `Misc · ${e.category || 'Other'}` : e.kind === 'transport' ? 'Transport (old entry)' : 'Loadman';
+                if (editId === e._id) return (
+                  <tr key={e._id} className="border-t border-gray-100 bg-amber-50/50">
+                    <td className="px-3 py-2">
+                      {e.kind === 'misc'
+                        ? <select value={edit.category} onChange={ev => setEdit(d => ({ ...d, category: ev.target.value }))} className={`${inp} bg-white w-36`}>{CATS.map(c => <option key={c}>{c}</option>)}</select>
+                        : label}
+                    </td>
+                    <td className="px-3 py-2 text-right"><input type="number" value={edit.amount} onChange={ev => setEdit(d => ({ ...d, amount: ev.target.value }))} className={`${inp} w-24 text-right`} /></td>
+                    <td className="px-3 py-2">
+                      <select value={edit.paidBy} onChange={ev => setEdit(d => ({ ...d, paidBy: ev.target.value }))} className={`${inp} bg-white w-32`}>
+                        <option value="">— Select —</option>
+                        {edit.paidBy && !names.includes(edit.paidBy) && <option value={edit.paidBy}>{edit.paidBy}</option>}
+                        {names.map(n => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-2"><input value={edit.paidTo} onChange={ev => setEdit(d => ({ ...d, paidTo: ev.target.value }))} className={`${inp} w-28`} /></td>
+                    <td className="px-3 py-2"><input value={edit.note} onChange={ev => setEdit(d => ({ ...d, note: ev.target.value }))} className={`${inp} w-full`} /></td>
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                      <button onClick={() => saveEdit(e)} className="text-green-700 text-xs font-bold mr-2">Save</button>
+                      <button onClick={() => setEditId(null)} className="text-gray-500 text-xs font-bold">Cancel</button>
+                    </td>
+                  </tr>
+                );
+                return (
+                  <tr key={e._id} className="border-t border-gray-100">
+                    <td className="px-3 py-2">{label}</td>
+                    <td className="px-3 py-2 text-right font-bold text-gray-700">{money(e.amount)}</td>
+                    <td className="px-3 py-2">{e.paidBy || <span className="text-gray-300">—</span>}</td>
+                    <td className="px-3 py-2">{e.paidTo || <span className="text-gray-300">—</span>}</td>
+                    <td className="px-3 py-2 text-gray-500">{e.note}</td>
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                      {delId === e._id ? (
+                        <>
+                          <span className="text-red-600 text-xs font-bold mr-1">Delete?</span>
+                          <button onClick={() => delEntry(e._id)} className="px-2 py-0.5 rounded bg-red-600 text-white text-xs font-bold mr-1">Yes</button>
+                          <button onClick={() => setDelId(null)} className="px-2 py-0.5 rounded bg-gray-200 text-gray-700 text-xs font-bold">No</button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => startEdit(e)} className="text-blue-600 text-xs font-bold mr-3 hover:underline">Edit</button>
+                          <button onClick={() => setDelId(e._id)} className="text-red-600 text-xs font-bold hover:underline">Delete</button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           <p className="text-[11px] text-gray-500 mt-2">
@@ -241,7 +302,6 @@ export default function PNLTab() {
   const [orderCostDrafts, setOrderCostDrafts] = useState({}); // orderId -> { transportCost, packingCost }
   const [savingOrderCost, setSavingOrderCost] = useState({});
   const [expandedOrder, setExpandedOrder] = useState(null);
-  const [partyNames, setPartyNames] = useState([]); // payer names (Day Expenses + per-bill 'paid by')
   const [procurers, setProcurers] = useState([]); // maintained dropdown list for "Procured By"
   const [expandedProcurers, setExpandedProcurers] = useState({}); // name -> bool, product list shown on demand
 
@@ -279,9 +339,6 @@ export default function PNLTab() {
   // Maintained "Procured By" dropdown — loaded once, grows automatically
   // whenever a new name is used (see registerProcurerName on the backend).
   useEffect(() => {
-    api.get('/koyambedu/admin/pnl/parties').then(({ data }) => setPartyNames(data.names || [])).catch(() => {});
-  }, []);
-  useEffect(() => {
     api.get('/koyambedu/admin/procurers').then(({ data }) => setProcurers(data.names || [])).catch(() => {});
   }, []);
 
@@ -311,30 +368,7 @@ export default function PNLTab() {
 
   // "Procured By" is a strict dropdown, so a brand-new person has to be
   // added to the maintained list once before they show up as an option.
-  const [managePeople, setManagePeople] = useState(false);
-  const [newPerson, setNewPerson] = useState('');
-  const addProcurer = async () => {
-    const name = newPerson.trim();
-    if (!name) return;
-    try {
-      const { data } = await api.post('/koyambedu/admin/procurers', { name });
-      setProcurers(data.names || []);
-      setNewPerson('');
-      toast.success(`${name} added`);
-    } catch {
-      toast.error('Failed to add name');
-    }
-  };
-  const deleteProcurer = async (name) => {
-    if (!window.confirm(`Delete "${name}" from the list? Past entries keep their name.`)) return;
-    try {
-      const { data } = await api.delete('/koyambedu/admin/procurers', { params: { name } });
-      setProcurers(data.names || []);
-      toast.success(`${name} deleted`);
-    } catch (e) {
-      toast.error(e?.response?.data?.message || 'Failed to delete name');
-    }
-  };
+  const [peopleOpen, setPeopleOpen] = useState(false);
 
   // Single save action for the whole Procurement Cost Entry table — no
   // per-row Save button. Sends every row's current value (draft if the
@@ -452,8 +486,13 @@ export default function PNLTab() {
                 className="bg-red-600 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-red-700 disabled:opacity-50">
                 {dayLoading ? 'Loading…' : 'Search'}
               </button>
+              <button onClick={() => setPeopleOpen(o => !o)}
+                className="text-sm font-bold text-gray-700 border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-xl">
+                {peopleOpen ? 'Close' : '👤 People'}
+              </button>
 
             </div>
+            {peopleOpen && <div className="mt-3"><PeoplePanel people={procurers} setPeople={setProcurers} /></div>}
             {dayReport && (
               <p className="text-[11px] text-gray-400 mt-2">
                 {dayReport.orderCount} confirmed order{dayReport.orderCount === 1 ? '' : 's'} · {dayReport.totalQtyForDay.toFixed(2)} total units ·
@@ -487,7 +526,7 @@ export default function PNLTab() {
                 </div>
               </div>
 
-              <DayPayments cycle={cycle} report={dayReport} onChanged={loadDay} names={partyNames} setNames={setPartyNames} />
+              <DayPayments cycle={cycle} report={dayReport} onChanged={loadDay} names={procurers} setNames={setProcurers} />
 
               {/* Margin & price alerts — products that made little or no money
                   today, with a suggested selling price for tomorrow's listing. */}
@@ -542,36 +581,12 @@ export default function PNLTab() {
                     <p className="text-[11px] text-gray-400">Enter what was actually paid to the supplier per unit, and pick who procured it.</p>
                   </div>
                   <div className="shrink-0 flex items-center gap-2">
-                    <button onClick={() => setManagePeople(m => !m)}
-                      className="text-xs font-bold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-lg">
-                      {managePeople ? 'Done' : '👤 Add / Delete Names'}
-                    </button>
                     <button onClick={saveAllCosts} disabled={savingAllCosts}
                       className="text-xs font-bold text-white bg-gray-800 hover:bg-gray-900 px-3 py-1.5 rounded-lg disabled:opacity-50">
                       {savingAllCosts ? 'Saving…' : 'Save All'}
                     </button>
                   </div>
                 </div>
-                {managePeople && (
-                  <div className="mx-4 mb-3 bg-gray-50 rounded-xl p-3 space-y-2">
-                    <div className="flex gap-2">
-                      <input value={newPerson} onChange={e => setNewPerson(e.target.value)} placeholder="New name"
-                        onKeyDown={e => e.key === 'Enter' && addProcurer()}
-                        className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
-                      <button onClick={addProcurer} className="bg-gray-800 text-white text-sm font-bold px-4 rounded-xl">Add</button>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {procurers.length === 0 && <span className="text-xs text-gray-400">No names yet</span>}
-                      {procurers.map(n => (
-                        <span key={n} className="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-full pl-3 pr-1 py-1 text-xs text-gray-700">
-                          {n}
-                          <button onClick={() => deleteProcurer(n)} aria-label={`Delete ${n}`}
-                            className="w-5 h-5 rounded-full text-red-600 hover:bg-red-50 font-bold leading-none">✕</button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
@@ -822,7 +837,7 @@ export default function PNLTab() {
                                           onChange={e => setOrderCostDrafts(d => ({ ...d, [o._id]: { ...d[o._id], paidBy: e.target.value } }))}
                                           className="w-28 border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white focus:outline-none focus:border-red-400">
                                           <option value="">— Select —</option>
-                                          {partyNames.map(n => <option key={n} value={n}>{n}</option>)}
+                                          {procurers.map(n => <option key={n} value={n}>{n}</option>)}
                                         </select>
                                       </div>
                                       <div className="flex items-center justify-between gap-2">
