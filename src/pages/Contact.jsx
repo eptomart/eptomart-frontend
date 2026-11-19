@@ -100,7 +100,7 @@ export default function Contact() {
             <div className="card overflow-hidden">
               <iframe
                 title="Eptomart Location"
-                src="https://maps.google.com/maps?q=Maduravoyal,Chennai,Tamil+Nadu&output=embed"
+                src="https://maps.google.com/maps?q=Murali+Krishna+Nagar,Valasaravakkam,Chennai,Tamil+Nadu+600087&output=embed"
                 className="w-full h-48 border-0"
                 loading="lazy"
               />
