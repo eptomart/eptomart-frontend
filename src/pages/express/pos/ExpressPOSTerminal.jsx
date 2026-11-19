@@ -13,6 +13,7 @@ import {
   printReceipt, printPluList,
   isBluetoothSupported, connectPrinter, disconnectPrinter, isPrinterConnected,
 } from '../../../utils/expressThermalPrinter';
+import { imgThumb } from '../../../utils/cloudinary';
 
 const MAX_HELD = 5;
 
@@ -645,7 +646,7 @@ export default function ExpressPOSTerminal() {
           <div className="flex items-start justify-between mb-2">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center text-xl">
-                {p.image ? <img src={p.image} alt="" className="w-full h-full object-cover" /> : '🥬'}
+                {p.image ? <img src={imgThumb(p.image)} alt="" loading="lazy" className="w-full h-full object-cover" /> : '🥬'}
               </div>
               <div className="min-w-0">
                 <p className="font-black text-gray-900 truncate">{p.name}</p>
@@ -1129,7 +1130,7 @@ export default function ExpressPOSTerminal() {
                   <button key={p._id} onClick={() => pickSuggestion(p)}
                     className="bg-white border rounded-xl p-1.5 text-left hover:border-indigo-400 active:scale-95">
                     <div className="aspect-square rounded-lg bg-gray-100 overflow-hidden flex items-center justify-center text-2xl mb-1">
-                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" loading="lazy" /> : '🥬'}
+                      {p.image ? <img src={imgThumb(p.image)} alt={p.name} className="w-full h-full object-cover" loading="lazy" /> : '🥬'}
                     </div>
                     <p className="text-[11px] font-bold text-gray-800 truncate">{pName(p)}</p>
                     <p className="text-[10px] text-gray-500">₹{p.price}/{p.unit}</p>
@@ -1153,7 +1154,7 @@ export default function ExpressPOSTerminal() {
                     className={`flex items-center gap-3 bg-white border rounded-xl p-2 ${out ? 'border-red-200' : 'hover:border-indigo-400 active:scale-[0.99] cursor-pointer'}`}
                     onClick={() => { if (!out) pickSuggestion(p); }}>
                     <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center text-2xl">
-                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" loading="lazy" /> : '🥬'}
+                      {p.image ? <img src={imgThumb(p.image)} alt={p.name} className="w-full h-full object-cover" loading="lazy" /> : '🥬'}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-bold text-gray-900 truncate">

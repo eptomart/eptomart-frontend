@@ -15,6 +15,7 @@ import { extractBasePrice } from '../utils/gst';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { usePincodeAutofill } from '../hooks/usePincodeAutofill';
+import { imgCart } from '../utils/cloudinary';
 
 // Load Razorpay SDK dynamically
 const loadRazorpay = () =>
@@ -888,7 +889,7 @@ function CartSummaryItem({ item, onVariantChange, onQtyChange, formatINR }) {
   return (
     <div className="flex gap-3 text-sm pb-3 border-b border-gray-50 last:border-0">
       <img
-        src={item.image || item.images?.[0]?.url}
+        src={imgCart(item.image || item.images?.[0]?.url)}
         alt={item.name}
         className="w-12 h-12 object-cover rounded-lg flex-shrink-0 bg-gray-100"
       />
@@ -942,7 +943,7 @@ function BuyNowItem({ item }) {
   return (
     <div className="flex gap-3 text-sm">
       <img
-        src={item.image || item.images?.[0]?.url}
+        src={imgCart(item.image || item.images?.[0]?.url)}
         alt={item.name}
         className="w-12 h-12 object-cover rounded-lg flex-shrink-0 bg-gray-100"
       />

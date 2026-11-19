@@ -15,6 +15,7 @@ import BottomNav from '../../components/common/BottomNav';
 import api from '../../utils/api';
 import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import { useAuth } from '../../context/AuthContext';
+import { imgCard } from '../../utils/cloudinary';
 
 /** Format a Date as "04 July 2026 · 6:45 PM" in IST */
 const fmtIST = (d) => {
@@ -264,7 +265,7 @@ export default function KoyambeduHome() {
                   className="flex flex-col items-center gap-1 bg-white rounded-2xl py-2 px-1 active:scale-95 transition overflow-hidden"
                   style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                   {cat.image
-                    ? <img src={cat.image} alt={cat.name} className="w-full h-12 object-cover rounded-xl" />
+                    ? <img src={imgCard(cat.image)} alt={cat.name} loading="lazy" className="w-full h-12 object-cover rounded-xl" />
                     : <span className="text-2xl py-1">{cat.icon || CAT_ICONS[cat.slug] || '🌿'}</span>
                   }
                   <span className="text-[10px] font-bold text-gray-700 text-center leading-tight line-clamp-1 px-1">{cat.name}</span>

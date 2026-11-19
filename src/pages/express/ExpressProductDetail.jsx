@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 import { FiArrowLeft, FiShoppingCart, FiMinus, FiPlus, FiZap, FiPackage, FiCheckCircle } from 'react-icons/fi';
 import api from '../../utils/api';
 import { useExpressCart } from '../../context/ExpressCartContext';
+import { imgHero } from '../../utils/cloudinary';
 
 // Pack-size options are built per product from its admin-configured
 // minOrderQty (e.g. radish starts at 0.25 kg) rather than one fixed
@@ -134,7 +135,7 @@ export default function ExpressProductDetail() {
       <div className="relative bg-white">
         <div className="w-full aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
           {product.image
-            ? <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+            ? <img src={imgHero(product.image)} alt={product.name} className="w-full h-full object-cover" />
             : <FiZap className="text-gray-300" size={48} />}
         </div>
         {outOfStock && (

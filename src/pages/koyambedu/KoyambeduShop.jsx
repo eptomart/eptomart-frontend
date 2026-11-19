@@ -502,7 +502,7 @@ export default function KoyambeduShop() {
                     className="flex-shrink-0 w-28 bg-white rounded-xl border border-orange-100 overflow-hidden text-left">
                     <div className="w-full h-20 bg-gray-100">
                       {p.image
-                        ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                        ? <img src={imgCard(p.image)} alt={p.name} loading="lazy" className="w-full h-full object-cover" />
                         : <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>}
                     </div>
                     <div className="p-1.5">

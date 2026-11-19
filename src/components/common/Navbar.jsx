@@ -15,6 +15,7 @@ import { useKoyambeduCart } from '../../context/KoyambeduCartContext';
 import { useFruitBasketCart } from '../../context/FruitBasketCartContext';
 import { useExpressCart } from '../../context/ExpressCartContext';
 import api from '../../utils/api';
+import { imgThumb } from '../../utils/cloudinary';
 
 const PAGE_TITLES = {
   '/shop':      'Shop',
@@ -164,7 +165,7 @@ function MobileSearchOverlay({ onClose }) {
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-green-50 active:bg-green-100 transition-colors text-left"
                     style={{ borderBottom: '1px solid #f0fdf4' }}>
                     <div className="w-11 h-11 rounded-2xl overflow-hidden bg-green-50 flex-shrink-0">
-                      {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-2xl">🌿</div>}
+                      {p.image ? <img src={imgThumb(p.image)} alt={p.name} loading="lazy" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-2xl">🌿</div>}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-800 line-clamp-1">{p.name}</p>
@@ -195,7 +196,7 @@ function MobileSearchOverlay({ onClose }) {
                     style={{ borderBottom: '1px solid #f9fafb' }}>
                     <div className="w-12 h-12 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0">
                       {p.image
-                        ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                        ? <img src={imgThumb(p.image)} alt={p.name} loading="lazy" className="w-full h-full object-cover" />
                         : <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>
                       }
                     </div>
@@ -408,7 +409,7 @@ export default function Navbar() {
                           onClick={() => { setQuery(''); setResults([]); setKbdResults([]); setDropOpen(false); navigate(p.link); }}
                           className="w-full flex items-center gap-3 px-4 py-2 hover:bg-green-50 transition-colors border-b border-gray-50 text-left">
                           <div className="w-9 h-9 rounded-xl overflow-hidden bg-green-50 flex-shrink-0">
-                            {p.image ? <img src={p.image} alt="" className="w-full h-full object-cover" /> : <span className="flex items-center justify-center w-full h-full text-green-200">🌿</span>}
+                            {p.image ? <img src={imgThumb(p.image)} alt="" loading="lazy" className="w-full h-full object-cover" /> : <span className="flex items-center justify-center w-full h-full text-green-200">🌿</span>}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-gray-800 line-clamp-1">{p.name}</p>
@@ -436,7 +437,7 @@ export default function Navbar() {
                           className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 transition-colors border-b border-gray-50 last:border-0"
                           onClick={() => { setQuery(''); setResults([]); setKbdResults([]); setDropOpen(false); }}>
                           <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
-                            {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl">📦</div>}
+                            {p.image ? <img src={imgThumb(p.image)} alt={p.name} loading="lazy" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl">📦</div>}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-800 line-clamp-1">{p.name}</p>

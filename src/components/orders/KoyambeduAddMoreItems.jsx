@@ -21,6 +21,7 @@ import { FiChevronDown, FiChevronUp, FiX, FiAlertTriangle, FiImage } from 'react
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 import { formatINR } from '../../utils/currency';
+import { imgThumb } from '../../utils/cloudinary';
 
 const imgOf = (p) => {
   const imgs = p?.images;
@@ -232,7 +233,7 @@ export default function KoyambeduAddMoreItems({ order, onAdded }) {
                     <button key={p._id} onClick={() => addProduct(p)}
                       className="w-full flex items-center gap-2.5 px-2.5 py-2.5 border-b border-gray-100 last:border-0 text-left hover:bg-gray-50">
                       <div className="w-11 h-11 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
-                        {imgOf(p) ? <img src={imgOf(p)} alt="" className="w-full h-full object-cover" /> : <FiImage size={16} className="text-gray-300" />}
+                        {imgOf(p) ? <img src={imgThumb(imgOf(p))} alt="" loading="lazy" className="w-full h-full object-cover" /> : <FiImage size={16} className="text-gray-300" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-800 truncate">{p.name}</p>
@@ -275,7 +276,7 @@ export default function KoyambeduAddMoreItems({ order, onAdded }) {
               {items.map(it => (
                 <div key={`${it.productId}__${it.gradeKey || ''}`} className="flex items-center gap-2.5 px-2.5 py-2.5 border-b border-gray-100 last:border-0">
                   <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
-                    {it.image ? <img src={it.image} alt="" className="w-full h-full object-cover" /> : <FiImage size={14} className="text-gray-300" />}
+                    {it.image ? <img src={imgThumb(it.image)} alt="" loading="lazy" className="w-full h-full object-cover" /> : <FiImage size={14} className="text-gray-300" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">{it.name}{it.gradeName ? ` (${it.gradeName})` : ''}</p>

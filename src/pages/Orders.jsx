@@ -14,6 +14,7 @@ import OrderTrackingTimeline from '../components/order/OrderTrackingTimeline';
 import { formatINR, formatDate } from '../utils/currency';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { imgThumb } from '../utils/cloudinary';
 
 const TABS = [
   { key: 'eptomart',   label: 'Eptomart',        emoji: '🛒', color: '#f4941c' },
@@ -74,7 +75,7 @@ function KoyambeduOrderCard({ order, expanded, onToggle }) {
               <div key={i} className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
                   {item.image
-                    ? <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-xl" />
+                    ? <img src={imgThumb(item.image)} alt={item.name} loading="lazy" className="w-full h-full object-cover rounded-xl" />
                     : <FaLeaf size={14} className="text-green-300" />}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -307,7 +308,7 @@ export default function Orders() {
                     <div className="space-y-3 mb-4">
                       {order.items?.map((item, i) => (
                         <div key={i} className="flex gap-3">
-                          <img src={item.image || 'https://via.placeholder.com/60'} alt={item.name}
+                          <img src={imgThumb(item.image) || 'https://via.placeholder.com/60'} alt={item.name} loading="lazy"
                             className="w-14 h-14 object-cover rounded-xl bg-gray-100" />
                           <div className="flex-1">
                             <p className="font-medium text-sm text-gray-800">{item.name}</p>

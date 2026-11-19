@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 import api from '../../utils/api';
 import { useExpressCart } from '../../context/ExpressCartContext';
 import { useAuth } from '../../context/AuthContext';
+import { imgCard, cloudinaryUrl } from '../../utils/cloudinary';
 
 // Geocoding (address text -> lat/lng) via Google Maps — same helper
 // duplicated in ExpressCheckout.jsx (and the original in
@@ -413,7 +414,7 @@ export default function ExpressShop() {
                 style={{ ...(!b.image ? { background: `linear-gradient(135deg, ${b.gradientFrom}, ${b.gradientTo})` } : {}), animationDelay: `${i * 90}ms` }}>
                 {b.image && (
                   <>
-                    <img src={b.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                    <img src={cloudinaryUrl(b.image, { width: 800, crop: 'limit' })} alt="" className="absolute inset-0 w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
                   </>
                 )}
@@ -524,7 +525,7 @@ export default function ExpressShop() {
                 <Link to={`/express/product/${product._id}`} className="block">
                   <div className="w-full aspect-square rounded-lg bg-gray-100 mb-2 flex items-center justify-center overflow-hidden">
                     {product.image
-                      ? <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                      ? <img src={imgCard(product.image)} alt={product.name} loading="lazy" className="w-full h-full object-cover" />
                       : <FiZap className="text-gray-300" size={24} />}
                   </div>
                   <p className="font-bold text-sm text-gray-800 truncate">{product.name}</p>
