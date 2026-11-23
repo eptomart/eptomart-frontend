@@ -82,7 +82,7 @@ const ITEM_CHECKBOX_ROW = '   [ ] Packed   [ ] Delivered';
 
 /**
  * Build the raw ESC/POS byte stream for one order's packing slip.
- * @param {object} order - { orderId, placedAt, customerName, customerPhone, customerArea, customerAddress, deliverySlot, items }
+ * @param {object} order - { orderId, placedAt, customerName, customerArea, customerAddress, deliverySlot, items }
  * @param {object} [opts] - { itemsOnly: array of item names to restrict to (pack label mode) }
  */
 function buildEscPosSlip(order, opts = {}) {
@@ -107,7 +107,8 @@ function buildEscPosSlip(order, opts = {}) {
   chunks.push(bytesBoldOn());
   chunks.push(bytesText(`Customer: ${order.customerName}\n`));
   chunks.push(bytesBoldOff());
-  if (order.customerPhone) chunks.push(bytesText(`Phone: ${order.customerPhone}\n`));
+  // Customer phone numbers are deliberately NEVER printed on slips/labels (privacy —
+  // printed paper gets handled by many people). Only Super Admin can see phones, on screen.
   // Full slip (stays with the order): print the full delivery address.
   // Pack label (may be handled loosely, stuck on a single pack): print just
   // the area/locality, not the full private street address.
@@ -274,7 +275,6 @@ function buildPrintHtml(order, opts = {}) {
   <div>Date: ${new Date(order.placedAt).toLocaleDateString('en-IN')}${order.timeLabel ? ' ' + order.timeLabel : ''}</div>
   ${order.deliverySlot ? `<div>Slot: ${order.deliverySlot}</div>` : ''}
   <div><strong>Customer: ${order.customerName}</strong></div>
-  ${order.customerPhone ? `<div>Phone: ${order.customerPhone}</div>` : ''}
   ${!isLabel && order.customerAddress ? `<div>Address: ${order.customerAddress}</div>` : ''}
   ${isLabel && order.customerArea ? `<div>Location: ${order.customerArea}</div>` : ''}
   <hr>
