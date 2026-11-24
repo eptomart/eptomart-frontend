@@ -116,7 +116,7 @@ export function OffersSettings() {
       </div>
       {o[k].enabled && (
         <div className="grid grid-cols-3 gap-2">
-          <label className="text-[11px] text-gray-500">Within (km of hub)
+          <label className="text-[11px] text-gray-500">Default km from hub
             <input type="number" inputMode="decimal" min="0" className={`${inp} w-full mt-0.5`} placeholder="0 = anywhere" value={o[k].maxKm} onChange={e => setBlk(k, { maxKm: e.target.value })} /></label>
           <label className="text-[11px] text-gray-500">Min order (₹)
             <input type="number" inputMode="numeric" min="0" className={`${inp} w-full mt-0.5`} value={o[k].minOrder} onChange={e => setBlk(k, { minOrder: e.target.value })} /></label>
@@ -130,7 +130,7 @@ export function OffersSettings() {
     <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
       <div>
         <h3 className="font-bold text-gray-700 text-sm">🎉 Minimum orders & customer offers</h3>
-        <p className="text-[11px] text-gray-400">Customers see these as offers at checkout and choose to apply them once their cart reaches the minimum. "Within km" limits an offer to customers that close to the nearest Eptomart hub; beyond it they are charged normally and never see the offer (0 = no limit).</p>
+        <p className="text-[11px] text-gray-400">Customers see these as offers at checkout and choose to apply them once their cart reaches the minimum. The km limit is set per hub in the Hubs tab (each hub's own value wins); "Default km" here is used for hubs where none is set. Beyond the limit customers are charged normally and never see the offer (0 = no limit).</p>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-xl bg-gray-50 p-3">

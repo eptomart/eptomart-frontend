@@ -54,7 +54,7 @@ export default function HubsTab() {
     setSaving(true);
     try {
       const { data } = await api.put('/koyambedu/admin/hubs', { hubs });
-      setHubs(data.hubs.map(h => ({ _id: h._id, name: h.name, lat: h.lat, lng: h.lng, expressStore: h.expressStore, isActive: h.isActive })));
+      setHubs(data.hubs.map(h => ({ _id: h._id, name: h.name, lat: h.lat, lng: h.lng, expressStore: h.expressStore, isActive: h.isActive, freeDeliveryKm: h.freeDeliveryKm, freePlatformKm: h.freePlatformKm })));
       toast.success('Hubs saved — new orders measure distance from the nearest active hub');
     } catch (e) { toast.error(e?.response?.data?.message || 'Save failed'); }
     finally { setSaving(false); }
@@ -86,6 +86,16 @@ export default function HubsTab() {
                 {h.expressStore && storeName(h) && h.name.trim() !== storeName(h) && <span className="text-gray-400 font-normal"> · retail shop: {storeName(h)}</span>}
               </p>
               <p className="text-[11px] text-gray-400">{Number(h.lat).toFixed(5)}, {Number(h.lng).toFixed(5)}</p>
+              <div className="grid grid-cols-2 gap-2 mt-1.5">
+                {[['freeDeliveryKm', 'Free delivery within (km)'], ['freePlatformKm', 'Free platform fee within (km)']].map(([k, label]) => (
+                  <label key={k} className="text-[10px] text-gray-500">{label}
+                    <input type="number" inputMode="decimal" min="0" placeholder="default"
+                      value={h[k] ?? ''}
+                      onChange={e => setHubs(list => list.map((x, j) => j === i ? { ...x, [k]: e.target.value === '' ? null : Number(e.target.value) } : x))}
+                      className="w-full mt-0.5 border border-gray-300 rounded-lg px-2 py-1 text-base sm:text-xs" />
+                  </label>
+                ))}
+              </div>
             </div>
             <button onClick={() => toggle(i)} className={`text-xs font-bold px-3 py-1.5 rounded-lg ${h.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{h.isActive ? 'Active' : 'Off'}</button>
             <button onClick={() => remove(i)} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-50 text-red-600">Remove</button>
