@@ -469,12 +469,18 @@ export default function KoyambeduCheckout() {
     });
     // Skip address form — go straight to map if address is complete
     if (def.fullName && def.addressLine1 && def.pincode && def.phone) {
-      if (userLocation) {
-        // Location already pinned from a previous checkout — skip map step too.
+      // The pin saved WITH this address wins; the old shared pin is only a fallback
+      // for older addresses that were saved before pins were stored with them.
+      const pin = (def.lat != null && def.lng != null)
+        ? { lat: def.lat, lng: def.lng, areaName: def.areaName || '' }
+        : (userLocation ? { lat: userLocation.lat, lng: userLocation.lng, areaName: locationLabel || '' } : null);
+      if (pin) {
+        // Location already pinned — skip map step too.
         // Pre-populate locationData and jump straight to slot selection.
-        setLocationData(prev => prev ?? { lat: userLocation.lat, lng: userLocation.lng, areaName: locationLabel || '', deliveryCharge: 149 });
+        setLocationData(prev => (def.lat != null ? null : prev) ?? { lat: pin.lat, lng: pin.lng, areaName: pin.areaName, deliveryCharge: 149 });
+        if (def.lat != null) { setUserLocation({ lat: pin.lat, lng: pin.lng }); setLocationLabel(pin.areaName); }
         // Refresh delivery charge silently in the background.
-        api.post('/koyambedu/check-delivery', { lat: userLocation.lat, lng: userLocation.lng })
+        api.post('/koyambedu/check-delivery', { lat: pin.lat, lng: pin.lng })
           .then(({ data }) => {
             if (data.available) setLocationData(ld => ({
               ...ld,
@@ -495,6 +501,54 @@ export default function KoyambeduCheckout() {
       }
     }
   }, [user, userLocation, locationLabel]);
+
+  // ── Address + pin are saved TOGETHER ──────────────────────────
+  // Picking a saved address uses the pin stored with it, so the map is only
+  // asked for a brand-new address (or one whose text was edited).
+  const manualAddrRef = useRef(false);
+  const sameAddress = (a) => !!a
+    && (addr.addressLine1 || '').trim().toLowerCase() === (a.addressLine1 || '').trim().toLowerCase()
+    && String(addr.pincode || '').trim() === String(a.pincode || '').trim();
+  const applyPin = async (lat, lng, areaName) => {
+    setLocationData({ lat, lng, areaName: areaName || '', deliveryCharge: 149 });
+    setUserLocation({ lat, lng }); setLocationLabel(areaName || '');
+    try {
+      const { data } = await api.post('/koyambedu/check-delivery', { lat, lng });
+      if (!data.available) return false;
+      setLocationData(ld => ({
+        ...ld,
+        deliveryCharge:         data.deliveryCharge ?? 149,
+        originalDeliveryCharge: data.originalDeliveryCharge ?? null,
+        platformFee:            data.platformFee ?? 75,
+        originalPlatformFee:    data.originalPlatformFee ?? null,
+        packingCharge:          data.packingCharge ?? 0,
+        isSmallOrder:           data.isSmallOrder ?? false,
+        distanceKm:             data.distanceKm,
+        hubName:                data.hubName ?? null,
+      }));
+      return true;
+    } catch { return false; }
+  };
+
+  // A cart tagged to an address (named carts) selects that address + its pin on arrival.
+  useEffect(() => {
+    if (!user || manualAddrRef.current || step !== 0 && step !== 2) return;
+    const tagged = (user.addresses || []).find(a => cart?.addressId && String(a._id) === String(cart.addressId));
+    if (!tagged || String(tagged._id) === String(selectedSavedAddrId)) return;
+    hasAutoSelectedAddr.current = true;
+    setSelectedSavedAddrId(String(tagged._id));
+    setAddr({
+      fullName: tagged.fullName || user?.name || '', phone: tagged.phone || user?.phone || '',
+      addressLine1: tagged.addressLine1 || '', addressLine2: tagged.addressLine2 || '',
+      city: tagged.city || 'Chennai', pincode: tagged.pincode || '', landmark: '',
+    });
+    if (tagged.fullName && tagged.addressLine1 && tagged.pincode && tagged.phone) {
+      if (tagged.lat != null && tagged.lng != null) {
+        applyPin(tagged.lat, tagged.lng, tagged.areaName).then(ok => setStep(ok ? 2 : 1));
+      } else setStep(0);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart?.addressId, user]);
 
   // ── Fetch wallet balance when user reaches Step 3 ─────────────
   useEffect(() => {
@@ -541,6 +595,14 @@ export default function KoyambeduCheckout() {
     setLocationData(data);
     setUserLocation({ lat: data.lat, lng: data.lng });
     setLocationLabel(data.areaName);
+    // Save the pin WITH the address so it is never asked again for this address.
+    try {
+      const saved = (user?.addresses || []).find(a => String(a._id) === String(selectedSavedAddrId));
+      if (user && saved && sameAddress(saved)) {
+        api.put(`/auth/address/${saved._id}`, { lat: data.lat, lng: data.lng, areaName: data.areaName || '' })
+          .then(() => loadUser()).catch(() => {});
+      }
+    } catch { /* non-blocking */ }
     toast.success(`Delivering to ${data.areaName}`);
     setStep(2);
   };
@@ -1102,6 +1164,7 @@ export default function KoyambeduCheckout() {
               addresses={user?.addresses || []}
               selectedId={selectedSavedAddrId}
               onSelect={a => {
+                manualAddrRef.current = true;
                 setSelectedSavedAddrId(String(a._id));
                 setAddr({
                   fullName:     a.fullName     || '',
@@ -1114,6 +1177,7 @@ export default function KoyambeduCheckout() {
                 });
               }}
               onNewAddress={() => {
+                manualAddrRef.current = true;
                 setSelectedSavedAddrId(null);
                 setAddr({ fullName: user?.name || '', phone: user?.phone || '', addressLine1: '', addressLine2: '', city: 'Chennai', pincode: '', landmark: '' });
               }}
@@ -1510,13 +1574,24 @@ export default function KoyambeduCheckout() {
                 } catch { /* non-blocking */ }
                 if (user && !selectedSavedAddrId && saveAddrChecked) {
                   try {
-                    await api.post('/auth/add-address', {
+                    const { data: added } = await api.post('/auth/add-address', {
                       fullName: addr.fullName, phone: addr.phone,
                       addressLine1: addr.addressLine1, addressLine2: addr.addressLine2,
                       city: addr.city, pincode: addr.pincode,
                     });
+                    // remember which saved address this is, so the pin we are about to
+                    // ask for gets stored WITH it
+                    const mine = (added?.addresses || []).find(a => sameAddress(a));
+                    if (mine) setSelectedSavedAddrId(String(mine._id));
                     await loadUser();
                   } catch { /* non-blocking */ }
+                }
+                // Saved address that already has its pin → no map step.
+                const savedSel = (user?.addresses || []).find(a => String(a._id) === String(selectedSavedAddrId));
+                if (savedSel && savedSel.lat != null && savedSel.lng != null && sameAddress(savedSel)) {
+                  const ok = await applyPin(savedSel.lat, savedSel.lng, savedSel.areaName);
+                  if (ok) { setStep(2); return; }
+                  toast.error('Please re-confirm the delivery location on the map');
                 }
                 goToMapStep();
               }}

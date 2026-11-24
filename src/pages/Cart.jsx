@@ -22,6 +22,7 @@ import { FaLeaf } from 'react-icons/fa';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import QuantityControl from '../components/cart/QuantityControl';
+import CartSwitcher from '../components/koyambedu/CartSwitcher';
 import VariantPickerModal from '../components/cart/VariantPickerModal';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -287,6 +288,7 @@ export default function Cart() {
         <Helmet><title>Cart — Eptomart</title></Helmet>
         <Navbar />
         <div className="min-h-screen flex flex-col items-center justify-center text-center px-4 py-10">
+          <div className="w-full max-w-xl text-left"><CartSwitcher /></div>
           {/* Icon */}
           <div
             className="w-24 h-24 rounded-full flex items-center justify-center mb-4"
@@ -393,6 +395,8 @@ export default function Cart() {
             </span>
           </h1>
         </div>
+
+        <CartSwitcher />
 
         {/* ── Tab bar ──────────────────────────────── */}
         {availableTabs.length > 0 && (
