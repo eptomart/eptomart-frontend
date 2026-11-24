@@ -6,6 +6,7 @@
 // Data: GET /koyambedu/admin/activity (+ /summary, /users, /user/:id, /export)
 // ============================================
 import { startViewAs } from '../../utils/viewAsCustomer';
+import { CustomerFeeWaiver } from './FeeWaiver';
 import ImportListModal from './ImportListModal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -224,6 +225,7 @@ function CustomerView({ customer, filters, onBack }) {
               <Stat l="Wallet" v={inr(p.walletBalance)} sub={p.walletReserved ? `${inr(p.walletReserved)} reserved` : null} />
               <Stat l="In cart now" v={`${p.cart.itemCount} · ${inr(p.cart.value)}`} sub={p.cart.updatedAt ? `updated ${ago(p.cart.updatedAt)}` : null} />
             </div>
+            <CustomerFeeWaiver userId={customer.userId} initial={p.feeDiscount} />
             {p.cart.items.length > 0 && <p className="text-[11px] text-gray-500 mt-2">🛒 {p.cart.items.map(i => `${i.name}${i.gradeName ? ` (${i.gradeName})` : ''} × ${i.quantity}${i.unit || ''}`).join(', ')}</p>}
             {p.topViewed.length > 0 && <p className="text-[11px] text-gray-500 mt-1">👀 Most viewed: {p.topViewed.map(t => `${t.name} (${t.views})`).join(', ')}</p>}
           </>

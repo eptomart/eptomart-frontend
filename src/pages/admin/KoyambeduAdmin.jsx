@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { GlobalFeeWaiver } from '../../components/koyambedu/FeeWaiver';
 import UserActivityPanel, { ViewAsButton, ImportListButton } from '../../components/koyambedu/UserActivityPanel';
 import api from '../../utils/api';
 import KoyambeduImageUploader from '../../components/koyambedu/KoyambeduImageUploader';
@@ -5682,6 +5683,8 @@ export default function KoyambeduAdmin() {
                 : `₹${orderMinSettings?.platformFeeDiscount?.value || 0} off the platform fee`} once the cart reaches ₹{orderMinSettings?.value ?? 799} — applies automatically at checkout, no coupon code needed.
             </p>
           </div>
+
+          <GlobalFeeWaiver />
 
           {/* Audit Log */}
           <div className="bg-white rounded-2xl border border-gray-200 p-4">
