@@ -84,11 +84,13 @@ export function OffersSettings() {
   const [o, setO] = useState(null);
   const [regular, setRegular] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
-    api.get('/koyambedu/admin/dev-settings/offers').then(({ data }) => setO(data)).catch(() => {});
+    api.get('/koyambedu/admin/dev-settings/offers').then(({ data }) => setO(data)).catch(() => setFailed(true));
     api.get('/koyambedu/admin/dev-settings/order-minimum').then(({ data }) => setRegular(data.value)).catch(() => {});
   }, []);
-  if (!o) return null;
+  if (failed) return <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-800">🎉 Offers settings could not load — the latest backend may not be deployed yet.</div>;
+  if (!o) return <div className="bg-white rounded-2xl border border-gray-200 p-4 text-xs text-gray-400">Loading offers…</div>;
   const setBlk = (k, patch) => setO(s => ({ ...s, [k]: { ...s[k], ...patch } }));
   const save = async () => {
     setBusy(true);
@@ -96,8 +98,8 @@ export function OffersSettings() {
       const num = (v) => Number(v) || 0;
       const { data } = await api.put('/koyambedu/admin/dev-settings/offers', {
         lowWeightMinOrder: num(o.lowWeightMinOrder),
-        freeDelivery: { enabled: o.freeDelivery.enabled, minOrder: num(o.freeDelivery.minOrder), percent: num(o.freeDelivery.percent) || 100 },
-        freePlatform: { enabled: o.freePlatform.enabled, minOrder: num(o.freePlatform.minOrder), percent: num(o.freePlatform.percent) || 100 },
+        freeDelivery: { enabled: o.freeDelivery.enabled, minOrder: num(o.freeDelivery.minOrder), percent: num(o.freeDelivery.percent) || 100, maxKm: num(o.freeDelivery.maxKm) },
+        freePlatform: { enabled: o.freePlatform.enabled, minOrder: num(o.freePlatform.minOrder), percent: num(o.freePlatform.percent) || 100, maxKm: num(o.freePlatform.maxKm) },
       });
       setO(data); toast.success('Offers saved');
     } catch (e) { toast.error(e?.response?.data?.message || 'Failed to save'); }
@@ -113,7 +115,9 @@ export function OffersSettings() {
         </button>
       </div>
       {o[k].enabled && (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
+          <label className="text-[11px] text-gray-500">Within (km of hub)
+            <input type="number" inputMode="decimal" min="0" className={`${inp} w-full mt-0.5`} placeholder="0 = anywhere" value={o[k].maxKm} onChange={e => setBlk(k, { maxKm: e.target.value })} /></label>
           <label className="text-[11px] text-gray-500">Min order (₹)
             <input type="number" inputMode="numeric" min="0" className={`${inp} w-full mt-0.5`} value={o[k].minOrder} onChange={e => setBlk(k, { minOrder: e.target.value })} /></label>
           <label className="text-[11px] text-gray-500">% off (1–100)
@@ -126,7 +130,7 @@ export function OffersSettings() {
     <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
       <div>
         <h3 className="font-bold text-gray-700 text-sm">🎉 Minimum orders & customer offers</h3>
-        <p className="text-[11px] text-gray-400">Customers see these as offers at checkout and choose to apply them once their cart reaches the minimum.</p>
+        <p className="text-[11px] text-gray-400">Customers see these as offers at checkout and choose to apply them once their cart reaches the minimum. "Within km" limits an offer to customers that close to the nearest Eptomart hub; beyond it they are charged normally and never see the offer (0 = no limit).</p>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-xl bg-gray-50 p-3">
