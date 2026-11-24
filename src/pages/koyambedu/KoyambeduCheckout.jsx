@@ -1810,9 +1810,27 @@ export default function KoyambeduCheckout() {
             )}
 
             {/* Offers the customer can opt into */}
-            {offerState.length > 0 && (
+            {offerState.length > 0 && (() => {
+              const dO = offerState.find(o => o.key === 'delivery'), pO = offerState.find(o => o.key === 'platform');
+              const bundle = !!(dO && pO && dO.eligible && pO.eligible);
+              const bundleOn = bundle && activeOffers.includes('delivery') && activeOffers.includes('platform');
+              const toggleBundle = () => setPickedOffers(p => bundleOn ? p.filter(x => x !== 'delivery' && x !== 'platform') : [...new Set([...p, 'delivery', 'platform'])]);
+              const full = (o) => o.percent >= 100;
+              return bundle ? (
+              <div className={`rounded-2xl p-4 border-2 ${bundleOn ? 'border-green-500 bg-green-50' : 'border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50'}`} style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
+                <p className="text-[11px] font-black tracking-wide text-orange-600 uppercase">🎁 Special offer just for you</p>
+                <p className="text-sm font-bold text-gray-800 mt-0.5">
+                  {full(dO) ? 'Free delivery' : `${dO.percent}% off delivery`} + {full(pO) ? 'free platform fee' : `${pO.percent}% off platform fee`}
+                </p>
+                <p className="text-[11px] text-gray-500 mb-2">{bundleOn ? 'Offer applied — you are saving on both charges. This is separate from promo codes.' : 'One tap to waive both charges on this order. You can still use a promo code as well.'}</p>
+                <button type="button" onClick={toggleBundle}
+                  className={`w-full font-bold text-sm py-2.5 rounded-xl active:scale-95 transition ${bundleOn ? 'bg-green-600 text-white' : 'bg-orange-500 text-white'}`}>
+                  {bundleOn ? '✓ Offer applied · Tap to remove' : 'Claim special offer'}
+                </button>
+              </div>
+              ) : (
               <div className="bg-white rounded-2xl p-4 space-y-2" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
-                <h2 className="font-bold text-gray-800 text-sm">🎉 Offers for you</h2>
+                <h2 className="font-bold text-gray-800 text-sm">🎁 Special offers just for you</h2>
                 {offerState.map(o => {
                   const on = activeOffers.includes(o.key);
                   return (
@@ -1829,7 +1847,8 @@ export default function KoyambeduCheckout() {
                   );
                 })}
               </div>
-            )}
+              );
+            })()}
 
             {/* Price breakdown */}
             <div className="bg-white rounded-2xl p-4"
