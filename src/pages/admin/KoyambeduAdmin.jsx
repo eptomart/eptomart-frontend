@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { GlobalFeeWaiver } from '../../components/koyambedu/FeeWaiver';
+import { GlobalFeeWaiver, OffersSettings } from '../../components/koyambedu/FeeWaiver';
 import UserActivityPanel, { ViewAsButton, ImportListButton } from '../../components/koyambedu/UserActivityPanel';
 import api from '../../utils/api';
 import KoyambeduImageUploader from '../../components/koyambedu/KoyambeduImageUploader';
@@ -5684,6 +5684,7 @@ export default function KoyambeduAdmin() {
             </p>
           </div>
 
+          <OffersSettings />
           <GlobalFeeWaiver />
 
           {/* Audit Log */}

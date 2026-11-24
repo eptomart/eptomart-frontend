@@ -267,6 +267,9 @@ const EmbeddedMapPicker = forwardRef(function EmbeddedMapPicker({ initialCenter,
         originalDeliveryCharge: data.originalDeliveryCharge ?? null,
         platformFee:            data.platformFee ?? 75,
         originalPlatformFee:    data.originalPlatformFee ?? null,
+        baseDeliveryCharge:     data.baseDeliveryCharge ?? null,
+        basePlatformFee:        data.basePlatformFee ?? null,
+        offers:                 data.offers || [],
         packingCharge:          data.packingCharge ?? 0,
         isSmallOrder:           data.isSmallOrder ?? false,
         distanceKm:   data.distanceKm ?? distKm,
@@ -488,6 +491,9 @@ export default function KoyambeduCheckout() {
               originalDeliveryCharge: data.originalDeliveryCharge ?? null,
               platformFee:            data.platformFee ?? 75,
               originalPlatformFee:    data.originalPlatformFee ?? null,
+        baseDeliveryCharge:     data.baseDeliveryCharge ?? null,
+        basePlatformFee:        data.basePlatformFee ?? null,
+        offers:                 data.offers || [],
               packingCharge:          data.packingCharge ?? 0,
               isSmallOrder:           data.isSmallOrder ?? false,
               distanceKm:             data.distanceKm,
@@ -521,6 +527,9 @@ export default function KoyambeduCheckout() {
         originalDeliveryCharge: data.originalDeliveryCharge ?? null,
         platformFee:            data.platformFee ?? 75,
         originalPlatformFee:    data.originalPlatformFee ?? null,
+        baseDeliveryCharge:     data.baseDeliveryCharge ?? null,
+        basePlatformFee:        data.basePlatformFee ?? null,
+        offers:                 data.offers || [],
         packingCharge:          data.packingCharge ?? 0,
         isSmallOrder:           data.isSmallOrder ?? false,
         distanceKm:             data.distanceKm,
@@ -779,12 +788,30 @@ export default function KoyambeduCheckout() {
       .catch(() => {});
   }, []);
 
-  const deliveryCharge         = locationData?.deliveryCharge ?? 249;
-  const originalDeliveryCharge = locationData?.originalDeliveryCharge ?? null;
+  // ── Customer-selectable offers (free delivery / free platform fee) ──
+  // Super Admin sets the minimum cart value; the customer opts in when eligible.
+  const [pickedOffers, setPickedOffers] = useState([]);
+  const offerList = locationData?.offers || [];
+  const offerState = offerList.map(o => ({ ...o, eligible: subtotal >= o.minOrder, shortBy: Math.max(0, Math.ceil(o.minOrder - subtotal)) }));
+  const activeOffers = pickedOffers.filter(k => offerState.find(o => o.key === k && o.eligible));
+  const offerPct = (key) => activeOffers.includes(key) ? (offerState.find(o => o.key === key)?.percent || 100) : 0;
+  const toggleOffer = (k) => setPickedOffers(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]);
+  const srvDelivery = locationData?.deliveryCharge ?? 249;
+  const srvOrigDelivery = locationData?.originalDeliveryCharge ?? null;
+  const baseDelivery = locationData?.baseDeliveryCharge ?? srvDelivery;
+  const dPct = offerPct('delivery');
+  const offerDelivery = dPct > 0 ? Math.round(baseDelivery * (1 - dPct / 100) * 100) / 100 : null;
+  const deliveryCharge         = offerDelivery != null ? Math.min(srvDelivery, offerDelivery) : srvDelivery;
+  const originalDeliveryCharge = (offerDelivery != null && deliveryCharge < srvDelivery && baseDelivery > 0) ? (srvOrigDelivery ?? baseDelivery) : srvOrigDelivery;
   const distanceKm     = locationData?.distanceKm ?? null;
   const hubName        = locationData?.hubName ?? null;
-  const platformFee    = locationData?.platformFee ?? 75; // ₹75 incl. 18% GST (SAC 9985), or ₹25 for small orders
-  const originalPlatformFee = locationData?.originalPlatformFee ?? null;
+  const srvPlatform    = locationData?.platformFee ?? 75; // ₹75 incl. 18% GST (SAC 9985), or ₹25 for small orders
+  const srvOrigPlatform = locationData?.originalPlatformFee ?? null;
+  const basePlatform   = locationData?.basePlatformFee ?? srvPlatform;
+  const pPct = offerPct('platform');
+  const offerPlatform  = pPct > 0 ? Math.round(basePlatform * (1 - pPct / 100) * 100) / 100 : null;
+  const platformFee    = offerPlatform != null ? Math.min(srvPlatform, offerPlatform) : srvPlatform;
+  const originalPlatformFee = (offerPlatform != null && platformFee < srvPlatform && basePlatform > 0) ? (srvOrigPlatform ?? basePlatform) : srvOrigPlatform;
   const packingCharge  = locationData?.packingCharge ?? 0; // flat ₹35 for small orders only
   const isSmallOrder   = locationData?.isSmallOrder ?? false;
   const couponDiscount = couponApplied?.discount || 0;
@@ -898,6 +925,7 @@ export default function KoyambeduCheckout() {
           pincode:  addr.pincode,
         },
         couponCode: couponApplied?.code || undefined,
+        offers: activeOffers.length ? activeOffers : undefined,
       });
 
       // ── Wallet-only flow (total = ₹0) ──────────────────────────────────────
@@ -1040,6 +1068,7 @@ export default function KoyambeduCheckout() {
           pincode:  addr.pincode,
         },
         couponCode: couponApplied?.code || undefined,
+        offers: activeOffers.length ? activeOffers : undefined,
       });
       // Bypass Razorpay — call dev test endpoint (mirrors verifyPayment without signature)
       await api.post('/koyambedu/orders/test-payment', { orderId: data.order._id });
@@ -1777,6 +1806,28 @@ export default function KoyambeduCheckout() {
                     </>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Offers the customer can opt into */}
+            {offerState.length > 0 && (
+              <div className="bg-white rounded-2xl p-4 space-y-2" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
+                <h2 className="font-bold text-gray-800 text-sm">🎉 Offers for you</h2>
+                {offerState.map(o => {
+                  const on = activeOffers.includes(o.key);
+                  return (
+                    <div key={o.key} className={`flex items-center justify-between gap-2 rounded-xl border p-2.5 ${o.eligible ? (on ? 'border-green-500 bg-green-50' : 'border-green-200 bg-white') : 'border-gray-200 bg-gray-50'}`}>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-gray-800">{o.title}{o.percent < 100 ? ` (${o.percent}% off)` : ''}</p>
+                        <p className="text-[11px] text-gray-500">{o.eligible ? (on ? 'Offer applied' : `Available on orders of ₹${o.minOrder}+`) : `Add ₹${o.shortBy} more to unlock (orders of ₹${o.minOrder}+)`}</p>
+                      </div>
+                      <button type="button" disabled={!o.eligible} onClick={() => toggleOffer(o.key)}
+                        className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg ${on ? 'bg-green-600 text-white' : o.eligible ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-400'}`}>
+                        {on ? '✓ Applied' : 'Apply'}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
