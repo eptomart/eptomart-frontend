@@ -21,7 +21,6 @@ import KoyambeduActivityTracker from './components/koyambedu/KoyambeduActivityTr
 import ViewAsBanner from './components/koyambedu/ViewAsBanner';
 import WhatsAppFloat from './components/WhatsAppFloat';
 import BottomNav from './components/common/BottomNav';
-import PwaInstallBanner from './components/common/PwaInstallBanner';
 
 // ── Customer pages ───────────────────────────
 const Home           = lazy(() => import('./pages/Home'));
@@ -393,7 +392,6 @@ function AppRoutes() {
           ever reach anyone regardless of anything else being configured
           correctly. Self-contained: dismissible, session-gated, no-op if
           push isn't supported. */}
-      {!isExpressStaffScreen(useLocation().pathname) && <PwaInstallBanner />}
     </>
   );
 }
