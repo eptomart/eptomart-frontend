@@ -6,6 +6,7 @@
 // Data: GET /koyambedu/admin/activity (+ /summary, /users, /user/:id, /export)
 // ============================================
 import { startViewAs } from '../../utils/viewAsCustomer';
+import ImportListModal from './ImportListModal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
@@ -213,7 +214,7 @@ function CustomerView({ customer, filters, onBack }) {
           <>
             <div className="flex items-start justify-between gap-2">
               <p className="font-black text-gray-800">{p.name}</p>
-              <ViewAsButton id={customer.userId} name={p.name} phone={p.phone} />
+              <div className="flex gap-1.5 flex-wrap justify-end"><ImportListButton id={customer.userId} name={p.name} /><ViewAsButton id={customer.userId} name={p.name} phone={p.phone} /></div>
             </div>
             <p className="text-xs text-gray-500">📞 {p.phone || '—'}{p.email ? ` · ✉️ ${p.email}` : ''}</p>
             <p className="text-[11px] text-gray-400 mt-0.5">Joined {p.joined ? fmtDay(p.joined) : '—'} · last active {ago(p.lastActive || p.lastLogin)}{p.device ? ` · ${p.device}` : ''}{p.area ? ` · 📍${p.area}${p.pincode ? ` ${p.pincode}` : ''}` : ''}</p>
@@ -230,6 +231,19 @@ function CustomerView({ customer, filters, onBack }) {
       </div>
       <Timeline feed={feed} showCustomer={false} />
     </div>
+  );
+}
+
+export function ImportListButton({ id, name, compact }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        className={`shrink-0 bg-green-600 text-white font-bold rounded-lg active:scale-95 ${compact ? 'text-[10px] px-2 py-1' : 'text-xs px-3 py-1.5'}`}>
+        📋 Add items from list
+      </button>
+      {open && <ImportListModal userId={id} name={name} onClose={() => setOpen(false)} />}
+    </>
   );
 }
 
