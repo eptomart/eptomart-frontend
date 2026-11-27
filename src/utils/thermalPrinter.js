@@ -80,6 +80,49 @@ const itemLine = (index, name, qtyUnit) => {
 // (unicode ☐ often prints as "?" on cheap ESC/POS firmware).
 const ITEM_CHECKBOX_ROW = '   [ ] Packed   [ ] Delivered';
 
+// Office line printed on every packing slip / pack label (company number, NOT customer data).
+const OFFICE_PHONE = '+91 95000 50027';
+const TAMIL_FONT = '"Noto Sans Tamil","Latha","Tamil Sangam MN","Nirmala UI",Arial,sans-serif';
+
+/**
+ * Tamil can't be sent as text to a cheap ESC/POS printer (no Tamil codepage), so
+ * it is drawn as a picture: word-wrapped to the 58 mm paper (384 dots) and sent
+ * as GS v 0 raster bytes. Returns an empty array in non-browser contexts.
+ */
+function rasterWrapped(text, { px = 22, bold = false, indentDots = 0, align = 'left' } = {}) {
+  if (!text || typeof document === 'undefined') return new Uint8Array(0);
+  const widthDots = 384;
+  const font = `${bold ? 'bold ' : ''}${px}px ${TAMIL_FONT}`;
+  const measure = document.createElement('canvas').getContext('2d');
+  measure.font = font;
+  const maxW = widthDots - indentDots - 6;
+  const lines = [];
+  let cur = '';
+  for (const word of String(text).split(/\s+/)) {
+    const test = cur ? `${cur} ${word}` : word;
+    if (cur && measure.measureText(test).width > maxW) { lines.push(cur); cur = word; } else cur = test;
+  }
+  if (cur) lines.push(cur);
+  const lineH = Math.round(px * 1.5), H = lineH * lines.length + 4;
+  const canvas = document.createElement('canvas');
+  canvas.width = widthDots; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, widthDots, H);
+  ctx.fillStyle = '#000'; ctx.textBaseline = 'middle'; ctx.font = font;
+  ctx.textAlign = align === 'center' ? 'center' : 'left';
+  lines.forEach((ln, i) => ctx.fillText(ln, align === 'center' ? widthDots / 2 : indentDots, lineH * i + lineH / 2 + 2));
+  const { data } = ctx.getImageData(0, 0, widthDots, H);
+  const bytesPerRow = widthDots / 8;
+  const out = new Uint8Array(8 + bytesPerRow * H);
+  out.set([GS, 0x76, 0x30, 0x00, bytesPerRow & 0xff, bytesPerRow >> 8, H & 0xff, H >> 8], 0);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < widthDots; x++) {
+      if (data[(y * widthDots + x) * 4] < 150) out[8 + y * bytesPerRow + (x >> 3)] |= 0x80 >> (x & 7);
+    }
+  }
+  return out;
+}
+
 /**
  * Build the raw ESC/POS byte stream for one order's packing slip.
  * @param {object} order - { orderId, placedAt, customerName, customerArea, customerAddress, deliverySlot, items }
@@ -126,6 +169,7 @@ function buildEscPosSlip(order, opts = {}) {
   items.forEach((it, i) => {
     const qtyUnit = `${it.qty}${it.unit ? ' ' + it.unit : ''}`;
     chunks.push(bytesText(`${itemLine(i, it.name, qtyUnit)}\n`));
+    if (it.nameTamil) chunks.push(rasterWrapped(it.nameTamil, { px: 22, bold: true, indentDots: 30 }));
     if (it.gradeName) chunks.push(bytesText(`   Grade: ${it.gradeName}\n`));
     // Packed/Delivered checkboxes per item (not just once at the end) — the
     // packer ticks each item off individually while packing, and again when
@@ -137,6 +181,12 @@ function buildEscPosSlip(order, opts = {}) {
   });
 
   chunks.push(bytesText('-'.repeat(LINE_WIDTH) + '\n'));
+  // Office number for delivery queries (English + Tamil)
+  chunks.push(bytesAlignCenter());
+  chunks.push(bytesText('Delivery queries? Call office:\n'));
+  chunks.push(rasterWrapped('டெலிவரி தொடர்பான விசாரணைகளுக்கு அலுவலகத்தை அழைக்கவும்', { px: 20, align: 'center' }));
+  chunks.push(bytesBoldOn(), bytesText(`${OFFICE_PHONE}\n`), bytesBoldOff());
+  chunks.push(bytesAlignLeft());
   chunks.push(bytesFeed(4)); // leave room to tear the paper by hand (no auto-cutter assumed)
   return concatBytes(chunks);
 }
@@ -259,6 +309,7 @@ function buildPrintHtml(order, opts = {}) {
         <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:6px">${i + 1}. ${it.name}${it.gradeName ? ` (${it.gradeName})` : ''}</span>
         <span style="flex-shrink:0;white-space:nowrap">${it.qty}${it.unit ? ' ' + it.unit : ''}</span>
       </div>
+      ${it.nameTamil ? `<div style="font-size:12px;font-weight:bold;margin-left:14px;font-family:${TAMIL_FONT.replace(/"/g, "'")}">${it.nameTamil}</div>` : ''}
       ${!isLabel ? '<div style="font-size:11px;margin:3px 0 1px 8px">[&nbsp;&nbsp;] Packed&nbsp;&nbsp;&nbsp;[&nbsp;&nbsp;] Delivered</div>' : ''}
     </div>`).join('');
 
@@ -281,6 +332,7 @@ function buildPrintHtml(order, opts = {}) {
   ${isLabel ? `<div>Items in this pack (${items.length}):</div><br>` : ''}
   ${rows}
   <hr>
+  <div class="center" style="font-size:11px">Delivery queries? Call office:<br><span style="font-family:${TAMIL_FONT.replace(/"/g, "'")}">டெலிவரி தொடர்பான விசாரணைகளுக்கு அலுவலகத்தை அழைக்கவும்</span><br><strong style="font-size:13px">${OFFICE_PHONE}</strong></div>
 </body></html>`;
 }
 
